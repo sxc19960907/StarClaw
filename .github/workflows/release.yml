@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  build-rust:
+    name: Build Rust Binaries
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            7z a starclaw-${{ matrix.target }}.zip starclaw.exe
+          else
+            tar czvf starclaw-${{ matrix.target }}.tar.gz starclaw
+          fi
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: target/${{ matrix.target }}/release/starclaw-${{ matrix.target }}.*
+          asset_name: starclaw-${{ matrix.target }}.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}
+          asset_content_type: application/octet-stream
+
+  build-go:
+    name: Build Go CLI
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: linux-amd64
+            os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - target: linux-arm64
+            os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - target: darwin-amd64
+            os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - target: darwin-arm64
+            os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - target: windows-amd64
+            os: windows-latest
+            goos: windows
+            goarch: amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build -o starclaw-cli${{ matrix.goos == 'windows' && '.exe' || '' }} ./cmd
+      - name: Upload
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: starclaw-cli${{ matrix.goos == 'windows' && '.exe' || '' }}
+          asset_name: starclaw-cli-${{ matrix.target }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+          asset_content_type: application/octet-stream
+
+  publish-npm:
+    name: Publish to NPM
+    needs: build-rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      - run: cd npm && npm ci
+      - run: cd npm && npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
