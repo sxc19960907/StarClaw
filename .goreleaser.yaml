@@ -1,0 +1,82 @@
+version: 2
+
+project_name: starclaw
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: starclaw
+    binary: starclaw
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/starclaw/starclaw/cmd.Version={{.Version}}
+      - -X github.com/starclaw/starclaw/cmd.Commit={{.Commit}}
+      - -X github.com/starclaw/starclaw/cmd.Date={{.Date}}
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+brews:
+  - name: starclaw
+    repository:
+      owner: starclaw
+      name: homebrew-tap
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    directory: Formula
+    homepage: https://github.com/starclaw/starclaw
+    description: "AI-powered CLI agent with local tool execution"
+    license: "MIT"
+    test: |
+      system "#{bin}/starclaw", "version"
+
+nfpms:
+  - id: packages
+    package_name: starclaw
+    vendor: StarClaw
+    homepage: https://github.com/starclaw/starclaw
+    maintainer: StarClaw Team <team@starclaw.dev>
+    description: "AI-powered CLI agent with local tool execution"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk

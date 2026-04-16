@@ -1,0 +1,47 @@
+# Binaries
+/starclaw
+/starclaw-cli
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+/out/
+/dist/
+/build/
+
+# Go
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (local)
+/.starclaw/
+config.local.yaml
+
+# Logs
+*.log
+
+# Coverage
+*.cover
+*.coverage
+coverage.out
+coverage.html
+
+# Temporary
+tmp/
+temp/
+*.tmp

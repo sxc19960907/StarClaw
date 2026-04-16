@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+console.log('StarClaw - Please build from source: go build .');
+process.exit(1);

@@ -1,0 +1,20 @@
+{
+  "name": "@starclaw/cli",
+  "version": "0.1.0",
+  "description": "AI-powered CLI agent with local tool execution",
+  "bin": {
+    "starclaw": "bin/starclaw"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "preuninstall": "node scripts/uninstall.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starclaw/starclaw.git"
+  },
+  "keywords": ["ai", "cli", "agent", "llm"],
+  "author": "StarClaw Team",
+  "license": "MIT",
+  "files": ["bin/", "scripts/"]
+}
