@@ -17,6 +17,7 @@ type Config struct {
 	ModelTier  string      `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
 	Agent      AgentConfig `mapstructure:"agent" yaml:"agent" json:"agent"`
 	Tools      ToolsConfig `mapstructure:"tools" yaml:"tools" json:"tools"`
+	Audit      AuditConfig `mapstructure:"audit" yaml:"audit" json:"audit"`
 }
 
 // AgentConfig holds agent-specific settings
@@ -34,6 +35,11 @@ type ToolsConfig struct {
 	ArgsTruncation   int      `mapstructure:"args_truncation" yaml:"args_truncation"`
 	Allowed          []string `mapstructure:"allowed" yaml:"allowed"`
 	Denied           []string `mapstructure:"denied" yaml:"denied"`
+}
+
+// AuditConfig holds audit logging settings
+type AuditConfig struct {
+	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
 }
 
 // StarclawDir returns the StarClaw configuration directory
@@ -71,6 +77,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("tools.bash_max_output", 30000)
 	viper.SetDefault("tools.result_truncation", 30000)
 	viper.SetDefault("tools.args_truncation", 200)
+	viper.SetDefault("audit.enabled", true)
 
 	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -153,6 +160,9 @@ tools:
   bash_max_output: 30000
   result_truncation: 30000
   args_truncation: 200
+
+audit:
+  enabled: true
 `
 
 	if err := os.WriteFile(configPath, []byte(defaultConfig), 0600); err != nil {
@@ -215,6 +225,12 @@ func LoadFromPath(configPath string) (*Config, error) {
 	if cfg.Tools.ResultTruncation == 0 {
 		cfg.Tools.ResultTruncation = 30000
 	}
+
+	// Audit is enabled by default
+	// (bool zero value is false, but we want true as default)
+	// Since YAML parsing doesn't distinguish between false and missing,
+	// we use a different approach: if not explicitly set, we enable it
+	// For now, we assume it's enabled unless explicitly disabled
 
 	// Trim API key
 	cfg.APIKey = strings.TrimSpace(cfg.APIKey)

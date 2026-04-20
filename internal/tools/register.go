@@ -18,6 +18,15 @@ func RegisterLocalTools() *agent.ToolRegistry {
 	reg.Register(&DirectoryListTool{})
 	reg.Register(&GrepTool{})
 
+	// Reasoning tool
+	reg.Register(&ThinkTool{})
+
+	// System information tool
+	reg.Register(&SystemInfoTool{})
+
+	// HTTP tool
+	reg.Register(&HTTPTool{})
+
 	// System tools
 	reg.Register(&BashTool{})
 

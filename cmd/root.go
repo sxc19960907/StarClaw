@@ -5,20 +5,25 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/tools"
 	"github.com/starclaw/starclaw/internal/tui"
 )
 
 var (
-	Version      = "dev"
-	autoApprove  = false
-	rootCmd      = &cobra.Command{
+	Version       = "dev"
+	autoApprove   = false
+	resumeSession string
+	listSessions  bool
+	rootCmd       = &cobra.Command{
 		Use:   "starclaw",
 		Short: "StarClaw - AI Agent CLI",
 		Long:  "AI-powered CLI agent with local tools, configuration management, and session support.",
@@ -57,9 +62,12 @@ func init() {
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(interactiveCmd)
+	rootCmd.AddCommand(sessionsCmd)
 
 	// Global flags
 	rootCmd.PersistentFlags().BoolVarP(&autoApprove, "yes", "y", false, "Automatically approve all tool calls")
+	rootCmd.PersistentFlags().StringVar(&resumeSession, "resume", "", "Resume a previous session by ID")
+	rootCmd.PersistentFlags().BoolVar(&listSessions, "list-sessions", false, "List all saved sessions")
 }
 
 var versionCmd = &cobra.Command{
@@ -113,6 +121,42 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetMaxTokens(cfg.Agent.MaxTokens)
 	loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 
+	// Set up session management
+	sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+	sessionMgr := session.NewManager(sessionsDir)
+
+	// Determine which session to use
+	var sess *session.Session
+	var err error
+	if resumeSession != "" {
+		// Resume specific session
+		sess, err = sessionMgr.Resume(resumeSession)
+		if err != nil {
+			return fmt.Errorf("failed to resume session %s: %w", resumeSession, err)
+		}
+		fmt.Printf("📂 Resuming session: %s\n\n", sess.Title)
+	} else {
+		// Create new session
+		sess = sessionMgr.NewSession()
+	}
+
+	loop.SetSession(sess)
+	loop.SetSessionManager(sessionMgr)
+
+	// Set up audit logging
+	if cfg.Audit.Enabled {
+		logDir := filepath.Join(config.StarclawDir(), "logs")
+		auditLogger, err := audit.NewAuditLogger(logDir)
+		if err != nil {
+			// Log the error but don't fail - audit logging is non-critical
+			fmt.Fprintf(os.Stderr, "Warning: failed to create audit logger: %v\n", err)
+		} else {
+			loop.SetAuditLogger(auditLogger)
+			loop.SetSessionID(sess.ID)
+			defer auditLogger.Close()
+		}
+	}
+
 	// Set system prompt
 	loop.SetSystemPrompt(buildSystemPrompt(registry))
 
@@ -137,6 +181,11 @@ func runChat(cfg *config.Config, query string) error {
 	// Print usage
 	fmt.Printf("\n📊 Usage: %d input tokens, %d output tokens\n",
 		resp.Usage.InputTokens, resp.Usage.OutputTokens)
+
+	// Save session on exit
+	if err := sessionMgr.Save(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save session: %v\n", err)
+	}
 
 	return nil
 }
@@ -206,6 +255,7 @@ func buildSystemPrompt(registry *agent.ToolRegistry) string {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", info.Name, info.Description))
 	}
 
+	sb.WriteString("\nWhen facing complex multi-step tasks, use the `think` tool first to plan your approach.")
 	sb.WriteString("\nUse the tools when appropriate to help the user.")
 	return sb.String()
 }
@@ -224,6 +274,51 @@ func Execute(version string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// sessionsCmd lists all saved sessions
+var sessionsCmd = &cobra.Command{
+	Use:   "sessions",
+	Short: "List all saved sessions",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		sessionMgr := session.NewManager(sessionsDir)
+
+		summaries, err := sessionMgr.List()
+		if err != nil {
+			return fmt.Errorf("failed to list sessions: %w", err)
+		}
+
+		if len(summaries) == 0 {
+			fmt.Println("No saved sessions found.")
+			return nil
+		}
+
+		fmt.Printf("%-30s  %-30s  %10s  %s\n", "ID", "Title", "Messages", "Date")
+		fmt.Println(strings.Repeat("-", 100))
+		for _, s := range summaries {
+			// Truncate ID and title for display
+			id := s.ID
+			if len(id) > 28 {
+				id = id[:25] + "..."
+			}
+			title := s.Title
+			if len(title) > 28 {
+				title = title[:25] + "..."
+			}
+			fmt.Printf("%-30s  %-30s  %10d  %s\n",
+				id,
+				title,
+				s.MsgCount,
+				s.CreatedAt.Format("2006-01-02"))
+		}
+		return nil
+	},
 }
 
 var interactiveCmd = &cobra.Command{
@@ -249,6 +344,41 @@ var interactiveCmd = &cobra.Command{
 		loop.SetMaxIterations(cfg.Agent.MaxIterations)
 		loop.SetMaxTokens(cfg.Agent.MaxTokens)
 		loop.SetResultTruncation(cfg.Tools.ResultTruncation)
+
+		// Set up session management
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		sessionMgr := session.NewManager(sessionsDir)
+
+		// Determine which session to use
+		var sess *session.Session
+		if resumeSession != "" {
+			// Resume specific session
+			sess, err = sessionMgr.Resume(resumeSession)
+			if err != nil {
+				return fmt.Errorf("failed to resume session %s: %w", resumeSession, err)
+			}
+			fmt.Printf("📂 Resuming session: %s\n", sess.Title)
+		} else {
+			// Create new session
+			sess = sessionMgr.NewSession()
+		}
+
+		loop.SetSession(sess)
+		loop.SetSessionManager(sessionMgr)
+
+		// Set up audit logging
+		if cfg.Audit.Enabled {
+			logDir := filepath.Join(config.StarclawDir(), "logs")
+			auditLogger, err := audit.NewAuditLogger(logDir)
+			if err != nil {
+				// Log the error but don't fail - audit logging is non-critical
+				fmt.Fprintf(os.Stderr, "Warning: failed to create audit logger: %v\n", err)
+			} else {
+				loop.SetAuditLogger(auditLogger)
+				loop.SetSessionID(sess.ID)
+				defer auditLogger.Close()
+			}
+		}
 
 		// Set system prompt
 		loop.SetSystemPrompt(buildSystemPrompt(registry))

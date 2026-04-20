@@ -85,7 +85,7 @@ cat main.go | starclaw chat "Explain this code"
 
 ## Available Tools
 
-StarClaw provides 7 built-in tools for the AI agent:
+StarClaw provides 10 built-in tools for the AI agent:
 
 | Tool | Description | Requires Approval |
 |------|-------------|-------------------|
@@ -95,6 +95,9 @@ StarClaw provides 7 built-in tools for the AI agent:
 | `glob` | Find files matching a pattern | No |
 | `directory_list` | List directory contents | No |
 | `grep` | Search file contents | No |
+| `think` | AI reasoning and planning | No |
+| `system_info` | Get system information | No |
+| `http` | Make HTTP requests | Yes |
 | `bash` | Execute shell commands | Yes |
 
 ## Configuration
@@ -117,6 +120,9 @@ tools:
   result_truncation: 30000
   allowed: []  # Restrict to specific tools
   denied: []   # Block specific tools
+
+audit:
+  enabled: true  # Enable audit logging (default: true)
 ```
 
 ### Project-Level Configuration
@@ -145,11 +151,132 @@ starclaw chat "Rename all occurrences of 'OldName' to 'NewName' in the src/ dire
 starclaw -y chat "Run 'go test ./...' and analyze the results"
 ```
 
+## Audit Logging
+
+StarClaw captures all tool calls to an append-only JSON-lines audit log for security and debugging purposes.
+
+### Log Location
+
+Audit logs are stored at:
+```
+~/.starclaw/logs/audit.log
+```
+
+### Log Format
+
+Each line is a JSON object containing:
+
+```json
+{
+  "timestamp": "2026-04-16T10:30:00Z",
+  "session_id": "sess-abc123",
+  "tool_name": "file_read",
+  "input_summary": "{\"file_path\":\"/tmp/test.txt\"}",
+  "output_summary": "Hello world content",
+  "decision": "approved",
+  "approved": true,
+  "duration_ms": 5
+}
+```
+
+### Secret Redaction
+
+Sensitive data is automatically redacted from logs:
+- AWS access keys (`AKIA...`)
+- JWT tokens
+- API keys (`sk-...`, `key-...`)
+- Bearer tokens
+- GitHub tokens (`ghp_...`, `gho_...`)
+- Environment variables with secret-like names (`KEY=`, `SECRET=`, etc.)
+- PEM certificate markers
+
+### Querying Logs
+
+```bash
+# View recent entries
+tail -f ~/.starclaw/logs/audit.log
+
+# Pretty print with jq
+jq . ~/.starclaw/logs/audit.log
+
+# Filter by tool
+grep '"tool_name":"bash"' ~/.starclaw/logs/audit.log | jq .
+
+# Filter by session
+grep '"session_id":"sess-abc123"' ~/.starclaw/logs/audit.log | jq .
+```
+
+### Disabling Audit Logging
+
+Set `audit.enabled: false` in your config:
+
+```yaml
+audit:
+  enabled: false
+```
+
+## Session Persistence
+
+StarClaw saves conversation history to JSON files, allowing you to resume previous sessions and maintain context across restarts.
+
+### Storage Location
+
+Sessions are stored at:
+```
+~/.starclaw/sessions/
+├── 2026-04-16-10-30-00-abcd1234.json
+├── 2026-04-16-11-00-00-efgh5678.json
+└── ...
+```
+
+### Session File Format
+
+```json
+{
+  "id": "2026-04-16-10-30-00-abcd1234",
+  "created_at": "2026-04-16T10:30:00Z",
+  "updated_at": "2026-04-16T10:35:00Z",
+  "title": "Refactor database code",
+  "cwd": "/home/user/myproject",
+  "messages": [
+    {"role": "user", "content": "Help me refactor..."},
+    {"role": "assistant", "content": "I'll help you..."}
+  ]
+}
+```
+
+### List Sessions
+
+```bash
+starclaw sessions
+```
+
+Output:
+```
+ID                              Title                           Messages        Date
+----------------------------------------------------------------------------------------------------
+2026-04-16-10-30-00-abcd1234  Refactor database code                  12  2026-04-16
+2026-04-16-11-00-00-efgh5678  Debug authentication issue               8  2026-04-16
+```
+
+### Resume a Session
+
+```bash
+# Resume specific session
+starclaw --resume 2026-04-16-10-30-00-abcd1234 chat "Continue where we left off"
+
+# Resume in interactive mode
+starclaw --resume 2026-04-16-10-30-00-abcd1234 interactive
+```
+
+Sessions are automatically saved after each turn and on graceful exit.
+
 ## Security
 
 - **Path Validation** - All file operations are restricted to current working directory by default
 - **Approval System** - Destructive operations require explicit approval
 - **Tool Filtering** - Configure allowed/denied tools via configuration
+- **Audit Logging** - All tool calls are logged with automatic secret redaction
 - **No Data Collection** - Your code and conversations stay local
 
 ## Development

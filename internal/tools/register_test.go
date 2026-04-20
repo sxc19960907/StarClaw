@@ -22,6 +22,9 @@ func TestRegisterLocalTools(t *testing.T) {
 		"glob",
 		"directory_list",
 		"grep",
+		"think",
+		"system_info",
+		"http",
 		"bash",
 	}
 

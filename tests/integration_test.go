@@ -3,6 +3,10 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,9 +14,12 @@ import (
 	"time"
 
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/tools"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestConfigToAgent tests the flow from config loading to agent creation
@@ -385,6 +392,180 @@ func TestTimeout(t *testing.T) {
 	}
 }
 
+// TestThinkToolInRegistry tests that the think tool is properly registered
+func TestThinkToolInRegistry(t *testing.T) {
+	registry := tools.RegisterLocalTools()
+
+	// Verify think tool exists
+	tool, ok := registry.Get("think")
+	if !ok {
+		t.Fatal("Expected 'think' tool to be registered")
+	}
+
+	// Verify tool info
+	info := tool.Info()
+	if info.Name != "think" {
+		t.Errorf("Expected tool name 'think', got '%s'", info.Name)
+	}
+	if info.Description == "" {
+		t.Error("Expected non-empty description")
+	}
+	if len(info.Required) != 1 || info.Required[0] != "thought" {
+		t.Errorf("Expected required field 'thought', got %v", info.Required)
+	}
+
+	// Verify no approval required
+	if tool.RequiresApproval() {
+		t.Error("Expected think tool to not require approval")
+	}
+}
+
+// TestThinkToolExecution tests the think tool end-to-end
+func TestThinkToolExecution(t *testing.T) {
+	registry := tools.RegisterLocalTools()
+
+	tool, ok := registry.Get("think")
+	if !ok {
+		t.Fatal("think tool not found in registry")
+	}
+
+	// Test valid thought
+	result, err := tool.Run(context.Background(), `{"thought": "I need to plan this task"}`)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("Expected success, got error: %s", result.Content)
+	}
+	if result.Content != "I need to plan this task" {
+		t.Errorf("Expected thought content, got: %s", result.Content)
+	}
+
+	// Test empty thought
+	result, _ = tool.Run(context.Background(), `{"thought": ""}`)
+	if !result.IsError {
+		t.Error("Expected error for empty thought")
+	}
+
+	// Test invalid JSON
+	result, _ = tool.Run(context.Background(), "not valid json")
+	if !result.IsError {
+		t.Error("Expected error for invalid JSON")
+	}
+}
+
+// TestSystemInfoToolInRegistry tests that system_info tool is registered
+func TestSystemInfoToolInRegistry(t *testing.T) {
+	registry := tools.RegisterLocalTools()
+
+	tool, ok := registry.Get("system_info")
+	if !ok {
+		t.Fatal("Expected 'system_info' tool to be registered")
+	}
+
+	info := tool.Info()
+	if info.Name != "system_info" {
+		t.Errorf("Expected tool name 'system_info', got '%s'", info.Name)
+	}
+	if info.Description == "" {
+		t.Error("Expected non-empty description")
+	}
+
+	// Verify no approval required
+	if tool.RequiresApproval() {
+		t.Error("Expected system_info tool to not require approval")
+	}
+}
+
+// TestSystemInfoToolExecution tests system_info tool end-to-end
+func TestSystemInfoToolExecution(t *testing.T) {
+	registry := tools.RegisterLocalTools()
+
+	tool, ok := registry.Get("system_info")
+	if !ok {
+		t.Fatal("system_info tool not found in registry")
+	}
+
+	result, err := tool.Run(context.Background(), "{}")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("Expected success, got error: %s", result.Content)
+	}
+
+	// Check for expected fields
+	if !strings.Contains(result.Content, "OS:") {
+		t.Error("Expected OS field in output")
+	}
+	if !strings.Contains(result.Content, "Arch:") {
+		t.Error("Expected Arch field in output")
+	}
+	if !strings.Contains(result.Content, "Hostname:") {
+		t.Error("Expected Hostname field in output")
+	}
+	if !strings.Contains(result.Content, "CPUs:") {
+		t.Error("Expected CPUs field in output")
+	}
+}
+
+// TestHTTPToolInRegistry tests that http tool is registered
+func TestHTTPToolInRegistry(t *testing.T) {
+	registry := tools.RegisterLocalTools()
+
+	tool, ok := registry.Get("http")
+	if !ok {
+		t.Fatal("Expected 'http' tool to be registered")
+	}
+
+	info := tool.Info()
+	if info.Name != "http" {
+		t.Errorf("Expected tool name 'http', got '%s'", info.Name)
+	}
+	if info.Description == "" {
+		t.Error("Expected non-empty description")
+	}
+
+	// Verify approval required
+	if !tool.RequiresApproval() {
+		t.Error("Expected http tool to require approval")
+	}
+}
+
+// TestHTTPToolExecution tests http tool end-to-end with mock server
+func TestHTTPToolExecution(t *testing.T) {
+	// Start mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"status": "ok"}`))
+	}))
+	defer server.Close()
+
+	registry := tools.RegisterLocalTools()
+
+	tool, ok := registry.Get("http")
+	if !ok {
+		t.Fatal("http tool not found in registry")
+	}
+
+	result, err := tool.Run(context.Background(), fmt.Sprintf(`{"url": "%s"}`, server.URL))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Errorf("Expected success, got error: %s", result.Content)
+	}
+
+	// Check response contains expected fields
+	if !strings.Contains(result.Content, "200") {
+		t.Error("Expected status 200 in output")
+	}
+	if !strings.Contains(result.Content, `"status": "ok"`) {
+		t.Error("Expected response body in output")
+	}
+}
+
 // testEventHandler captures events for testing
 type testEventHandler struct {
 	toolCalled   bool
@@ -411,4 +592,117 @@ func (h *testEventHandler) OnText(text string) {
 
 func (h *testEventHandler) OnUsage(usage client.Usage) {
 	h.usage = usage
+}
+
+// TestAuditLoggingIntegration tests that tool calls are logged to audit file
+func TestAuditLoggingIntegration(t *testing.T) {
+	// Create temp directory for audit logs
+	tempDir := t.TempDir()
+
+	// Create audit logger
+	logger, err := audit.NewAuditLogger(tempDir)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Create temp directory with test file
+	testDir := t.TempDir()
+	testFile := filepath.Join(testDir, "test.txt")
+	err = os.WriteFile(testFile, []byte("Hello, World!"), 0644)
+	require.NoError(t, err)
+
+	// Create tool registry
+	registry := tools.RegisterLocalTools()
+
+	// Create mock client that returns a tool call
+	mockClient := client.NewMockClient()
+	callCount := 0
+	mockClient.SetHandler(func(input string) *client.MockMessage {
+		callCount++
+		if callCount == 1 {
+			return &client.MockMessage{
+				Role:    "assistant",
+				Content: "",
+				ToolCalls: []client.MockToolCall{
+					{
+						ID:   "call_1",
+						Name: "file_read",
+						Args: `{"file_path": "` + testFile + `"}`,
+					},
+				},
+			}
+		}
+		return &client.MockMessage{
+			Role:    "assistant",
+			Content: "Done",
+		}
+	})
+
+	// Create agent loop with audit logger
+	loop := agent.NewAgentLoop(mockClient, registry)
+	loop.SetMaxIterations(5)
+	loop.SetAuditLogger(logger)
+	loop.SetSessionID("test-session-123")
+
+	// Run the agent
+	ctx := context.Background()
+	_, err = loop.Run(ctx, "Read the test file")
+	require.NoError(t, err)
+
+	// Close logger to ensure all data is flushed
+	logger.Close()
+
+	// Read audit log
+	content, err := os.ReadFile(filepath.Join(tempDir, "audit.log"))
+	require.NoError(t, err)
+
+	// Should have at least one audit entry
+	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+	require.GreaterOrEqual(t, len(lines), 1, "Expected at least one audit entry")
+
+	// Verify each line is valid JSON
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var entry audit.AuditEntry
+		err := json.Unmarshal([]byte(line), &entry)
+		require.NoError(t, err, "Audit entry should be valid JSON: %s", line)
+
+		// Verify expected fields
+		assert.Equal(t, "file_read", entry.ToolName)
+		assert.Equal(t, "test-session-123", entry.SessionID)
+		assert.NotZero(t, entry.Timestamp)
+		assert.True(t, entry.Approved)
+		assert.NotEmpty(t, entry.InputSummary)
+	}
+}
+
+// TestAuditLoggingWithSecretRedaction tests that secrets are redacted in audit logs
+func TestAuditLoggingWithSecretRedaction(t *testing.T) {
+	tempDir := t.TempDir()
+
+	logger, err := audit.NewAuditLogger(tempDir)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Log an entry with a secret
+	logger.Log(audit.AuditEntry{
+		Timestamp:     time.Now(),
+		SessionID:     "test",
+		ToolName:      "bash",
+		InputSummary:  "export API_KEY=secret123456789",
+		OutputSummary: "done",
+		Approved:      true,
+		DurationMs:    100,
+	})
+
+	logger.Close()
+
+	// Read audit log
+	content, err := os.ReadFile(filepath.Join(tempDir, "audit.log"))
+	require.NoError(t, err)
+
+	// Secret should be redacted
+	assert.Contains(t, string(content), "[REDACTED]")
+	assert.NotContains(t, string(content), "secret123456789")
 }

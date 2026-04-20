@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/session"
 )
 
 // EventHandler handles events from the agent loop
@@ -31,6 +34,10 @@ type AgentLoop struct {
 	resultTrunc  int
 	handler      EventHandler
 	systemPrompt string
+	auditLogger  *audit.AuditLogger
+	sessionID    string
+	session      *session.Session
+	sessionMgr   *session.Manager
 }
 
 // NewAgentLoop creates a new agent loop
@@ -74,10 +81,38 @@ func (a *AgentLoop) SetSystemPrompt(prompt string) {
 	a.systemPrompt = prompt
 }
 
+// SetAuditLogger sets the audit logger (optional)
+func (a *AgentLoop) SetAuditLogger(logger *audit.AuditLogger) {
+	a.auditLogger = logger
+}
+
+// SetSessionID sets the session ID for audit correlation
+func (a *AgentLoop) SetSessionID(id string) {
+	a.sessionID = id
+}
+
+// SetSession sets the current session
+func (a *AgentLoop) SetSession(sess *session.Session) {
+	a.session = sess
+}
+
+// SetSessionManager sets the session manager for auto-save
+func (a *AgentLoop) SetSessionManager(mgr *session.Manager) {
+	a.sessionMgr = mgr
+}
+
 // Run executes the agent loop with the given query
 func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, error) {
-	messages := []client.Message{
-		{Role: "user", Content: query},
+	// Initialize messages from session if resuming, or start fresh
+	messages := []client.Message{}
+	if a.session != nil {
+		messages = append(messages, a.session.Messages...)
+	}
+	messages = append(messages, client.Message{Role: "user", Content: query})
+
+	// Update session title if this is the first message
+	if a.session != nil && len(a.session.Messages) == 0 {
+		a.session.Title = session.GenerateTitle(query)
 	}
 
 	for i := 0; i < a.maxIter; i++ {
@@ -100,6 +135,16 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 			if a.handler != nil {
 				a.handler.OnText(resp.Content)
 			}
+
+			// Update session with final messages
+			if a.session != nil {
+				a.session.Messages = messages
+				a.session.UpdatedAt = time.Now()
+				if a.sessionMgr != nil {
+					a.sessionMgr.Save()
+				}
+			}
+
 			return resp, nil
 		}
 
@@ -116,6 +161,15 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 				Role:    "user",
 				Content: a.buildToolResultContent(toolUse, result),
 			})
+		}
+
+		// Update session after each turn and auto-save
+		if a.session != nil {
+			a.session.Messages = messages
+			a.session.UpdatedAt = time.Now()
+			if a.sessionMgr != nil {
+				a.sessionMgr.Save()
+			}
 		}
 	}
 
@@ -149,8 +203,11 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 		a.handler.OnToolCall(toolUse.Name, string(toolUse.Input))
 	}
 
-	// Execute tool
+	// Execute with timing
+	start := time.Now()
 	result, err := tool.Run(ctx, string(toolUse.Input))
+	duration := time.Since(start)
+
 	if err != nil {
 		result = ToolResult{
 			Content: fmt.Sprintf("error: %v", err),
@@ -165,6 +222,20 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 		result.Content = result.Content[:keepHead] +
 			fmt.Sprintf("\n\n[... truncated %d chars ...]\n\n", len(result.Content)-a.resultTrunc) +
 			result.Content[len(result.Content)-keepTail:]
+	}
+
+	// Audit log
+	if a.auditLogger != nil {
+		a.auditLogger.Log(audit.AuditEntry{
+			Timestamp:     time.Now(),
+			SessionID:     a.sessionID,
+			ToolName:      toolUse.Name,
+			InputSummary:  string(toolUse.Input),
+			OutputSummary: result.Content,
+			Decision:      "approved",
+			Approved:      true,
+			DurationMs:    duration.Milliseconds(),
+		})
 	}
 
 	// Report tool result
