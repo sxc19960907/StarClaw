@@ -212,8 +212,8 @@ func TestManager_ThreadSafety(t *testing.T) {
 				Role:    "user",
 				Content: "Message " + string(rune('0'+n)),
 			})
-			mu.Unlock()
 			mgr.Save()
+			mu.Unlock()
 		}(i)
 	}
 	wg.Wait()
