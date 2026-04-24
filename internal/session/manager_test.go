@@ -198,18 +198,21 @@ func TestManager_ThreadSafety(t *testing.T) {
 	// Create a single session
 	sess := mgr.NewSession()
 
-	// Concurrent saves
+	// Concurrent saves - each goroutine should modify its own session copy
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
 
-			// Add message and save
+			// Add message with proper synchronization
+			mu.Lock()
 			sess.Messages = append(sess.Messages, client.Message{
 				Role:    "user",
 				Content: "Message " + string(rune('0'+n)),
 			})
+			mu.Unlock()
 			mgr.Save()
 		}(i)
 	}
