@@ -1,0 +1,2 @@
+Remembered number: 42
+Stored on: $(date)

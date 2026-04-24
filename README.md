@@ -12,6 +12,10 @@
 
 - 🤖 **AI-Powered Conversations** - Chat with Claude, Kimi, or other LLMs
 - 🛠️ **Local Tool Execution** - Read files, search code, run shell commands
+- 🔌 **MCP Client Support** - Connect to Model Context Protocol servers for extended capabilities
+- 👤 **Named Agents** - Create specialized agent configurations with custom prompts
+- 🧩 **Skills System** - Activate domain-specific skills dynamically
+- 🔄 **Self-Update** - Built-in update mechanism with automatic checks
 - 🔒 **Security First** - Path validation, approval dialogs, configurable tool allowlists
 - 💻 **Interactive TUI** - Beautiful terminal UI with Bubble Tea
 - 🚀 **One-Shot Mode** - Quick queries from command line or pipes
@@ -85,7 +89,7 @@ cat main.go | starclaw chat "Explain this code"
 
 ## Available Tools
 
-StarClaw provides 10 built-in tools for the AI agent:
+StarClaw provides 11 built-in tools for the AI agent:
 
 | Tool | Description | Requires Approval |
 |------|-------------|-------------------|
@@ -99,6 +103,7 @@ StarClaw provides 10 built-in tools for the AI agent:
 | `system_info` | Get system information | No |
 | `http` | Make HTTP requests | Yes |
 | `bash` | Execute shell commands | Yes |
+| `use_skill` | Activate a skill by name | No |
 
 ## Configuration
 
@@ -123,6 +128,22 @@ tools:
 
 audit:
   enabled: true  # Enable audit logging (default: true)
+
+# MCP servers configuration (optional)
+# mcp_servers:
+#   github:
+#     command: npx
+#     args: ["-y", "@modelcontextprotocol/server-github"]
+#     env:
+#       GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+#     keep_alive: true
+
+# Update configuration (optional)
+# update:
+#   auto_check: true      # Check for updates on startup
+#   auto_install: false   # Automatically install updates
+#   channel: stable       # Update channel (stable, beta)
+#   cache_ttl: 24h        # How often to check
 ```
 
 ### Project-Level Configuration
@@ -270,6 +291,148 @@ starclaw --resume 2026-04-16-10-30-00-abcd1234 interactive
 ```
 
 Sessions are automatically saved after each turn and on graceful exit.
+
+## MCP Client Support
+
+StarClaw supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) for connecting to external tool servers.
+
+### Configuring MCP Servers
+
+Add MCP servers to your `~/.starclaw/config.yaml`:
+
+```yaml
+mcp_servers:
+  github:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+    keep_alive: true
+  
+  filesystem:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/docs"]
+    disabled: false
+```
+
+### Managing MCP Servers
+
+```bash
+# List configured servers
+starclaw mcp list
+```
+
+## Skills System
+
+Skills are composable capabilities that can be activated on demand. They provide domain-specific knowledge and instructions to the AI.
+
+### Creating a Skill
+
+Create a skill directory in `~/.starclaw/skills/<skill-name>/` with a `SKILL.md` file:
+
+```markdown
+---
+name: go-refactoring
+description: Expert Go code refactoring assistant
+license: MIT
+allowed-tools: file_read file_write file_edit grep
+---
+
+# Go Refactoring Skill
+
+You are an expert Go developer specializing in code refactoring.
+
+## Guidelines
+
+- Follow Go best practices and idioms
+- Use meaningful variable names
+- Add appropriate error handling
+- Maintain backward compatibility when possible
+```
+
+### Using Skills
+
+The AI can activate skills using the `use_skill` tool:
+
+```
+🔧 Tool: use_skill
+   Args: {"name": "go-refactoring"}
+```
+
+Once activated, the skill's instructions are injected into the conversation context.
+
+## Named Agents
+
+Create specialized agent configurations with custom prompts and capabilities.
+
+### Creating an Agent
+
+Create an agent directory in `~/.starclaw/agents/<agent-name>/`:
+
+```
+~/.starclaw/agents/coder/
+├── AGENT.md      # Agent instructions
+├── MEMORY.md     # Persistent memory/context
+└── config.yaml   # Agent-specific config
+```
+
+**AGENT.md:**
+```markdown
+# Coder Agent
+
+You are an expert software engineer specializing in clean, maintainable code.
+
+## Capabilities
+
+- Code review and refactoring
+- Test-driven development
+- Performance optimization
+- Documentation writing
+```
+
+**config.yaml:**
+```yaml
+max_iterations: 50
+model_tier: large
+tools:
+  allowed: [file_read, file_write, file_edit, glob, grep, bash]
+```
+
+### Using Agents
+
+```bash
+starclaw --agent coder chat "Review this Go code for issues"
+```
+
+## Self-Update
+
+StarClaw includes a built-in update mechanism.
+
+### Manual Update Check
+
+```bash
+# Check for updates
+starclaw update --check
+
+# Install update
+starclaw update
+```
+
+### Automatic Updates
+
+Enable automatic update checks on startup:
+
+```yaml
+update:
+  auto_check: true    # Check on startup (once per day)
+  auto_install: false # Don't auto-install (manual confirmation required)
+  channel: stable     # Use stable releases
+```
+
+When an update is available, you'll see:
+```
+📦 Update available: v1.2.0 — run 'starclaw update' to install
+```
 
 ## Security
 

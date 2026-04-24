@@ -26,6 +26,7 @@ func TestRegisterLocalTools(t *testing.T) {
 		"system_info",
 		"http",
 		"bash",
+		"use_skill",
 	}
 
 	if reg.Count() != len(expectedTools) {

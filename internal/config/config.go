@@ -7,17 +7,24 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/starclaw/starclaw/internal/mcp"
 	"gopkg.in/yaml.v3"
 )
 
+// MCPServerConfig is an alias for backward compatibility.
+// The actual type is defined in the mcp package.
+type MCPServerConfig = mcp.MCPServerConfig
+
 // Config holds all configuration for StarClaw
 type Config struct {
-	Endpoint   string      `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
-	APIKey     string      `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
-	ModelTier  string      `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
-	Agent      AgentConfig `mapstructure:"agent" yaml:"agent" json:"agent"`
-	Tools      ToolsConfig `mapstructure:"tools" yaml:"tools" json:"tools"`
-	Audit      AuditConfig `mapstructure:"audit" yaml:"audit" json:"audit"`
+	Endpoint   string                       `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
+	APIKey     string                       `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
+	ModelTier  string                       `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
+	Agent      AgentConfig                  `mapstructure:"agent" yaml:"agent" json:"agent"`
+	Tools      ToolsConfig                  `mapstructure:"tools" yaml:"tools" json:"tools"`
+	Audit      AuditConfig                  `mapstructure:"audit" yaml:"audit" json:"audit"`
+	MCPServers map[string]mcp.MCPServerConfig `mapstructure:"mcp_servers" yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
+	Update     UpdateConfig                 `mapstructure:"update" yaml:"update,omitempty" json:"update,omitempty"`
 }
 
 // AgentConfig holds agent-specific settings
@@ -35,6 +42,14 @@ type ToolsConfig struct {
 	ArgsTruncation   int      `mapstructure:"args_truncation" yaml:"args_truncation"`
 	Allowed          []string `mapstructure:"allowed" yaml:"allowed"`
 	Denied           []string `mapstructure:"denied" yaml:"denied"`
+}
+
+// UpdateConfig holds auto-update settings
+type UpdateConfig struct {
+	AutoCheck   bool   `mapstructure:"auto_check" yaml:"auto_check"`
+	AutoInstall bool   `mapstructure:"auto_install" yaml:"auto_install"`
+	Channel     string `mapstructure:"channel" yaml:"channel"`
+	CacheTTL    string `mapstructure:"cache_ttl" yaml:"cache_ttl"`
 }
 
 // AuditConfig holds audit logging settings
@@ -78,6 +93,10 @@ func Load() (*Config, error) {
 	viper.SetDefault("tools.result_truncation", 30000)
 	viper.SetDefault("tools.args_truncation", 200)
 	viper.SetDefault("audit.enabled", true)
+	viper.SetDefault("update.auto_check", true)
+	viper.SetDefault("update.auto_install", false)
+	viper.SetDefault("update.channel", "stable")
+	viper.SetDefault("update.cache_ttl", "24h")
 
 	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -163,6 +182,22 @@ tools:
 
 audit:
   enabled: true
+
+# MCP servers configuration (optional)
+# mcp_servers:
+#   github:
+#     command: npx
+#     args: ["-y", "@modelcontextprotocol/server-github"]
+#     env:
+#       GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+#     keep_alive: true
+
+# Update configuration (optional)
+# update:
+#   auto_check: true
+#   auto_install: false
+#   channel: stable
+#   cache_ttl: 24h
 `
 
 	if err := os.WriteFile(configPath, []byte(defaultConfig), 0600); err != nil {

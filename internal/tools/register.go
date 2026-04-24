@@ -2,6 +2,7 @@ package tools
 
 import (
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/config"
 )
 
 // RegisterLocalTools registers all local tools
@@ -29,6 +30,13 @@ func RegisterLocalTools() *agent.ToolRegistry {
 
 	// System tools
 	reg.Register(&BashTool{})
+
+	// Skills tool
+	skillsDir := config.StarclawDir()
+	if skillsDir != "" {
+		skillsDir = skillsDir + "/skills"
+	}
+	reg.Register(NewUseSkillTool(skillsDir))
 
 	return reg
 }

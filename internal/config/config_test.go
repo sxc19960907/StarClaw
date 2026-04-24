@@ -178,3 +178,122 @@ func containsAt(s, substr string, start int) bool {
 	}
 	return false
 }
+
+// Tests for new MCP and Update config
+
+func TestMCPServerConfig_Validation(t *testing.T) {
+	configData := `
+endpoint: "https://api.anthropic.com"
+api_key: "test-key"
+mcp_servers:
+  github:
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_TOKEN: "secret"
+    keep_alive: true
+  disabled_server:
+    command: echo
+    disabled: true
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(configData), 0600); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	cfg, err := LoadFromPath(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromPath() failed: %v", err)
+	}
+
+	// Check MCP servers
+	if len(cfg.MCPServers) != 2 {
+		t.Errorf("Expected 2 MCP servers, got %d", len(cfg.MCPServers))
+	}
+
+	github, ok := cfg.MCPServers["github"]
+	if !ok {
+		t.Fatal("Missing 'github' MCP server")
+	}
+	if github.Command != "npx" {
+		t.Errorf("GitHub command wrong: got %q, want %q", github.Command, "npx")
+	}
+	if len(github.Args) != 2 {
+		t.Errorf("GitHub args wrong length: got %d, want 2", len(github.Args))
+	}
+	if !github.KeepAlive {
+		t.Error("GitHub KeepAlive should be true")
+	}
+	if github.Env["GITHUB_TOKEN"] != "secret" {
+		t.Error("GitHub env not parsed correctly")
+	}
+
+	disabled := cfg.MCPServers["disabled_server"]
+	if !disabled.Disabled {
+		t.Error("disabled_server should be disabled")
+	}
+}
+
+func TestUpdateConfig_Validation(t *testing.T) {
+	configData := `
+endpoint: "https://api.anthropic.com"
+api_key: "test-key"
+update:
+  auto_check: false
+  auto_install: true
+  channel: beta
+  cache_ttl: "48h"
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(configData), 0600); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	cfg, err := LoadFromPath(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromPath() failed: %v", err)
+	}
+
+	if cfg.Update.AutoCheck {
+		t.Error("Update.AutoCheck should be false")
+	}
+	if !cfg.Update.AutoInstall {
+		t.Error("Update.AutoInstall should be true")
+	}
+	if cfg.Update.Channel != "beta" {
+		t.Errorf("Update.Channel wrong: got %q, want %q", cfg.Update.Channel, "beta")
+	}
+	if cfg.Update.CacheTTL != "48h" {
+		t.Errorf("Update.CacheTTL wrong: got %q, want %q", cfg.Update.CacheTTL, "48h")
+	}
+}
+
+func TestConfig_UpdateDefaults(t *testing.T) {
+	// Create a temp directory for config
+	tmpDir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", origHome)
+
+	// Load config (should create defaults)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	// Check new defaults
+	if cfg.Update.Channel != "stable" {
+		t.Errorf("Update.Channel default wrong: got %q, want %q", cfg.Update.Channel, "stable")
+	}
+	if cfg.Update.CacheTTL != "24h" {
+		t.Errorf("Update.CacheTTL default wrong: got %q, want %q", cfg.Update.CacheTTL, "24h")
+	}
+	if cfg.Update.AutoInstall {
+		t.Error("Update.AutoInstall should default to false")
+	}
+}
+

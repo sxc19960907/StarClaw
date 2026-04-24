@@ -16,6 +16,7 @@ import (
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/tools"
 	"github.com/starclaw/starclaw/internal/tui"
+	"github.com/starclaw/starclaw/internal/update"
 )
 
 var (
@@ -23,6 +24,7 @@ var (
 	autoApprove   = false
 	resumeSession string
 	listSessions  bool
+	agentName     string // New: --agent flag
 	rootCmd       = &cobra.Command{
 		Use:   "starclaw",
 		Short: "StarClaw - AI Agent CLI",
@@ -34,6 +36,16 @@ var (
 				fmt.Println("未检测到 API Key，启动配置向导...")
 				_, err := config.RunSetup()
 				return err
+			}
+
+			// Check for updates in background (non-blocking)
+			if cfg.Update.AutoCheck && update.IsSemver(Version) {
+				go func() {
+					cacheDir := config.StarclawDir()
+					if msg := update.AutoUpdate(Version, cacheDir); msg != "" {
+						fmt.Printf("\n📦 %s\n\n", msg)
+					}
+				}()
 			}
 
 			// If no arguments and stdin is TTY, show info
@@ -63,11 +75,14 @@ func init() {
 	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(interactiveCmd)
 	rootCmd.AddCommand(sessionsCmd)
+	rootCmd.AddCommand(mcpCmd)    // New: MCP subcommand
+	rootCmd.AddCommand(updateCmd) // New: Update subcommand
 
 	// Global flags
 	rootCmd.PersistentFlags().BoolVarP(&autoApprove, "yes", "y", false, "Automatically approve all tool calls")
 	rootCmd.PersistentFlags().StringVar(&resumeSession, "resume", "", "Resume a previous session by ID")
 	rootCmd.PersistentFlags().BoolVar(&listSessions, "list-sessions", false, "List all saved sessions")
+	rootCmd.PersistentFlags().StringVar(&agentName, "agent", "", "Use named agent configuration")
 }
 
 var versionCmd = &cobra.Command{
@@ -386,4 +401,103 @@ var interactiveCmd = &cobra.Command{
 		// Launch TUI
 		return tui.Run(loop)
 	},
+}
+
+// mcpCmd manages MCP servers
+var mcpCmd = &cobra.Command{
+	Use:   "mcp",
+	Short: "Manage MCP (Model Context Protocol) servers",
+	Long:  "Commands for managing MCP servers and their configurations.",
+}
+
+// mcpListCmd lists configured MCP servers
+var mcpListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List configured MCP servers",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		if len(cfg.MCPServers) == 0 {
+			fmt.Println("No MCP servers configured.")
+			fmt.Println("Add servers to ~/.starclaw/config.yaml")
+			return nil
+		}
+
+		fmt.Println("Configured MCP servers:")
+		for name, server := range cfg.MCPServers {
+			status := "enabled"
+			if server.Disabled {
+				status = "disabled"
+			}
+			fmt.Printf("  %s: %s [%s]\n", name, server.Command, status)
+		}
+		return nil
+	},
+}
+
+// updateCmd checks for and installs updates
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Check for and install updates",
+	Long:  "Check for new versions of StarClaw and optionally install them.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		checkOnly, _ := cmd.Flags().GetBool("check")
+
+		fmt.Printf("Current version: %s\n", Version)
+
+		// Skip dev builds
+		if !update.IsSemver(Version) {
+			fmt.Println("Development build - skipping update check.")
+			return nil
+		}
+
+		if checkOnly {
+			fmt.Println("Checking for updates...")
+			release, hasUpdate, err := update.CheckForUpdate(Version)
+			if err != nil {
+				return fmt.Errorf("update check failed: %w", err)
+			}
+			if !hasUpdate {
+				fmt.Println("You're already on the latest version!")
+				return nil
+			}
+			fmt.Printf("Update available: %s\n", release.TagName)
+			fmt.Printf("Published: %s\n", release.PublishedAt)
+			fmt.Printf("Release URL: %s\n", release.HTMLURL)
+			return nil
+		}
+
+		fmt.Println("Checking for updates...")
+		release, hasUpdate, err := update.CheckForUpdate(Version)
+		if err != nil {
+			return fmt.Errorf("update check failed: %w", err)
+		}
+		if !hasUpdate {
+			fmt.Println("You're already on the latest version!")
+			return nil
+		}
+
+		fmt.Printf("Update available: %s\n", release.TagName)
+		fmt.Println("Installing update...")
+
+		newVersion, err := update.DoUpdate(Version)
+		if err != nil {
+			return fmt.Errorf("update failed: %w", err)
+		}
+
+		fmt.Printf("Successfully updated to %s!\n", newVersion)
+		fmt.Println("Please restart StarClaw to use the new version.")
+		return nil
+	},
+}
+
+func init() {
+	// Add subcommands to mcp
+	mcpCmd.AddCommand(mcpListCmd)
+
+	// Add flags to update command
+	updateCmd.Flags().BoolP("check", "c", false, "Check only, don't install")
 }
