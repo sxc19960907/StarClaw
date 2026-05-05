@@ -11,6 +11,7 @@ import (
 
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
+	ctxwin "github.com/starclaw/starclaw/internal/context"
 	"github.com/starclaw/starclaw/internal/session"
 )
 
@@ -44,6 +45,7 @@ type AgentLoop struct {
 	memoryDir     string // directory for persistent memory
 	configDir     string // starclaw config dir (~/.starclaw)
 	loopDetector  *LoopDetector
+	contextWindow int    // max context window in tokens (0 = disabled)
 }
 
 // NewAgentLoop creates a new agent loop
@@ -138,6 +140,11 @@ func (a *AgentLoop) SetConfigDir(dir string) {
 	a.loopDetector = NewLoopDetector()
 }
 
+// SetContextWindow sets the context window size in tokens (0 = disabled).
+func (a *AgentLoop) SetContextWindow(tokens int) {
+	a.contextWindow = tokens
+}
+
 // SpillCleanupFunc returns a function that cleans up spill files for the current session.
 func (a *AgentLoop) SpillCleanupFunc() func() {
 	return func() {
@@ -190,6 +197,47 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 		effectivePrompt := a.systemPrompt
 		if a.memory != "" {
 			effectivePrompt = effectivePrompt + "\n\n<agent_memory>\n" + a.memory + "\n</agent_memory>"
+		}
+
+		// Compress old tool results to save context
+		ctxwin.CompressOldToolResults(messages, 3, 300)
+
+		// Sanitize history: fix malformed messages before compaction
+		if len(messages) > ctxwin.MinShapeable() {
+			messages = ctxwin.SanitizeHistory(messages)
+		}
+
+		// Context window compaction: when messages exceed 85% of contextWindow,
+		// persist learnings, generate an LLM summary, and reshape history.
+		if a.contextWindow > 0 && len(messages) > ctxwin.MinShapeable() {
+			est := ctxwin.EstimateTokens(messages)
+			if ctxwin.ShouldCompact(est, 0, a.contextWindow) {
+				// Write-before-compact: persist durable learnings to MEMORY.md
+				if a.memoryDir != "" {
+					if completer, ok := interface{}(a.llmClient).(ctxwin.Completer); ok {
+						if pErr := ctxwin.PersistLearnings(ctx, completer, messages, a.memoryDir); pErr != nil {
+							fmt.Fprintf(os.Stderr, "[context] persist learnings failed: %v\n", pErr)
+						}
+					}
+				}
+
+				// Generate LLM summary of the conversation so far
+				var summary string
+				if completer, ok := interface{}(a.llmClient).(ctxwin.Completer); ok {
+					var sumErr error
+					summary, sumErr = ctxwin.GenerateSummary(ctx, completer, messages)
+					if sumErr != nil {
+						fmt.Fprintf(os.Stderr, "[context] compaction summary failed: %v\n", sumErr)
+					}
+				}
+
+				// Shape history with summary injection
+				before := len(messages)
+				messages = ctxwin.ShapeHistory(messages, summary, a.contextWindow)
+				if len(messages) < before {
+					fmt.Fprintf(os.Stderr, "[context] compacted: %d → %d messages\n", before, len(messages))
+				}
+			}
 		}
 
 		// Call LLM with retry

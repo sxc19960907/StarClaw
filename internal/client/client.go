@@ -81,6 +81,35 @@ func (c *LLMClient) SetModel(model string) {
 	c.model = model
 }
 
+// Complete performs a non-chat completion. Implements the context.Completer interface.
+func (c *LLMClient) Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error) {
+	maxTokens := req.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = 1000
+	}
+	model := c.model
+	if req.ModelTier == "small" && model != "" {
+		// Use same model for now; could be made configurable for cost savings
+	}
+
+	var systemPrompt string
+	var userContent string
+	for _, msg := range req.Messages {
+		switch msg.Role {
+		case "system":
+			systemPrompt = msg.Content
+		case "user":
+			userContent = msg.Content
+		}
+	}
+
+	resp, err := c.Chat(ctx, systemPrompt, []Message{{Role: "user", Content: userContent}}, nil, maxTokens)
+	if err != nil {
+		return nil, err
+	}
+	return &CompletionResponse{OutputText: resp.Content}, nil
+}
+
 // Chat sends a chat request and returns the response
 func (c *LLMClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int) (*Response, error) {
 	if maxTokens == 0 {

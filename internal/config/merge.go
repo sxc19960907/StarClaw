@@ -25,6 +25,9 @@ func MergeAgentConfig(global *Config, ag *agents.Agent) *Config {
 		if ac.Agent.MaxTokens != nil {
 			merged.Agent.MaxTokens = *ac.Agent.MaxTokens
 		}
+		if ac.Agent.ContextWindow != nil {
+			merged.Agent.ContextWindow = *ac.Agent.ContextWindow
+		}
 		if ac.Agent.Model != nil {
 			merged.ModelTier = *ac.Agent.Model
 		}

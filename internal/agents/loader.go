@@ -26,6 +26,7 @@ type AgentModelConfig struct {
 	MaxIterations *int     `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
 	Temperature   *float64 `yaml:"temperature,omitempty" json:"temperature,omitempty"`
 	MaxTokens     *int     `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
+	ContextWindow *int     `yaml:"context_window,omitempty" json:"context_window,omitempty"`
 }
 
 // AgentConfig is the per-agent config overlay.

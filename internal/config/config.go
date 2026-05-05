@@ -32,6 +32,7 @@ type AgentConfig struct {
 	MaxIterations int     `mapstructure:"max_iterations" yaml:"max_iterations"`
 	Temperature   float64 `mapstructure:"temperature" yaml:"temperature"`
 	MaxTokens     int     `mapstructure:"max_tokens" yaml:"max_tokens"`
+	ContextWindow int     `mapstructure:"context_window" yaml:"context_window"`
 }
 
 // ToolsConfig holds tool-specific settings
@@ -88,6 +89,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("agent.max_iterations", 25)
 	viper.SetDefault("agent.temperature", 0)
 	viper.SetDefault("agent.max_tokens", 8192)
+	viper.SetDefault("agent.context_window", 0) // 0 = auto/disabled
 	viper.SetDefault("tools.bash_timeout", 120)
 	viper.SetDefault("tools.bash_max_output", 30000)
 	viper.SetDefault("tools.result_truncation", 30000)
@@ -173,6 +175,7 @@ agent:
   max_iterations: 25
   temperature: 0
   max_tokens: 8192
+  context_window: 0  # 0 = disabled, set to e.g. 200000 to enable compaction
 
 tools:
   bash_timeout: 120

@@ -152,6 +152,7 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetMaxTokens(cfg.Agent.MaxTokens)
 	loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 	loop.SetConfigDir(config.StarclawDir())
+	loop.SetContextWindow(cfg.Agent.ContextWindow)
 
 	// Set up session management (agent-scoped or global)
 	var baseDir string
@@ -405,6 +406,7 @@ var interactiveCmd = &cobra.Command{
 		loop.SetMaxTokens(cfg.Agent.MaxTokens)
 		loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 		loop.SetConfigDir(config.StarclawDir())
+	loop.SetContextWindow(cfg.Agent.ContextWindow)
 
 		// Set up session management (agent-scoped or global)
 		var baseDir string

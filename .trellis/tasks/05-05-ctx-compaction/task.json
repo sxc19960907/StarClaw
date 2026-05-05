@@ -1,7 +1,7 @@
 {
-  "id": "shanclaw-parity",
-  "name": "shanclaw-parity",
-  "title": "ShanClaw parity: remaining features",
+  "id": "ctx-compaction",
+  "name": "ctx-compaction",
+  "title": "context-compaction-full",
   "description": "",
   "status": "planning",
   "dev_type": null,
@@ -36,12 +36,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "05-05-agent-loop-upgrade",
-    "05-05-context-compaction",
-    "05-05-ctx-compaction"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "05-05-shanclaw-parity",
   "relatedFiles": [],
   "notes": "",
   "meta": {}
