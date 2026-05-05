@@ -210,6 +210,24 @@ func getString(m map[string]any, key string) string {
 	return ""
 }
 
+// CompletionRequest is a generic LLM completion request (non-chat).
+type CompletionRequest struct {
+	Messages    []Message `json:"messages"`
+	ModelTier   string    `json:"model_tier,omitempty"`
+	Temperature float64   `json:"temperature,omitempty"`
+	MaxTokens   int       `json:"max_tokens,omitempty"`
+}
+
+// CompletionResponse is a generic LLM completion response.
+type CompletionResponse struct {
+	OutputText string `json:"output_text"`
+}
+
+// NewTextContent creates a Message with text content (for non-chat completions).
+func NewTextContent(text string) string {
+	return text
+}
+
 func getInt(m map[string]any, key string) int {
 	switch v := m[key].(type) {
 	case int:
