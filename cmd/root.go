@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
@@ -127,6 +128,21 @@ func runChat(cfg *config.Config, query string) error {
 	model := os.Getenv("ANTHROPIC_MODEL")
 	llmClient := client.NewLLMClient(cfg.APIKey, cfg.Endpoint, model)
 
+	// Load named agent if --agent flag is set
+	var agentOverride *agents.Agent
+	if agentName != "" {
+		agentsDir := filepath.Join(config.StarclawDir(), "agents")
+		ag, err := agents.LoadAgent(agentsDir, agentName)
+		if err != nil {
+			return fmt.Errorf("agent %q: %w", agentName, err)
+		}
+		agentOverride = ag
+		// Ensure agent sessions directory exists
+		os.MkdirAll(filepath.Join(agentsDir, agentName, "sessions"), 0700)
+		// Apply agent config overrides
+		cfg = config.MergeAgentConfig(cfg, ag)
+	}
+
 	// Create tool registry
 	registry := tools.RegisterLocalTools()
 
@@ -136,15 +152,21 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetMaxTokens(cfg.Agent.MaxTokens)
 	loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 
-	// Set up session management
-	sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+	// Set up session management (agent-scoped or global)
+	var baseDir string
+	if agentOverride != nil {
+		baseDir = filepath.Join(config.StarclawDir(), "agents", agentName)
+	} else {
+		baseDir = config.StarclawDir()
+	}
+	sessionsDir := filepath.Join(baseDir, "sessions")
 	sessionMgr := session.NewManager(sessionsDir)
 
 	// Determine which session to use
 	var sess *session.Session
-	var err error
 	if resumeSession != "" {
 		// Resume specific session
+		var err error
 		sess, err = sessionMgr.Resume(resumeSession)
 		if err != nil {
 			return fmt.Errorf("failed to resume session %s: %w", resumeSession, err)
@@ -163,7 +185,6 @@ func runChat(cfg *config.Config, query string) error {
 		logDir := filepath.Join(config.StarclawDir(), "logs")
 		auditLogger, err := audit.NewAuditLogger(logDir)
 		if err != nil {
-			// Log the error but don't fail - audit logging is non-critical
 			fmt.Fprintf(os.Stderr, "Warning: failed to create audit logger: %v\n", err)
 		} else {
 			loop.SetAuditLogger(auditLogger)
@@ -175,9 +196,19 @@ func runChat(cfg *config.Config, query string) error {
 	// Set system prompt
 	loop.SetSystemPrompt(buildSystemPrompt(registry))
 
+	// Inject agent if loaded
+	if agentOverride != nil {
+		agentDir := filepath.Join(config.StarclawDir(), "agents", agentName)
+		loop.SwitchAgent(agentOverride.Prompt, agentDir)
+		if agentOverride.Memory != "" {
+			loop.SetMemory(agentOverride.Memory)
+		}
+	}
+
 	// Create event handler
+	autoApproveEffective := autoApprove || (agentOverride != nil && agentOverride.AutoApproveEnabled())
 	handler := &CLIEventHandler{
-		autoApprove: autoApprove,
+		autoApprove: autoApproveEffective,
 	}
 	loop.SetEventHandler(handler)
 
@@ -347,6 +378,19 @@ var interactiveCmd = &cobra.Command{
 			return fmt.Errorf("not configured")
 		}
 
+		// Load named agent if --agent flag is set
+		var agentOverride *agents.Agent
+		if agentName != "" {
+			agentsDir := filepath.Join(config.StarclawDir(), "agents")
+			ag, err := agents.LoadAgent(agentsDir, agentName)
+			if err != nil {
+				return fmt.Errorf("agent %q: %w", agentName, err)
+			}
+			agentOverride = ag
+			os.MkdirAll(filepath.Join(agentsDir, agentName, "sessions"), 0700)
+			cfg = config.MergeAgentConfig(cfg, ag)
+		}
+
 		// Create LLM client
 		model := os.Getenv("ANTHROPIC_MODEL")
 		llmClient := client.NewLLMClient(cfg.APIKey, cfg.Endpoint, model)
@@ -360,8 +404,14 @@ var interactiveCmd = &cobra.Command{
 		loop.SetMaxTokens(cfg.Agent.MaxTokens)
 		loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 
-		// Set up session management
-		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		// Set up session management (agent-scoped or global)
+		var baseDir string
+		if agentOverride != nil {
+			baseDir = filepath.Join(config.StarclawDir(), "agents", agentName)
+		} else {
+			baseDir = config.StarclawDir()
+		}
+		sessionsDir := filepath.Join(baseDir, "sessions")
 		sessionMgr := session.NewManager(sessionsDir)
 
 		// Determine which session to use
@@ -397,6 +447,15 @@ var interactiveCmd = &cobra.Command{
 
 		// Set system prompt
 		loop.SetSystemPrompt(buildSystemPrompt(registry))
+
+		// Inject agent if loaded
+		if agentOverride != nil {
+			agentDir := filepath.Join(config.StarclawDir(), "agents", agentName)
+			loop.SwitchAgent(agentOverride.Prompt, agentDir)
+			if agentOverride.Memory != "" {
+				loop.SetMemory(agentOverride.Memory)
+			}
+		}
 
 		// Launch TUI
 		return tui.Run(loop)

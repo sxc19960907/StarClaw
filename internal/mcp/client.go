@@ -1,14 +1,18 @@
-// Package mcp provides MCP (Model Context Protocol) client functionality.
-// This is a simplified implementation without external dependencies.
-// For full functionality, integrate with github.com/mark3labs/mcp-go
 package mcp
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log"
+	"strings"
 	"sync"
 	"time"
+
+	mcpclient "github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // MCPServerConfig describes how to connect to an MCP server.
@@ -17,7 +21,7 @@ type MCPServerConfig struct {
 	Args      []string          `mapstructure:"args,omitempty" yaml:"args,omitempty" json:"args,omitempty"`
 	Env       map[string]string `mapstructure:"env,omitempty" yaml:"env,omitempty" json:"env,omitempty"`
 	Type      string            `mapstructure:"type,omitempty" yaml:"type,omitempty" json:"type,omitempty"`        // "stdio" (default) or "http"
-	URL       string            `mapstructure:"url,omitempty" yaml:"url,omitempty" json:"url,omitempty"`         // for http type
+	URL       string            `mapstructure:"url,omitempty" yaml:"url,omitempty" json:"url,omitempty"`           // for http type
 	Disabled  bool              `mapstructure:"disabled,omitempty" yaml:"disabled,omitempty" json:"disabled,omitempty"`    // skip this server
 	Context   string            `mapstructure:"context,omitempty" yaml:"context,omitempty" json:"context,omitempty"`     // LLM context injected into system prompt
 	KeepAlive bool              `mapstructure:"keep_alive,omitempty" yaml:"keep_alive,omitempty" json:"keep_alive,omitempty"` // stay connected between turns
@@ -26,34 +30,13 @@ type MCPServerConfig struct {
 // RemoteTool represents a tool discovered from an MCP server.
 type RemoteTool struct {
 	ServerName string
-	Name       string
-	Description string
-	InputSchema json.RawMessage
-}
-
-// ToolCallResult represents the result of calling an MCP tool.
-type ToolCallResult struct {
-	Content []ContentBlock `json:"content"`
-	IsError bool           `json:"isError,omitempty"`
-}
-
-// ContentBlock represents a block of content in the tool result.
-type ContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
-}
-
-// MCPClient interface abstracts the MCP client for testing.
-type MCPClient interface {
-	CallTool(ctx context.Context, toolName string, args json.RawMessage) (*ToolCallResult, error)
-	ListTools(ctx context.Context) ([]RemoteTool, error)
-	Close() error
+	Tool       mcp.Tool
 }
 
 // ClientManager manages connections to multiple MCP servers.
 type ClientManager struct {
 	mu          sync.Mutex
-	clients     map[string]MCPClient
+	clients     map[string]mcpclient.MCPClient
 	configs     map[string]MCPServerConfig
 	toolCache   map[string][]RemoteTool
 	reconnectMu map[string]*sync.Mutex
@@ -62,7 +45,7 @@ type ClientManager struct {
 // NewClientManager creates a new MCP client manager.
 func NewClientManager() *ClientManager {
 	return &ClientManager{
-		clients:     make(map[string]MCPClient),
+		clients:     make(map[string]mcpclient.MCPClient),
 		configs:     make(map[string]MCPServerConfig),
 		toolCache:   make(map[string][]RemoteTool),
 		reconnectMu: make(map[string]*sync.Mutex),
@@ -100,41 +83,27 @@ func (m *ClientManager) ConnectAll(ctx context.Context, servers map[string]MCPSe
 	}()
 
 	var allTools []RemoteTool
-	var hasErrors bool
+	var errs []string
 	for r := range results {
 		if r.err != nil {
-			hasErrors = true
-			// Log error but continue with other servers
+			errs = append(errs, fmt.Sprintf("%s: %v", r.name, r.err))
 			continue
 		}
 		allTools = append(allTools, r.tools...)
 	}
 
-	if hasErrors && len(allTools) == 0 {
-		return nil, fmt.Errorf("failed to connect to any MCP server")
+	if len(errs) > 0 {
+		combined := fmt.Errorf("%s", strings.Join(errs, "; "))
+		if len(allTools) == 0 {
+			return nil, combined
+		}
+		return allTools, combined
 	}
 
 	return allTools, nil
 }
 
-// connect establishes a connection to a single MCP server.
-func (m *ClientManager) connect(ctx context.Context, name string, cfg MCPServerConfig) ([]RemoteTool, error) {
-	m.mu.Lock()
-	m.configs[name] = cfg
-	m.mu.Unlock()
-
-	// TODO: Implement actual MCP client connection
-	// For now, return empty tools list (placeholder implementation)
-	// In full implementation:
-	// 1. Create stdio or HTTP client based on cfg.Type
-	// 2. Initialize connection with timeout
-	// 3. List available tools
-	// 4. Cache tools and client
-
-	return []RemoteTool{}, nil
-}
-
-// IsConnected returns true if connected to the given server.
+// IsConnected returns true if the named server has an active client connection.
 func (m *ClientManager) IsConnected(serverName string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -142,7 +111,7 @@ func (m *ClientManager) IsConnected(serverName string) bool {
 	return ok
 }
 
-// ConnectedServers returns a list of connected server names.
+// ConnectedServers returns the names of all servers that have an active client connection.
 func (m *ClientManager) ConnectedServers() []string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -153,43 +122,314 @@ func (m *ClientManager) ConnectedServers() []string {
 	return names
 }
 
-// CallTool calls a tool on a specific MCP server.
-func (m *ClientManager) CallTool(ctx context.Context, serverName, toolName string, args json.RawMessage) (*ToolCallResult, error) {
+func (m *ClientManager) connect(ctx context.Context, name string, cfg MCPServerConfig) ([]RemoteTool, error) {
 	m.mu.Lock()
-	client, ok := m.clients[serverName]
+	m.configs[name] = cfg
 	m.mu.Unlock()
 
-	if !ok {
-		return nil, fmt.Errorf("not connected to MCP server: %s", serverName)
-	}
+	var c mcpclient.MCPClient
+	var err error
 
-	// TODO: Implement actual tool call
-	// return client.CallTool(ctx, toolName, args)
-	_ = client
-	return &ToolCallResult{
-		Content: []ContentBlock{{Type: "text", Text: "MCP tool call not yet implemented"}},
-	}, nil
-}
-
-// GetCachedTools returns the cached tools for a server.
-func (m *ClientManager) GetCachedTools(serverName string) []RemoteTool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if tools, ok := m.toolCache[serverName]; ok {
-		return tools
-	}
-	return []RemoteTool{}
-}
-
-// Close closes all MCP connections.
-func (m *ClientManager) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for name, client := range m.clients {
-		if client != nil {
-			client.Close()
+	switch cfg.Type {
+	case "http":
+		if cfg.URL == "" {
+			return nil, fmt.Errorf("http MCP server requires url")
 		}
+		c, err = mcpclient.NewStreamableHttpClient(cfg.URL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP client: %w", err)
+		}
+		if starter, ok := c.(interface{ Start(context.Context) error }); ok {
+			if err := starter.Start(ctx); err != nil {
+				return nil, fmt.Errorf("failed to start HTTP client: %w", err)
+			}
+		}
+	default: // stdio
+		if cfg.Command == "" {
+			return nil, fmt.Errorf("stdio MCP server requires command")
+		}
+		envSlice := buildEnvSlice(cfg.Env)
+		c, err = mcpclient.NewStdioMCPClient(cfg.Command, envSlice, cfg.Args...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start MCP server %q: %w", cfg.Command, err)
+		}
+	}
+
+	// Initialize handshake
+	_, err = c.Initialize(ctx, mcp.InitializeRequest{
+		Params: struct {
+			ProtocolVersion string                 `json:"protocolVersion"`
+			Capabilities    mcp.ClientCapabilities `json:"capabilities"`
+			ClientInfo      mcp.Implementation     `json:"clientInfo"`
+		}{
+			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+			ClientInfo:      mcp.Implementation{Name: "starclaw", Version: "1.0.0"},
+		},
+	})
+	if err != nil {
+		_ = c.Close()
+		return nil, fmt.Errorf("initialize failed: %w", err)
+	}
+
+	// List available tools
+	toolsResult, err := c.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		_ = c.Close()
+		return nil, fmt.Errorf("tools/list failed: %w", err)
+	}
+
+	m.mu.Lock()
+	m.clients[name] = c
+	m.mu.Unlock()
+
+	var tools []RemoteTool
+	for _, t := range toolsResult.Tools {
+		tools = append(tools, RemoteTool{
+			ServerName: name,
+			Tool:       t,
+		})
+	}
+
+	m.mu.Lock()
+	m.toolCache[name] = tools
+	m.mu.Unlock()
+
+	return tools, nil
+}
+
+// CallTool invokes a tool on the specified MCP server.
+func (m *ClientManager) CallTool(ctx context.Context, serverName, toolName string, args map[string]any) (string, bool, error) {
+	m.mu.Lock()
+	c, ok := m.clients[serverName]
+	cfg, hasCfg := m.configs[serverName]
+	m.mu.Unlock()
+
+	// Lazy-start: reconnect on first tool invocation if keepAlive=false
+	if !ok && hasCfg {
+		m.mu.Lock()
+		rmu, rmOK := m.reconnectMu[serverName]
+		if !rmOK {
+			rmu = &sync.Mutex{}
+			m.reconnectMu[serverName] = rmu
+		}
+		m.mu.Unlock()
+
+		rmu.Lock()
+		m.mu.Lock()
+		c, ok = m.clients[serverName]
+		m.mu.Unlock()
+		if !ok {
+			log.Printf("[mcp] %s: not connected, attempting on-demand connect", serverName)
+			reconnectCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			if _, err := m.connect(reconnectCtx, serverName, cfg); err != nil {
+				cancel()
+				rmu.Unlock()
+				return "", true, fmt.Errorf("MCP server %q on-demand connect failed: %w", serverName, err)
+			}
+			cancel()
+			m.mu.Lock()
+			c = m.clients[serverName]
+			m.mu.Unlock()
+		}
+		rmu.Unlock()
+	} else if !ok {
+		return "", true, fmt.Errorf("MCP server %q not connected", serverName)
+	}
+
+	result, err := c.CallTool(ctx, mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name:      toolName,
+			Arguments: args,
+		},
+	})
+	if err != nil && isTransportError(err) {
+		// Transport failure — attempt one-shot reconnect
+		origErr := err
+		m.mu.Lock()
+		cfg, hasCfg := m.configs[serverName]
+		stale := m.clients[serverName]
+		m.mu.Unlock()
+
+		if hasCfg {
+			if stale != nil {
+				_ = stale.Close()
+			}
+			reconnectCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if _, reconnErr := m.connect(reconnectCtx, serverName, cfg); reconnErr == nil {
+				m.mu.Lock()
+				c = m.clients[serverName]
+				m.mu.Unlock()
+				result, err = c.CallTool(ctx, mcp.CallToolRequest{
+					Params: mcp.CallToolParams{
+						Name:      toolName,
+						Arguments: args,
+					},
+				})
+			}
+		}
+		if err != nil {
+			return "", true, fmt.Errorf("tools/call failed: %w (reconnect attempted after: %v)", origErr, err)
+		}
+	} else if err != nil {
+		return "", true, fmt.Errorf("tools/call failed: %w", err)
+	}
+
+	// Extract text content from result
+	var texts []string
+	for _, block := range result.Content {
+		if textContent, ok := block.(mcp.TextContent); ok {
+			texts = append(texts, textContent.Text)
+		} else {
+			b, _ := json.Marshal(block)
+			texts = append(texts, string(b))
+		}
+	}
+
+	content := ""
+	if len(texts) > 0 {
+		content = texts[0]
+		for _, t := range texts[1:] {
+			content += "\n" + t
+		}
+	}
+
+	return content, result.IsError, nil
+}
+
+// Close shuts down all connected MCP servers in parallel.
+func (m *ClientManager) Close() {
+	m.mu.Lock()
+	clients := make(map[string]mcpclient.MCPClient, len(m.clients))
+	for name, c := range m.clients {
+		clients[name] = c
 		delete(m.clients, name)
 	}
+	m.mu.Unlock()
+
+	var wg sync.WaitGroup
+	for _, c := range clients {
+		wg.Add(1)
+		go func(c mcpclient.MCPClient) {
+			defer wg.Done()
+			_ = c.Close()
+		}(c)
+	}
+	wg.Wait()
+}
+
+// Disconnect closes a single server's client and removes it from the active map.
+// The config and tool cache are preserved so the server can reconnect later.
+func (m *ClientManager) Disconnect(serverName string) {
+	m.mu.Lock()
+	c, ok := m.clients[serverName]
+	if ok {
+		delete(m.clients, serverName)
+	}
+	m.mu.Unlock()
+	if ok && c != nil {
+		_ = c.Close()
+	}
+}
+
+// ConfigFor returns the config for a server, if any.
+func (m *ClientManager) ConfigFor(serverName string) (MCPServerConfig, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cfg, ok := m.configs[serverName]
+	return cfg, ok
+}
+
+// CachedTools returns the cached tools for a server.
+func (m *ClientManager) CachedTools(serverName string) []RemoteTool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	tools := m.toolCache[serverName]
+	if tools == nil {
+		return nil
+	}
+	cp := make([]RemoteTool, len(tools))
+	copy(cp, tools)
+	return cp
+}
+
+func (m *ClientManager) ProbeTransport(ctx context.Context, serverName string) error {
+	m.mu.Lock()
+	c, ok := m.clients[serverName]
+	m.mu.Unlock()
+	if !ok {
+		return fmt.Errorf("MCP server %q not connected", serverName)
+	}
+	_, err := c.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		return fmt.Errorf("transport probe failed: %w", err)
+	}
 	return nil
+}
+
+func (m *ClientManager) Reconnect(ctx context.Context, serverName string) ([]RemoteTool, error) {
+	m.mu.Lock()
+	cfg, hasCfg := m.configs[serverName]
+	if !hasCfg {
+		m.mu.Unlock()
+		return nil, fmt.Errorf("no config for MCP server %q", serverName)
+	}
+	rmu, ok := m.reconnectMu[serverName]
+	if !ok {
+		rmu = &sync.Mutex{}
+		m.reconnectMu[serverName] = rmu
+	}
+	stale := m.clients[serverName]
+	m.mu.Unlock()
+
+	rmu.Lock()
+	defer rmu.Unlock()
+
+	if stale != nil {
+		_ = stale.Close()
+	}
+	m.mu.Lock()
+	delete(m.clients, serverName)
+	m.mu.Unlock()
+
+	return m.connect(ctx, serverName, cfg)
+}
+
+// isTransportError reports whether err indicates a transport/connection failure.
+func isTransportError(err error) bool {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	s := err.Error()
+	return strings.Contains(s, "broken pipe") ||
+		strings.Contains(s, "use of closed network connection") ||
+		strings.Contains(s, "read/write on closed pipe") ||
+		strings.Contains(s, "signal: killed") ||
+		strings.Contains(s, "process already finished")
+}
+
+func buildEnvSlice(env map[string]string) []string {
+	if len(env) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(env))
+	for k, v := range env {
+		result = append(result, k+"="+v)
+	}
+	return result
+}
+
+// BuildContext collects context strings from all configured MCP servers.
+func BuildContext(servers map[string]MCPServerConfig) string {
+	var parts []string
+	for name, cfg := range servers {
+		if cfg.Disabled || cfg.Context == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("[%s] %s", name, cfg.Context))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, "\n")
 }

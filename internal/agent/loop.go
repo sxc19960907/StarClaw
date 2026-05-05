@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,6 +40,8 @@ type AgentLoop struct {
 	sessionID    string
 	session      *session.Session
 	sessionMgr   *session.Manager
+	memory       string // agent memory content
+	memoryDir    string // directory for persistent memory
 }
 
 // NewAgentLoop creates a new agent loop
@@ -101,6 +105,52 @@ func (a *AgentLoop) SetSessionManager(mgr *session.Manager) {
 	a.sessionMgr = mgr
 }
 
+// SwitchAgent injects agent instructions into the system prompt and loads memory.
+// agentDir is the path to the agent's directory for memory persistence.
+func (a *AgentLoop) SwitchAgent(prompt, agentDir string) {
+	if prompt != "" {
+		// Prepend agent instructions to the existing system prompt
+		a.systemPrompt = prompt + "\n\n" + a.systemPrompt
+	}
+	if agentDir != "" {
+		a.memoryDir = filepath.Join(agentDir, "memory")
+		// Load existing memory if present
+		a.loadMemory()
+	}
+}
+
+// SetMemory sets the agent memory content directly.
+func (a *AgentLoop) SetMemory(memory string) {
+	a.memory = memory
+}
+
+// SetMemoryDir sets the memory directory and loads existing memory.
+func (a *AgentLoop) SetMemoryDir(dir string) {
+	a.memoryDir = dir
+	a.loadMemory()
+}
+
+func (a *AgentLoop) loadMemory() {
+	if a.memoryDir == "" {
+		return
+	}
+	files, _ := filepath.Glob(filepath.Join(a.memoryDir, "*.md"))
+	if len(files) == 0 {
+		return
+	}
+	var parts []string
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		parts = append(parts, string(data))
+	}
+	if len(parts) > 0 {
+		a.memory = strings.Join(parts, "\n---\n")
+	}
+}
+
 // Run executes the agent loop with the given query
 func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, error) {
 	// Initialize messages from session if resuming, or start fresh
@@ -119,8 +169,14 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 		// Build tools for LLM
 		tools := a.buildTools()
 
+		// Build effective system prompt with memory
+		effectivePrompt := a.systemPrompt
+		if a.memory != "" {
+			effectivePrompt = effectivePrompt + "\n\n<agent_memory>\n" + a.memory + "\n</agent_memory>"
+		}
+
 		// Call LLM
-		resp, err := a.llmClient.Chat(ctx, a.systemPrompt, messages, tools, a.maxTokens)
+		resp, err := a.llmClient.Chat(ctx, effectivePrompt, messages, tools, a.maxTokens)
 		if err != nil {
 			return nil, fmt.Errorf("LLM error: %w", err)
 		}

@@ -2,7 +2,12 @@ package update
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -86,7 +91,7 @@ func TestIsSemver(t *testing.T) {
 		{"dev", false},
 		{"1.2", false},
 		{"", false},
-		{"v1.2.3-beta", false}, // Not strict semver
+		{"v1.2.3-beta", false},
 		{"1.2.3-alpha", false},
 	}
 
@@ -105,14 +110,12 @@ func TestPlatformInfo(t *testing.T) {
 	if info == "" {
 		t.Error("PlatformInfo() returned empty string")
 	}
-	// Should contain OS and Arch separated by /
-	if !contains(info, "/") {
+	if !strings.Contains(info, "/") {
 		t.Errorf("PlatformInfo() = %q, should contain '/'", info)
 	}
 }
 
 func TestFindAssetForPlatform(t *testing.T) {
-	// Create assets for multiple platforms
 	assets := []Asset{
 		{Name: "starclaw_Linux_x86_64.tar.gz"},
 		{Name: "starclaw_Darwin_arm64.tar.gz"},
@@ -121,14 +124,9 @@ func TestFindAssetForPlatform(t *testing.T) {
 	}
 
 	asset := findAssetForPlatform(assets)
-
-	// Should find an asset that matches current platform
 	if asset == nil {
-		// This is OK - we might be on an unsupported platform
 		t.Skip("No asset found for current platform")
 	}
-
-	// Verify the asset name makes sense
 	if asset.Name == "checksums.txt" {
 		t.Error("Should not match non-binary asset")
 	}
@@ -140,20 +138,16 @@ func TestUpdateCache(t *testing.T) {
 
 	cache := NewUpdateCache(cachePath)
 
-	// Initially should check
 	if !cache.ShouldCheck(time.Hour) {
 		t.Error("ShouldCheck should return true for empty cache")
 	}
 
-	// Record a check
 	cache.Record("v1.2.3")
 
-	// Should not check immediately
 	if cache.ShouldCheck(time.Hour) {
 		t.Error("ShouldCheck should return false for fresh cache")
 	}
 
-	// Save and reload
 	if err := cache.Save(); err != nil {
 		t.Fatalf("Save() failed: %v", err)
 	}
@@ -166,7 +160,6 @@ func TestUpdateCache(t *testing.T) {
 	if cache2.LastVersion != "v1.2.3" {
 		t.Errorf("LastVersion = %q, want v1.2.3", cache2.LastVersion)
 	}
-
 	if cache2.LastChecked.IsZero() {
 		t.Error("LastChecked should not be zero after load")
 	}
@@ -174,14 +167,23 @@ func TestUpdateCache(t *testing.T) {
 
 func TestUpdateCache_LoadMissing(t *testing.T) {
 	cache := NewUpdateCache("/nonexistent/path/cache.json")
-	// Should not error for missing file
 	if err := cache.Load(); err != nil {
 		t.Errorf("Load() should not error for missing file: %v", err)
 	}
 }
 
+func TestUpdateCache_LoadCorrupted(t *testing.T) {
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "bad-cache.json")
+	os.WriteFile(cachePath, []byte("not valid json"), 0644)
+
+	cache := NewUpdateCache(cachePath)
+	if err := cache.Load(); err == nil {
+		t.Error("Load() should error for corrupted cache")
+	}
+}
+
 func TestCheckForUpdate_DevBuild(t *testing.T) {
-	// Dev builds should skip update check
 	release, hasUpdate, err := CheckForUpdate("dev")
 	if err != nil {
 		t.Errorf("CheckForUpdate(dev) returned error: %v", err)
@@ -195,7 +197,6 @@ func TestCheckForUpdate_DevBuild(t *testing.T) {
 }
 
 func TestCheckForUpdate_NonSemver(t *testing.T) {
-	// Non-semver versions should skip update check
 	release, hasUpdate, err := CheckForUpdate("v1.2.3-beta")
 	if err != nil {
 		t.Errorf("CheckForUpdate returned error: %v", err)
@@ -208,6 +209,86 @@ func TestCheckForUpdate_NonSemver(t *testing.T) {
 	}
 }
 
+func TestCheckForUpdate_WithMockServer(t *testing.T) {
+	// Create mock GitHub API server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/starclaw/starclaw/releases/latest" {
+			release := Release{
+				TagName:     "v2.0.0",
+				Name:        "Release v2.0.0",
+				HTMLURL:     "https://github.com/starclaw/starclaw/releases/v2.0.0",
+				PublishedAt: "2026-01-01T00:00:00Z",
+				Assets: []Asset{
+					{Name: "starclaw_Darwin_arm64.tar.gz", Size: 100, BrowserDownloadURL: "https://example.com/asset"},
+				},
+			}
+			json.NewEncoder(w).Encode(release)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	// Override GitHubAPI temporarily
+	oldAPI := GitHubAPI
+	GitHubAPI = server.URL
+	defer func() { GitHubAPI = oldAPI }()
+
+	release, hasUpdate, err := CheckForUpdate("v1.0.0")
+	if err != nil {
+		t.Fatalf("CheckForUpdate failed: %v", err)
+	}
+	if !hasUpdate {
+		t.Error("Expected update to be available (v1.0.0 → v2.0.0)")
+	}
+	if release == nil {
+		t.Fatal("Expected non-nil release")
+	}
+	if release.TagName != "v2.0.0" {
+		t.Errorf("TagName = %q, want v2.0.0", release.TagName)
+	}
+}
+
+func TestCheckForUpdate_AlreadyLatest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		release := Release{
+			TagName: "v1.0.0",
+			Name:    "Release v1.0.0",
+			HTMLURL: "https://github.com/starclaw/starclaw/releases/v1.0.0",
+		}
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	oldAPI := GitHubAPI
+	GitHubAPI = server.URL
+	defer func() { GitHubAPI = oldAPI }()
+
+	_, hasUpdate, err := CheckForUpdate("v1.0.0")
+	if err != nil {
+		t.Fatalf("CheckForUpdate failed: %v", err)
+	}
+	if hasUpdate {
+		t.Error("Should not have update when already latest")
+	}
+}
+
+func TestCheckForUpdate_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	oldAPI := GitHubAPI
+	GitHubAPI = server.URL
+	defer func() { GitHubAPI = oldAPI }()
+
+	_, _, err := CheckForUpdate("v1.0.0")
+	if err == nil {
+		t.Error("CheckForUpdate should fail on server error")
+	}
+}
+
 func TestDoUpdate_NonSemver(t *testing.T) {
 	version, err := DoUpdate("dev")
 	if err == nil {
@@ -215,6 +296,28 @@ func TestDoUpdate_NonSemver(t *testing.T) {
 	}
 	if version != "dev" {
 		t.Error("DoUpdate(dev) should return original version")
+	}
+}
+
+func TestDoUpdate_AlreadyLatest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		release := Release{
+			TagName: "v1.0.0",
+			Assets: []Asset{
+				{Name: "starclaw_Darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/asset"},
+			},
+		}
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	oldAPI := GitHubAPI
+	GitHubAPI = server.URL
+	defer func() { GitHubAPI = oldAPI }()
+
+	_, err := DoUpdate("v1.0.0")
+	if err == nil {
+		t.Error("DoUpdate should error when already latest")
 	}
 }
 
@@ -229,44 +332,105 @@ func TestAutoUpdate_DevBuild(t *testing.T) {
 func TestAutoUpdate_CacheFresh(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create fresh cache
 	cache := NewUpdateCache(filepath.Join(tmpDir, "update-check.json"))
 	cache.Record("v1.0.0")
 	cache.Save()
 
-	// Should not check again immediately
 	msg := AutoUpdate("v1.0.0", tmpDir)
-	// Note: This might still check due to time precision, so we don't assert
+	// Should not check because cache is fresh
 	_ = msg
 }
 
-// Test helper
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsInternal(s, substr))
-}
-
-func containsInternal(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
+func TestAutoUpdate_HasUpdate(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		release := Release{
+			TagName: "v2.0.0",
+			Assets: []Asset{
+				{Name: "starclaw_Darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/asset"},
+			},
 		}
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	oldAPI := GitHubAPI
+	GitHubAPI = server.URL
+	defer func() { GitHubAPI = oldAPI }()
+
+	tmpDir := t.TempDir()
+	msg := AutoUpdate("v1.0.0", tmpDir)
+	if msg == "" {
+		t.Error("AutoUpdate should return update message")
 	}
-	return false
+	if !strings.Contains(msg, "v2.0.0") {
+		t.Errorf("AutoUpdate message should mention new version: %q", msg)
+	}
 }
 
-func TestDownloadRelease_MockServer(t *testing.T) {
-	// This test requires a mock server or internet access
-	// We'll skip it if network is unavailable
-	t.Skip("Skipping network test")
+func TestDownloadRelease_ToTemp(t *testing.T) {
+	// Create a test server serving a small file
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("fake-binary-content"))
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	asset := &Asset{
+		Name:               "starclaw_test",
+		BrowserDownloadURL: server.URL,
+	}
+
+	targetPath := filepath.Join(tmpDir, "downloaded-binary")
+	ctx := context.Background()
+	err := DownloadRelease(ctx, asset, targetPath)
+	if err != nil {
+		t.Fatalf("DownloadRelease failed: %v", err)
+	}
+
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("Failed to read downloaded file: %v", err)
+	}
+	if string(data) != "fake-binary-content" {
+		t.Errorf("Download content = %q, want 'fake-binary-content'", string(data))
+	}
 }
 
-func TestContextCancellation(t *testing.T) {
+func TestDownloadRelease_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	asset := &Asset{
+		Name:               "nonexistent",
+		BrowserDownloadURL: server.URL,
+	}
+
+	err := DownloadRelease(context.Background(), asset, filepath.Join(tmpDir, "output"))
+	if err == nil {
+		t.Error("DownloadRelease should fail on server error")
+	}
+}
+
+func TestDownloadRelease_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
+	cancel()
 
-	// This would test context cancellation if we had a real download
-	// For now, just verify context is cancelled
-	if ctx.Err() != context.Canceled {
-		t.Error("Context should be cancelled")
+	asset := &Asset{
+		Name:               "test",
+		BrowserDownloadURL: "http://localhost:1/nonexistent",
 	}
+
+	tmpDir := t.TempDir()
+	err := DownloadRelease(ctx, asset, filepath.Join(tmpDir, "output"))
+	if err == nil {
+		t.Error("DownloadRelease should fail with cancelled context")
+	}
+}
+
+// contains is a helper for string matching in test messages.
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }

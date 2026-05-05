@@ -14,11 +14,14 @@ import (
 	"time"
 )
 
-const (
-	RepoOwner = "starclaw"
-	RepoName  = "starclaw"
-	GitHubAPI = "https://api.github.com"
-)
+// RepoOwner is the GitHub owner for releases.
+const RepoOwner = "starclaw"
+
+// RepoName is the GitHub repo name for releases.
+const RepoName = "starclaw"
+
+// GitHubAPI is the base URL for the GitHub API.
+var GitHubAPI = "https://api.github.com"
 
 // Release represents a GitHub release.
 type Release struct {

@@ -186,3 +186,11 @@ func ListAgents(agentsDir string) ([]AgentInfo, error) {
 func AgentDir(baseDir, name string) string {
 	return filepath.Join(baseDir, "agents", name)
 }
+
+// AutoApproveEnabled returns whether the agent has auto-approve enabled.
+func (a *Agent) AutoApproveEnabled() bool {
+	if a == nil || a.Config == nil || a.Config.AutoApprove == nil {
+		return false
+	}
+	return *a.Config.AutoApprove
+}

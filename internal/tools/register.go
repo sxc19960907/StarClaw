@@ -3,6 +3,7 @@ package tools
 import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/mcp"
 )
 
 // RegisterLocalTools registers all local tools
@@ -39,4 +40,13 @@ func RegisterLocalTools() *agent.ToolRegistry {
 	reg.Register(NewUseSkillTool(skillsDir))
 
 	return reg
+}
+
+// RegisterMCPTools registers MCP remote tools in the tool registry.
+// Each RemoteTool is wrapped in an MCPTool adapter.
+func RegisterMCPTools(reg *agent.ToolRegistry, remoteTools []mcp.RemoteTool, manager *mcp.ClientManager) {
+	for _, rt := range remoteTools {
+		adapter := NewMCPTool(rt.ServerName, rt.Tool, manager)
+		reg.Register(adapter)
+	}
 }

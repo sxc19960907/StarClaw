@@ -1,6 +1,6 @@
 module github.com/starclaw/starclaw
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
@@ -15,6 +15,12 @@ require (
 )
 
 require (
+	github.com/google/jsonschema-go v0.4.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+)
+
+require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
@@ -23,6 +29,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mark3labs/mcp-go v0.48.0
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
