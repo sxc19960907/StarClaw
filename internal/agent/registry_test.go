@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 )
 
@@ -172,6 +173,159 @@ func TestToolRegistry_FilterByDeny(t *testing.T) {
 		t.Error("Non-denied tool_a should be in filtered registry")
 	}
 }
+
+func TestToolRegistry_Schemas(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "tool_a", description: "Tool A"})
+	reg.Register(&MockTool{name: "tool_b", description: "Tool B"})
+
+	schemas := reg.Schemas()
+	if len(schemas) != 2 {
+		t.Errorf("Expected 2 schemas, got %d", len(schemas))
+	}
+	if schemas[0].Type != "function" {
+		t.Error("Schema should have type 'function'")
+	}
+	if schemas[0].Function.Name != "tool_a" {
+		t.Errorf("Schema name = %q, want 'tool_a'", schemas[0].Function.Name)
+	}
+}
+
+func TestToolRegistry_All(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "tool_a"})
+	reg.Register(&MockTool{name: "tool_b"})
+
+	all := reg.All()
+	if len(all) != 2 {
+		t.Errorf("Expected 2 tools, got %d", len(all))
+	}
+}
+
+func TestToolRegistry_Len(t *testing.T) {
+	reg := NewToolRegistry()
+	if reg.Len() != 0 {
+		t.Error("Empty registry should have Len 0")
+	}
+	reg.Register(&MockTool{name: "tool_a"})
+	if reg.Len() != 1 {
+		t.Error("Registry should have Len 1")
+	}
+}
+
+func TestToolRegistry_SortedNames(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "zebra"})
+	reg.Register(&MockTool{name: "apple"})
+
+	names := reg.SortedNames()
+	if len(names) != 2 {
+		t.Fatalf("Expected 2 names, got %d", len(names))
+	}
+	// Local tools, sorted alphabetically
+	if names[0] != "apple" && names[1] != "zebra" {
+		t.Errorf("SortedNames not sorted: %v", names)
+	}
+}
+
+func TestToolRegistry_SortedNames_BySource(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "local_tool"})
+	// MCP tool
+	mcpTool := NewMCPToolForTest("server", "mcp_tool", nil)
+	reg.Register(mcpTool)
+
+	names := reg.SortedNames()
+	if len(names) != 2 {
+		t.Fatalf("Expected 2 names, got %d", len(names))
+	}
+	// Local should come first
+	if names[0] != "local_tool" {
+		t.Errorf("Expected local first, got %v", names)
+	}
+}
+
+func TestToolRegistry_SummaryList(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "tool_a", description: "Description A"})
+
+	summaries := reg.SummaryList()
+	if len(summaries) != 1 {
+		t.Fatalf("Expected 1 summary, got %d", len(summaries))
+	}
+	if summaries[0].Name != "tool_a" {
+		t.Errorf("Name = %q", summaries[0].Name)
+	}
+	if summaries[0].Description != "Description A" {
+		t.Errorf("Description = %q", summaries[0].Description)
+	}
+}
+
+func TestToolRegistry_FullSchemas(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "tool_a"})
+	reg.Register(&MockTool{name: "tool_b"})
+
+	schemas := reg.FullSchemas([]string{"tool_a", "nonexistent"})
+	if len(schemas) != 1 {
+		t.Errorf("Expected 1 schema, got %d", len(schemas))
+	}
+}
+
+func TestToolRegistry_PartitionBySource(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "local_a"})
+	mcpTool := NewMCPToolForTest("server", "mcp_a", nil)
+	reg.Register(mcpTool)
+
+	local, mcp, gw := reg.partitionBySource()
+	if len(local) != 1 || local[0] != "local_a" {
+		t.Errorf("local = %v", local)
+	}
+	if len(mcp) != 1 || mcp[0] != "mcp_a" {
+		t.Errorf("mcp = %v", mcp)
+	}
+	if len(gw) != 0 {
+		t.Errorf("gw should be empty, got %v", gw)
+	}
+}
+
+func TestToolRegistry_BuildToolSchema(t *testing.T) {
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{
+		name:        "test_tool",
+		description: "A test tool",
+		params:      map[string]any{"type": "object", "properties": map[string]any{}},
+		required:    []string{"param1"},
+	})
+
+	schema := buildToolSchema(reg.All()[0])
+	if schema.Type != "function" {
+		t.Error("Schema type should be 'function'")
+	}
+	if schema.Function.Name != "test_tool" {
+		t.Errorf("Function name = %q", schema.Function.Name)
+	}
+}
+
+// NewMCPToolForTest creates a minimal MCP tool for registry testing.
+func NewMCPToolForTest(server, name string, mgr any) *mcpToolForTest {
+	return &mcpToolForTest{serverName: server, toolName: name}
+}
+
+type mcpToolForTest struct {
+	serverName string
+	toolName   string
+}
+
+func (t *mcpToolForTest) Info() ToolInfo {
+	return ToolInfo{Name: t.toolName, Description: "test mcp tool"}
+}
+func (t *mcpToolForTest) Run(ctx context.Context, args string) (ToolResult, error) {
+	return ToolResult{Content: "ok"}, nil
+}
+func (t *mcpToolForTest) RequiresApproval() bool { return false }
+func (t *mcpToolForTest) ToolSource() ToolSource { return SourceMCP }
 
 func TestErrorHelpers(t *testing.T) {
 	// TransientError

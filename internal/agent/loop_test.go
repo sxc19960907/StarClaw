@@ -220,18 +220,25 @@ func TestAgentLoop_TruncateResult(t *testing.T) {
 
 // MockTool for testing
 type MockTool struct {
-	name            string
-	description     string
+	name             string
+	description      string
 	requiresApproval bool
-	execute         func() ToolResult
+	execute          func() ToolResult
+	source           ToolSource
+	params           map[string]any
+	required         []string
 }
 
 func (m *MockTool) Info() ToolInfo {
+	params := m.params
+	if params == nil {
+		params = map[string]any{}
+	}
 	return ToolInfo{
 		Name:        m.name,
 		Description: m.description,
-		Parameters:  map[string]any{},
-		Required:    []string{},
+		Parameters:  params,
+		Required:    m.required,
 	}
 }
 
@@ -244,4 +251,11 @@ func (m *MockTool) Run(ctx context.Context, args string) (ToolResult, error) {
 
 func (m *MockTool) RequiresApproval() bool {
 	return m.requiresApproval
+}
+
+func (m *MockTool) ToolSource() ToolSource {
+	if m.source != "" {
+		return m.source
+	}
+	return SourceLocal
 }

@@ -36,6 +36,12 @@ type ToolSourcer interface {
 	ToolSource() ToolSource
 }
 
+// ToolSummary is a lightweight name+description pair for deferred tool listings.
+type ToolSummary struct {
+	Name        string
+	Description string
+}
+
 // ToolResult contains tool execution result
 type ToolResult struct {
 	Content       string

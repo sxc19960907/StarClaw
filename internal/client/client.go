@@ -37,6 +37,22 @@ type Usage struct {
 }
 
 // ToolDef defines a tool for the model
+// FunctionDef describes a tool function schema.
+type FunctionDef struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Parameters  map[string]any `json:"parameters"`
+}
+
+// Tool represents a complete tool definition (function or native).
+type Tool struct {
+	Type            string       `json:"type"`
+	Name            string       `json:"name,omitempty"`
+	Function        FunctionDef  `json:"function,omitempty"`
+	DisplayWidthPx  int          `json:"display_width_px,omitempty"`
+	DisplayHeightPx int          `json:"display_height_px,omitempty"`
+}
+
 type ToolDef struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
