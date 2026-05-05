@@ -16,6 +16,9 @@
 - 👤 **Named Agents** - Create specialized agent configurations with custom prompts
 - 🧩 **Skills System** - Activate domain-specific skills dynamically
 - 🔄 **Self-Update** - Built-in update mechanism with automatic checks
+- 🛡️ **Loop Detection** - Prevents AI from getting stuck in infinite tool-call loops
+- 🔁 **Auto-Retry** - Automatic retry with exponential backoff for transient API errors
+- 📦 **Spill to Disk** - Large tool results (>50KB) automatically saved to disk
 - 🔒 **Security First** - Path validation, approval dialogs, configurable tool allowlists
 - 💻 **Interactive TUI** - Beautiful terminal UI with Bubble Tea
 - 🚀 **One-Shot Mode** - Quick queries from command line or pipes
@@ -89,7 +92,7 @@ cat main.go | starclaw chat "Explain this code"
 
 ## Available Tools
 
-StarClaw provides 11 built-in tools for the AI agent:
+StarClaw provides 12 built-in tools for the AI agent:
 
 | Tool | Description | Requires Approval |
 |------|-------------|-------------------|
@@ -103,6 +106,7 @@ StarClaw provides 11 built-in tools for the AI agent:
 | `system_info` | Get system information | No |
 | `http` | Make HTTP requests | Yes |
 | `bash` | Execute shell commands | Yes |
+| `mcp_tool` | Invoke tools from MCP servers | Varies |
 | `use_skill` | Activate a skill by name | No |
 
 ## Configuration
@@ -472,19 +476,26 @@ go test ./...
 ## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   CLI/TUI   │────▶│  Agent Loop │────▶│  LLM Client │
-└─────────────┘     └─────────────┘     └─────────────┘
-                            │
-                            ▼
-                    ┌─────────────┐
-                    │ Tool System │
-                    │  - file_*   │
-                    │  - glob     │
-                    │  - grep     │
-                    │  - bash     │
-                    └─────────────┘
+┌──────────────┐     ┌──────────────────────────┐     ┌─────────────┐
+│   CLI / TUI  │────▶│       Agent Loop         │────▶│  LLM Client │
+└──────────────┘     │  · Loop Detection        │     └─────────────┘
+                     │  · Retry + Backoff       │
+                     │  · Spill to Disk         │
+                     │  · Read Tracker          │
+                     └────────────┬─────────────┘
+                                  │
+           ┌──────────────────────┼──────────────────────┐
+           ▼                      ▼                      ▼
+   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+   │  Local Tools │     │  MCP Client  │     │    Skills    │
+   │  · file_*    │     │  · stdio     │     │  · SKILL.md  │
+   │  · glob/grep │     │  · HTTP      │     │  · Frontmatter│
+   │  · bash      │     │  · Reconnect │     │  · Registry  │
+   │  · think     │     └──────────────┘     └──────────────┘
+   │  · http      │
+   └──────────────┘
 ```
+
 
 ## Contributing
 
