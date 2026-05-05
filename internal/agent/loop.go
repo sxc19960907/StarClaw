@@ -29,19 +29,21 @@ type LLMClient interface {
 
 // AgentLoop manages the conversation with the LLM
 type AgentLoop struct {
-	llmClient    LLMClient
-	registry     *ToolRegistry
-	maxIter      int
-	maxTokens    int
-	resultTrunc  int
-	handler      EventHandler
-	systemPrompt string
-	auditLogger  *audit.AuditLogger
-	sessionID    string
-	session      *session.Session
-	sessionMgr   *session.Manager
-	memory       string // agent memory content
-	memoryDir    string // directory for persistent memory
+	llmClient     LLMClient
+	registry      *ToolRegistry
+	maxIter       int
+	maxTokens     int
+	resultTrunc   int
+	handler       EventHandler
+	systemPrompt  string
+	auditLogger   *audit.AuditLogger
+	sessionID     string
+	session       *session.Session
+	sessionMgr    *session.Manager
+	memory        string // agent memory content
+	memoryDir     string // directory for persistent memory
+	configDir     string // starclaw config dir (~/.starclaw)
+	loopDetector  *LoopDetector
 }
 
 // NewAgentLoop creates a new agent loop
@@ -130,6 +132,21 @@ func (a *AgentLoop) SetMemoryDir(dir string) {
 	a.loadMemory()
 }
 
+// SetConfigDir sets the StarClaw config directory for spill and other features.
+func (a *AgentLoop) SetConfigDir(dir string) {
+	a.configDir = dir
+	a.loopDetector = NewLoopDetector()
+}
+
+// SpillCleanupFunc returns a function that cleans up spill files for the current session.
+func (a *AgentLoop) SpillCleanupFunc() func() {
+	return func() {
+		if a.configDir != "" && a.sessionID != "" {
+			cleanupSpills(a.configDir, a.sessionID)
+		}
+	}
+}
+
 func (a *AgentLoop) loadMemory() {
 	if a.memoryDir == "" {
 		return
@@ -175,8 +192,8 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 			effectivePrompt = effectivePrompt + "\n\n<agent_memory>\n" + a.memory + "\n</agent_memory>"
 		}
 
-		// Call LLM
-		resp, err := a.llmClient.Chat(ctx, effectivePrompt, messages, tools, a.maxTokens)
+		// Call LLM with retry
+		resp, err := a.chatWithRetry(ctx, effectivePrompt, messages, tools)
 		if err != nil {
 			return nil, fmt.Errorf("LLM error: %w", err)
 		}
@@ -217,6 +234,18 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 				Role:    "user",
 				Content: a.buildToolResultContent(toolUse, result),
 			})
+
+			// Loop detection: check after each tool execution
+			if a.loopDetector != nil {
+				action, msg := a.loopDetector.Check(toolUse.Name)
+				switch action {
+				case LoopNudge:
+					messages = append(messages, client.Message{Role: "user", Content: msg})
+				case LoopForceStop:
+					messages = append(messages, client.Message{Role: "user", Content: msg + "\n\nPlease provide your final answer now."})
+					// Fall through to return — handled by maxIter or next text-only response
+				}
+			}
 		}
 
 		// Update session after each turn and auto-save
@@ -271,13 +300,28 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 		}
 	}
 
-	// Truncate result if needed
-	if len(result.Content) > a.resultTrunc {
+	// Spill large results to disk
+	if len(result.Content) > spillThreshold && a.configDir != "" && a.sessionID != "" {
+		callID := toolUse.ID
+		if preview, err := spillToDisk(a.configDir, a.sessionID, callID, result.Content); err == nil {
+			result.Content = preview
+		}
+	} else if len(result.Content) > a.resultTrunc {
+		// Truncate result if needed
 		keepHead := a.resultTrunc * 3 / 4
 		keepTail := a.resultTrunc / 4
 		result.Content = result.Content[:keepHead] +
 			fmt.Sprintf("\n\n[... truncated %d chars ...]\n\n", len(result.Content)-a.resultTrunc) +
 			result.Content[len(result.Content)-keepTail:]
+	}
+
+	// Loop detection: record this tool call
+	if a.loopDetector != nil {
+		errMsg := ""
+		if result.IsError {
+			errMsg = result.Content
+		}
+		a.loopDetector.Record(toolUse.Name, string(toolUse.Input), result.IsError, errMsg, "")
 	}
 
 	// Audit log
@@ -341,4 +385,67 @@ func (a *AgentLoop) buildToolResultContent(toolUse client.ToolUse, result ToolRe
 
 	resultJSON, _ := json.Marshal(toolResult)
 	return string(resultJSON)
+}
+
+// chatWithRetry calls the LLM with retry+backoff for transient errors.
+func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef) (*client.Response, error) {
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		resp, err := a.llmClient.Chat(ctx, systemPrompt, messages, tools, a.maxTokens)
+		if err == nil {
+			return resp, nil
+		}
+
+		lastErr = err
+		if !isRetryableLLMError(err) || attempt >= maxRetries-1 {
+			break
+		}
+
+		backoff := time.Duration(1<<attempt) * time.Second // 1s, 2s, 4s
+		fmt.Fprintf(os.Stderr, "[agent] LLM call failed (attempt %d/%d), retrying in %v: %v\n", attempt+1, maxRetries, backoff, err)
+
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return nil, fmt.Errorf("LLM call cancelled: %w", ctx.Err())
+		}
+	}
+
+	return nil, fmt.Errorf("LLM call failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+// isRetryableLLMError returns true for transient errors that may succeed on retry.
+func isRetryableLLMError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	// Rate limits and server errors
+	if strings.Contains(s, "429") || strings.Contains(s, "rate limit") {
+		return true
+	}
+	if strings.Contains(s, "500") || strings.Contains(s, "502") || strings.Contains(s, "503") || strings.Contains(s, "504") {
+		return true
+	}
+	// Timeout and connection errors
+	if strings.Contains(s, "timeout") || strings.Contains(s, "deadline exceeded") {
+		return true
+	}
+	if strings.Contains(s, "connection reset") || strings.Contains(s, "connection refused") {
+		return true
+	}
+	if strings.Contains(s, "EOF") || strings.Contains(s, "broken pipe") {
+		return true
+	}
+	// Context cancellation is NOT retryable
+	if strings.Contains(s, "context canceled") || strings.Contains(s, "context deadline exceeded") {
+		return false
+	}
+	// Auth errors are NOT retryable
+	if strings.Contains(s, "401") || strings.Contains(s, "403") {
+		return false
+	}
+	return false
 }
