@@ -1,0 +1,32 @@
+{
+  "id": "daemon-module",
+  "name": "daemon-module",
+  "title": "实现 Daemon 后台服务模块",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-05-06",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-06-daemon-foundation",
+    "05-06-daemon-scheduler",
+    "05-06-daemon-runner",
+    "05-06-daemon-client",
+    "05-06-daemon-server"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

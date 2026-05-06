@@ -1,0 +1,140 @@
+package daemon
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"path/filepath"
+	"strings"
+
+	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/agents"
+	"github.com/starclaw/starclaw/internal/session"
+)
+
+// RunAgent executes an agent turn based on the request.
+// For named agents, loads the agent config and resumes its session.
+// For the default agent (empty Agent), creates a new session per run.
+// It runs the agent loop with the provided tools, saves the session
+// after completion, and forwards events (tool calls, results, text)
+// to the handler.
+func RunAgent(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handler agent.EventHandler) (RunAgentResponse, error) {
+	// --- Validation ---
+	if strings.TrimSpace(req.Text) == "" {
+		return RunAgentResponse{}, fmt.Errorf("text is required")
+	}
+	if deps == nil {
+		return RunAgentResponse{}, fmt.Errorf("deps is required")
+	}
+	if deps.LLMClient == nil {
+		return RunAgentResponse{}, fmt.Errorf("LLMClient not configured in deps")
+	}
+	if deps.Registry == nil {
+		return RunAgentResponse{}, fmt.Errorf("Registry not configured in deps")
+	}
+
+	// --- Agent resolution ---
+	agentName := strings.TrimSpace(req.Agent)
+	var agentCfg *agents.Agent
+	if agentName != "" {
+		var err error
+		agentCfg, err = agents.LoadAgent(deps.AgentsDir, agentName)
+		if err != nil {
+			return RunAgentResponse{}, fmt.Errorf("failed to load agent %q: %w", agentName, err)
+		}
+	}
+
+	// --- Session setup ---
+	sessionsDir := sessionsDirFor(deps, agentName)
+	sessMgr := session.NewManager(sessionsDir)
+
+	var sess *session.Session
+	switch {
+	case req.SessionID != "":
+		// Resume a specific session by ID.
+		if _, err := sessMgr.Resume(req.SessionID); err != nil {
+			return RunAgentResponse{}, fmt.Errorf("session not found: %s", req.SessionID)
+		}
+		sess = sessMgr.Current()
+	case req.NewSession:
+		// Force a new session.
+		sess = sessMgr.NewSession()
+	case agentName != "":
+		// Named agent: try to resume the latest session so conversations
+		// persist across runs. Fall back to a new session on first run.
+		if _, err := sessMgr.ResumeLatest(); err != nil || sessMgr.Current() == nil {
+			sess = sessMgr.NewSession()
+		} else {
+			sess = sessMgr.Current()
+		}
+	default:
+		// Default agent: always create a new session.
+		sess = sessMgr.NewSession()
+	}
+	if sess == nil {
+		return RunAgentResponse{}, fmt.Errorf("failed to initialize session")
+	}
+
+	// If this is a named agent and the session is new, set a descriptive title.
+	if agentName != "" && sess.Title == "New session" {
+		sess.Title = "Agent: " + agentName
+	}
+
+	// --- Build system prompt ---
+	systemPrompt := ""
+	if agentCfg != nil && agentCfg.Prompt != "" {
+		systemPrompt = agentCfg.Prompt
+	}
+
+	// --- Create and configure agent loop ---
+	loop := agent.NewAgentLoop(deps.LLMClient, deps.Registry)
+	if systemPrompt != "" {
+		loop.SetSystemPrompt(systemPrompt)
+	}
+	loop.SetSession(sess)
+	loop.SetSessionManager(sessMgr)
+	if handler != nil {
+		loop.SetEventHandler(handler)
+	}
+
+	// --- Run the agent loop ---
+	resp, runErr := loop.Run(ctx, req.Text)
+
+	// --- Save session after completion ---
+	if saveErr := sessMgr.Save(); saveErr != nil {
+		log.Printf("daemon: failed to save session: %v", saveErr)
+	}
+
+	// --- Build response ---
+	response := RunAgentResponse{
+		SessionID: sess.ID,
+	}
+	if resp != nil {
+		if resp.Content != "" {
+			response.Messages = []string{resp.Content}
+		}
+		if resp.Usage.InputTokens > 0 || resp.Usage.OutputTokens > 0 {
+			response.Usage = map[string]int{
+				"input_tokens":  resp.Usage.InputTokens,
+				"output_tokens": resp.Usage.OutputTokens,
+				"total_tokens":  resp.Usage.InputTokens + resp.Usage.OutputTokens,
+			}
+		}
+	}
+	if runErr != nil {
+		response.Error = runErr.Error()
+	}
+
+	return response, nil
+}
+
+// sessionsDirFor returns the directory for session storage under the given
+// daemon server dependencies. Named agents get a subdirectory so their
+// sessions are isolated from the default agent's sessions.
+func sessionsDirFor(deps *ServerDeps, agentName string) string {
+	base := filepath.Join(deps.StarclawDir, "sessions")
+	if agentName != "" {
+		return filepath.Join(base, agentName)
+	}
+	return base
+}
