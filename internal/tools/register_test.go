@@ -27,6 +27,7 @@ func TestRegisterLocalTools(t *testing.T) {
 		"http",
 		"bash",
 		"memory_append",
+		"wait",
 		"use_skill",
 	}
 

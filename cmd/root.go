@@ -146,6 +146,7 @@ func runChat(cfg *config.Config, query string) error {
 
 	// Create tool registry
 	registry := tools.RegisterLocalTools()
+	tools.RegisterVersionTool(registry, Version)
 
 	// Create agent loop
 	loop := agent.NewAgentLoop(llmClient, registry)
@@ -168,6 +169,7 @@ func runChat(cfg *config.Config, query string) error {
 	}
 	sessionsDir := filepath.Join(baseDir, "sessions")
 	sessionMgr := session.NewManager(sessionsDir)
+	tools.RegisterSessionSearch(registry, sessionMgr)
 
 	// Determine which session to use
 	var sess *session.Session
@@ -404,6 +406,7 @@ var interactiveCmd = &cobra.Command{
 
 		// Create tool registry
 		registry := tools.RegisterLocalTools()
+		tools.RegisterVersionTool(registry, Version)
 
 		// Create agent loop
 		loop := agent.NewAgentLoop(llmClient, registry)

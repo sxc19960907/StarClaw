@@ -4,6 +4,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/mcp"
+	"github.com/starclaw/starclaw/internal/session"
 )
 
 // RegisterLocalTools registers all local tools
@@ -35,6 +36,9 @@ func RegisterLocalTools() *agent.ToolRegistry {
 	// Memory tool
 	reg.Register(&MemoryAppendTool{})
 
+	// Wait tool
+	reg.Register(&WaitTool{})
+
 	// Skills tool
 	skillsDir := config.StarclawDir()
 	if skillsDir != "" {
@@ -43,6 +47,19 @@ func RegisterLocalTools() *agent.ToolRegistry {
 	reg.Register(NewUseSkillTool(skillsDir))
 
 	return reg
+}
+
+// RegisterVersionTool registers the version tool with the build version.
+func RegisterVersionTool(reg *agent.ToolRegistry, version string) {
+	reg.Register(NewVersionTool(version))
+}
+
+// RegisterSessionSearch registers the session search tool.
+func RegisterSessionSearch(reg *agent.ToolRegistry, mgr interface{}) {
+	// Import cycle avoidance: session.Manager is wired via concrete type check
+	if sm, ok := mgr.(*session.Manager); ok {
+		reg.Register(NewSessionSearchTool(sm))
+	}
 }
 
 // RegisterMCPTools registers MCP remote tools in the tool registry.
