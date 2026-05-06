@@ -191,6 +191,11 @@ func (a *AgentLoop) loadMemory() {
 
 // Run executes the agent loop with the given query
 func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, error) {
+	// Inject memory directory into context for memory_append tool
+	if a.memoryDir != "" {
+		ctx = ctxwin.WithMemoryDir(ctx, a.memoryDir)
+	}
+
 	// Initialize messages from session if resuming, or start fresh
 	messages := []client.Message{}
 	if a.session != nil {

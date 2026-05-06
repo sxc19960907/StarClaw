@@ -32,6 +32,9 @@ func RegisterLocalTools() *agent.ToolRegistry {
 	// System tools
 	reg.Register(&BashTool{})
 
+	// Memory tool
+	reg.Register(&MemoryAppendTool{})
+
 	// Skills tool
 	skillsDir := config.StarclawDir()
 	if skillsDir != "" {
