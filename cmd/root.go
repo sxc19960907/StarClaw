@@ -153,6 +153,7 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 	loop.SetConfigDir(config.StarclawDir())
 	loop.SetContextWindow(cfg.Agent.ContextWindow)
+	loop.SetPermissions(cfg.Permissions)
 
 	// Set up session management (agent-scoped or global)
 	var baseDir string
@@ -407,6 +408,7 @@ var interactiveCmd = &cobra.Command{
 		loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 		loop.SetConfigDir(config.StarclawDir())
 	loop.SetContextWindow(cfg.Agent.ContextWindow)
+	loop.SetPermissions(cfg.Permissions)
 
 		// Set up session management (agent-scoped or global)
 		var baseDir string

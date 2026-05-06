@@ -12,6 +12,7 @@ import (
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	ctxwin "github.com/starclaw/starclaw/internal/context"
+	"github.com/starclaw/starclaw/internal/permissions"
 	"github.com/starclaw/starclaw/internal/session"
 )
 
@@ -45,7 +46,8 @@ type AgentLoop struct {
 	memoryDir     string // directory for persistent memory
 	configDir     string // starclaw config dir (~/.starclaw)
 	loopDetector  *LoopDetector
-	contextWindow int    // max context window in tokens (0 = disabled)
+	contextWindow int                  // max context window in tokens (0 = disabled)
+	permsConfig   *permissions.Config  // tool permission rules
 }
 
 // NewAgentLoop creates a new agent loop
@@ -143,6 +145,11 @@ func (a *AgentLoop) SetConfigDir(dir string) {
 // SetContextWindow sets the context window size in tokens (0 = disabled).
 func (a *AgentLoop) SetContextWindow(tokens int) {
 	a.contextWindow = tokens
+}
+
+// SetPermissions sets the tool permission rules for this loop.
+func (a *AgentLoop) SetPermissions(cfg *permissions.Config) {
+	a.permsConfig = cfg
 }
 
 // SpillCleanupFunc returns a function that cleans up spill files for the current session.
@@ -329,6 +336,14 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 	tool, ok := a.registry.Get(toolUse.Name)
 	if !ok {
 		return ValidationError(fmt.Sprintf("unknown tool: %s", toolUse.Name))
+	}
+
+	// Permission check
+	if a.permsConfig != nil {
+		decision, reason := permissions.CheckToolCall(toolUse.Name, string(toolUse.Input), a.permsConfig)
+		if decision == permissions.Deny {
+			return PermissionError(fmt.Sprintf("%s: blocked (%s)", toolUse.Name, reason))
+		}
 	}
 
 	// Report tool call
