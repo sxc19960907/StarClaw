@@ -4,6 +4,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/mcp"
+	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 )
 
@@ -45,6 +46,15 @@ func RegisterLocalTools() *agent.ToolRegistry {
 		skillsDir = skillsDir + "/skills"
 	}
 	reg.Register(NewUseSkillTool(skillsDir))
+
+	// Schedule tools
+	starclawDir := config.StarclawDir()
+	if starclawDir != "" {
+		scheduleMgr := schedule.NewManager(starclawDir + "/schedules.json")
+		for _, t := range NewScheduleTools(scheduleMgr) {
+			reg.Register(t)
+		}
+	}
 
 	return reg
 }

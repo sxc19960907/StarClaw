@@ -29,6 +29,10 @@ func TestRegisterLocalTools(t *testing.T) {
 		"memory_append",
 		"wait",
 		"use_skill",
+		"schedule_create",
+		"schedule_list",
+		"schedule_update",
+		"schedule_remove",
 	}
 
 	if reg.Count() != len(expectedTools) {
