@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/starclaw/starclaw/internal/hooks"
 	"github.com/starclaw/starclaw/internal/mcp"
 	"github.com/starclaw/starclaw/internal/permissions"
 	"gopkg.in/yaml.v3"
@@ -27,6 +28,7 @@ type Config struct {
 	MCPServers map[string]mcp.MCPServerConfig `mapstructure:"mcp_servers" yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 	Update      UpdateConfig                 `mapstructure:"update" yaml:"update,omitempty" json:"update,omitempty"`
 	Permissions *permissions.Config          `mapstructure:"permissions" yaml:"permissions,omitempty" json:"permissions,omitempty"`
+	Hooks       *hooks.Config                `mapstructure:"hooks" yaml:"hooks,omitempty" json:"hooks,omitempty"`
 }
 
 // AgentConfig holds agent-specific settings

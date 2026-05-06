@@ -14,6 +14,7 @@ import (
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/hooks"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/tools"
 	"github.com/starclaw/starclaw/internal/tui"
@@ -154,6 +155,9 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetConfigDir(config.StarclawDir())
 	loop.SetContextWindow(cfg.Agent.ContextWindow)
 	loop.SetPermissions(cfg.Permissions)
+	if cfg.Hooks != nil {
+		loop.SetHookRunner(hooks.NewRunner(*cfg.Hooks))
+	}
 
 	// Set up session management (agent-scoped or global)
 	var baseDir string
@@ -409,6 +413,9 @@ var interactiveCmd = &cobra.Command{
 		loop.SetConfigDir(config.StarclawDir())
 	loop.SetContextWindow(cfg.Agent.ContextWindow)
 	loop.SetPermissions(cfg.Permissions)
+	if cfg.Hooks != nil {
+		loop.SetHookRunner(hooks.NewRunner(*cfg.Hooks))
+	}
 
 		// Set up session management (agent-scoped or global)
 		var baseDir string

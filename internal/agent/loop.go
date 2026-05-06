@@ -12,6 +12,7 @@ import (
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	ctxwin "github.com/starclaw/starclaw/internal/context"
+	"github.com/starclaw/starclaw/internal/hooks"
 	"github.com/starclaw/starclaw/internal/permissions"
 	"github.com/starclaw/starclaw/internal/session"
 )
@@ -48,6 +49,7 @@ type AgentLoop struct {
 	loopDetector  *LoopDetector
 	contextWindow int                  // max context window in tokens (0 = disabled)
 	permsConfig   *permissions.Config  // tool permission rules
+	hookRunner    *hooks.Runner        // lifecycle hook runner
 }
 
 // NewAgentLoop creates a new agent loop
@@ -150,6 +152,11 @@ func (a *AgentLoop) SetContextWindow(tokens int) {
 // SetPermissions sets the tool permission rules for this loop.
 func (a *AgentLoop) SetPermissions(cfg *permissions.Config) {
 	a.permsConfig = cfg
+}
+
+// SetHookRunner sets the lifecycle hook runner for this loop.
+func (a *AgentLoop) SetHookRunner(runner *hooks.Runner) {
+	a.hookRunner = runner
 }
 
 // SpillCleanupFunc returns a function that cleans up spill files for the current session.
@@ -346,6 +353,13 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 		}
 	}
 
+	// Pre-tool hook
+	if a.hookRunner != nil {
+		if decision, reason := a.hookRunner.RunPreToolUse(ctx, toolUse.Name, string(toolUse.Input), a.sessionID); decision == "deny" {
+			return PermissionError(fmt.Sprintf("%s: hook denied (%s)", toolUse.Name, reason))
+		}
+	}
+
 	// Report tool call
 	if a.handler != nil {
 		a.handler.OnToolCall(toolUse.Name, string(toolUse.Input))
@@ -404,6 +418,11 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 	// Report tool result
 	if a.handler != nil {
 		a.handler.OnToolResult(toolUse.Name, result)
+	}
+
+	// Post-tool hook
+	if a.hookRunner != nil {
+		a.hookRunner.RunPostToolUse(ctx, toolUse.Name, string(toolUse.Input), result.Content, a.sessionID)
 	}
 
 	return result
