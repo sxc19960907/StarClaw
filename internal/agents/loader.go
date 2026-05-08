@@ -34,6 +34,14 @@ type AgentConfig struct {
 	Tools       *AgentToolsFilter `yaml:"tools,omitempty"`
 	Agent       *AgentModelConfig `yaml:"agent,omitempty"`
 	AutoApprove *bool             `yaml:"auto_approve,omitempty"`
+	Heartbeat   *HeartbeatConfig  `yaml:"heartbeat,omitempty" json:"heartbeat,omitempty"`
+}
+
+// HeartbeatConfig configures periodic heartbeat checks for an agent.
+type HeartbeatConfig struct {
+	Every       string `yaml:"every" json:"every"`
+	ActiveHours string `yaml:"active_hours,omitempty" json:"active_hours,omitempty"`
+	Model       string `yaml:"model,omitempty" json:"model,omitempty"`
 }
 
 // Agent represents a loaded agent definition.
