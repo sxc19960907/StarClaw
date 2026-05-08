@@ -170,3 +170,36 @@ Added starclaw daemon start/stop/status (HTTP server + cron scheduler) and starc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Add 14 bundled skills
+
+**Date**: 2026-05-08
+**Task**: Add 14 bundled skills
+**Branch**: `main`
+
+### Summary
+
+Copied 14 built-in skills from upstream: algorithmic-art, brand-guidelines, canvas-design, claude-api, doc-coauthoring, frontend-design, internal-comms, mcp-builder, skill-creator, slack-gif-creator, theme-factory, web-artifacts-builder, webapp-testing. 188 files, 23,156 lines. Pure file copy, no code changes needed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `80d7ea4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
