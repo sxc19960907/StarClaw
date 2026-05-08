@@ -3,13 +3,16 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/session"
 )
 
 // State represents the TUI state
@@ -55,6 +58,18 @@ type Model struct {
 	width        int
 	height       int
 
+	// Startup header animation
+	headerFrame    int
+	headerDone     bool
+	headerSessions []session.SessionSummary
+	headerTipIdx   int
+	headerCWD      string
+
+	// Tool result tracking
+	lastToolResults []toolResultEntry
+	toolExpandLevel int
+	processingStartTime time.Time
+
 	// Styling
 	userStyle      lipgloss.Style
 	assistantStyle lipgloss.Style
@@ -76,6 +91,8 @@ func NewModel(loop *agent.AgentLoop) *Model {
 		textarea: ta,
 		state:    StateIdle,
 		messages: make([]Message, 0),
+		// Header animation disabled by default (enabled in Init)
+		headerDone: true,
 		userStyle: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("6")).
 			Bold(true),
@@ -98,11 +115,46 @@ func NewModel(loop *agent.AgentLoop) *Model {
 
 // Init initializes the model
 func (m *Model) Init() tea.Cmd {
-	return textarea.Blink
+	// Start header animation
+	m.headerFrame = 0
+	m.headerDone = false
+	m.headerSessions = nil
+	m.headerTipIdx = pickTipIdx()
+	m.headerCWD, _ = os.Getwd()
+	return tea.Batch(
+		textarea.Blink,
+		headerFrameTick(),
+	)
 }
 
 // Update handles messages
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle header animation early return
+	if !m.headerDone {
+		switch msg := msg.(type) {
+		case headerTickMsg:
+			m.headerFrame++
+			if m.headerFrame >= headerTotalFrames {
+				m.headerDone = true
+			}
+			return m, headerFrameTick()
+		case tea.WindowSizeMsg:
+			m.width = msg.Width
+			m.height = msg.Height
+			m.textarea.SetWidth(msg.Width - 4)
+			return m, nil
+		case tea.KeyMsg:
+			// Skip animation on any key except Ctrl+C/Q
+			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyCtrlQ {
+				return m, tea.Quit
+			}
+			m.headerDone = true
+			return m, nil
+		default:
+			return m, nil
+		}
+	}
+
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -161,6 +213,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.processToolResponse(false)
 				}
 			}
+		}
+
+		// Ctrl+O: expand tool results (shows detailed args/result)
+		if msg.String() == "ctrl+o" && len(m.lastToolResults) > 0 && m.toolExpandLevel == 0 {
+			for _, r := range m.lastToolResults {
+				expanded := formatExpandedToolResult(r.name, r.args, r.isError, r.content, r.elapsed)
+				m.messages = append(m.messages, Message{
+					Role:    "system",
+					Content: expanded,
+				})
+			}
+			m.toolExpandLevel = 1
+			return m, nil
 		}
 
 		// Update textarea
@@ -229,6 +294,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() string {
 	var b strings.Builder
 
+	// Show startup header animation during initialization
+	if !m.headerDone {
+		width := m.width
+		if width <= 0 {
+			width = 80
+		}
+		b.WriteString(renderStartupHeader(m.headerFrame, width, "dev", "small", "", m.headerCWD, m.headerSessions, m.headerTipIdx))
+		return b.String()
+	}
+
 	// Title
 	title := lipgloss.NewStyle().
 		Bold(true).
@@ -277,7 +352,8 @@ func (m *Model) renderMessage(msg Message) string {
 	case "user":
 		return m.userStyle.Render("You: ") + msg.Content
 	case "assistant":
-		return m.assistantStyle.Render("Assistant: ") + msg.Content
+		rendered := renderMarkdown(msg.Content, m.width)
+		return m.assistantStyle.Render("Assistant: ") + rendered
 	case "system":
 		if msg.ToolCall != nil {
 			return m.renderToolCall(msg.ToolCall)
@@ -290,24 +366,11 @@ func (m *Model) renderMessage(msg Message) string {
 
 // renderToolCall renders a tool call
 func (m *Model) renderToolCall(tool *ToolCallInfo) string {
-	var b strings.Builder
-
-	b.WriteString(m.toolStyle.Render(fmt.Sprintf("🔧 Tool: %s", tool.Name)))
-	if tool.Args != "" {
-		b.WriteString(m.systemStyle.Render(fmt.Sprintf("  Args: %s", truncate(tool.Args, 80))))
-	}
-
 	if tool.Result != "" {
-		if tool.Error {
-			b.WriteString("\n")
-			b.WriteString(m.errorStyle.Render(fmt.Sprintf("   ❌ Error: %s", truncate(tool.Result, 100))))
-		} else {
-			b.WriteString("\n")
-			b.WriteString(m.systemStyle.Render("   ✅ Done"))
-		}
+		return formatCompactToolResult(tool.Name, tool.Args, tool.Error, tool.Result, 0)
 	}
-
-	return b.String()
+	// Pending tool call
+	return m.toolStyle.Render(fmt.Sprintf("⏵ %s(%s)", tool.Name, toolKeyArg(tool.Name, tool.Args)))
 }
 
 // renderApprovalDialog renders the approval dialog
@@ -315,6 +378,7 @@ func (m *Model) renderApprovalDialog() string {
 	var b strings.Builder
 
 	b.WriteString("\n")
+	keyArg := toolKeyArg(m.pendingTool.Name, m.pendingTool.Args)
 	b.WriteString(lipgloss.NewStyle().
 		Border(lipgloss.DoubleBorder()).
 		BorderForeground(lipgloss.Color("3")).
@@ -322,7 +386,7 @@ func (m *Model) renderApprovalDialog() string {
 		Render(
 			m.toolStyle.Render("⚠️  Tool Approval Required\n\n") +
 			fmt.Sprintf("Tool: %s\n", m.pendingTool.Name) +
-			fmt.Sprintf("Args: %s\n\n", truncate(m.pendingTool.Args, 100)) +
+			fmt.Sprintf("Args: %s\n\n", keyArg) +
 			"Approve? [Y/n] (or Ctrl+Y to auto-approve all)",
 		))
 
@@ -387,6 +451,20 @@ func (h *TUIEventHandler) OnToolResult(name string, result agent.ToolResult) {
 	if h.model.pendingTool != nil {
 		h.model.pendingTool.Result = result.Content
 		h.model.pendingTool.Error = result.IsError
+
+		// Track tool result for expandable display
+		entry := toolResultEntry{
+			name:    name,
+			args:    h.model.pendingTool.Args,
+			content: result.Content,
+			isError: result.IsError,
+			elapsed: 0,
+		}
+		h.model.lastToolResults = append(h.model.lastToolResults, entry)
+		if len(h.model.lastToolResults) > 20 {
+			h.model.lastToolResults = h.model.lastToolResults[1:]
+		}
+		h.model.toolExpandLevel = 0
 	}
 }
 
@@ -416,6 +494,18 @@ type toolResultMsg struct {
 type usageMsg struct {
 	input  int
 	output int
+}
+
+// headerTickMsg advances the startup header animation by one frame.
+type headerTickMsg struct{}
+
+// toolResultEntry stores a single tool result for display.
+type toolResultEntry struct {
+	name    string
+	args    string
+	content string
+	isError bool
+	elapsed time.Duration
 }
 
 // truncate truncates a string
