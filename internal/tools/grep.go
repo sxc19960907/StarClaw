@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,23 +15,28 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 )
 
+// grepVCSDirs lists version control directories to skip when using ripgrep.
+var grepVCSDirs = []string{".git", ".svn", ".hg", ".bzr", ".jj", ".sl"}
+
 // GrepTool searches file contents with regex
 type GrepTool struct{}
 
 type grepArgs struct {
 	Pattern string `json:"pattern"`
 	Path    string `json:"path,omitempty"`
+	Glob    string `json:"glob,omitempty"`
 }
 
 func (t *GrepTool) Info() agent.ToolInfo {
 	return agent.ToolInfo{
 		Name:        "grep",
-		Description: "Search file contents with regex pattern. Returns matching lines with file names and line numbers.",
+		Description: "Search file contents with regex pattern. Returns matching lines with file names and line numbers. Uses ripgrep (rg) when available for faster searching with glob filtering support.",
 		Parameters: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"pattern": map[string]any{"type": "string", "description": "Regex pattern to search for"},
 				"path":    map[string]any{"type": "string", "description": "Directory or file to search (default: current directory)"},
+				"glob":    map[string]any{"type": "string", "description": "File glob filter (e.g. '*.csv', '*.txt', '*.go'). Only honored with rg; ignored on grep fallback."},
 			},
 		},
 		Required: []string{"pattern"},
@@ -49,6 +55,69 @@ func (t *GrepTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, 
 
 	args.Path = ExpandHome(args.Path)
 
+	// Try ripgrep first for better performance and features
+	if bin, err := exec.LookPath("rg"); err == nil {
+		return t.searchWithRG(ctx, bin, args)
+	}
+
+	// Fall back to native Go grep when rg is not available
+	return t.searchNative(args)
+}
+
+// searchWithRG runs ripgrep with enhanced flags.
+func (t *GrepTool) searchWithRG(ctx context.Context, bin string, args grepArgs) (agent.ToolResult, error) {
+	var cmdArgs []string
+
+	// Include hidden files in search
+	cmdArgs = append(cmdArgs, "--hidden")
+
+	// Skip VCS directories to avoid noise and performance issues.
+	// Add both the directory itself and anything inside it.
+	for _, dir := range grepVCSDirs {
+		cmdArgs = append(cmdArgs, "--glob", "!"+dir, "--glob", "!"+dir+"/**")
+	}
+
+	// Prevent long lines (minified/base64) from dominating output
+	cmdArgs = append(cmdArgs, "--max-columns", "500")
+
+	// Sort by modification time for better result ordering
+	cmdArgs = append(cmdArgs, "--sort", "modified")
+
+	// Show line numbers
+	cmdArgs = append(cmdArgs, "-n")
+
+	// Glob filter
+	if args.Glob != "" {
+		cmdArgs = append(cmdArgs, "--glob", args.Glob)
+	}
+
+	cmdArgs = append(cmdArgs, args.Pattern)
+	cmdArgs = append(cmdArgs, args.Path)
+
+	cmd := exec.CommandContext(ctx, bin, cmdArgs...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		// rg exits with code 1 when no matches found
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return agent.ToolResult{Content: "No matches found."}, nil
+		}
+		return agent.ToolResult{
+			Content: fmt.Sprintf("search error: %v\n%s", err, strings.TrimSpace(string(output))),
+			IsError: true,
+		}, nil
+	}
+
+	result := strings.TrimSpace(string(output))
+	if result == "" {
+		return agent.ToolResult{Content: "No matches found."}, nil
+	}
+
+	return agent.ToolResult{Content: result}, nil
+}
+
+// searchNative uses Go-native file walking and regexp matching when rg is not available.
+func (t *GrepTool) searchNative(args grepArgs) (agent.ToolResult, error) {
 	// Compile regex
 	re, err := regexp.Compile(args.Pattern)
 	if err != nil {

@@ -303,6 +303,10 @@ func (h *CLIEventHandler) OnStreamDelta(delta string) {
 	fmt.Print(delta)
 }
 
+func (h *CLIEventHandler) OnPreamble(preamble string) {
+	// No-op for CLI
+}
+
 // buildSystemPrompt builds the system prompt with tool descriptions
 func buildSystemPrompt(registry *agent.ToolRegistry) string {
 	var sb strings.Builder

@@ -56,7 +56,29 @@ func buildSystem(opts Options) string {
 		sb.WriteString("No tools are available.")
 	}
 
-	// 3. Available skills
+	// 3. Communicating with user
+	sb.WriteString("\n\n## Text output\n")
+	sb.WriteString("Assume users can't see most tool calls or thinking — only your text output. " +
+		"Before your first tool call, state in one sentence what you're about to do. " +
+		"While working, give short updates at key moments: when you find something, " +
+		"when you change direction, or when you hit a blocker. " +
+		"Brief is good — silent is not. One sentence per update is almost always enough.\n\n" +
+		"Don't narrate your internal deliberation. User-facing text should be relevant " +
+		"communication to the user, not a running commentary on your thought process. " +
+		"State results and decisions directly, and focus user-facing text on relevant updates for the user.\n\n" +
+		"When you do write updates, write so the reader can pick up cold: complete sentences, " +
+		"no unexplained jargon or shorthand from earlier in the session. " +
+		"But keep it tight — a clear sentence is better than a clear paragraph.\n\n" +
+		"For routine task-completion summaries, use one or two sentences: what changed and what's next. " +
+		"Do not add extra wrap-up prose when the user asked for a richer answer.\n\n" +
+		"Don't open with conversational interjections like \"Done!\", \"Got it\", \"Sure\", or \"Great question\" — " +
+		"lead with the substance (\"Reading the four files in parallel.\") instead.\n\n" +
+		"Avoid markdown headers, tables, and heavy formatting in updates, since some channels strip rich text.\n\n" +
+		"Do not use a colon before a tool call. " +
+		"Text like \"Let me read the file:\" followed immediately by a tool_use block must be written as " +
+		"\"Let me read the file.\" with a period — the trailing colon implies inline content that never arrives.")
+
+	// 4. Available skills
 	if len(opts.SkillNames) > 0 {
 		sb.WriteString("\n\n## Available Skills\n")
 		sb.WriteString("You can activate a skill by calling `use_skill` with the skill name.\n")

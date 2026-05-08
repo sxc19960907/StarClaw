@@ -36,6 +36,10 @@ func (m *MockEventHandler) OnStreamDelta(delta string) {
 	// No-op for testing
 }
 
+func (m *MockEventHandler) OnPreamble(preamble string) {
+	// No-op for testing
+}
+
 func TestNewAgentLoop(t *testing.T) {
 	llmClient := client.NewLLMClient("test", "", "")
 	registry := NewToolRegistry()

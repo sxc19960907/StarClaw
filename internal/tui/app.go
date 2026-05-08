@@ -480,6 +480,10 @@ func (h *TUIEventHandler) OnStreamDelta(delta string) {
 	// Streamed text handling for TUI (to be implemented)
 }
 
+func (h *TUIEventHandler) OnPreamble(preamble string) {
+	// No-op for TUI
+}
+
 // Message types for tea.Cmd
 type agentMessage string
 type streamingMsg string

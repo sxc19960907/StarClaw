@@ -55,6 +55,10 @@ func (h *mockHandler) OnStreamDelta(delta string) {
 	// No-op for testing
 }
 
+func (h *mockHandler) OnPreamble(preamble string) {
+	// No-op for testing
+}
+
 func TestRunAgent_DefaultAgent(t *testing.T) {
 	ctx := context.Background()
 

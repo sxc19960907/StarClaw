@@ -160,6 +160,7 @@ func (h *scheduleEventHandler) OnToolResult(name string, result agent.ToolResult
 func (h *scheduleEventHandler) OnText(text string)            {}
 func (h *scheduleEventHandler) OnUsage(usage client.Usage)    {}
 func (h *scheduleEventHandler) OnStreamDelta(delta string)    {}
+func (h *scheduleEventHandler) OnPreamble(preamble string)  {}
 
 // cronIsDue evaluates a 5-field cron expression against the given time.
 // This is a minimal implementation that supports:

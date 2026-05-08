@@ -25,6 +25,7 @@ type EventHandler interface {
 	OnText(text string)
 	OnUsage(usage client.Usage)
 	OnStreamDelta(delta string)
+	OnPreamble(preamble string)
 }
 
 // LLMClient defines the interface for LLM clients
