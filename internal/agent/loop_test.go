@@ -32,6 +32,10 @@ func (m *MockEventHandler) OnUsage(usage client.Usage) {
 	m.usages = append(m.usages, usage)
 }
 
+func (m *MockEventHandler) OnStreamDelta(delta string) {
+	// No-op for testing
+}
+
 func TestNewAgentLoop(t *testing.T) {
 	llmClient := client.NewLLMClient("test", "", "")
 	registry := NewToolRegistry()

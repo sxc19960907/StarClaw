@@ -58,7 +58,7 @@ func (m *MockClient) SetHandler(handler func(input string) *MockMessage) {
 }
 
 // Chat implements the LLMClient interface
-func (m *MockClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int) (*Response, error) {
+func (m *MockClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions) (*Response, error) {
 	m.callCount++
 	m.lastMessages = messages
 	m.lastTools = tools

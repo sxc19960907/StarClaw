@@ -1,0 +1,29 @@
+{
+  "id": "thinking-mode-config",
+  "name": "thinking-mode-config",
+  "title": "实现 Thinking Mode 和配置扩展",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-05-08",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-08-thinking-config-client",
+    "05-08-thinking-agent-loop"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

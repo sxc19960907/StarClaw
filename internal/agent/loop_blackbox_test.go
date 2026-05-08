@@ -25,7 +25,7 @@ type blackboxResponse struct {
 
 var _ LLMClient = (*blackboxMockClient)(nil)
 
-func (m *blackboxMockClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int) (*client.Response, error) {
+func (m *blackboxMockClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
 	if m.callCount >= len(m.responses) {
 		return &client.Response{Content: "Final answer.", Usage: client.Usage{InputTokens: 10, OutputTokens: 5}}, nil
 	}

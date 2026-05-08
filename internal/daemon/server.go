@@ -806,6 +806,7 @@ func (h *httpEventHandler) OnToolResult(name string, result agent.ToolResult) {
 }
 func (h *httpEventHandler) OnText(text string)            {}
 func (h *httpEventHandler) OnUsage(usage client.Usage) {}
+func (h *httpEventHandler) OnStreamDelta(delta string) {}
 
 // sseEventHandler streams agent events as SSE to an HTTP response.
 type sseEventHandler struct {
@@ -837,6 +838,10 @@ func (h *sseEventHandler) OnText(text string) {
 
 func (h *sseEventHandler) OnUsage(usage client.Usage) {
 	// Usage is reported via the final "done" event; no per-event emission needed.
+}
+
+func (h *sseEventHandler) OnStreamDelta(delta string) {
+	// Stream deltas are not yet emitted via SSE; reserved for future use.
 }
 
 // ---------------------------------------------------------------------------

@@ -15,7 +15,7 @@ type mockLLMClient struct {
 	t *testing.T
 }
 
-func (m *mockLLMClient) Chat(_ context.Context, systemPrompt string, messages []client.Message, _ []client.ToolDef, maxTokens int) (*client.Response, error) {
+func (m *mockLLMClient) Chat(_ context.Context, systemPrompt string, messages []client.Message, _ []client.ToolDef, maxTokens int, _ *client.ChatOptions) (*client.Response, error) {
 	return &client.Response{
 		Content: "This is a mock response.",
 		Usage: client.Usage{
@@ -49,6 +49,10 @@ func (h *mockHandler) OnText(text string) {
 
 func (h *mockHandler) OnUsage(usage client.Usage) {
 	h.usages++
+}
+
+func (h *mockHandler) OnStreamDelta(delta string) {
+	// No-op for testing
 }
 
 func TestRunAgent_DefaultAgent(t *testing.T) {

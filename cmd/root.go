@@ -298,6 +298,11 @@ func (h *CLIEventHandler) OnUsage(usage client.Usage) {
 	// Usage is printed at the end
 }
 
+func (h *CLIEventHandler) OnStreamDelta(delta string) {
+	// Streamed text is printed inline
+	fmt.Print(delta)
+}
+
 // buildSystemPrompt builds the system prompt with tool descriptions
 func buildSystemPrompt(registry *agent.ToolRegistry) string {
 	var sb strings.Builder

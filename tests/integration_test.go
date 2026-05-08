@@ -594,6 +594,10 @@ func (h *testEventHandler) OnUsage(usage client.Usage) {
 	h.usage = usage
 }
 
+func (h *testEventHandler) OnStreamDelta(delta string) {
+	// No-op for integration tests
+}
+
 // TestAuditLoggingIntegration tests that tool calls are logged to audit file
 func TestAuditLoggingIntegration(t *testing.T) {
 	// Create temp directory for audit logs

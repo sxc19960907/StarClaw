@@ -12,7 +12,7 @@ import (
 // MockLLMClient is a mock LLM client for testing
 type MockLLMClient struct{}
 
-func (m *MockLLMClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int) (*client.Response, error) {
+func (m *MockLLMClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
 	return &client.Response{Content: "Mock response"}, nil
 }
 

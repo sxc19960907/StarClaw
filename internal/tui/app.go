@@ -398,6 +398,10 @@ func (h *TUIEventHandler) OnUsage(usage client.Usage) {
 	// Usage updates
 }
 
+func (h *TUIEventHandler) OnStreamDelta(delta string) {
+	// Streamed text handling for TUI (to be implemented)
+}
+
 // Message types for tea.Cmd
 type agentMessage string
 type streamingMsg string

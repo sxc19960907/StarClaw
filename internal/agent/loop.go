@@ -11,6 +11,7 @@ import (
 
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/config"
 	ctxwin "github.com/starclaw/starclaw/internal/context"
 	"github.com/starclaw/starclaw/internal/hooks"
 	"github.com/starclaw/starclaw/internal/permissions"
@@ -23,11 +24,17 @@ type EventHandler interface {
 	OnToolResult(name string, result ToolResult)
 	OnText(text string)
 	OnUsage(usage client.Usage)
+	OnStreamDelta(delta string)
 }
 
 // LLMClient defines the interface for LLM clients
 type LLMClient interface {
-	Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int) (*client.Response, error)
+	Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error)
+}
+
+// StreamingLLMClient is an optional interface for LLM clients that support streaming.
+type StreamingLLMClient interface {
+	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) error
 }
 
 // AgentLoop manages the conversation with the LLM
@@ -50,6 +57,11 @@ type AgentLoop struct {
 	contextWindow int                  // max context window in tokens (0 = disabled)
 	permsConfig   *permissions.Config  // tool permission rules
 	hookRunner    *hooks.Runner        // lifecycle hook runner
+
+	thinking          *client.ThinkingConfig
+	reasoningEffort   string
+	specificModel     string
+	enableStreaming   bool
 }
 
 // NewAgentLoop creates a new agent loop
@@ -159,6 +171,26 @@ func (a *AgentLoop) SetHookRunner(runner *hooks.Runner) {
 	a.hookRunner = runner
 }
 
+// SetThinking sets the thinking configuration for LLM requests.
+func (a *AgentLoop) SetThinking(cfg *client.ThinkingConfig) {
+	a.thinking = cfg
+}
+
+// SetReasoningEffort sets the reasoning effort for the LLM.
+func (a *AgentLoop) SetReasoningEffort(effort string) {
+	a.reasoningEffort = effort
+}
+
+// SetSpecificModel sets a specific model override for LLM requests.
+func (a *AgentLoop) SetSpecificModel(model string) {
+	a.specificModel = model
+}
+
+// SetEnableStreaming enables or disables streaming for LLM responses.
+func (a *AgentLoop) SetEnableStreaming(enable bool) {
+	a.enableStreaming = enable
+}
+
 // SpillCleanupFunc returns a function that cleans up spill files for the current session.
 func (a *AgentLoop) SpillCleanupFunc() func() {
 	return func() {
@@ -189,6 +221,23 @@ func (a *AgentLoop) loadMemory() {
 	}
 }
 
+// ThinkingConfigFromAgent converts a config.AgentConfig into a client.ThinkingConfig.
+// Returns nil if thinking is disabled.
+func ThinkingConfigFromAgent(cfg config.AgentConfig) *client.ThinkingConfig {
+	if !cfg.Thinking {
+		return nil
+	}
+	tc := &client.ThinkingConfig{}
+	switch cfg.ThinkingMode {
+	case "adaptive":
+		tc.Type = "adaptive"
+	case "enabled":
+		tc.Type = "enabled"
+		tc.BudgetTokens = cfg.ThinkingBudget
+	}
+	return tc
+}
+
 // Run executes the agent loop with the given query
 func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, error) {
 	// Inject memory directory into context for memory_append tool
@@ -206,6 +255,15 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 	// Update session title if this is the first message
 	if a.session != nil && len(a.session.Messages) == 0 {
 		a.session.Title = session.GenerateTitle(query)
+	}
+
+	// Build ChatOptions from AgentLoop fields
+	chatOpts := &client.ChatOptions{
+		Thinking:        a.thinking,
+		ReasoningEffort: a.reasoningEffort,
+	}
+	if a.specificModel != "" {
+		chatOpts.SpecificModel = a.specificModel
 	}
 
 	for i := 0; i < a.maxIter; i++ {
@@ -260,7 +318,7 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 		}
 
 		// Call LLM with retry
-		resp, err := a.chatWithRetry(ctx, effectivePrompt, messages, tools)
+		resp, err := a.chatWithRetry(ctx, effectivePrompt, messages, tools, chatOpts)
 		if err != nil {
 			return nil, fmt.Errorf("LLM error: %w", err)
 		}
@@ -475,12 +533,30 @@ func (a *AgentLoop) buildToolResultContent(toolUse client.ToolUse, result ToolRe
 }
 
 // chatWithRetry calls the LLM with retry+backoff for transient errors.
-func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef) (*client.Response, error) {
+// opts contains optional thinking/config fields for the LLM request.
+func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, opts *client.ChatOptions) (*client.Response, error) {
 	const maxRetries = 3
 	var lastErr error
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		resp, err := a.llmClient.Chat(ctx, systemPrompt, messages, tools, a.maxTokens)
+		// On first attempt with streaming enabled, try streaming.
+		// Streaming requires the LLMClient to implement a streaming interface.
+		if attempt == 0 && a.enableStreaming {
+			if streamer, ok := a.llmClient.(StreamingLLMClient); ok {
+				err := streamer.StreamChat(ctx, systemPrompt, messages, tools, a.maxTokens, opts, func(delta string) {
+					if a.handler != nil {
+						a.handler.OnStreamDelta(delta)
+					}
+				})
+				if err == nil {
+					// StreamChat populates its own internal state; for now we
+					// fall back to regular Chat and treat streaming as best-effort.
+					// TODO: implement proper streaming response handling.
+				}
+			}
+		}
+
+		resp, err := a.llmClient.Chat(ctx, systemPrompt, messages, tools, a.maxTokens, opts)
 		if err == nil {
 			return resp, nil
 		}

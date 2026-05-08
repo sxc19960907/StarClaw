@@ -36,6 +36,24 @@ type Usage struct {
 	OutputTokens int `json:"output_tokens"`
 }
 
+// ThinkingConfig for Anthropic extended thinking.
+type ThinkingConfig struct {
+	Type         string `json:"type"`                    // "adaptive", "enabled", or "disabled"
+	BudgetTokens int    `json:"budget_tokens,omitempty"` // thinking token budget
+}
+
+// ChatOptions holds optional fields for LLM Chat requests.
+type ChatOptions struct {
+	Thinking        *ThinkingConfig `json:"thinking,omitempty"`
+	ReasoningEffort string          `json:"reasoning_effort,omitempty"`
+	SpecificModel   string          `json:"specific_model,omitempty"`
+}
+
+// StreamDelta represents an incremental text chunk from streaming.
+type StreamDelta struct {
+	Text string
+}
+
 // ToolDef defines a tool for the model
 // FunctionDef describes a tool function schema.
 type FunctionDef struct {
@@ -119,7 +137,13 @@ func (c *LLMClient) Complete(ctx context.Context, req CompletionRequest) (*Compl
 		}
 	}
 
-	resp, err := c.Chat(ctx, systemPrompt, []Message{{Role: "user", Content: userContent}}, nil, maxTokens)
+	opts := &ChatOptions{
+		Thinking:        req.Thinking,
+		ReasoningEffort: req.ReasoningEffort,
+		SpecificModel:   req.SpecificModel,
+	}
+
+	resp, err := c.Chat(ctx, systemPrompt, []Message{{Role: "user", Content: userContent}}, nil, maxTokens, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -127,14 +151,20 @@ func (c *LLMClient) Complete(ctx context.Context, req CompletionRequest) (*Compl
 }
 
 // Chat sends a chat request and returns the response
-func (c *LLMClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int) (*Response, error) {
+func (c *LLMClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions) (*Response, error) {
 	if maxTokens == 0 {
 		maxTokens = 8192
 	}
 
+	// Determine model
+	model := c.model
+	if opts != nil && opts.SpecificModel != "" {
+		model = opts.SpecificModel
+	}
+
 	// Build request body
 	reqBody := map[string]any{
-		"model":      c.model,
+		"model":      model,
 		"max_tokens": maxTokens,
 		"messages":   messages,
 	}
@@ -153,6 +183,16 @@ func (c *LLMClient) Chat(ctx context.Context, systemPrompt string, messages []Me
 			}
 		}
 		reqBody["tools"] = anthropicTools
+	}
+
+	// Wire thinking config if provided
+	if opts != nil && opts.Thinking != nil {
+		reqBody["thinking"] = opts.Thinking
+	}
+
+	// Wire reasoning effort if provided
+	if opts != nil && opts.ReasoningEffort != "" {
+		reqBody["reasoning_effort"] = opts.ReasoningEffort
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
@@ -257,10 +297,13 @@ func getString(m map[string]any, key string) string {
 
 // CompletionRequest is a generic LLM completion request (non-chat).
 type CompletionRequest struct {
-	Messages    []Message `json:"messages"`
-	ModelTier   string    `json:"model_tier,omitempty"`
-	Temperature float64   `json:"temperature,omitempty"`
-	MaxTokens   int       `json:"max_tokens,omitempty"`
+	Messages        []Message       `json:"messages"`
+	ModelTier       string          `json:"model_tier,omitempty"`
+	Temperature     float64         `json:"temperature,omitempty"`
+	MaxTokens       int             `json:"max_tokens,omitempty"`
+	Thinking        *ThinkingConfig `json:"thinking,omitempty"`
+	ReasoningEffort string          `json:"reasoning_effort,omitempty"`
+	SpecificModel   string          `json:"specific_model,omitempty"`
 }
 
 // CompletionResponse is a generic LLM completion response.
