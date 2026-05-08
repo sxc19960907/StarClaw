@@ -104,3 +104,36 @@ Implemented 3 modules: SessionCache (session manager pool with route locking), W
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Implement thinking mode and config extensions
+
+**Date**: 2026-05-08
+**Task**: Implement thinking mode and config extensions
+**Branch**: `main`
+
+### Summary
+
+Added extended thinking support (adaptive/enabled modes), streaming delta callback (OnStreamDelta on EventHandler), model override, ChatOptions, and 6 new config fields (thinking, thinking_mode, thinking_budget, reasoning_effort, model, grep_max_results). 14 files changed, 474 lines added. 2 sub-tasks via trellis-implement agents.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `337b9e4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
