@@ -137,3 +137,36 @@ Added extended thinking support (adaptive/enabled modes), streaming delta callba
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Implement CLI daemon and schedule commands
+
+**Date**: 2026-05-08
+**Task**: Implement CLI daemon and schedule commands
+**Branch**: `main`
+
+### Summary
+
+Added starclaw daemon start/stop/status (HTTP server + cron scheduler) and starclaw schedule list/create/update/remove/enable/disable (schedule CRUD via local schedules.json). 2 new CLI files, 452 lines. 2 parallel sub-tasks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `846bb9e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
