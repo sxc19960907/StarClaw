@@ -269,3 +269,36 @@ Added OnPreamble EventHandler method (updated all 7 implementations), added comm
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: Implement context bloat detection, bash output cap, and publish_to_web
+
+**Date**: 2026-05-08
+**Task**: Implement context bloat detection, bash output cap, and publish_to_web
+**Branch**: `main`
+
+### Summary
+
+Added RunStatus tracking with context bloat detection (tool results > 50% of context), bash max_output_chars per-call cap, and publish_to_web tool. 3 parallel sub-tasks. 9 files, 673 lines. All 20 packages pass -race.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6972fe8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
