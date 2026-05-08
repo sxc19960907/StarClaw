@@ -8,9 +8,17 @@ import (
 	"github.com/starclaw/starclaw/internal/session"
 )
 
-// RegisterLocalTools registers all local tools
-func RegisterLocalTools() *agent.ToolRegistry {
+// RegisterLocalTools registers all local tools.
+// An optional ToolsConfig can be passed to configure tool behaviour
+// (e.g. BashMaxOutput). When omitted, tool defaults apply.
+func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	reg := agent.NewToolRegistry()
+
+	// Extract config values (or zero-value defaults)
+	var tc config.ToolsConfig
+	if len(toolsConfig) > 0 {
+		tc = toolsConfig[0]
+	}
 
 	// File tools
 	reg.Register(&FileReadTool{})
@@ -32,13 +40,16 @@ func RegisterLocalTools() *agent.ToolRegistry {
 	reg.Register(&HTTPTool{})
 
 	// System tools
-	reg.Register(&BashTool{})
+	reg.Register(&BashTool{MaxOutput: tc.BashMaxOutput})
 
 	// Memory tool
 	reg.Register(&MemoryAppendTool{})
 
 	// Wait tool
 	reg.Register(&WaitTool{})
+
+	// Publish to web tool
+	reg.Register(NewPublishToWebTool())
 
 	// Skills tool
 	skillsDir := config.StarclawDir()

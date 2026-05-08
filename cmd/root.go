@@ -145,7 +145,7 @@ func runChat(cfg *config.Config, query string) error {
 	}
 
 	// Create tool registry
-	registry := tools.RegisterLocalTools()
+	registry := tools.RegisterLocalTools(cfg.Tools)
 	tools.RegisterVersionTool(registry, Version)
 
 	// Create agent loop
@@ -414,17 +414,16 @@ var interactiveCmd = &cobra.Command{
 		llmClient := client.NewLLMClient(cfg.APIKey, cfg.Endpoint, model)
 
 		// Create tool registry
-		registry := tools.RegisterLocalTools()
+		registry := tools.RegisterLocalTools(cfg.Tools)
 		tools.RegisterVersionTool(registry, Version)
-
 		// Create agent loop
 		loop := agent.NewAgentLoop(llmClient, registry)
 		loop.SetMaxIterations(cfg.Agent.MaxIterations)
 		loop.SetMaxTokens(cfg.Agent.MaxTokens)
 		loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 		loop.SetConfigDir(config.StarclawDir())
-	loop.SetContextWindow(cfg.Agent.ContextWindow)
-	loop.SetPermissions(cfg.Permissions)
+		loop.SetContextWindow(cfg.Agent.ContextWindow)
+		loop.SetPermissions(cfg.Permissions)
 	if cfg.Hooks != nil {
 		loop.SetHookRunner(hooks.NewRunner(*cfg.Hooks))
 	}

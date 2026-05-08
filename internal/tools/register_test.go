@@ -28,6 +28,7 @@ func TestRegisterLocalTools(t *testing.T) {
 		"bash",
 		"memory_append",
 		"wait",
+		"publish_to_web",
 		"use_skill",
 		"schedule_create",
 		"schedule_list",

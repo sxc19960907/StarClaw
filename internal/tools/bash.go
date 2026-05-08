@@ -12,14 +12,20 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 )
 
+// BashMaxOutputDefault is the default max output chars when neither config nor
+// per-call cap is set.
+const BashMaxOutputDefault = 30000
+
 // BashTool executes shell commands
 type BashTool struct {
 	ExtraSafeCommands []string
+	MaxOutput         int // max output chars; 0 = use BashMaxOutputDefault
 }
 
 type bashArgs struct {
-	Command string `json:"command"`
-	Timeout int    `json:"timeout,omitempty"`
+	Command        string `json:"command"`
+	Timeout        int    `json:"timeout,omitempty"`
+	MaxOutputChars int    `json:"max_output_chars,omitempty"`
 }
 
 var safeCommands = []string{
@@ -64,8 +70,9 @@ func (t *BashTool) Info() agent.ToolInfo {
 		Parameters: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"command": map[string]any{"type": "string", "description": "Shell command to execute"},
-				"timeout": map[string]any{"type": "integer", "description": "Timeout in seconds (default: 120)"},
+				"command":          map[string]any{"type": "string", "description": "Shell command to execute"},
+				"timeout":          map[string]any{"type": "integer", "description": "Timeout in seconds (default: 120)"},
+				"max_output_chars": map[string]any{"type": "integer", "description": "Maximum output characters to return. Use this for noisy commands."},
 			},
 		},
 		Required: []string{"command"},
@@ -90,13 +97,21 @@ func (t *BashTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, 
 	output, err := cmd.CombinedOutput()
 
 	result := string(output)
-	maxOut := 30000
-	if len(result) > maxOut {
+
+	// Determine max output: config cap first, then per-call cap (stricter wins)
+	maxOut := t.MaxOutput
+	if maxOut <= 0 {
+		maxOut = BashMaxOutputDefault
+	}
+	if args.MaxOutputChars > 0 && args.MaxOutputChars < maxOut {
+		maxOut = args.MaxOutputChars
+	}
+	if r := []rune(result); len(r) > maxOut {
 		keepHead := maxOut * 3 / 4
 		keepTail := maxOut / 4
-		result = result[:keepHead] + "\n\n[... truncated " +
-			strconv.Itoa(len(result)-maxOut) + " chars ...]\n\n" +
-			result[len(result)-keepTail:]
+		result = string(r[:keepHead]) + "\n\n[... truncated " +
+			strconv.Itoa(len(r)-maxOut) + " chars ...]\n\n" +
+			string(r[len(r)-keepTail:])
 	}
 
 	if err != nil {

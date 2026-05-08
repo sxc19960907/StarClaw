@@ -28,6 +28,23 @@ type EventHandler interface {
 	OnPreamble(preamble string)
 }
 
+// RunStatus holds status information from the most recent Run call.
+type RunStatus struct {
+	Code   string // "context_bloat" or ""
+	Detail string // human-readable detail
+}
+
+// RunStatusHandler is an optional interface a handler may implement to receive
+// turn-level status updates. The agent loop checks for it via a type assertion,
+// so handlers that do not implement it simply miss these events with no breakage.
+//
+// Known codes:
+//
+//	"context_bloat" — large tool results are dominating context; informational
+type RunStatusHandler interface {
+	OnRunStatus(code string, detail string)
+}
+
 // LLMClient defines the interface for LLM clients
 type LLMClient interface {
 	Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error)
@@ -63,6 +80,7 @@ type AgentLoop struct {
 	reasoningEffort   string
 	specificModel     string
 	enableStreaming   bool
+	lastRunStatus     RunStatus
 }
 
 // NewAgentLoop creates a new agent loop
@@ -192,6 +210,12 @@ func (a *AgentLoop) SetEnableStreaming(enable bool) {
 	a.enableStreaming = enable
 }
 
+// LastRunStatus returns the status from the most recent Run call.
+// Callers should read it in the same goroutine immediately after Run returns.
+func (a *AgentLoop) LastRunStatus() RunStatus {
+	return a.lastRunStatus
+}
+
 // SpillCleanupFunc returns a function that cleans up spill files for the current session.
 func (a *AgentLoop) SpillCleanupFunc() func() {
 	return func() {
@@ -241,6 +265,9 @@ func ThinkingConfigFromAgent(cfg config.AgentConfig) *client.ThinkingConfig {
 
 // Run executes the agent loop with the given query
 func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, error) {
+	// Reset run status
+	a.lastRunStatus = RunStatus{}
+
 	// Inject memory directory into context for memory_append tool
 	if a.memoryDir != "" {
 		ctx = ctxwin.WithMemoryDir(ctx, a.memoryDir)
@@ -371,6 +398,14 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 					messages = append(messages, client.Message{Role: "user", Content: msg + "\n\nPlease provide your final answer now."})
 					// Fall through to return — handled by maxIter or next text-only response
 				}
+			}
+		}
+
+		// Context bloat detection: check if tool results dominate the context
+		if detail := detectContextBloat(messages); detail != "" {
+			a.lastRunStatus = RunStatus{Code: "context_bloat", Detail: detail}
+			if rs, ok := a.handler.(RunStatusHandler); ok {
+				rs.OnRunStatus("context_bloat", detail)
 			}
 		}
 
@@ -612,4 +647,33 @@ func isRetryableLLMError(err error) bool {
 		return false
 	}
 	return false
+}
+
+// detectContextBloat scans messages for tool-result blocks and returns a
+// human-readable detail string when tool-result text exceeds 50% of total
+// message content. Returns empty string when bloat is not detected.
+func detectContextBloat(messages []client.Message) string {
+	var totalSize, toolResultSize int
+
+	for _, msg := range messages {
+		totalSize += len(msg.Content)
+
+		// Parse user messages as JSON to find tool_result blocks
+		var parsed map[string]any
+		if err := json.Unmarshal([]byte(msg.Content), &parsed); err == nil {
+			if typ, _ := parsed["type"].(string); typ == "tool_result" {
+				if content, _ := parsed["content"].(string); content != "" {
+					toolResultSize += len(content)
+				}
+			}
+		}
+	}
+
+	if totalSize > 0 && float64(toolResultSize)/float64(totalSize) > 0.5 {
+		pct := int(float64(toolResultSize) / float64(totalSize) * 100)
+		return fmt.Sprintf("Tool result content dominates context: %d/%d chars (%d%%). Try narrowing tool calls to reduce output.",
+			toolResultSize, totalSize, pct)
+	}
+
+	return ""
 }

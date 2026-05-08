@@ -226,6 +226,101 @@ func TestAgentLoop_TruncateResult(t *testing.T) {
 	}
 }
 
+func TestAgentLoop_LastRunStatus_Default(t *testing.T) {
+	llmClient := client.NewLLMClient("test", "", "")
+	registry := NewToolRegistry()
+	loop := NewAgentLoop(llmClient, registry)
+
+	status := loop.LastRunStatus()
+	if status.Code != "" {
+		t.Errorf("Expected empty RunStatus code, got: %q", status.Code)
+	}
+}
+
+func TestAgentLoop_ContextBloat_Detection(t *testing.T) {
+	// Build messages where tool results dominate (>50%)
+	messages := []client.Message{
+		{Role: "user", Content: "short query"},
+		{Role: "assistant", Content: `{"type":"tool_use","id":"tu1","name":"test_tool","input":{}}`},
+		{Role: "user", Content: `{"type":"tool_result","tool_use_id":"tu1","content":"` + strings.Repeat("x", 5000) + `"}`},
+	}
+
+	detail := detectContextBloat(messages)
+	if detail == "" {
+		t.Fatal("Expected context bloat detail, got empty string")
+	}
+	if !strings.Contains(detail, "context") {
+		t.Errorf("Detail should mention context: %s", detail)
+	}
+	if !strings.Contains(detail, "5000") || !strings.Contains(detail, "50") {
+		t.Errorf("Detail should mention sizes: %s", detail)
+	}
+}
+
+func TestAgentLoop_ContextBloat_NoBloat(t *testing.T) {
+	// Build messages where tool results are small
+	messages := []client.Message{
+		{Role: "user", Content: "a long query that is very long " + strings.Repeat("x", 5000)},
+		{Role: "assistant", Content: `{"type":"tool_use","id":"tu1","name":"test_tool","input":{}}`},
+		{Role: "user", Content: `{"type":"tool_result","tool_use_id":"tu1","content":"small result"}`},
+	}
+
+	detail := detectContextBloat(messages)
+	if detail != "" {
+		t.Errorf("Expected no bloat, got: %s", detail)
+	}
+}
+
+func TestAgentLoop_RunStatusHandler(t *testing.T) {
+	llmClient := client.NewLLMClient("test", "", "")
+	registry := NewToolRegistry()
+	loop := NewAgentLoop(llmClient, registry)
+
+	// Handler that implements RunStatusHandler
+	handler := &runStatusRecorder{EventHandler: &MockEventHandler{}}
+	loop.SetEventHandler(handler)
+
+	// Create test messages that would trigger bloat
+	messages := []client.Message{
+		{Role: "user", Content: "query"},
+		{Role: "assistant", Content: `{"type":"tool_use","id":"tu1","name":"test_tool","input":{}}`},
+		{Role: "user", Content: `{"type":"tool_result","tool_use_id":"tu1","content":"` + strings.Repeat("x", 10000) + `"}`},
+	}
+
+	detail := detectContextBloat(messages)
+	if detail == "" {
+		t.Fatal("Expected context bloat detection")
+	}
+
+	// Directly set the status as the loop would
+	loop.lastRunStatus = RunStatus{Code: "context_bloat", Detail: detail}
+	if rs, ok := loop.handler.(RunStatusHandler); ok {
+		rs.OnRunStatus("context_bloat", detail)
+	}
+
+	if len(handler.statuses) != 1 {
+		t.Fatalf("Expected 1 status event, got %d", len(handler.statuses))
+	}
+	if handler.statuses[0].code != "context_bloat" {
+		t.Errorf("Expected code 'context_bloat', got %q", handler.statuses[0].code)
+	}
+
+	status := loop.LastRunStatus()
+	if status.Code != "context_bloat" {
+		t.Errorf("LastRunStatus code should be 'context_bloat', got %q", status.Code)
+	}
+}
+
+// runStatusRecorder records OnRunStatus events for testing.
+type runStatusRecorder struct {
+	EventHandler
+	statuses []struct{ code, detail string }
+}
+
+func (r *runStatusRecorder) OnRunStatus(code, detail string) {
+	r.statuses = append(r.statuses, struct{ code, detail string }{code, detail})
+}
+
 // MockTool for testing
 type MockTool struct {
 	name             string
