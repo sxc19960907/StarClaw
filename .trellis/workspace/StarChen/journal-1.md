@@ -203,3 +203,36 @@ Copied 14 built-in skills from upstream: algorithmic-art, brand-guidelines, canv
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: Enhance TUI with markdown, animation, and tool formatting
+
+**Date**: 2026-05-08
+**Task**: Enhance TUI with markdown, animation, and tool formatting
+**Branch**: `main`
+
+### Summary
+
+Added frog pixel-art startup animation (12 frames), Glamour markdown rendering for AI responses, compact tool call/result formatting (success/error icons), two-column startup header (model info + tips + recent activity). 5 new files, 957 lines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `be60b30` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

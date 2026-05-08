@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
+- **Total Sessions**: 7
 - **Last Active**: 2026-05-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~205 | Active |
+| `journal-1.md` | ~238 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 7 | 2026-05-08 | Enhance TUI with markdown, animation, and tool formatting | `be60b30` | `main` |
 | 6 | 2026-05-08 | Add 14 bundled skills | `80d7ea4` | `main` |
 | 5 | 2026-05-08 | Implement CLI daemon and schedule commands | `846bb9e` | `main` |
 | 4 | 2026-05-08 | Implement thinking mode and config extensions | `337b9e4` | `main` |
