@@ -79,6 +79,7 @@ func init() {
 	rootCmd.AddCommand(sessionsCmd)
 	rootCmd.AddCommand(mcpCmd)    // New: MCP subcommand
 	rootCmd.AddCommand(updateCmd) // New: Update subcommand
+	rootCmd.AddCommand(completionCmd) // Shell completion
 
 	// Global flags
 	rootCmd.PersistentFlags().BoolVarP(&autoApprove, "yes", "y", false, "Automatically approve all tool calls")
@@ -258,7 +259,29 @@ func runPipedMode(cfg *config.Config) error {
 		return fmt.Errorf("empty input")
 	}
 
+	// Prepend CWD context for pipe mode so the agent knows where it is working
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "unknown"
+	}
+
+	// Only prepend CWD if input is not already a specific path reference
+	if !isPathReference(query) {
+		query = fmt.Sprintf("Current directory: %s\n\n%s", cwd, query)
+	}
+
+	// Increase max_iterations for pipe mode (batch processing benefits from more steps)
+	cfg.Agent.MaxIterations = max(cfg.Agent.MaxIterations, 50)
+
 	return runChat(cfg, query)
+}
+
+// isPathReference checks if the input starts with a path-like prefix
+func isPathReference(s string) bool {
+	return strings.HasPrefix(s, "/") ||
+		strings.HasPrefix(s, "~/") ||
+		strings.HasPrefix(s, "./") ||
+		strings.HasPrefix(s, "../")
 }
 
 // isTTY checks if stdin is a terminal
