@@ -136,28 +136,13 @@ func (sc *SessionCache) AppendToSession(routeKey, sessionsDir, expectedSessionID
 	return mgr.Save()
 }
 
-// LockRoute acquires the per-route lock. If a run is in progress, it is
-// cancelled and waited for. Returns the routeEntry for the given key.
+// LockRoute acquires the per-route lock, blocking until available.
+// Returns the routeEntry for the given key.
 func (sc *SessionCache) LockRoute(key string) *routeEntry {
 	entry := sc.getOrCreateEntry(key)
+	entry.mu.Lock()
 
-	// Try to acquire the per-route lock without blocking.
-	if !entry.mu.TryLock() {
-		// Route is active — cancel the running operation and wait for it.
-		// We read entry.cancel outside the lock because the current run
-		// holds mu — we cannot acquire it. The cancel function is safe to
-		// call even after the run finishes (no-op on a done context).
-		if entry.cancel != nil {
-			entry.cancel()
-		}
-		// Wait for the run to signal completion.
-		<-entry.done
-		// Now acquire the lock (released by the run's UnlockRoute).
-		entry.mu.Lock()
-	}
-	// entry.mu is now held by us.
-
-	// Set up fresh cancel/done for this new run.
+	// Set up fresh cancel/done for this run.
 	_, cancel := context.WithCancel(context.Background())
 	entry.cancel = cancel
 	entry.done = make(chan struct{})
