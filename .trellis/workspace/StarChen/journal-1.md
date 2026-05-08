@@ -236,3 +236,36 @@ Added frog pixel-art startup animation (12 frames), Glamour markdown rendering f
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: Implement OnPreamble, prompt enhancement, and grep VCS support
+
+**Date**: 2026-05-08
+**Task**: Implement OnPreamble, prompt enhancement, and grep VCS support
+**Branch**: `main`
+
+### Summary
+
+Added OnPreamble EventHandler method (updated all 7 implementations), added communicating-with-user prompt section, and enhanced grep with VCS skip, max-columns, mtime sort, and glob filter support. 2 parallel sub-tasks. 13 files, 317 lines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2ad36d7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
