@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 9
-- **Last Active**: 2026-05-08
+- **Total Sessions**: 10
+- **Last Active**: 2026-05-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~304 | Active |
+| `journal-1.md` | ~337 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 10 | 2026-05-09 | Implement shell integration | `626e385` | `main` |
 | 9 | 2026-05-08 | Implement context bloat detection, bash output cap, and publish_to_web | `6972fe8` | `main` |
 | 8 | 2026-05-08 | Implement OnPreamble, prompt enhancement, and grep VCS support | `2ad36d7` | `main` |
 | 7 | 2026-05-08 | Enhance TUI with markdown, animation, and tool formatting | `be60b30` | `main` |
