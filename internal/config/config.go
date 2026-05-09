@@ -25,6 +25,8 @@ type Config struct {
 	OpenAIAPIKey    string                       `mapstructure:"openai_api_key"   yaml:"openai_api_key"   json:"openai_api_key"`
 	OpenAIEndpoint  string                       `mapstructure:"openai_endpoint"  yaml:"openai_endpoint"  json:"openai_endpoint"`
 	OpenAIModel     string                       `mapstructure:"openai_model"     yaml:"openai_model"     json:"openai_model"`
+	OllamaEndpoint  string                       `mapstructure:"ollama_endpoint"  yaml:"ollama_endpoint"  json:"ollama_endpoint"`
+	OllamaModel     string                       `mapstructure:"ollama_model"     yaml:"ollama_model"     json:"ollama_model"`
 	ModelTier       string                       `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
 	Agent      AgentConfig                  `mapstructure:"agent" yaml:"agent" json:"agent"`
 	Tools      ToolsConfig                  `mapstructure:"tools" yaml:"tools" json:"tools"`
@@ -103,6 +105,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("openai_api_key", "")
 	viper.SetDefault("openai_endpoint", "https://api.openai.com/v1")
 	viper.SetDefault("openai_model", "gpt-4o")
+	viper.SetDefault("ollama_endpoint", "http://localhost:11434")
+	viper.SetDefault("ollama_model", "llama3.1")
 	viper.SetDefault("model_tier", "medium")
 	viper.SetDefault("agent.max_iterations", 25)
 	viper.SetDefault("agent.temperature", 0)
@@ -207,13 +211,17 @@ func SaveDefault(dir string) error {
 
 	defaultConfig := `endpoint: "https://api.anthropic.com"
 api_key: ""
-provider: "anthropic"  # "anthropic" or "openai"
+provider: "anthropic"  # "anthropic", "openai", or "ollama"
 model_tier: "medium"
 
 # OpenAI configuration (used when provider is "openai")
 # openai_api_key: ""
 # openai_endpoint: "https://api.openai.com/v1"
 # openai_model: "gpt-4o"
+
+# Ollama configuration (used when provider is "ollama")
+# ollama_endpoint: "http://localhost:11434"
+# ollama_model: "llama3.1"
 
 agent:
   max_iterations: 25
@@ -341,6 +349,8 @@ func NeedsSetup(cfg *Config) bool {
 	switch cfg.Provider {
 	case "openai":
 		return strings.TrimSpace(cfg.OpenAIAPIKey) == ""
+	case "ollama":
+		return false // local server, no API key needed
 	default:
 		return strings.TrimSpace(cfg.APIKey) == ""
 	}

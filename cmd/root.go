@@ -362,6 +362,8 @@ func newLLMClient(cfg *config.Config) client.LLMClient {
 	switch cfg.Provider {
 	case "openai":
 		return client.NewOpenAIClient(cfg.OpenAIAPIKey, cfg.OpenAIEndpoint, cfg.OpenAIModel)
+	case "ollama":
+		return client.NewOllamaClient(cfg.OllamaEndpoint, cfg.OllamaModel)
 	default:
 		return client.NewAnthropicClient(cfg.APIKey, cfg.Endpoint, cfg.ModelTier)
 	}

@@ -24,6 +24,7 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	reg.Register(&FileReadTool{})
 	reg.Register(&FileWriteTool{})
 	reg.Register(&FileEditTool{})
+	reg.Register(&FilePreviewTool{})
 
 	// Directory tools
 	reg.Register(&GlobTool{})
@@ -42,8 +43,9 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	// System tools
 	reg.Register(&BashTool{MaxOutput: tc.BashMaxOutput})
 
-	// Memory tool
+	// Memory tools
 	reg.Register(&MemoryAppendTool{})
+	reg.Register(&MemoryTool{})
 
 	// Wait tool
 	reg.Register(&WaitTool{})
@@ -60,18 +62,28 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	// AppleScript tool
 	reg.Register(&AppleScriptTool{})
 
+	// macOS Accessibility tool
+	reg.Register(&AccessibilityTool{})
+
+	// macOS Computer control tool
+	reg.Register(&ComputerTool{})
+
+	// Browser tool
+	reg.Register(&BrowserTool{})
+
 	// Process management tool
 	reg.Register(&ProcessTool{})
 
 	// Publish to web tool
 	reg.Register(NewPublishToWebTool())
 
-	// Skills tool
+	// Skills tools
 	skillsDir := config.StarclawDir()
 	if skillsDir != "" {
 		skillsDir = skillsDir + "/skills"
 	}
 	reg.Register(NewUseSkillTool(skillsDir))
+	reg.Register(NewSkillTool())
 
 	// Schedule tools
 	starclawDir := config.StarclawDir()
