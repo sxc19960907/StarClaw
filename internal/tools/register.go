@@ -48,6 +48,21 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	// Wait tool
 	reg.Register(&WaitTool{})
 
+	// Clipboard tool
+	reg.Register(&ClipboardTool{})
+
+	// Notify tool
+	reg.Register(&NotifyTool{})
+
+	// Screenshot tool
+	reg.Register(&ScreenshotTool{})
+
+	// AppleScript tool
+	reg.Register(&AppleScriptTool{})
+
+	// Process management tool
+	reg.Register(&ProcessTool{})
+
 	// Publish to web tool
 	reg.Register(NewPublishToWebTool())
 

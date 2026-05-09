@@ -16,24 +16,29 @@ func TestRegisterLocalTools(t *testing.T) {
 
 	// Check that all expected tools are registered
 	expectedTools := []string{
+		"applescript",
+		"bash",
+		"clipboard",
+		"directory_list",
+		"file_edit",
 		"file_read",
 		"file_write",
-		"file_edit",
 		"glob",
-		"directory_list",
 		"grep",
-		"think",
-		"system_info",
 		"http",
-		"bash",
 		"memory_append",
-		"wait",
+		"notify",
+		"process",
 		"publish_to_web",
-		"use_skill",
 		"schedule_create",
 		"schedule_list",
-		"schedule_update",
 		"schedule_remove",
+		"schedule_update",
+		"screenshot",
+		"system_info",
+		"think",
+		"use_skill",
+		"wait",
 	}
 
 	if reg.Count() != len(expectedTools) {
