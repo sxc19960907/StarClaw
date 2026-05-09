@@ -434,3 +434,36 @@ Enhanced CI (lint+vet+mod-tidy+concurrency), GoReleaser release workflow, CHANGE
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Phase 2: loop detection, compaction, and MCP server
+
+**Date**: 2026-05-09
+**Task**: Phase 2: loop detection, compaction, and MCP server
+**Branch**: `main`
+
+### Summary
+
+Added 5 new loop detection pattern types (IdentityCycle, UnproductiveStreak, FileReadRepeat, ToolModeFlipFlop, SleepPattern), time-based compaction, semantic result consolidation, MCP stdio server with starclaw mcp serve CLI. 3 parallel sub-tasks. 2058 lines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `65d653a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

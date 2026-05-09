@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 13
+- **Total Sessions**: 14
 - **Last Active**: 2026-05-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~436 | Active |
+| `journal-1.md` | ~469 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 14 | 2026-05-09 | Phase 2: loop detection, compaction, and MCP server | `65d653a` | `main` |
 | 13 | 2026-05-09 | Phase 1: CI enhancement, CHANGELOG, and CONTRIBUTING docs | `b11482b` | `main` |
 | 12 | 2026-05-09 | Implement OpenAI multi-model support | `7a735fc` | `main` |
 | 11 | 2026-05-09 | Implement session tags, favorites, and export | `fd20772` | `main` |
