@@ -10,20 +10,22 @@
 
 ## Features
 
-- 🤖 **AI-Powered Conversations** - Chat with Claude, Kimi, or other LLMs
-- 🛠️ **Local Tool Execution** - Read files, search code, run shell commands
-- 🔌 **MCP Client Support** - Connect to Model Context Protocol servers for extended capabilities
-- 👤 **Named Agents** - Create specialized agent configurations with custom prompts
-- 🧩 **Skills System** - Activate domain-specific skills dynamically
-- 🔄 **Self-Update** - Built-in update mechanism with automatic checks
-- 🛡️ **Loop Detection** - Prevents AI from getting stuck in infinite tool-call loops
-- 🔁 **Auto-Retry** - Automatic retry with exponential backoff for transient API errors
-- 📦 **Spill to Disk** - Large tool results (>50KB) automatically saved to disk
-- 🔒 **Security First** - Path validation, approval dialogs, configurable tool allowlists
-- 💻 **Interactive TUI** - Beautiful terminal UI with Bubble Tea
-- 🚀 **One-Shot Mode** - Quick queries from command line or pipes
-- ⚡ **Fast Startup** - Optimized for sub-100ms cold start
-- 🎯 **Cross-Platform** - Linux, macOS, Windows support
+- 🤖 **Multi-Model AI** — Anthropic Claude + OpenAI GPT-4o (switch via config)
+- 🛠️ **33 Built-in Tools** — Files, shell, search, desktop automation, scheduling, MCP
+- 🔌 **MCP Client + Server** — Connect to MCP servers, or expose tools via stdio
+- 🍎 **macOS Desktop Integration** — Clipboard, notifications, screenshots, AppleScript, process management
+- 👤 **Named Agents** — Per-agent config, memory, and custom prompts
+- 🧩 **Skills System** — 14 bundled skills + dynamic activation
+- ⏰ **Scheduled Tasks** — Cron-based local task scheduling with flock-protected persistence
+- 🔄 **Background Daemon** — HTTP server (23 endpoints), cron scheduler, heartbeat, file watcher
+- 💻 **Beautiful TUI** — Bubble Tea UI with markdown rendering and frog startup animation
+- 🛡️ **9 Loop Detection Patterns** — ExactDup, IdentityCycle, UnproductiveStreak, FileReadRepeat, etc.
+- 📦 **Context Management** — Spill to disk, time-based compaction, semantic consolidation, bloat detection
+- 💬 **Session Management** — Tags, favorites, Markdown/HTML export
+- 🔒 **4-Layer Security** — Global → Project → Agent → Runtime permissions
+- 🔁 **Auto-Retry** — Exponential backoff for transient API errors
+- 🐚 **Shell Integration** — Auto-completion (bash/zsh/fish), pipe mode with CWD context
+- 🎯 **Cross-Platform** — Linux, macOS, Windows support
 
 ## Installation
 
@@ -92,40 +94,48 @@ cat main.go | starclaw chat "Explain this code"
 
 ## Available Tools
 
-StarClaw provides 12 built-in tools for the AI agent:
+StarClaw provides 33 built-in tools for the AI agent:
 
-| Tool | Description | Requires Approval |
-|------|-------------|-------------------|
-| `file_read` | Read file contents with line numbers | Yes |
-| `file_write` | Write content to a file | Yes |
-| `file_edit` | Find and replace in files | Yes |
-| `glob` | Find files matching a pattern | No |
-| `directory_list` | List directory contents | No |
-| `grep` | Search file contents | No |
-| `think` | AI reasoning and planning | No |
-| `system_info` | Get system information | No |
-| `http` | Make HTTP requests | Yes |
-| `bash` | Execute shell commands | Yes |
-| `mcp_tool` | Invoke tools from MCP servers | Varies |
-| `use_skill` | Activate a skill by name | No |
+| Category | Tools |
+|---|---|
+| File | `file_read`, `file_write`, `file_edit` |
+| Search | `glob`, `directory_list`, `grep` (ripgrep + VCS skip) |
+| Shell | `bash` (output cap), `http` |
+| System | `system_info`, `think`, `wait`, `version` |
+| Desktop | `clipboard`, `notify`, `screenshot`, `applescript`, `process` |
+| Session | `session_search`, `memory_append` |
+| Schedule | `schedule_create`, `schedule_list`, `schedule_update`, `schedule_remove` |
+| Skills | `use_skill` |
+| Publish | `publish_to_web` |
+| MCP | `mcp_tool` (varies by server) |
 
 ## Configuration
 
 Configuration is stored in `~/.starclaw/config.yaml`:
 
 ```yaml
+# Provider selection
+provider: "anthropic"          # anthropic or openai
 endpoint: "https://api.anthropic.com"
 api_key: "your-api-key"
-model_tier: "standard"
+model_tier: "medium"
+
+# OpenAI (set provider: openai to use)
+# openai_api_key: "sk-xxx"
+# openai_model: "gpt-4o"
 
 agent:
   max_iterations: 25
   max_tokens: 8192
   temperature: 0
+  thinking: true
+  thinking_mode: "adaptive"
+  thinking_budget: 10000
 
 tools:
   bash_timeout: 120
   bash_max_output: 30000
+  grep_max_results: 100
   result_truncation: 30000
   allowed: []  # Restrict to specific tools
   denied: []   # Block specific tools
