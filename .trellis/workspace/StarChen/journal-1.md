@@ -335,3 +335,36 @@ Added shell completion (bash/zsh/fish), one-click install (detects /bin/zsh), an
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Implement session tags, favorites, and export
+
+**Date**: 2026-05-09
+**Task**: Implement session tags, favorites, and export
+**Branch**: `main`
+
+### Summary
+
+Added tags and favorites to Session model, export Markdown/HTML functions, and 5 new CLI commands (sessions tag/untag/favorite/unfavorite/export). Sessions list now shows tags and favorite stars. 2 parallel sub-tasks. 888 lines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fd20772` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
