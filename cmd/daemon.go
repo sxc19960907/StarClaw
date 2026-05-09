@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/daemon"
 	"github.com/starclaw/starclaw/internal/schedule"
@@ -40,8 +39,7 @@ var daemonStartCmd = &cobra.Command{
 		instructionsDir := filepath.Join(starclawDir, "instructions")
 
 		// Create LLM client.
-		model := os.Getenv("ANTHROPIC_MODEL")
-		llmClient := client.NewLLMClient(cfg.APIKey, cfg.Endpoint, model)
+		llmClient := newLLMClient(cfg)
 
 		// Create tool registry.
 		registry := tools.RegisterLocalTools()

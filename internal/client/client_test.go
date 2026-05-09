@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-func TestNewLLMClient(t *testing.T) {
-	client := NewLLMClient("test-api-key", "", "")
+func TestNewAnthropicClient(t *testing.T) {
+	client := NewAnthropicClient("test-api-key", "", "")
 	if client == nil {
-		t.Fatal("NewLLMClient returned nil")
+		t.Fatal("NewAnthropicClient returned nil")
 	}
 	if client.apiKey != "test-api-key" {
 		t.Error("Client should store API key")
@@ -22,7 +22,7 @@ func TestNewLLMClient(t *testing.T) {
 }
 
 func TestSetModel(t *testing.T) {
-	client := NewLLMClient("test", "", "")
+	client := NewAnthropicClient("test", "", "")
 	client.SetModel("claude-4-opus")
 	if client.model != "claude-4-opus" {
 		t.Errorf("Expected model 'claude-4-opus', got '%s'", client.model)

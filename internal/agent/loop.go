@@ -45,11 +45,6 @@ type RunStatusHandler interface {
 	OnRunStatus(code string, detail string)
 }
 
-// LLMClient defines the interface for LLM clients
-type LLMClient interface {
-	Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error)
-}
-
 // StreamingLLMClient is an optional interface for LLM clients that support streaming.
 type StreamingLLMClient interface {
 	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) error
@@ -57,7 +52,7 @@ type StreamingLLMClient interface {
 
 // AgentLoop manages the conversation with the LLM
 type AgentLoop struct {
-	llmClient     LLMClient
+	llmClient     client.LLMClient
 	registry      *ToolRegistry
 	maxIter       int
 	maxTokens     int
@@ -84,7 +79,7 @@ type AgentLoop struct {
 }
 
 // NewAgentLoop creates a new agent loop
-func NewAgentLoop(llmClient LLMClient, registry *ToolRegistry) *AgentLoop {
+func NewAgentLoop(llmClient client.LLMClient, registry *ToolRegistry) *AgentLoop {
 	return &AgentLoop{
 		llmClient:   llmClient,
 		registry:    registry,

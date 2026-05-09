@@ -41,7 +41,7 @@ func (m *MockEventHandler) OnPreamble(preamble string) {
 }
 
 func TestNewAgentLoop(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 	loop := NewAgentLoop(llmClient, registry)
 
@@ -57,7 +57,7 @@ func TestNewAgentLoop(t *testing.T) {
 }
 
 func TestAgentLoop_Setters(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 	loop := NewAgentLoop(llmClient, registry)
 
@@ -89,7 +89,7 @@ func TestAgentLoop_Setters(t *testing.T) {
 }
 
 func TestAgentLoop_buildTools(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 
 	// Register a mock tool
@@ -110,7 +110,7 @@ func TestAgentLoop_buildTools(t *testing.T) {
 }
 
 func TestAgentLoop_buildToolResultContent(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 	loop := NewAgentLoop(llmClient, registry)
 
@@ -141,7 +141,7 @@ func TestAgentLoop_buildToolResultContent(t *testing.T) {
 }
 
 func TestAgentLoop_executeTool(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 
 	// Register mock tool
@@ -176,7 +176,7 @@ func TestAgentLoop_executeTool(t *testing.T) {
 }
 
 func TestAgentLoop_executeTool_UnknownTool(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 	loop := NewAgentLoop(llmClient, registry)
 
@@ -196,7 +196,7 @@ func TestAgentLoop_executeTool_UnknownTool(t *testing.T) {
 }
 
 func TestAgentLoop_TruncateResult(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 
 	// Register mock tool that returns large result
@@ -227,7 +227,7 @@ func TestAgentLoop_TruncateResult(t *testing.T) {
 }
 
 func TestAgentLoop_LastRunStatus_Default(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 	loop := NewAgentLoop(llmClient, registry)
 
@@ -272,7 +272,7 @@ func TestAgentLoop_ContextBloat_NoBloat(t *testing.T) {
 }
 
 func TestAgentLoop_RunStatusHandler(t *testing.T) {
-	llmClient := client.NewLLMClient("test", "", "")
+	llmClient := client.NewAnthropicClient("test", "", "")
 	registry := NewToolRegistry()
 	loop := NewAgentLoop(llmClient, registry)
 

@@ -85,16 +85,21 @@ type Response struct {
 	StopReason string
 }
 
-// LLMClient provides a simplified interface for LLM APIs
-type LLMClient struct {
+// LLMClient defines the interface for LLM API clients.
+type LLMClient interface {
+	Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions) (*Response, error)
+}
+
+// AnthropicClient implements the Anthropic Messages API.
+type AnthropicClient struct {
 	apiKey   string
 	endpoint string
 	model    string
 	client   *http.Client
 }
 
-// NewLLMClient creates a new LLM client
-func NewLLMClient(apiKey, endpoint, model string) *LLMClient {
+// NewAnthropicClient creates a new Anthropic client.
+func NewAnthropicClient(apiKey, endpoint, model string) *AnthropicClient {
 	if endpoint == "" {
 		endpoint = "https://api.anthropic.com"
 	}
@@ -102,7 +107,7 @@ func NewLLMClient(apiKey, endpoint, model string) *LLMClient {
 		model = "claude-4-sonnet-20250514"
 	}
 
-	return &LLMClient{
+	return &AnthropicClient{
 		apiKey:   apiKey,
 		endpoint: endpoint,
 		model:    model,
@@ -111,12 +116,12 @@ func NewLLMClient(apiKey, endpoint, model string) *LLMClient {
 }
 
 // SetModel sets the model to use
-func (c *LLMClient) SetModel(model string) {
+func (c *AnthropicClient) SetModel(model string) {
 	c.model = model
 }
 
 // Complete performs a non-chat completion. Implements the context.Completer interface.
-func (c *LLMClient) Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error) {
+func (c *AnthropicClient) Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error) {
 	maxTokens := req.MaxTokens
 	if maxTokens == 0 {
 		maxTokens = 1000
@@ -150,8 +155,8 @@ func (c *LLMClient) Complete(ctx context.Context, req CompletionRequest) (*Compl
 	return &CompletionResponse{OutputText: resp.Content}, nil
 }
 
-// Chat sends a chat request and returns the response
-func (c *LLMClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions) (*Response, error) {
+// Chat sends a chat request to the Anthropic Messages API and returns the response.
+func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions) (*Response, error) {
 	if maxTokens == 0 {
 		maxTokens = 8192
 	}

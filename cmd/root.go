@@ -130,8 +130,7 @@ func runChat(cfg *config.Config, query string) error {
 	ctx := context.Background()
 
 	// Create LLM client
-	model := os.Getenv("ANTHROPIC_MODEL")
-	llmClient := client.NewLLMClient(cfg.APIKey, cfg.Endpoint, model)
+	llmClient := newLLMClient(cfg)
 
 	// Load named agent if --agent flag is set
 	var agentOverride *agents.Agent
@@ -358,6 +357,16 @@ func truncateString(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
+// newLLMClient creates the appropriate LLM client based on config provider.
+func newLLMClient(cfg *config.Config) client.LLMClient {
+	switch cfg.Provider {
+	case "openai":
+		return client.NewOpenAIClient(cfg.OpenAIAPIKey, cfg.OpenAIEndpoint, cfg.OpenAIModel)
+	default:
+		return client.NewAnthropicClient(cfg.APIKey, cfg.Endpoint, cfg.ModelTier)
+	}
+}
+
 func Execute(version string) {
 	Version = version
 	if err := rootCmd.Execute(); err != nil {
@@ -543,8 +552,7 @@ var interactiveCmd = &cobra.Command{
 		}
 
 		// Create LLM client
-		model := os.Getenv("ANTHROPIC_MODEL")
-		llmClient := client.NewLLMClient(cfg.APIKey, cfg.Endpoint, model)
+		llmClient := newLLMClient(cfg)
 
 		// Create tool registry
 		registry := tools.RegisterLocalTools(cfg.Tools)

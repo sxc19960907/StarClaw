@@ -51,7 +51,7 @@ func skipIfNoAPIKey(t *testing.T) (string, string, string) {
 func TestAPIConnectivity(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(3)
@@ -72,7 +72,7 @@ func TestAPIConnectivity(t *testing.T) {
 func TestSimpleConversation(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(1)
@@ -98,7 +98,7 @@ func TestToolCall_FileRead(t *testing.T) {
 	err := os.WriteFile(testFile, []byte(testContent), 0644)
 	require.NoError(t, err)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -118,7 +118,7 @@ func TestToolCall_FileRead(t *testing.T) {
 func TestToolCall_Bash(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -143,7 +143,7 @@ func TestToolCall_Glob(t *testing.T) {
 	os.WriteFile(filepath.Join(tempDir, "test2.go"), []byte("package main"), 0644)
 	os.WriteFile(filepath.Join(tempDir, "readme.md"), []byte("# README"), 0644)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -164,7 +164,7 @@ func TestToolCall_Glob(t *testing.T) {
 func TestToolCall_Think(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -184,7 +184,7 @@ func TestToolCall_Think(t *testing.T) {
 func TestToolCall_SystemInfo(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -210,7 +210,7 @@ func TestToolCall_SystemInfo(t *testing.T) {
 func TestToolCall_HTTP(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -241,7 +241,7 @@ func TestSessionPersistence(t *testing.T) {
 	sess := sessionMgr.NewSession()
 	sess.Title = "Black Box Test Session"
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -287,7 +287,7 @@ func TestAuditLogging(t *testing.T) {
 	require.NoError(t, err)
 	defer logger.Close()
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)
@@ -324,7 +324,7 @@ func TestMultiToolChain(t *testing.T) {
 	testFile := filepath.Join(tempDir, "numbers.txt")
 	os.WriteFile(testFile, []byte("1\n2\n3\n4\n5\n"), 0644)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(10)
@@ -351,7 +351,7 @@ func TestMultiToolChain(t *testing.T) {
 func TestErrorHandling_BB(t *testing.T) {
 	apiKey, endpoint, model := skipIfNoAPIKey(t)
 
-	llmClient := client.NewLLMClient(apiKey, endpoint, model)
+	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
 	agentLoop := agent.NewAgentLoop(llmClient, registry)
 	agentLoop.SetMaxIterations(5)

@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/schedule"
 )
 
@@ -41,7 +42,7 @@ type ServerDeps struct {
 	AgentsDir        string
 	SkillsDir        string
 	InstructionsDir  string
-	LLMClient        agent.LLMClient
+	LLMClient        client.LLMClient
 	Registry         *agent.ToolRegistry
 	ScheduleManager  *schedule.Manager
 }

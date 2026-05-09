@@ -10,7 +10,7 @@ import (
 	"github.com/starclaw/starclaw/internal/client"
 )
 
-// mockLLMClient implements agent.LLMClient for testing.
+// mockLLMClient implements client.LLMClient for testing.
 type mockLLMClient struct {
 	t *testing.T
 }

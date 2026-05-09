@@ -23,7 +23,7 @@ type blackboxResponse struct {
 	err      error
 }
 
-var _ LLMClient = (*blackboxMockClient)(nil)
+var _ client.LLMClient = (*blackboxMockClient)(nil)
 
 func (m *blackboxMockClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
 	if m.callCount >= len(m.responses) {

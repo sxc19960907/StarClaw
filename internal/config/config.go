@@ -19,9 +19,13 @@ type MCPServerConfig = mcp.MCPServerConfig
 
 // Config holds all configuration for StarClaw
 type Config struct {
-	Endpoint   string                       `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
-	APIKey     string                       `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
-	ModelTier  string                       `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
+	Endpoint        string                       `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
+	APIKey          string                       `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
+	Provider        string                       `mapstructure:"provider"         yaml:"provider"         json:"provider"`
+	OpenAIAPIKey    string                       `mapstructure:"openai_api_key"   yaml:"openai_api_key"   json:"openai_api_key"`
+	OpenAIEndpoint  string                       `mapstructure:"openai_endpoint"  yaml:"openai_endpoint"  json:"openai_endpoint"`
+	OpenAIModel     string                       `mapstructure:"openai_model"     yaml:"openai_model"     json:"openai_model"`
+	ModelTier       string                       `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
 	Agent      AgentConfig                  `mapstructure:"agent" yaml:"agent" json:"agent"`
 	Tools      ToolsConfig                  `mapstructure:"tools" yaml:"tools" json:"tools"`
 	Audit      AuditConfig                  `mapstructure:"audit" yaml:"audit" json:"audit"`
@@ -95,6 +99,10 @@ func Load() (*Config, error) {
 
 	// Set defaults
 	viper.SetDefault("endpoint", "https://api.anthropic.com")
+	viper.SetDefault("provider", "anthropic")
+	viper.SetDefault("openai_api_key", "")
+	viper.SetDefault("openai_endpoint", "https://api.openai.com/v1")
+	viper.SetDefault("openai_model", "gpt-4o")
 	viper.SetDefault("model_tier", "medium")
 	viper.SetDefault("agent.max_iterations", 25)
 	viper.SetDefault("agent.temperature", 0)
@@ -115,6 +123,10 @@ func Load() (*Config, error) {
 	viper.SetDefault("update.auto_install", false)
 	viper.SetDefault("update.channel", "stable")
 	viper.SetDefault("update.cache_ttl", "24h")
+
+	// Bind environment variables
+	viper.BindEnv("openai_api_key", "OPENAI_API_KEY")
+	viper.BindEnv("openai_endpoint", "OPENAI_BASE_URL")
 
 	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -195,7 +207,13 @@ func SaveDefault(dir string) error {
 
 	defaultConfig := `endpoint: "https://api.anthropic.com"
 api_key: ""
+provider: "anthropic"  # "anthropic" or "openai"
 model_tier: "medium"
+
+# OpenAI configuration (used when provider is "openai")
+# openai_api_key: ""
+# openai_endpoint: "https://api.openai.com/v1"
+# openai_model: "gpt-4o"
 
 agent:
   max_iterations: 25
@@ -320,5 +338,10 @@ func LoadFromPath(configPath string) (*Config, error) {
 
 // NeedsSetup returns true if configuration is incomplete
 func NeedsSetup(cfg *Config) bool {
-	return strings.TrimSpace(cfg.APIKey) == ""
+	switch cfg.Provider {
+	case "openai":
+		return strings.TrimSpace(cfg.OpenAIAPIKey) == ""
+	default:
+		return strings.TrimSpace(cfg.APIKey) == ""
+	}
 }
