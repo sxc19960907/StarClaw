@@ -1,0 +1,30 @@
+{
+  "id": "phase1-ci-docs",
+  "name": "phase1-ci-docs",
+  "title": "Phase 1: CI增强 + 文档完善",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-05-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-09-ci-enhance",
+    "05-09-changelog-doc",
+    "05-09-contributing-doc"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
