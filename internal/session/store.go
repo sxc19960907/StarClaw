@@ -81,6 +81,8 @@ func (s *Store) List() ([]SessionSummary, error) {
 			Title:     sess.Title,
 			CreatedAt: sess.CreatedAt,
 			MsgCount:  len(sess.Messages),
+			Tags:      sess.Tags,
+			Favorite:  sess.Favorite,
 		})
 	}
 

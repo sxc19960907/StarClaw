@@ -21,6 +21,9 @@ import (
 	"github.com/starclaw/starclaw/internal/update"
 )
 
+var sessionsExportFormat string
+var sessionsExportOutput string
+
 var (
 	Version       = "dev"
 	autoApprove   = false
@@ -363,10 +366,10 @@ func Execute(version string) {
 	}
 }
 
-// sessionsCmd lists all saved sessions
+// sessionsCmd and its subcommands manage saved sessions
 var sessionsCmd = &cobra.Command{
 	Use:   "sessions",
-	Short: "List all saved sessions",
+	Short: "List and manage saved sessions",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		_, err := config.Load()
 		if err != nil {
@@ -386,23 +389,130 @@ var sessionsCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("%-30s  %-30s  %10s  %s\n", "ID", "Title", "Messages", "Date")
-		fmt.Println(strings.Repeat("-", 100))
+		fmt.Printf("%-30s  %-34s  %10s  %s\n", "ID", "Title", "Messages", "Date")
+		fmt.Println(strings.Repeat("-", 110))
 		for _, s := range summaries {
-			// Truncate ID and title for display
 			id := s.ID
 			if len(id) > 28 {
 				id = id[:25] + "..."
 			}
+
+			// Build title with tags and favorite marker
 			title := s.Title
-			if len(title) > 28 {
-				title = title[:25] + "..."
+			if len(title) > 22 {
+				title = title[:19] + "..."
 			}
-			fmt.Printf("%-30s  %-30s  %10d  %s\n",
+			var suffix string
+			if len(s.Tags) > 0 {
+				suffix = " [" + strings.Join(s.Tags, ", ") + "]"
+			}
+			if s.Favorite {
+				suffix = " ★" + suffix
+			}
+			titleDisplay := title + suffix
+			if len(titleDisplay) > 34 {
+				titleDisplay = titleDisplay[:31] + "..."
+			}
+
+			fmt.Printf("%-30s  %-34s  %10d  %s\n",
 				id,
-				title,
+				titleDisplay,
 				s.MsgCount,
 				s.CreatedAt.Format("2006-01-02"))
+		}
+		return nil
+	},
+}
+
+// sessionsTagCmd adds a tag to a session
+var sessionsTagCmd = &cobra.Command{
+	Use:   "tag <id> <tag>",
+	Short: "Add a tag to a session",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := config.Load()
+		if err != nil {
+			return err
+		}
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		mgr := session.NewManager(sessionsDir)
+		return mgr.AddTag(args[0], args[1])
+	},
+}
+
+// sessionsUntagCmd removes a tag from a session
+var sessionsUntagCmd = &cobra.Command{
+	Use:   "untag <id> <tag>",
+	Short: "Remove a tag from a session",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := config.Load()
+		if err != nil {
+			return err
+		}
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		mgr := session.NewManager(sessionsDir)
+		return mgr.RemoveTag(args[0], args[1])
+	},
+}
+
+// sessionsFavoriteCmd marks a session as favorite
+var sessionsFavoriteCmd = &cobra.Command{
+	Use:   "favorite <id>",
+	Short: "Mark a session as favorite",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := config.Load()
+		if err != nil {
+			return err
+		}
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		mgr := session.NewManager(sessionsDir)
+		return mgr.SetFavorite(args[0], true)
+	},
+}
+
+// sessionsUnfavoriteCmd unmarks a session as favorite
+var sessionsUnfavoriteCmd = &cobra.Command{
+	Use:   "unfavorite <id>",
+	Short: "Unmark a session as favorite",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := config.Load()
+		if err != nil {
+			return err
+		}
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		mgr := session.NewManager(sessionsDir)
+		return mgr.SetFavorite(args[0], false)
+	},
+}
+
+// sessionsExportCmd exports a session in a specified format
+var sessionsExportCmd = &cobra.Command{
+	Use:   "export <id>",
+	Short: "Export a session (md or html)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := config.Load()
+		if err != nil {
+			return err
+		}
+		sessionsDir := filepath.Join(config.StarclawDir(), "sessions")
+		mgr := session.NewManager(sessionsDir)
+
+		content, err := mgr.Export(args[0], sessionsExportFormat)
+		if err != nil {
+			return err
+		}
+
+		if sessionsExportOutput != "" {
+			if err := os.WriteFile(sessionsExportOutput, []byte(content), 0600); err != nil {
+				return fmt.Errorf("write output: %w", err)
+			}
+			fmt.Printf("Session exported to %s\n", sessionsExportOutput)
+		} else {
+			fmt.Println(content)
 		}
 		return nil
 	},
@@ -606,4 +716,15 @@ func init() {
 
 	// Add flags to update command
 	updateCmd.Flags().BoolP("check", "c", false, "Check only, don't install")
+
+	// Add subcommands to sessions
+	sessionsCmd.AddCommand(sessionsTagCmd)
+	sessionsCmd.AddCommand(sessionsUntagCmd)
+	sessionsCmd.AddCommand(sessionsFavoriteCmd)
+	sessionsCmd.AddCommand(sessionsUnfavoriteCmd)
+	sessionsCmd.AddCommand(sessionsExportCmd)
+
+	// Add flags to sessions export
+	sessionsExportCmd.Flags().StringVarP(&sessionsExportFormat, "format", "f", "md", "Export format (md or html)")
+	sessionsExportCmd.Flags().StringVarP(&sessionsExportOutput, "output", "o", "", "Output file path")
 }

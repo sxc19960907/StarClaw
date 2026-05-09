@@ -1,0 +1,29 @@
+{
+  "id": "session-upgrade",
+  "name": "session-upgrade",
+  "title": "会话管理升级 — 标签/导出/收藏",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-05-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-09-session-backend",
+    "05-09-session-cli"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

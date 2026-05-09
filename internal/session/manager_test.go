@@ -191,6 +191,204 @@ func TestManager_ResumeLatest_Empty(t *testing.T) {
 	assert.Nil(t, latest)
 }
 
+func TestManager_AddTag(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	sess := mgr.NewSession()
+	sess.Title = "Tag Test"
+	err := mgr.Save()
+	require.NoError(t, err)
+
+	// Add a tag
+	err = mgr.AddTag(sess.ID, "important")
+	require.NoError(t, err)
+
+	// Verify by loading session again
+	resumed, err := mgr.Resume(sess.ID)
+	require.NoError(t, err)
+	assert.Contains(t, resumed.Tags, "important")
+}
+
+func TestManager_AddTag_Duplicate(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	sess := mgr.NewSession()
+	err := mgr.Save()
+	require.NoError(t, err)
+
+	// Add same tag twice
+	err = mgr.AddTag(sess.ID, "test-tag")
+	require.NoError(t, err)
+
+	err = mgr.AddTag(sess.ID, "test-tag")
+	require.NoError(t, err)
+
+	// Verify only one instance
+	resumed, err := mgr.Resume(sess.ID)
+	require.NoError(t, err)
+	assert.Len(t, resumed.Tags, 1)
+}
+
+func TestManager_RemoveTag(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	sess := mgr.NewSession()
+	sess.Tags = []string{"alpha", "beta", "gamma"}
+	err := mgr.Save()
+	require.NoError(t, err)
+
+	// Remove a tag
+	err = mgr.RemoveTag(sess.ID, "beta")
+	require.NoError(t, err)
+
+	// Verify
+	resumed, err := mgr.Resume(sess.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"alpha", "gamma"}, resumed.Tags)
+}
+
+func TestManager_RemoveTag_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	sess := mgr.NewSession()
+	sess.Tags = []string{"alpha"}
+	err := mgr.Save()
+	require.NoError(t, err)
+
+	// Remove non-existent tag should be a no-op
+	err = mgr.RemoveTag(sess.ID, "nonexistent")
+	require.NoError(t, err)
+
+	resumed, err := mgr.Resume(sess.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"alpha"}, resumed.Tags)
+}
+
+func TestManager_AddTag_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	err := mgr.AddTag("nonexistent", "tag")
+	require.Error(t, err)
+}
+
+func TestManager_SetFavorite(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	sess := mgr.NewSession()
+	err := mgr.Save()
+	require.NoError(t, err)
+
+	// Set favorite
+	err = mgr.SetFavorite(sess.ID, true)
+	require.NoError(t, err)
+
+	resumed, err := mgr.Resume(sess.ID)
+	require.NoError(t, err)
+	assert.True(t, resumed.Favorite)
+
+	// Unset favorite
+	err = mgr.SetFavorite(sess.ID, false)
+	require.NoError(t, err)
+
+	resumed, err = mgr.Resume(sess.ID)
+	require.NoError(t, err)
+	assert.False(t, resumed.Favorite)
+}
+
+func TestManager_SetFavorite_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	err := mgr.SetFavorite("nonexistent", true)
+	require.Error(t, err)
+}
+
+func TestManager_SearchByTag(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	// Create sessions with different tags
+	sess1 := mgr.NewSession()
+	sess1.Title = "Alpha"
+	sess1.Tags = []string{"important"}
+	mgr.Save()
+
+	sess2 := mgr.NewSession()
+	sess2.Title = "Beta"
+	sess2.Tags = []string{"important"}
+	mgr.Save()
+
+	sess3 := mgr.NewSession()
+	sess3.Title = "Gamma"
+	sess3.Tags = []string{"archived"}
+	mgr.Save()
+
+	// Search by tag
+	results := mgr.SearchByTag("important")
+	assert.Len(t, results, 2)
+
+	ids := []string{results[0].ID, results[1].ID}
+	assert.Contains(t, ids, sess1.ID)
+	assert.Contains(t, ids, sess2.ID)
+}
+
+func TestManager_SearchByTag_NoMatch(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	sess := mgr.NewSession()
+	sess.Tags = []string{"one"}
+	mgr.Save()
+
+	results := mgr.SearchByTag("nonexistent")
+	assert.Empty(t, results)
+}
+
+func TestManager_ListFavorites(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	// Create sessions with different favorite states
+	sess1 := mgr.NewSession()
+	sess1.Title = "Fav1"
+	sess1.Favorite = true
+	mgr.Save()
+
+	sess2 := mgr.NewSession()
+	sess2.Title = "NotFav"
+	mgr.Save()
+
+	sess3 := mgr.NewSession()
+	sess3.Title = "Fav2"
+	sess3.Favorite = true
+	mgr.Save()
+
+	// List favorites
+	favorites := mgr.ListFavorites()
+	assert.Len(t, favorites, 2)
+
+	ids := []string{favorites[0].ID, favorites[1].ID}
+	assert.Contains(t, ids, sess1.ID)
+	assert.Contains(t, ids, sess3.ID)
+}
+
+func TestManager_ListFavorites_Empty(t *testing.T) {
+	tmpDir := t.TempDir()
+	mgr := NewManager(tmpDir)
+
+	mgr.NewSession()
+	mgr.Save()
+
+	favorites := mgr.ListFavorites()
+	assert.Empty(t, favorites)
+}
+
 func TestManager_ThreadSafety(t *testing.T) {
 	tmpDir := t.TempDir()
 	mgr := NewManager(tmpDir)
