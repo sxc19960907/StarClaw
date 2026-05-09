@@ -401,3 +401,36 @@ Abstracted LLMClient into interface (AnthropicClient+OpenAIClient both implement
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: Phase 1: CI enhancement, CHANGELOG, and CONTRIBUTING docs
+
+**Date**: 2026-05-09
+**Task**: Phase 1: CI enhancement, CHANGELOG, and CONTRIBUTING docs
+**Branch**: `main`
+
+### Summary
+
+Enhanced CI (lint+vet+mod-tidy+concurrency), GoReleaser release workflow, CHANGELOG.md (v0.0.1→v0.1.0), CONTRIBUTING.md (dev setup, commit conventions, PR process). 3 parallel sub-tasks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b11482b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
