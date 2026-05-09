@@ -492,7 +492,7 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 		if result.IsError {
 			errMsg = result.Content
 		}
-		a.loopDetector.Record(toolUse.Name, string(toolUse.Input), result.IsError, errMsg, "")
+		a.loopDetector.Record(toolUse.Name, string(toolUse.Input), result.IsError, errMsg, "", false, false)
 	}
 
 	// Audit log

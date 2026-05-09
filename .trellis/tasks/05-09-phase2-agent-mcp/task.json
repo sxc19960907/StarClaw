@@ -1,0 +1,30 @@
+{
+  "id": "phase2-agent-mcp",
+  "name": "phase2-agent-mcp",
+  "title": "Phase 2: Agent增强 + MCP Server",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-05-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-09-loop-patterns",
+    "05-09-compaction",
+    "05-09-mcp-server"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

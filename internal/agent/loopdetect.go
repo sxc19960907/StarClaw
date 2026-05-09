@@ -20,13 +20,16 @@ const (
 
 // ToolCallRecord tracks a single tool invocation for loop detection.
 type ToolCallRecord struct {
-	Name      string
-	ArgsHash  string // hex-encoded hash of raw args
-	TopicHash string // hex-encoded hash of normalized args (web tools)
-	ResultSig string // domain signature from results (web tools)
-	IsError   bool
-	ErrorSig  string // first 100 chars of error for grouping
-	IsSleep   bool   // bash command contains sleep
+	Name              string
+	ArgsHash          string // hex-encoded hash of raw args
+	TopicHash         string // hex-encoded hash of normalized args (web tools)
+	ResultSig         string // domain signature from results (web tools)
+	IsError           bool
+	ErrorSig          string // first 100 chars of error for grouping
+	IsSleep           bool   // bash command contains sleep
+	IsNonActionable   bool   // tool returned no useful result (empty grep, no web results)
+	FilePath          string // extracted file path for file_read tools
+	OutputEqualsInput bool   // tool output == tool input (identity cycle)
 }
 
 // toolFamilies maps tool names to their logical family for grouping.
@@ -86,7 +89,7 @@ func NewLoopDetector() *LoopDetector {
 }
 
 // Record adds a tool call to the sliding window.
-func (ld *LoopDetector) Record(name, argsJSON string, isError bool, errMsg string, resultSig string) {
+func (ld *LoopDetector) Record(name, argsJSON string, isError bool, errMsg string, resultSig string, isNonActionable bool, outputEqualsInput bool) {
 	topicHash := ""
 	if toolFamilies[name] != "" {
 		normalized := normalizeWebQuery(argsJSON)
@@ -95,13 +98,16 @@ func (ld *LoopDetector) Record(name, argsJSON string, isError bool, errMsg strin
 		}
 	}
 	rec := ToolCallRecord{
-		Name:      name,
-		ArgsHash:  hashArgs(argsJSON),
-		TopicHash: topicHash,
-		ResultSig: resultSig,
-		IsError:   isError,
-		ErrorSig:  truncateErrSig(errMsg, 100),
-		IsSleep:   name == "bash" && isSleepCommand(argsJSON),
+		Name:              name,
+		ArgsHash:          hashArgs(argsJSON),
+		TopicHash:         topicHash,
+		ResultSig:         resultSig,
+		IsError:           isError,
+		ErrorSig:          truncateErrSig(errMsg, 100),
+		IsSleep:           name == "bash" && isSleepCommand(argsJSON),
+		IsNonActionable:   isNonActionable,
+		FilePath:          extractFilePath(name, argsJSON),
+		OutputEqualsInput: outputEqualsInput,
 	}
 	ld.history = append(ld.history, rec)
 	if len(ld.history) > ld.historySize {
@@ -155,6 +161,14 @@ func (ld *LoopDetector) Check(name string) (LoopAction, string) {
 		ld.recentRecovery = false
 		return LoopNudge, fmt.Sprintf(
 			"You recovered from the earlier %s error. The successful result is your confirmation — proceed to your final answer.", ld.recoveredTool)
+	}
+
+	// IdentityCycle: tool output equals tool input (self-referential loop).
+	// If the latest call returned its own input as output, the tool is
+	// doing no useful work — nudge immediately.
+	if len(ld.history) > 0 && ld.history[len(ld.history)-1].OutputEqualsInput {
+		return LoopNudge, fmt.Sprintf(
+			"Tool %s returned its own input as output. This suggests the tool is in an identity loop — use a different approach.", name)
 	}
 
 	var latestHash string
@@ -309,6 +323,88 @@ func (ld *LoopDetector) Check(name string) (LoopAction, string) {
 		}
 	}
 
+	// UnproductiveStreak: consecutive same-tool calls that returned no useful
+	// results. Catches patterns like grep finding nothing repeatedly.
+	// Skip search-family tools (covered by SearchEscalation with tighter thresholds).
+	if !ld.repeatableTools[name] && family != "search" {
+		unproductiveCount := 0
+		for i := len(ld.history) - 1; i >= 0; i-- {
+			if ld.history[i].Name != name || !ld.history[i].IsNonActionable {
+				break
+			}
+			unproductiveCount++
+		}
+		if unproductiveCount >= 8 {
+			return LoopForceStop, fmt.Sprintf(
+				"You have made %d consecutive unproductive %s calls. Stop and use what you have, or ask the user for guidance.", unproductiveCount, name)
+		}
+		if unproductiveCount >= 5 {
+			return LoopNudge, fmt.Sprintf(
+				"You've made %d consecutive %s calls without useful results. Try a different approach or tool.", unproductiveCount, name)
+		}
+	}
+
+	// FileReadRepeat: same file read multiple times without edits.
+	if name == "file_read" || name == "read_file" {
+		latestPath := ""
+		for i := len(ld.history) - 1; i >= 0; i-- {
+			if ld.history[i].Name == name && ld.history[i].FilePath != "" {
+				latestPath = ld.history[i].FilePath
+				break
+			}
+		}
+		if latestPath != "" {
+			readCount := 0
+			for _, rec := range ld.history {
+				if rec.Name == name && rec.FilePath == latestPath {
+					readCount++
+				}
+			}
+			if readCount >= 3 {
+				return LoopNudge, fmt.Sprintf(
+					"You've read %s %d times without editing it. Use what you already know or make a change before re-reading.", latestPath, readCount)
+			}
+		}
+	}
+
+	// ToolModeFlipFlop: alternating between two tools without progress
+	// (e.g., read->edit->read->edit).
+	if len(ld.history) >= 3 {
+		last := ld.history[len(ld.history)-1].Name
+		prev := ld.history[len(ld.history)-2].Name
+		if last != prev {
+			// Count consecutive alternations from tail.
+			// Pattern: A,B,A,B,A -> alternating between two tools.
+			altLen := 0
+			expect := last
+			for i := len(ld.history) - 1; i >= 0; i-- {
+				if ld.history[i].Name == expect {
+					altLen++
+					if expect == last {
+						expect = prev
+					} else {
+						expect = last
+					}
+				} else {
+					break
+				}
+			}
+			// Each cycle = one return to the starting tool (A->B->A = 1 cycle).
+			// altLen=3 -> 1 cycle (A,B,A), altLen=5 -> 2 cycles, altLen=7 -> 3 cycles.
+			if altLen >= 4 {
+				cycles := (altLen - 1) / 2
+				if cycles >= 5 {
+					return LoopForceStop, fmt.Sprintf(
+						"You have been alternating between %s and %s %d times. Stop cycling and provide your answer now.", last, prev, cycles)
+				}
+				if cycles >= 3 {
+					return LoopNudge, fmt.Sprintf(
+						"You've been alternating between %s and %s %d times without progress. Try a fundamentally different approach.", last, prev, cycles)
+				}
+			}
+		}
+	}
+
 	// No progress
 	if !ld.repeatableTools[name] {
 		count := 0
@@ -361,6 +457,20 @@ func isSleepCommand(argsJSON string) bool {
 		return false
 	}
 	return sleepPattern.MatchString(args.Command)
+}
+
+// extractFilePath extracts the file path from a file_read-like tool's JSON args.
+func extractFilePath(name, argsJSON string) string {
+	if name != "file_read" {
+		return ""
+	}
+	var args struct {
+		Path string `json:"path"`
+	}
+	if json.Unmarshal([]byte(argsJSON), &args) != nil {
+		return ""
+	}
+	return args.Path
 }
 
 func truncateErrSig(s string, maxLen int) string {

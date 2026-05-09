@@ -662,6 +662,26 @@ var mcpListCmd = &cobra.Command{
 	},
 }
 
+// mcpServeCmd starts an MCP stdio server exposing all local tools.
+var mcpServeCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Start MCP stdio server exposing local tools",
+	Long: `Start an MCP (Model Context Protocol) stdio server that exposes
+all StarClaw local tools to MCP consumers such as Claude Desktop or
+other MCP-compatible clients. The server communicates via JSON-RPC
+over stdin/stdout.
+
+The server auto-approves all tool calls — the MCP consumer handles
+its own authorization layer.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		registry := tools.RegisterLocalTools()
+		tools.RegisterVersionTool(registry, Version)
+
+		srv := tools.NewMCPServer(registry, "starclaw", Version)
+		return srv.Serve(cmd.Context())
+	},
+}
+
 // updateCmd checks for and installs updates
 var updateCmd = &cobra.Command{
 	Use:   "update",
@@ -721,6 +741,7 @@ var updateCmd = &cobra.Command{
 func init() {
 	// Add subcommands to mcp
 	mcpCmd.AddCommand(mcpListCmd)
+	mcpCmd.AddCommand(mcpServeCmd)
 
 	// Add flags to update command
 	updateCmd.Flags().BoolP("check", "c", false, "Check only, don't install")
