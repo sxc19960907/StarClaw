@@ -10,20 +10,20 @@
 
 ## Features
 
-- 🤖 **Multi-Model AI** — Anthropic Claude + OpenAI GPT-4o (switch via config)
-- 🛠️ **33 Built-in Tools** — Files, shell, search, desktop automation, scheduling, MCP
+- 🤖 **Multi-Model AI** — Anthropic Claude + OpenAI GPT-4o + Ollama (local)
+- 🛠️ **34 Built-in Tools** — Files, shell, search, desktop automation, macOS, scheduling, MCP
+- 🖥️ **macOS Desktop Control** — Accessibility, mouse/keyboard, browser, screenshots, clipboard, notifications
 - 🔌 **MCP Client + Server** — Connect to MCP servers, or expose tools via stdio
-- 🍎 **macOS Desktop Integration** — Clipboard, notifications, screenshots, AppleScript, process management
-- 👤 **Named Agents** — Per-agent config, memory, and custom prompts
-- 🧩 **Skills System** — 14 bundled skills + dynamic activation
+- 👤 **Named Agents** — Per-agent config, memory, custom prompts, heartbeat monitoring
+- 🧩 **Skills System** — 14 bundled skills + dynamic skill discovery + loading
 - ⏰ **Scheduled Tasks** — Cron-based local task scheduling with flock-protected persistence
-- 🔄 **Background Daemon** — HTTP server (23 endpoints), cron scheduler, heartbeat, file watcher
+- 🔄 **Background Daemon** — HTTP server (23 endpoints), scheduler, heartbeat, file watcher
 - 💻 **Beautiful TUI** — Bubble Tea UI with markdown rendering and frog startup animation
 - 🛡️ **9 Loop Detection Patterns** — ExactDup, IdentityCycle, UnproductiveStreak, FileReadRepeat, etc.
-- 📦 **Context Management** — Spill to disk, time-based compaction, semantic consolidation, bloat detection
-- 💬 **Session Management** — Tags, favorites, Markdown/HTML export
-- 🔒 **4-Layer Security** — Global → Project → Agent → Runtime permissions
-- 🔁 **Auto-Retry** — Exponential backoff for transient API errors
+- 📦 **Context Management** — Spill to disk, time compaction, semantic consolidation, bloat detection
+- 💬 **Session Management** — Tags, favorites, Markdown/HTML export, CWD tracking
+- 🔒 **4-Layer Security** — Permissions + Safeguard (dangerous command blocking) + audit logging
+- 🔁 **Auto-Retry + Watchdog** — Exponential backoff + anti-stuck watchdog timer
 - 🐚 **Shell Integration** — Auto-completion (bash/zsh/fish), pipe mode with CWD context
 - 🎯 **Cross-Platform** — Linux, macOS, Windows support
 
@@ -98,14 +98,17 @@ StarClaw provides 33 built-in tools for the AI agent:
 
 | Category | Tools |
 |---|---|
-| File | `file_read`, `file_write`, `file_edit` |
+| File | `file_read`, `file_write`, `file_edit`, `filepreview` |
 | Search | `glob`, `directory_list`, `grep` (ripgrep + VCS skip) |
 | Shell | `bash` (output cap), `http` |
 | System | `system_info`, `think`, `wait`, `version` |
 | Desktop | `clipboard`, `notify`, `screenshot`, `applescript`, `process` |
+| macOS | `accessibility`, `computer`, `browser` |
 | Session | `session_search`, `memory_append` |
 | Schedule | `schedule_create`, `schedule_list`, `schedule_update`, `schedule_remove` |
-| Skills | `use_skill` |
+| Skills | `use_skill`, `skill` |
+| Memory | `memory` |
+| Security | `readonly` |
 | Publish | `publish_to_web` |
 | MCP | `mcp_tool` (varies by server) |
 
@@ -115,14 +118,18 @@ Configuration is stored in `~/.starclaw/config.yaml`:
 
 ```yaml
 # Provider selection
-provider: "anthropic"          # anthropic or openai
+provider: "anthropic"          # anthropic, openai, or ollama
 endpoint: "https://api.anthropic.com"
 api_key: "your-api-key"
 model_tier: "medium"
 
-# OpenAI (set provider: openai to use)
+# OpenAI
 # openai_api_key: "sk-xxx"
 # openai_model: "gpt-4o"
+
+# Ollama (local)
+# ollama_endpoint: "http://localhost:11434"
+# ollama_model: "llama3.1"
 
 agent:
   max_iterations: 25
