@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
+- **Total Sessions**: 12
 - **Last Active**: 2026-05-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~370 | Active |
+| `journal-1.md` | ~403 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 12 | 2026-05-09 | Implement OpenAI multi-model support | `7a735fc` | `main` |
 | 11 | 2026-05-09 | Implement session tags, favorites, and export | `fd20772` | `main` |
 | 10 | 2026-05-09 | Implement shell integration | `626e385` | `main` |
 | 9 | 2026-05-08 | Implement context bloat detection, bash output cap, and publish_to_web | `6972fe8` | `main` |

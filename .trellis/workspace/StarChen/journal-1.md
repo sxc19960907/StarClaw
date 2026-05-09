@@ -368,3 +368,36 @@ Added tags and favorites to Session model, export Markdown/HTML functions, and 5
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: Implement OpenAI multi-model support
+
+**Date**: 2026-05-09
+**Task**: Implement OpenAI multi-model support
+**Branch**: `main`
+
+### Summary
+
+Abstracted LLMClient into interface (AnthropicClient+OpenAIClient both implement it). Added OpenAI Chat Completions API support with function calling. Config: provider field (anthropic/openai) with env var bindings. Client factory switches on provider. 2 sequential sub-tasks. 480 lines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7a735fc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
