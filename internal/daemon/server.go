@@ -54,45 +54,7 @@ func (s *Server) Port() int {
 // Handler returns the HTTP handler for this server. Exported for testing.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /health", s.handleHealth)
-	mux.HandleFunc("GET /status", s.handleStatus)
-	mux.HandleFunc("POST /message", s.handleMessage)
-	mux.HandleFunc("POST /cancel", s.handleCancel)
-	mux.HandleFunc("POST /shutdown", s.handleShutdown)
-	mux.HandleFunc("GET /events", s.handleEvents)
-
-	// Schedule CRUD
-	mux.HandleFunc("GET /schedules", s.handleListSchedules)
-	mux.HandleFunc("GET /schedules/{id}", s.handleGetSchedule)
-	mux.HandleFunc("POST /schedules", s.handleCreateSchedule)
-	mux.HandleFunc("PATCH /schedules/{id}", s.handlePatchSchedule)
-	mux.HandleFunc("DELETE /schedules/{id}", s.handleDeleteSchedule)
-
-	// Agents
-	mux.HandleFunc("GET /agents", s.handleAgents)
-	mux.HandleFunc("GET /agents/{name}", s.handleGetAgent)
-	mux.HandleFunc("POST /agents", s.handleCreateAgent)
-	mux.HandleFunc("PUT /agents/{name}", s.handleUpdateAgent)
-	mux.HandleFunc("DELETE /agents/{name}", s.handleDeleteAgent)
-
-	// Config
-	mux.HandleFunc("GET /config", s.handleGetConfig)
-	mux.HandleFunc("PATCH /config", s.handlePatchConfig)
-
-	// Instructions
-	mux.HandleFunc("GET /instructions", s.handleGetInstructions)
-	mux.HandleFunc("PUT /instructions", s.handlePutInstructions)
-
-	// Sessions
-	mux.HandleFunc("GET /sessions", s.handleSessions)
-	mux.HandleFunc("DELETE /sessions/{id}", s.handleDeleteSession)
-	mux.HandleFunc("GET /sessions/search", s.handleSessionSearch)
-
-	// Permissions / Approval
-	mux.HandleFunc("GET /permissions", s.handlePermissions)
-	mux.HandleFunc("POST /approval", s.handleApproval)
-
+	NewRouter(s).RegisterRoutes(mux, s.deps)
 	return mux
 }
 
