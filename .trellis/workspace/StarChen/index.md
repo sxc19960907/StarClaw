@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-05-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~568 | Active |
+| `journal-1.md` | ~601 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 18 | 2026-05-10 | Phase 6: final 4 gaps — partition, bus/multi handler, memory audit | `3cc3fe4` | `main` |
 | 17 | 2026-05-10 | Phase 5: final polish across all modules | `7232137` | `main` |
 | 16 | 2026-05-10 | Phase 4: comprehensive ShanClaw gap closure | `8a019ec` | `main` |
 | 15 | 2026-05-09 | Phase 3: add 5 macOS/cross-platform desktop tools | `2f491c8` | `main` |
