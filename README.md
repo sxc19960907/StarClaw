@@ -11,7 +11,7 @@
 ## Features
 
 - 🤖 **Multi-Model AI** — Anthropic Claude + OpenAI GPT-4o + Ollama (local)
-- 🛠️ **34 Built-in Tools** — Files, shell, search, desktop automation, macOS, scheduling, MCP
+- 🛠️ **36 Built-in Tools** — Files, shell, search, desktop automation, macOS, imaging, scheduling, MCP
 - 🖥️ **macOS Desktop Control** — Accessibility, mouse/keyboard, browser, screenshots, clipboard, notifications
 - 🔌 **MCP Client + Server** — Connect to MCP servers, or expose tools via stdio
 - 👤 **Named Agents** — Per-agent config, memory, custom prompts, heartbeat monitoring
@@ -110,6 +110,7 @@ StarClaw provides 33 built-in tools for the AI agent:
 | Memory | `memory` |
 | Security | `readonly` |
 | Publish | `publish_to_web` |
+| Imaging | `imaging` (describe/resize/convert/OCR) |
 | MCP | `mcp_tool` (varies by server) |
 
 ## Configuration

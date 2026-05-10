@@ -2,6 +2,19 @@
 
 All notable changes to StarClaw are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.0 — 2026-05-10 — Phase 4+5: full ShanClaw parity
+
+### Added
+
+- **Agent** — normalize (URL/query规范化), toolbudget (字符预算), skill_discovery, phase tracker, usage tracker (token+成本), statecache, watchdog timer, warmset, resultshape (响应形状分析), cachemetric (缓存P50/P95/P99), testing_helpers
+- **Daemon** — attachment (文件附件), session_cwd, readtracker_cache, rules (agent规则), safeguard (危险命令拦截: rm -rf/, fork bomb等), marketplace, project_init, checkpoint (会话恢复)
+- **Tools** — filepreview (文件预览), memory (记忆搜索/删除), readonly (只读模式), skill (动态加载), imaging (describe/resize/convert/OCR), mcp_error_hints
+- **macOS tools** — accessibility (GUI元素查询), computer (鼠标/键盘), browser (打开URL/获取标题)
+- **Ollama provider** — 本地模型支持
+- **MCP** — health supervisor, readiness checker
+- **New packages** — cwdctx, uploads, runstatus
+- **Config** — settings.json (Spinner/MaxResponseLines/ShowTips), ollama配置
+
 ## v0.1.0 — 2026-05-09 — OpenAI support, session upgrade, shell integration
 
 ### Added

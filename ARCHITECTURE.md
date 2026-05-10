@@ -2,7 +2,7 @@
 
 ## 概述
 
-StarClaw 是一个 AI 驱动的个人 CLI 工具，约 40,000 行 Go 代码，23 个 internal 包，34 个内置工具，3 种模型 provider（Anthropic + OpenAI + Ollama）。
+StarClaw 是一个 AI 驱动的个人 CLI 工具，约 47,000 行 Go 代码（含测试），23 个 internal 包，36 个内置工具，3 种模型 provider（Anthropic + OpenAI + Ollama）。
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -51,10 +51,13 @@ Agent 执行引擎，~6,000 行。核心职责：
 - **StateCache** — 跨轮次状态缓存
 - **Watchdog** — 防卡死看门狗定时器
 - **Skill Discovery** — 自动发现 ~/.starclaw/skills/ 中的 skill
+- **ResultShape** — LLM 响应形状分析（text/tool_calls/error）
+- **WarmSet** — 预热工具集管理
+- **CacheMetric** — 缓存命中率 + P50/P95/P99 延迟统计
 
 ### Tool System (`internal/tools/`)
 
-34 个内置工具，~5,500 行：
+36 个内置工具，~6,000 行：
 
 | 类别 | 工具 |
 |---|---|
@@ -71,6 +74,7 @@ Agent 执行引擎，~6,000 行。核心职责：
 | 技能 | use_skill, skill (动态加载) |
 | 安全 | readonly (只读模式) |
 | 记忆 | memory (搜索/列出/删除) |
+| 图像 | imaging (describe/resize/convert/OCR) |
 | 协议 | MCP server (stdio) |
 
 ### LLM Client (`internal/client/`)
@@ -98,6 +102,8 @@ Agent 执行引擎，~6,000 行。核心职责：
 - **Safeguard** — 危险命令拦截（rm -rf /, fork bomb 等）
 - **Marketplace** — Skill 市场列表
 - **SessionCWD** — 按会话跟踪工作目录
+- **ProjectInit** — 项目初始化（创建 .starclaw/ 骨架）
+- **Checkpoint** — Agent 检查点保存/恢复
 
 ### TUI (`internal/tui/`)
 
