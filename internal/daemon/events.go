@@ -12,6 +12,12 @@ const (
 	EventApprovalNeeded   = "approval_needed"
 	EventApprovalResolved = "approval_resolved"
 	EventError            = "error"
+
+	// BusHandler event types
+	EventToolStatus  = "tool_status"
+	EventPreamble    = "preamble"
+	EventStreamDelta = "stream_delta"
+	EventUsage       = "usage"
 )
 
 // Event is a daemon lifecycle event pushed to SSE subscribers.
