@@ -131,3 +131,92 @@ func TestProcessTool_IsReadOnlyCall(t *testing.T) {
 		t.Error("kill should not be read-only")
 	}
 }
+
+func TestProcessTool_Start(t *testing.T) {
+	tool := NewProcessTool(30)
+	result, err := tool.Run(context.Background(), `{"action":"start","command":"echo","args":["hello world"]}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error result: %s", result.Content)
+	}
+	if !strings.Contains(result.Content, "hello world") {
+		t.Errorf("output should contain 'hello world', got: %s", result.Content)
+	}
+}
+
+func TestProcessTool_Start_EmptyCommand(t *testing.T) {
+	tool := NewProcessTool(30)
+	result, err := tool.Run(context.Background(), `{"action":"start","command":""}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected error for empty command")
+	}
+}
+
+func TestProcessTool_Start_NonExistent(t *testing.T) {
+	tool := NewProcessTool(30)
+	result, err := tool.Run(context.Background(), `{"action":"start","command":"nonexistent_binary_xyz"}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected error for non-existent command")
+	}
+}
+
+func TestProcessTool_Signal_NoPID(t *testing.T) {
+	tool := NewProcessTool(30)
+	result, err := tool.Run(context.Background(), `{"action":"signal","signal":"SIGTERM"}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected error for missing pid")
+	}
+}
+
+func TestProcessTool_Signal_InvalidSignal(t *testing.T) {
+	tool := NewProcessTool(30)
+	result, err := tool.Run(context.Background(), `{"action":"signal","pid":1,"signal":"SIGINVALID"}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected error for invalid signal")
+	}
+}
+
+func TestProcessTool_Status_NoPID(t *testing.T) {
+	tool := NewProcessTool(30)
+	result, err := tool.Run(context.Background(), `{"action":"status","pid":0}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected error for missing pid")
+	}
+}
+
+
+func TestProcessTool_IsSafeArgs_NewActions(t *testing.T) {
+	tool := NewProcessTool(30)
+	if !tool.IsSafeArgs(`{"action":"list"}`) {
+		t.Error("list should be safe")
+	}
+	if !tool.IsSafeArgs(`{"action":"status","pid":123}`) {
+		t.Error("status should be safe")
+	}
+	if tool.IsSafeArgs(`{"action":"kill","pid":123}`) {
+		t.Error("kill should not be safe")
+	}
+	if tool.IsSafeArgs(`{"action":"start","command":"echo"}`) {
+		t.Error("start should not be safe")
+	}
+	if tool.IsSafeArgs(`{"action":"signal","pid":100}`) {
+		t.Error("signal should not be safe")
+	}
+}

@@ -53,13 +53,15 @@ type AgentConfig struct {
 
 // ToolsConfig holds tool-specific settings
 type ToolsConfig struct {
-	BashTimeout      int      `mapstructure:"bash_timeout" yaml:"bash_timeout"`
-	BashMaxOutput    int      `mapstructure:"bash_max_output" yaml:"bash_max_output"`
-	ResultTruncation int      `mapstructure:"result_truncation" yaml:"result_truncation"`
-	ArgsTruncation   int      `mapstructure:"args_truncation" yaml:"args_truncation"`
-	GrepMaxResults   int      `mapstructure:"grep_max_results" yaml:"grep_max_results"`
-	Allowed          []string `mapstructure:"allowed" yaml:"allowed"`
-	Denied           []string `mapstructure:"denied" yaml:"denied"`
+	BashTimeout        int      `mapstructure:"bash_timeout" yaml:"bash_timeout"`
+	BashMaxOutput      int      `mapstructure:"bash_max_output" yaml:"bash_max_output"`
+	ResultTruncation   int      `mapstructure:"result_truncation" yaml:"result_truncation"`
+	ArgsTruncation     int      `mapstructure:"args_truncation" yaml:"args_truncation"`
+	GrepMaxResults     int      `mapstructure:"grep_max_results" yaml:"grep_max_results"`
+	ServerToolTimeout  int      `mapstructure:"server_tool_timeout" yaml:"server_tool_timeout" json:"server_tool_timeout"`
+	MCPExpose          []string `mapstructure:"mcp_expose" yaml:"mcp_expose,omitempty" json:"mcp_expose,omitempty"`
+	Allowed            []string `mapstructure:"allowed" yaml:"allowed"`
+	Denied             []string `mapstructure:"denied" yaml:"denied"`
 }
 
 // UpdateConfig holds auto-update settings

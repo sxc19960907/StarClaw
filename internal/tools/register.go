@@ -72,7 +72,7 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	reg.Register(&BrowserTool{})
 
 	// Process management tool
-	reg.Register(&ProcessTool{})
+	reg.Register(NewProcessTool(0))
 
 	// Image processing tool
 	reg.Register(&ImagingTool{})

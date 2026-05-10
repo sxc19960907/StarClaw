@@ -10,37 +10,49 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 )
 
+// MCPServerConfig holds configuration for the MCP server.
+type MCPServerConfig struct {
+	ToolTimeout int
+	ExposeTools []string // empty = expose all
+}
+
 // MCPServer wraps a StarClaw ToolRegistry as an MCP stdio server.
-// It converts all local tools to MCP tool definitions and handles
-// tools/list and tools/call MCP methods.
 type MCPServer struct {
 	registry *agent.ToolRegistry
 	name     string
 	version  string
+	config   MCPServerConfig
 	srv      *mcpserver.MCPServer
 }
 
-// NewMCPServer creates a new MCP server that exposes all registered local tools.
-func NewMCPServer(registry *agent.ToolRegistry, name, version string) *MCPServer {
+// NewMCPServer creates a new MCP server that exposes registered local tools.
+// If config.ExposeTools is non-empty, only those tools are exposed.
+func NewMCPServer(registry *agent.ToolRegistry, name, version string, config MCPServerConfig) *MCPServer {
 	s := &MCPServer{
 		registry: registry,
 		name:     name,
 		version:  version,
+		config:   config,
 	}
 
-	// Create the underlying mcp-go server with tool capabilities
 	srv := mcpserver.NewMCPServer(
 		name,
 		version,
 		mcpserver.WithInstructions("StarClaw local tools available via MCP"),
 	)
 
-	// Register all tools from the registry as MCP tools
+	exposeSet := make(map[string]bool)
+	for _, t := range config.ExposeTools {
+		exposeSet[t] = true
+	}
+
 	for _, tool := range registry.List() {
 		info := tool.Info()
+		if len(exposeSet) > 0 && !exposeSet[info.Name] {
+			continue
+		}
 		mcpTool := toMCPTool(info, tool)
 		handler := toMCPHandler(tool)
-
 		srv.AddTool(mcpTool, handler)
 	}
 
@@ -56,6 +68,20 @@ func (s *MCPServer) Serve(ctx context.Context) error {
 // Server returns the underlying mcp-go server for testing and inspection.
 func (s *MCPServer) Server() *mcpserver.MCPServer {
 	return s.srv
+}
+
+// ServerInfo returns metadata about this MCP server.
+func (s *MCPServer) ServerInfo() map[string]any {
+	toolCount := 0
+	for range s.registry.List() {
+		toolCount++
+	}
+	return map[string]any{
+		"name":       s.name,
+		"version":    s.version,
+		"tool_count": toolCount,
+		"timeout":    s.config.ToolTimeout,
+	}
 }
 
 // toMCPTool converts a StarClaw ToolInfo to an mcp.Tool definition.

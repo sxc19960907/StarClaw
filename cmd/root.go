@@ -679,7 +679,7 @@ its own authorization layer.`,
 		registry := tools.RegisterLocalTools()
 		tools.RegisterVersionTool(registry, Version)
 
-		srv := tools.NewMCPServer(registry, "starclaw", Version)
+		srv := tools.NewMCPServer(registry, "starclaw", Version, tools.MCPServerConfig{})
 		return srv.Serve(cmd.Context())
 	},
 }

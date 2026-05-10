@@ -11,7 +11,7 @@ import (
 
 func TestNewMCPServer_Creation(t *testing.T) {
 	reg := RegisterLocalTools()
-	srv := NewMCPServer(reg, "test-server", "1.0.0")
+	srv := NewMCPServer(reg, "test-server", "1.0.0", MCPServerConfig{})
 
 	if srv == nil {
 		t.Fatal("NewMCPServer returned nil")
@@ -36,7 +36,7 @@ func TestNewMCPServer_Creation(t *testing.T) {
 
 func TestNewMCPServer_ToolRegistration(t *testing.T) {
 	reg := RegisterLocalTools()
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	// All registered tools should be available as MCP tools
@@ -60,7 +60,7 @@ func TestNewMCPServer_ToolRegistration(t *testing.T) {
 
 func TestNewMCPServer_ToolListCount(t *testing.T) {
 	reg := RegisterLocalTools()
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	tools := mcpSrv.ListTools()
@@ -79,7 +79,7 @@ func TestNewMCPServer_ReadOnlyDetection(t *testing.T) {
 	reg.Register(&FileReadTool{}) // read-only
 	reg.Register(&BashTool{})     // read-write
 
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	// file_read should have ReadOnlyHint = true
@@ -112,7 +112,7 @@ func TestMCPServer_ToolExecution(t *testing.T) {
 	mock := &MockTool{name: "mock_tool", description: "A mock tool for testing"}
 	reg.Register(mock)
 
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	serverTool := mcpSrv.GetTool("mock_tool")
@@ -155,7 +155,7 @@ func TestMCPServer_ToolExecution_WithArgs(t *testing.T) {
 	reg := agent.NewToolRegistry()
 	reg.Register(&FileReadTool{})
 
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	serverTool := mcpSrv.GetTool("file_read")
@@ -200,7 +200,7 @@ func TestMCPServer_InputSchemaPreserved(t *testing.T) {
 	reg := agent.NewToolRegistry()
 	reg.Register(&FileReadTool{})
 
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	serverTool := mcpSrv.GetTool("file_read")
@@ -252,7 +252,7 @@ func TestMCPServer_InputSchemaPreserved(t *testing.T) {
 
 func TestMCPServer_ToolHandler_MissingTool(t *testing.T) {
 	reg := RegisterLocalTools()
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	// Should return nil for non-existent tool
@@ -265,7 +265,7 @@ func TestMCPServer_ToolHandler_MissingTool(t *testing.T) {
 func TestMCPServer_VersionToolRegistered(t *testing.T) {
 	reg := RegisterLocalTools()
 	RegisterVersionTool(reg, "2.0.0")
-	srv := NewMCPServer(reg, "test", "2.0.0")
+	srv := NewMCPServer(reg, "test", "2.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	versionTool := mcpSrv.GetTool("version")
@@ -325,7 +325,7 @@ func TestMCPServer_MarshalRoundTrip(t *testing.T) {
 // TestMCPServer_EmptyRegistry tests that an empty registry produces no tools.
 func TestMCPServer_EmptyRegistry(t *testing.T) {
 	reg := agent.NewToolRegistry()
-	srv := NewMCPServer(reg, "test", "1.0.0")
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{})
 	mcpSrv := srv.Server()
 
 	tools := mcpSrv.ListTools()
