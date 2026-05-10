@@ -36,6 +36,7 @@ type Deps struct {
 type Manager struct {
 	agents []*agentHeartbeat
 	deps   *Deps
+	mu     sync.Mutex
 	cancel context.CancelFunc
 	done   chan struct{}
 }
@@ -105,8 +106,8 @@ func ReadChecklist(path string) (string, error) {
 // no agents have heartbeat configured. Only returns an error if listing agents
 // fails at the filesystem level.
 func New(agentsDir string, deps *Deps) (*Manager, error) {
-	if deps == nil {
-		return nil, fmt.Errorf("heartbeat: deps is required")
+	if deps == nil || deps.RunAgent == nil {
+		return nil, fmt.Errorf("heartbeat: deps and RunAgent are required")
 	}
 
 	infos, err := agents.ListAgents(agentsDir)
@@ -155,7 +156,9 @@ func New(agentsDir string, deps *Deps) (*Manager, error) {
 // context so that Close() can stop all tickers. Start returns immediately after
 // launching the goroutines. The caller should call Close() to clean up.
 func (m *Manager) Start(ctx context.Context) {
+	m.mu.Lock()
 	ctx, m.cancel = context.WithCancel(ctx)
+	m.mu.Unlock()
 
 	var wg sync.WaitGroup
 	for _, ah := range m.agents {
@@ -233,8 +236,13 @@ func (m *Manager) tick(ctx context.Context, ah *agentHeartbeat) {
 // Close cancels all running ticker goroutines and waits for them to finish.
 // It is safe to call multiple times; subsequent calls are no-ops.
 func (m *Manager) Close() {
+	m.mu.Lock()
 	if m.cancel != nil {
 		m.cancel()
 	}
-	<-m.done
+	done := m.done
+	m.mu.Unlock()
+	if done != nil {
+		<-done
+	}
 }

@@ -43,7 +43,7 @@ func (s *Store) Save(sess *Session) error {
 
 // Load retrieves a session from disk
 func (s *Store) Load(id string) (*Session, error) {
-	path := filepath.Join(s.dir, id+".json")
+	path := filepath.Join(s.dir, filepath.Base(id)+".json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read session: %w", err)
@@ -96,6 +96,6 @@ func (s *Store) List() ([]SessionSummary, error) {
 
 // Delete removes a session
 func (s *Store) Delete(id string) error {
-	path := filepath.Join(s.dir, id+".json")
+	path := filepath.Join(s.dir, filepath.Base(id)+".json")
 	return os.Remove(path)
 }

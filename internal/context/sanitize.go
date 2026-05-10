@@ -68,7 +68,7 @@ func mergeConsecutiveRoles(messages []client.Message) []client.Message {
 		if i > 0 && msg.Role == messages[i-1].Role {
 			switch msg.Role {
 			case "assistant", "user":
-				out[len(out)-1] = msg
+				out[len(out)-1].Content += "\n" + msg.Content
 				continue
 			}
 		}

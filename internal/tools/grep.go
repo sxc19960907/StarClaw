@@ -91,7 +91,7 @@ func (t *GrepTool) searchWithRG(ctx context.Context, bin string, args grepArgs) 
 		cmdArgs = append(cmdArgs, "--glob", args.Glob)
 	}
 
-	cmdArgs = append(cmdArgs, args.Pattern)
+	cmdArgs = append(cmdArgs, "--", args.Pattern)
 	cmdArgs = append(cmdArgs, args.Path)
 
 	cmd := exec.CommandContext(ctx, bin, cmdArgs...)
@@ -165,9 +165,10 @@ func (t *GrepTool) searchNative(args grepArgs) (agent.ToolResult, error) {
 func (t *GrepTool) searchDirectory(dir string, re *regexp.Regexp) ([]string, error) {
 	var matches []string
 
-	// Use doublestar to find all files recursively
-	pattern := filepath.Join(dir, "**", "*")
-	files, err := doublestar.Glob(os.DirFS("."), pattern)
+	// Use doublestar to find all files recursively.
+	// Root the filesystem at dir so absolute paths work correctly.
+	pattern := "**/*"
+	files, err := doublestar.Glob(os.DirFS(dir), pattern)
 	if err != nil {
 		return nil, err
 	}

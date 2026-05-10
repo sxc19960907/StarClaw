@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type readTrackerKey struct{}
@@ -15,6 +16,7 @@ func ReadTrackerKey() any { return readTrackerKey{} }
 
 // ReadTracker tracks which files have been read during the current agent turn.
 type ReadTracker struct {
+	mu   sync.Mutex
 	read map[string]bool
 }
 
@@ -25,6 +27,8 @@ func NewReadTracker() *ReadTracker {
 
 // MarkRead records that a file has been read.
 func (rt *ReadTracker) MarkRead(path string) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
 	norm := normalizePath(path)
 	if norm != "" {
 		rt.read[norm] = true
@@ -33,6 +37,8 @@ func (rt *ReadTracker) MarkRead(path string) {
 
 // HasRead returns true if the file has been read in this turn.
 func (rt *ReadTracker) HasRead(path string) bool {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
 	norm := normalizePath(path)
 	if norm == "" {
 		return false

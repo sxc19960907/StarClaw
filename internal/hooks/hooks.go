@@ -76,7 +76,11 @@ func NewRunner(cfg Config) *Runner {
 // RunPreToolUse runs matching PreToolUse hooks before a tool call.
 // Returns ("deny", reason) if any hook rejects the call.
 func (r *Runner) RunPreToolUse(ctx context.Context, toolName, toolInput, sessionID string) (string, string) {
-	if r == nil || r.enterHook() {
+	if r == nil {
+		return "", ""
+	}
+	if r.enterHook() {
+		log.Printf("[hooks] PreToolUse %q skipped: another hook is running", toolName)
 		return "", ""
 	}
 	defer r.exitHook()
@@ -116,7 +120,11 @@ func (r *Runner) RunPreToolUse(ctx context.Context, toolName, toolInput, session
 
 // RunPostToolUse runs matching PostToolUse hooks after a tool call (fire-and-forget).
 func (r *Runner) RunPostToolUse(ctx context.Context, toolName, toolInput, toolResponse, sessionID string) {
-	if r == nil || r.enterHook() {
+	if r == nil {
+		return
+	}
+	if r.enterHook() {
+		log.Printf("[hooks] PostToolUse %q skipped: another hook is running", toolName)
 		return
 	}
 	defer r.exitHook()
@@ -296,7 +304,8 @@ func resolveCommand(command string) (string, error) {
 	// Only allow scripts under ~/.starclaw/
 	if filepath.IsAbs(command) {
 		starclawDir, err := starclawDir()
-		if err != nil || !strings.HasPrefix(command, starclawDir+string(filepath.Separator)) {
+		cleaned := filepath.Clean(command)
+		if err != nil || !strings.HasPrefix(cleaned, starclawDir+string(filepath.Separator)) {
 			return "", fmt.Errorf("absolute path %q rejected: must be under ~/.starclaw", command)
 		}
 	}

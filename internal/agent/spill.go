@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -21,7 +22,7 @@ func spillToDisk(configDir, sessionID, callID, content string) (preview string, 
 		return "", fmt.Errorf("spill mkdir: %w", err)
 	}
 
-	filename := fmt.Sprintf("tool_result_%s_%s.txt", sessionID, callID)
+	filename := fmt.Sprintf("tool_result_%s_%s.txt", sanitizeSpillID(sessionID), sanitizeSpillID(callID))
 	path := filepath.Join(dir, filename)
 
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
@@ -42,10 +43,22 @@ func spillToDisk(configDir, sessionID, callID, content string) (preview string, 
 // cleanupSpills removes all spill files for a given session ID.
 func cleanupSpills(configDir, sessionID string) {
 	dir := filepath.Join(configDir, "tmp")
-	pattern := filepath.Join(dir, fmt.Sprintf("tool_result_%s_*.txt", sessionID))
+	pattern := filepath.Join(dir, fmt.Sprintf("tool_result_%s_*.txt", sanitizeSpillID(sessionID)))
 	matches, _ := filepath.Glob(pattern)
 	for _, m := range matches {
 		os.Remove(m)
 	}
 	os.Remove(dir) // best-effort: remove tmp dir if empty
+}
+
+// sanitizeSpillID strips path separators and traversal sequences from an ID
+// to prevent directory escape when used in filenames.
+func sanitizeSpillID(id string) string {
+	id = strings.ReplaceAll(id, "/", "_")
+	id = strings.ReplaceAll(id, "\\", "_")
+	id = strings.ReplaceAll(id, "..", "_")
+	if id == "" {
+		return "_"
+	}
+	return id
 }

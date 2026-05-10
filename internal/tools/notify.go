@@ -80,7 +80,7 @@ func sendMacOSNotification(ctx context.Context, title, message string) error {
 }
 
 func sendLinuxNotification(ctx context.Context, title, message string) error {
-	cmd := exec.CommandContext(ctx, "notify-send", title, message)
+	cmd := exec.CommandContext(ctx, "notify-send", "--", title, message)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %w\n%s", cmd.Path, err, string(out))
@@ -91,5 +91,8 @@ func sendLinuxNotification(ctx context.Context, title, message string) error {
 func escapeAppleScript(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, `"`, `\"`)
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	s = strings.ReplaceAll(s, "\t", "\\t")
 	return s
 }

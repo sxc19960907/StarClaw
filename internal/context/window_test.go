@@ -22,8 +22,8 @@ func makeMessages(count int) []client.Message {
 }
 
 func TestMinShapeable(t *testing.T) {
-	if MinShapeable() != 9 {
-		t.Errorf("MinShapeable = %d, want 9", MinShapeable())
+	if MinShapeable() != 7 {
+		t.Errorf("MinShapeable = %d, want 7", MinShapeable())
 	}
 }
 
@@ -81,12 +81,9 @@ func TestShapeHistory_Compacts(t *testing.T) {
 	if len(shaped) >= len(msgs) {
 		t.Errorf("Large history should be compacted: %d → %d", len(msgs), len(shaped))
 	}
-	// Should keep system + first user
+	// Should keep first message as anchor
 	if shaped[0].Role != "system" {
-		t.Error("Should preserve system message")
-	}
-	if shaped[1].Role != "user" {
-		t.Error("Should preserve first user message")
+		t.Error("Should preserve first message (system in this test)")
 	}
 }
 
@@ -94,7 +91,7 @@ func TestShapeHistory_KeepsSystem(t *testing.T) {
 	msgs := makeMessages(30)
 	shaped := ShapeHistory(msgs, "", 5000)
 	if len(shaped) == 0 || shaped[0].Role != "system" {
-		t.Error("Shaped history must keep system message as first element")
+		t.Error("Shaped history must keep first message (system in this test)")
 	}
 }
 

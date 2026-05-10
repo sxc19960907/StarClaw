@@ -56,7 +56,7 @@ func SaveAttachment(starclawDir, sessionID string, r *http.Request) (string, err
 		return "", fmt.Errorf("invalid filename")
 	}
 
-	attachmentsDir := filepath.Join(starclawDir, "attachments", sessionID)
+	attachmentsDir := filepath.Join(starclawDir, "attachments", filepath.Clean(sessionID))
 	if err := os.MkdirAll(attachmentsDir, 0755); err != nil {
 		return "", fmt.Errorf("create attachments directory: %w", err)
 	}
@@ -84,7 +84,7 @@ func ListAttachments(starclawDir, sessionID string) []Attachment {
 		return nil
 	}
 
-	attachmentsDir := filepath.Join(starclawDir, "attachments", sessionID)
+	attachmentsDir := filepath.Join(starclawDir, "attachments", filepath.Clean(sessionID))
 
 	entries, err := os.ReadDir(attachmentsDir)
 	if err != nil {

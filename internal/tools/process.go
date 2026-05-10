@@ -96,7 +96,7 @@ func (t *ProcessTool) killProcess(ctx context.Context, args processArgs) (agent.
 	}
 
 	if strings.TrimSpace(args.Name) != "" {
-		cmd := exec.CommandContext(ctx, "pkill", args.Name)
+		cmd := exec.CommandContext(ctx, "pkill", "-x", "--", args.Name)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return agent.ToolResult{

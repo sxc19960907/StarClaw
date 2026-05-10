@@ -53,6 +53,11 @@ func (t *ScreenshotTool) Run(ctx context.Context, argsJSON string) (agent.ToolRe
 	path := args.Path
 	if path == "" {
 		path = fmt.Sprintf("/tmp/screenshot_%d.png", time.Now().UnixMilli())
+	} else {
+		path = ExpandHome(path)
+		if err := IsSafePath(path); err != nil {
+			return agent.ValidationError("unsafe path: " + err.Error()), nil
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, "screencapture", "-x", path)

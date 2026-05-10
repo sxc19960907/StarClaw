@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 // SessionMeta holds searchable metadata for a session.
@@ -18,6 +19,7 @@ type SessionMeta struct {
 
 // Index provides fast in-memory lookup of session metadata.
 type Index struct {
+	mu       sync.RWMutex
 	sessions map[string]*SessionMeta
 	loaded   bool
 }
@@ -31,6 +33,8 @@ func NewIndex() *Index {
 
 // Build scans sessionsDir and indexes all session JSON files.
 func (idx *Index) Build(sessionsDir string) error {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
 	entries, err := os.ReadDir(sessionsDir)
 	if err != nil {
 		return err
@@ -65,6 +69,8 @@ func (idx *Index) Build(sessionsDir string) error {
 
 // Lookup returns the metadata for a session by ID, or nil if not found.
 func (idx *Index) Lookup(id string) *SessionMeta {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
 	if !idx.loaded {
 		return nil
 	}
@@ -73,6 +79,8 @@ func (idx *Index) Lookup(id string) *SessionMeta {
 
 // Search returns all sessions whose title matches the query (case-insensitive).
 func (idx *Index) Search(query string) []SessionMeta {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
 	if !idx.loaded {
 		return nil
 	}

@@ -115,6 +115,12 @@
       "source": "open.feishu.cn",
       "sourceType": "well-known",
       "computedHash": "37664a511e12ecab3fb8eba7a27a42ca35170668b5eaec6b5798229cdebb98a0"
+    },
+    "obsidian-cli": {
+      "source": "kepano/obsidian-skills",
+      "sourceType": "github",
+      "skillPath": "skills/obsidian-cli/SKILL.md",
+      "computedHash": "f46ae626875f7e47c410c2ee93896c4526024ebe127719e8fb430261b5677edc"
     }
   }
 }

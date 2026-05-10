@@ -115,7 +115,7 @@ func (t *PublishToWebTool) Run(ctx context.Context, argsJSON string) (agent.Tool
 	return agent.ToolResult{Content: result}, nil
 }
 
-func (t *PublishToWebTool) RequiresApproval() bool { return false }
+func (t *PublishToWebTool) RequiresApproval() bool { return true }
 
 // generateID produces a hex-encoded random identifier for a publication.
 func generateID() (string, error) {

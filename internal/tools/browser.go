@@ -188,7 +188,7 @@ end tell`
 		result, fbErr := execOsascript(ctx, fallback)
 		if fbErr != nil {
 			return agent.ToolResult{
-				Content: fmt.Sprintf("get_title error: %v", err),
+				Content: fmt.Sprintf("get_title error: %v", fbErr),
 				IsError: true,
 			}, nil
 		}

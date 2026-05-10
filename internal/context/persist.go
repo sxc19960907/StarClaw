@@ -199,7 +199,9 @@ func BoundedAppend(memoryDir, content string) error {
 
 func writeDetailFile(memoryDir, content string) (string, error) {
 	b := make([]byte, 3)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate random suffix: %w", err)
+	}
 	suffix := hex.EncodeToString(b)
 
 	timestamp := time.Now().Format("2006-01-02")

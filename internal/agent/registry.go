@@ -2,12 +2,14 @@ package agent
 
 import (
 	"sort"
+	"sync"
 
 	"github.com/starclaw/starclaw/internal/client"
 )
 
 // ToolRegistry manages tool registration and lookup
 type ToolRegistry struct {
+	mu    sync.Mutex
 	tools map[string]Tool
 	order []string
 }
@@ -21,6 +23,8 @@ func NewToolRegistry() *ToolRegistry {
 
 // Register adds a tool to the registry
 func (r *ToolRegistry) Register(t Tool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	name := t.Info().Name
 	if _, exists := r.tools[name]; !exists {
 		r.order = append(r.order, name)
@@ -30,15 +34,21 @@ func (r *ToolRegistry) Register(t Tool) {
 
 // Get retrieves a tool by name
 func (r *ToolRegistry) Get(name string) (Tool, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	t, ok := r.tools[name]
 	return t, ok
 }
 
-// List returns all registered tools
+// List returns all registered tools in sorted order.
 func (r *ToolRegistry) List() []Tool {
-	sort.Strings(r.order)
-	result := make([]Tool, 0, len(r.order))
-	for _, name := range r.order {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	sorted := make([]string, len(r.order))
+	copy(sorted, r.order)
+	sort.Strings(sorted)
+	result := make([]Tool, 0, len(sorted))
+	for _, name := range sorted {
 		if t, ok := r.tools[name]; ok {
 			result = append(result, t)
 		}
@@ -46,26 +56,34 @@ func (r *ToolRegistry) List() []Tool {
 	return result
 }
 
-// Names returns all registered tool names
+// Names returns all registered tool names in sorted order.
 func (r *ToolRegistry) Names() []string {
-	sort.Strings(r.order)
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	names := make([]string, len(r.order))
 	copy(names, r.order)
+	sort.Strings(names)
 	return names
 }
 
 // Count returns number of registered tools.
 func (r *ToolRegistry) Count() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	return len(r.tools)
 }
 
 // Len returns the number of registered tools (alias for Count).
 func (r *ToolRegistry) Len() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	return len(r.tools)
 }
 
 // All returns all registered tools in registration order.
 func (r *ToolRegistry) All() []Tool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	tools := make([]Tool, 0, len(r.order))
 	for _, name := range r.order {
 		tools = append(tools, r.tools[name])
@@ -75,6 +93,8 @@ func (r *ToolRegistry) All() []Tool {
 
 // Schemas returns complete client.Tool schemas for all registered tools.
 func (r *ToolRegistry) Schemas() []client.Tool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	schemas := make([]client.Tool, 0, len(r.order))
 	for _, name := range r.order {
 		schemas = append(schemas, buildToolSchema(r.tools[name]))
@@ -85,6 +105,8 @@ func (r *ToolRegistry) Schemas() []client.Tool {
 // SortedSchemas returns tool schemas in deterministic order:
 // local tools (alpha) → MCP tools (alpha) → gateway tools (alpha).
 func (r *ToolRegistry) SortedSchemas() []client.Tool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	local, mcp, gw := r.partitionBySource()
 	sort.Strings(local)
 	sort.Strings(mcp)
@@ -101,6 +123,8 @@ func (r *ToolRegistry) SortedSchemas() []client.Tool {
 
 // SortedNames returns tool names in the same deterministic order as SortedSchemas.
 func (r *ToolRegistry) SortedNames() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	local, mcp, gw := r.partitionBySource()
 	sort.Strings(local)
 	sort.Strings(mcp)
@@ -115,6 +139,8 @@ func (r *ToolRegistry) SortedNames() []string {
 
 // SummaryList returns name+description for all registered tools.
 func (r *ToolRegistry) SummaryList() []ToolSummary {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	summaries := make([]ToolSummary, 0, len(r.order))
 	for _, name := range r.order {
 		info := r.tools[name].Info()
@@ -125,6 +151,8 @@ func (r *ToolRegistry) SummaryList() []ToolSummary {
 
 // FullSchemas returns complete client.Tool schemas for the named tools.
 func (r *ToolRegistry) FullSchemas(names []string) []client.Tool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	schemas := make([]client.Tool, 0, len(names))
 	for _, name := range names {
 		if t, ok := r.tools[name]; ok {
@@ -174,11 +202,13 @@ func buildToolSchema(t Tool) client.Tool {
 	}
 }
 
-// Clone creates a copy of the registry
+// Clone creates a copy of the registry preserving registration order.
 func (r *ToolRegistry) Clone() *ToolRegistry {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	clone := NewToolRegistry()
-	for name, tool := range r.tools {
-		clone.tools[name] = tool
+	for _, name := range r.order {
+		clone.tools[name] = r.tools[name]
 		clone.order = append(clone.order, name)
 	}
 	return clone
@@ -186,6 +216,8 @@ func (r *ToolRegistry) Clone() *ToolRegistry {
 
 // Remove removes a tool from the registry
 func (r *ToolRegistry) Remove(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	delete(r.tools, name)
 	for i, n := range r.order {
 		if n == name {
@@ -197,36 +229,40 @@ func (r *ToolRegistry) Remove(name string) {
 
 // FilterByAllow returns a new registry with only allowed tools
 func (r *ToolRegistry) FilterByAllow(allowed []string) *ToolRegistry {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	allowedSet := make(map[string]bool)
 	for _, name := range allowed {
 		allowedSet[name] = true
 	}
 
 	filtered := NewToolRegistry()
-	for name, tool := range r.tools {
+	for _, name := range r.order {
 		if allowedSet[name] {
-			filtered.tools[name] = tool
+			filtered.tools[name] = r.tools[name]
 			filtered.order = append(filtered.order, name)
 		}
 	}
-	sort.Strings(filtered.order)
 	return filtered
 }
 
 // FilterByDeny returns a new registry without denied tools
 func (r *ToolRegistry) FilterByDeny(denied []string) *ToolRegistry {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	deniedSet := make(map[string]bool)
 	for _, name := range denied {
 		deniedSet[name] = true
 	}
 
 	filtered := NewToolRegistry()
-	for name, tool := range r.tools {
+	for _, name := range r.order {
 		if !deniedSet[name] {
-			filtered.tools[name] = tool
+			filtered.tools[name] = r.tools[name]
 			filtered.order = append(filtered.order, name)
 		}
 	}
-	sort.Strings(filtered.order)
 	return filtered
 }

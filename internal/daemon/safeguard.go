@@ -29,22 +29,48 @@ var blockedCommands = []commandCheck{
 	{
 		reason: "recursive root deletion",
 		matcher: func(cmd string) bool {
-			// Match rm -rf where one of the path arguments is exactly "/".
 			parts := strings.Fields(cmd)
-			for i := 0; i < len(parts); i++ {
-				if parts[i] == "rm" && i+1 < len(parts) && parts[i+1] == "-rf" {
-					for j := i + 2; j < len(parts); j++ {
-						arg := parts[j]
-						// Skip flags (e.g. --no-preserve-root)
-						if strings.HasPrefix(arg, "--") {
-							continue
-						}
-						// Check if the path resolves to root.
-						abs, err := filepath.Abs(arg)
-						if err == nil && abs == "/" {
-							return true
-						}
+			isRM := false
+			hasRecursive := false
+			hasForce := false
+			var pathArgs []string
+
+			for i, p := range parts {
+				if p == "rm" && i == 0 {
+					isRM = true
+					continue
+				}
+				if !isRM {
+					continue
+				}
+				if strings.HasPrefix(p, "--") {
+					if p == "--recursive" {
+						hasRecursive = true
 					}
+					if p == "--force" {
+						hasForce = true
+					}
+					continue
+				}
+				if strings.HasPrefix(p, "-") && !strings.HasPrefix(p, "--") {
+					if strings.ContainsAny(p, "rR") {
+						hasRecursive = true
+					}
+					if strings.Contains(p, "f") {
+						hasForce = true
+					}
+					continue
+				}
+				pathArgs = append(pathArgs, p)
+			}
+
+			if !isRM || !hasRecursive || !hasForce {
+				return false
+			}
+			for _, arg := range pathArgs {
+				abs, err := filepath.Abs(arg)
+				if err == nil && abs == "/" {
+					return true
 				}
 			}
 			return false
@@ -86,14 +112,13 @@ var blockedCommands = []commandCheck{
 	{
 		reason: "permission removal",
 		matcher: func(cmd string) bool {
-			// Match chmod -R 000 (with any path).
+			// Match chmod -R 000 (with any path). Check for -R flag in any form.
 			parts := strings.Fields(cmd)
 			for i := 0; i < len(parts); i++ {
-				if parts[i] == "chmod" && i+1 < len(parts) && parts[i+1] == "-r" && i+2 < len(parts) && parts[i+2] == "000" {
-					return true
-				}
-				if parts[i] == "chmod" && i+1 < len(parts) && strings.EqualFold(parts[i+1], "-R") && i+2 < len(parts) && parts[i+2] == "000" {
-					return true
+				if parts[i] == "chmod" && i+2 < len(parts) && parts[i+2] == "000" {
+					if strings.Contains(parts[i+1], "R") || strings.Contains(parts[i+1], "r") {
+						return true
+					}
 				}
 			}
 			return false

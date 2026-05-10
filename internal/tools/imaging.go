@@ -56,6 +56,12 @@ func (t *ImagingTool) Run(ctx context.Context, argsJSON string) (agent.ToolResul
 		return agent.ValidationError("path is required"), nil
 	}
 
+	// Expand and validate path
+	args.Path = ExpandHome(args.Path)
+	if err := IsSafePath(args.Path); err != nil {
+		return agent.ValidationError("unsafe path: " + err.Error()), nil
+	}
+
 	// Validate action-specific args before checking file existence
 	// so that validation errors are returned even when the file doesn't exist.
 	switch args.Action {
@@ -174,23 +180,23 @@ func sipsDescribe(ctx context.Context, path string) (string, error) {
 }
 
 func sipsResize(ctx context.Context, args imagingArgs) (agent.ToolResult, error) {
-	// sips -z height width path (z flag: height first, width second)
-	height := args.Height
-	width := args.Width
-	if height <= 0 {
-		height = 0 // sips will preserve aspect ratio
-	}
-	if width <= 0 {
-		width = 0
+	var sipsArgs []string
+
+	if args.Width > 0 && args.Height > 0 {
+		// Both dimensions specified: use -z (height first, width second)
+		sipsArgs = []string{"-z", fmt.Sprintf("%d", args.Height), fmt.Sprintf("%d", args.Width), args.Path}
+	} else if args.Width > 0 {
+		sipsArgs = []string{"--resampleWidth", fmt.Sprintf("%d", args.Width), args.Path}
+	} else {
+		sipsArgs = []string{"--resampleHeight", fmt.Sprintf("%d", args.Height), args.Path}
 	}
 
-	sipsArgs := []string{"-z", fmt.Sprintf("%d", height), fmt.Sprintf("%d", width), args.Path}
 	cmd := exec.CommandContext(ctx, "sips", sipsArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return agent.ToolResult{Content: fmt.Sprintf("resize failed: %v\n%s", err, string(out)), IsError: true}, nil
 	}
-	return agent.ToolResult{Content: fmt.Sprintf("Resized %s to %dx%d", filepath.Base(args.Path), width, height)}, nil
+	return agent.ToolResult{Content: fmt.Sprintf("Resized %s to %dx%d", filepath.Base(args.Path), args.Width, args.Height)}, nil
 }
 
 func sipsConvert(ctx context.Context, path, format string) (agent.ToolResult, error) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -93,6 +94,11 @@ func (t *HTTPTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, 
 		bodyReader = strings.NewReader(args.Body)
 	}
 
+	// Validate URL to prevent SSRF attacks
+	if err := validateURL(args.URL); err != nil {
+		return agent.ValidationError(err.Error()), nil
+	}
+
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, method, args.URL, bodyReader)
 	if err != nil {
@@ -158,4 +164,30 @@ func (t *HTTPTool) IsSafeArgs(argsJSON string) bool {
 
 	host := parsed.Hostname()
 	return host == "localhost" || host == "127.0.0.1"
+}
+
+// validateURL checks a URL for SSRF attempts against cloud metadata endpoints.
+// The HTTP tool already requires user approval; this check focuses on preventing
+// access to cloud metadata services that could leak credentials.
+func validateURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	host := u.Hostname()
+
+	// Block cloud metadata endpoints (IPv4 link-local)
+	ip := net.ParseIP(host)
+	if ip != nil && ip.IsLinkLocalUnicast() {
+		return fmt.Errorf("URL targets link-local IP (possible metadata endpoint): %s", host)
+	}
+
+	// Block known metadata hostnames
+	hostLower := strings.ToLower(host)
+	if hostLower == "metadata.google.internal" {
+		return fmt.Errorf("URL targets cloud metadata service: %s", host)
+	}
+
+	return nil
 }

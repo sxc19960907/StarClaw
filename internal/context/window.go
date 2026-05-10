@@ -27,7 +27,7 @@ const (
 
 // MinShapeable returns the minimum messages needed for shaping to have any effect.
 func MinShapeable() int {
-	return 3 + minKeepLast*2 // system + first user + N turn pairs
+	return 1 + minKeepLast*2 // first message + N turn pairs
 }
 
 // EstimateTokens returns a heuristic token count for messages.
@@ -51,28 +51,28 @@ func ShouldCompact(inputTokens, outputTokens, contextWindow int) bool {
 	return inputTokens+outputTokens >= threshold
 }
 
-// ShapeHistory builds a sliding window: [system] + [first user] + [summary] + [last N turns].
+// ShapeHistory builds a sliding window: [first user] + [summary] + [last N turns].
 // If summary is non-empty, it's injected as a user message between the first user and recent turns.
 // If the history fits without shaping, it's returned as-is.
 func ShapeHistory(messages []client.Message, summary string, contextWindow int) []client.Message {
-	if len(messages) <= 3+minKeepLast*2 {
+	if len(messages) <= 1+minKeepLast*2 {
 		return messages
 	}
-	if len(messages) <= 3+defaultKeepLast*2 && (contextWindow <= 0 || EstimateTokens(messages) < contextWindow) {
+	if len(messages) <= 1+defaultKeepLast*2 && (contextWindow <= 0 || EstimateTokens(messages) < contextWindow) {
 		return messages
 	}
 
-	system := messages[0]
-	firstUser := messages[1]
-	rest := messages[2:]
+	// Use the first message as anchor regardless of role
+	firstMsg := messages[0]
+	rest := messages[1:]
 
 	for keep := defaultKeepLast; keep >= minKeepLast; keep-- {
 		keepMsgs := keep * 2
 		if keepMsgs > len(rest) {
 			keepMsgs = len(rest)
 		}
-		shaped := make([]client.Message, 0, 4+keepMsgs)
-		shaped = append(shaped, system, firstUser)
+		shaped := make([]client.Message, 0, 3+keepMsgs)
+		shaped = append(shaped, firstMsg)
 		if summary != "" {
 			shaped = append(shaped, client.Message{
 				Role:    "user",
@@ -91,8 +91,8 @@ func ShapeHistory(messages []client.Message, summary string, contextWindow int) 
 	if keepMsgs > len(rest) {
 		keepMsgs = len(rest)
 	}
-	shaped := make([]client.Message, 0, 4+keepMsgs)
-	shaped = append(shaped, system, firstUser)
+	shaped := make([]client.Message, 0, 3+keepMsgs)
+	shaped = append(shaped, firstMsg)
 	if summary != "" {
 		shaped = append(shaped, client.Message{
 			Role:    "user",
@@ -111,14 +111,13 @@ func CompressOldToolResults(messages []client.Message, oldTurns, maxResultChars 
 		return
 	}
 
-	// Count turn pairs from the end
+	// Count turn pairs from the end.
+	// A turn pair is assistant→user; count only that transition to avoid double-counting.
 	pairs := 0
 	cutoff := len(messages)
 	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == "assistant" || messages[i].Role == "user" {
-			if i+1 < len(messages) && messages[i].Role != messages[i+1].Role {
-				pairs++
-			}
+		if messages[i].Role == "assistant" && i+1 < len(messages) && messages[i+1].Role == "user" {
+			pairs++
 		}
 		if pairs >= oldTurns {
 			cutoff = i

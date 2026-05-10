@@ -29,8 +29,8 @@ func TestPublishToWebTool_Info(t *testing.T) {
 
 func TestPublishToWebTool_RequiresApproval(t *testing.T) {
 	tool := NewPublishToWebTool()
-	if tool.RequiresApproval() {
-		t.Error("publish_to_web should not require approval")
+	if !tool.RequiresApproval() {
+		t.Error("publish_to_web should require approval")
 	}
 }
 

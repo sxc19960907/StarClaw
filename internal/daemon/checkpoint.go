@@ -61,6 +61,10 @@ func (cp *Checkpoint) List() []string {
 // sanitizeID ensures the checkpoint ID cannot escape the checkpoint directory.
 func sanitizeID(id string) string {
 	cleaned := filepath.Clean(id)
+	// Reject paths that try to escape via ".." even after cleaning
+	if strings.HasPrefix(cleaned, "..") {
+		return "_default"
+	}
 	cleaned = strings.ReplaceAll(cleaned, string(filepath.Separator), "_")
 	if cleaned == "." || cleaned == "" {
 		return "_default"
