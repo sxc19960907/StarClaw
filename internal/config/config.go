@@ -33,6 +33,7 @@ type Config struct {
 	Audit      AuditConfig                  `mapstructure:"audit" yaml:"audit" json:"audit"`
 	MCPServers map[string]mcp.MCPServerConfig `mapstructure:"mcp_servers" yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 	Update      UpdateConfig                 `mapstructure:"update" yaml:"update,omitempty" json:"update,omitempty"`
+	Cloud       CloudConfig                  `mapstructure:"cloud" yaml:"cloud,omitempty" json:"cloud,omitempty"`
 	Permissions *permissions.Config          `mapstructure:"permissions" yaml:"permissions,omitempty" json:"permissions,omitempty"`
 	Hooks       *hooks.Config                `mapstructure:"hooks" yaml:"hooks,omitempty" json:"hooks,omitempty"`
 }
@@ -72,6 +73,15 @@ type UpdateConfig struct {
 // AuditConfig holds audit logging settings
 type AuditConfig struct {
 	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
+}
+
+// CloudConfig holds cloud agent delegation settings
+type CloudConfig struct {
+	Enabled       bool   `mapstructure:"enabled" yaml:"enabled" json:"enabled"`
+	Endpoint      string `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
+	APIKey        string `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
+	Timeout       int    `mapstructure:"timeout" yaml:"timeout" json:"timeout"`
+	MaxConcurrent int    `mapstructure:"max_concurrent" yaml:"max_concurrent" json:"max_concurrent"`
 }
 
 // StarclawDir returns the StarClaw configuration directory

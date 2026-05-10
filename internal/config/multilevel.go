@@ -115,6 +115,10 @@ func defaultConfig() *Config {
 		},
 		Audit:  AuditConfig{Enabled: true},
 		Update: UpdateConfig{AutoCheck: true, Channel: "stable", CacheTTL: "24h"},
+		Cloud: CloudConfig{
+			Timeout:       3600,
+			MaxConcurrent: 3,
+		},
 	}
 }
 
@@ -164,6 +168,7 @@ func overlayConfig(base, overlay *Config, source *ConfigSource, layer ConfigLaye
 
 	overlayAgent(&base.Agent, &overlay.Agent, source, layer)
 	overlayTools(&base.Tools, &overlay.Tools, source, layer)
+	overlayCloud(&base.Cloud, &overlay.Cloud, layer)
 
 	if len(overlay.MCPServers) > 0 {
 		if base.MCPServers == nil {
@@ -248,5 +253,23 @@ func overlayTools(base, overlay *ToolsConfig, source *ConfigSource, layer Config
 	}
 	if changed {
 		source.Tools = layer
+	}
+}
+
+func overlayCloud(base, overlay *CloudConfig, layer ConfigLayer) {
+	if overlay.Enabled {
+		base.Enabled = true
+	}
+	if overlay.Endpoint != "" {
+		base.Endpoint = overlay.Endpoint
+	}
+	if overlay.APIKey != "" {
+		base.APIKey = overlay.APIKey
+	}
+	if overlay.Timeout != 0 {
+		base.Timeout = overlay.Timeout
+	}
+	if overlay.MaxConcurrent != 0 {
+		base.MaxConcurrent = overlay.MaxConcurrent
 	}
 }

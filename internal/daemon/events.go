@@ -18,6 +18,11 @@ const (
 	EventPreamble    = "preamble"
 	EventStreamDelta = "stream_delta"
 	EventUsage       = "usage"
+
+	// Cloud delegation event types
+	EventCloudDelegateStart    = "cloud_delegate_start"
+	EventCloudDelegateProgress = "cloud_delegate_progress"
+	EventCloudDelegateComplete = "cloud_delegate_complete"
 )
 
 // Event is a daemon lifecycle event pushed to SSE subscribers.
