@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 21
+- **Total Sessions**: 22
 - **Last Active**: 2026-05-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~701 | Active |
+| `journal-1.md` | ~734 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 22 | 2026-05-10 | Phase D-lite: MCP Server + Process tool | `ee6396d` | `main` |
 | 21 | 2026-05-10 | Phase C: Cloud agent delegation | `667f424` | `main` |
 | 20 | 2026-05-10 | Phase A: Client streaming, retry, config merge | `6a14946`, `3c7aeff` | `main` |
 | 19 | 2026-05-10 | Phase 7: architecture improvements | `d4e22ac` | `main` |

@@ -699,3 +699,36 @@ Implemented CloudClient (Delegate/DelegateStream with SSE progress), cloud_deleg
 ### Next Steps
 
 - None - task complete
+
+
+## Session 22: Phase D-lite: MCP Server + Process tool
+
+**Date**: 2026-05-10
+**Task**: Phase D-lite: MCP Server + Process tool
+**Branch**: `main`
+
+### Summary
+
+Enhanced process tool with start/signal/status actions and background process management. Enhanced MCP server with tool filtering (ExposeTools), timeout config, and ServerInfo. Added server_tool_timeout and mcp_expose config fields. All 23 internal packages pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ee6396d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
