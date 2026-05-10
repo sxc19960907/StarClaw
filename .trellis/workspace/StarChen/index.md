@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
+- **Total Sessions**: 20
 - **Last Active**: 2026-05-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~634 | Active |
+| `journal-1.md` | ~668 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-05-10 | Phase A: Client streaming, retry, config merge | `6a14946`, `3c7aeff` | `main` |
 | 19 | 2026-05-10 | Phase 7: architecture improvements | `d4e22ac` | `main` |
 | 18 | 2026-05-10 | Phase 6: final 4 gaps — partition, bus/multi handler, memory audit | `3cc3fe4` | `main` |
 | 17 | 2026-05-10 | Phase 5: final polish across all modules | `7232137` | `main` |

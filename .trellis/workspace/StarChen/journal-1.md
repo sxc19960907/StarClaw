@@ -632,3 +632,37 @@ Implemented Router (25 routes extracted from server), GatewayClient (API abstrac
 ### Next Steps
 
 - None - task complete
+
+
+## Session 20: Phase A: Client streaming, retry, config merge
+
+**Date**: 2026-05-10
+**Task**: Phase A: Client streaming, retry, config merge
+**Branch**: `main`
+
+### Summary
+
+Implemented OpenAI/Ollama StreamChat (SSE), shared stream parser with tool_call delta merging, reusable retry layer with jitter, multi-level config merge (global/project/local/env) with ConfigSource tracking, NormalizeInput/ExtractURLs/IsSearchIntent, and context-too-large auto-partition retry. All unit tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6a14946` | (see git log) |
+| `3c7aeff` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
