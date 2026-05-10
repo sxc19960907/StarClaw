@@ -94,6 +94,9 @@ func TestBrowserTool_NavigateNoURL(t *testing.T) {
 }
 
 func TestBrowserTool_Navigate(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("skipping on macOS — opens real browser window")
+	}
 	tool := &BrowserTool{}
 	result, err := tool.Run(context.Background(), `{"action":"navigate","url":"https://example.com"}`)
 	if err != nil {

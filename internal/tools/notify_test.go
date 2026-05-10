@@ -84,6 +84,7 @@ func TestNotifyTool_RequiresApproval(t *testing.T) {
 }
 
 func TestNotifyTool_Run(t *testing.T) {
+	t.Skip("skipping — shows real desktop notification. Run with TEST_REAL_NOTIFY=1 to enable.")
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("notification tests only supported on darwin and linux")
 	}
