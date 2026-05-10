@@ -105,3 +105,51 @@ func ExtractResultSignature(content string) string {
 	sort.Strings(urls)
 	return strings.Join(urls, ",")
 }
+
+// NormalizeInput cleans user input before sending to the LLM.
+// Strips control characters, normalizes whitespace, and trims.
+func NormalizeInput(input string) string {
+	input = stripControlChars(input)
+	input = collapseBlankLines(input)
+	return strings.TrimSpace(input)
+}
+
+// ExtractURLs returns all URLs found in the input text.
+func ExtractURLs(input string) []string {
+	return urlPattern.FindAllString(input, -1)
+}
+
+// IsSearchIntent returns true if the input looks like a web search query.
+func IsSearchIntent(input string) bool {
+	lower := strings.ToLower(strings.TrimSpace(input))
+	searchPrefixes := []string{
+		"search for ", "look up ", "find info about ",
+		"what is ", "who is ", "how to ",
+		"搜索", "查找", "查一下",
+	}
+	for _, prefix := range searchPrefixes {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func stripControlChars(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\r' || r == '\t' {
+			return r
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
+}
+
+func collapseBlankLines(s string) string {
+	for strings.Contains(s, "\n\n\n") {
+		s = strings.ReplaceAll(s, "\n\n\n", "\n\n")
+	}
+	return s
+}

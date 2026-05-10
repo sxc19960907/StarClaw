@@ -47,7 +47,7 @@ type RunStatusHandler interface {
 
 // StreamingLLMClient is an optional interface for LLM clients that support streaming.
 type StreamingLLMClient interface {
-	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) error
+	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error)
 }
 
 // AgentLoop manages the conversation with the LLM
@@ -343,7 +343,18 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 		// Call LLM with retry
 		resp, err := a.chatWithRetry(ctx, effectivePrompt, messages, tools, chatOpts)
 		if err != nil {
-			return nil, fmt.Errorf("LLM error: %w", err)
+			if isContextTooLargeError(err) && len(messages) > ctxwin.MinShapeable() {
+				fmt.Fprintf(os.Stderr, "[agent] context too large, compacting and retrying\n")
+				var summary string
+				if completer, ok := interface{}(a.llmClient).(ctxwin.Completer); ok {
+					summary, _ = ctxwin.GenerateSummary(ctx, completer, messages)
+				}
+				messages = ctxwin.ShapeHistory(messages, summary, a.contextWindow)
+				resp, err = a.chatWithRetry(ctx, effectivePrompt, messages, tools, chatOpts)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("LLM error: %w", err)
+			}
 		}
 
 		// Report usage
@@ -375,6 +386,7 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 			Content: a.buildAssistantContent(resp),
 		})
 
+		var forceStop bool
 		for _, toolUse := range resp.ToolUses {
 			result := a.executeTool(ctx, toolUse)
 
@@ -391,9 +403,14 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 					messages = append(messages, client.Message{Role: "user", Content: msg})
 				case LoopForceStop:
 					messages = append(messages, client.Message{Role: "user", Content: msg + "\n\nPlease provide your final answer now."})
-					// Fall through to return — handled by maxIter or next text-only response
+					forceStop = true
 				}
 			}
+		}
+
+		if forceStop {
+			// Give the LLM one more chance to produce a text-only response
+			continue
 		}
 
 		// Context bloat detection: check if tool results dominate the context
@@ -566,24 +583,28 @@ func (a *AgentLoop) buildToolResultContent(toolUse client.ToolUse, result ToolRe
 // chatWithRetry calls the LLM with retry+backoff for transient errors.
 // opts contains optional thinking/config fields for the LLM request.
 func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, opts *client.ChatOptions) (*client.Response, error) {
-	const maxRetries = 3
+	retryCfg := client.DefaultRetryConfig()
 	var lastErr error
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		// On first attempt with streaming enabled, try streaming.
-		// Streaming requires the LLMClient to implement a streaming interface.
-		if attempt == 0 && a.enableStreaming {
+	for attempt := 0; attempt < retryCfg.MaxRetries; attempt++ {
+		if a.enableStreaming {
 			if streamer, ok := a.llmClient.(StreamingLLMClient); ok {
-				err := streamer.StreamChat(ctx, systemPrompt, messages, tools, a.maxTokens, opts, func(delta string) {
+				resp, err := streamer.StreamChat(ctx, systemPrompt, messages, tools, a.maxTokens, opts, func(delta string) {
 					if a.handler != nil {
 						a.handler.OnStreamDelta(delta)
 					}
 				})
 				if err == nil {
-					// StreamChat populates its own internal state; for now we
-					// fall back to regular Chat and treat streaming as best-effort.
-					// TODO: implement proper streaming response handling.
+					return resp, nil
 				}
+				if !client.IsRetryableError(err) {
+					return nil, err
+				}
+				lastErr = err
+				if attempt < retryCfg.MaxRetries-1 {
+					a.retryWait(ctx, attempt, retryCfg)
+				}
+				continue
 			}
 		}
 
@@ -593,55 +614,23 @@ func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, mess
 		}
 
 		lastErr = err
-		if !isRetryableLLMError(err) || attempt >= maxRetries-1 {
+		if !client.IsRetryableError(err) || attempt >= retryCfg.MaxRetries-1 {
 			break
 		}
 
-		backoff := time.Duration(1<<attempt) * time.Second // 1s, 2s, 4s
-		fmt.Fprintf(os.Stderr, "[agent] LLM call failed (attempt %d/%d), retrying in %v: %v\n", attempt+1, maxRetries, backoff, err)
-
-		select {
-		case <-time.After(backoff):
-		case <-ctx.Done():
-			return nil, fmt.Errorf("LLM call cancelled: %w", ctx.Err())
-		}
+		a.retryWait(ctx, attempt, retryCfg)
 	}
 
-	return nil, fmt.Errorf("LLM call failed after %d attempts: %w", maxRetries, lastErr)
+	return nil, fmt.Errorf("LLM call failed after %d attempts: %w", retryCfg.MaxRetries, lastErr)
 }
 
-// isRetryableLLMError returns true for transient errors that may succeed on retry.
-func isRetryableLLMError(err error) bool {
-	if err == nil {
-		return false
+func (a *AgentLoop) retryWait(ctx context.Context, attempt int, cfg client.RetryConfig) {
+	backoff := client.BackoffDelay(attempt, cfg)
+	fmt.Fprintf(os.Stderr, "[agent] LLM call failed (attempt %d/%d), retrying in %v\n", attempt+1, cfg.MaxRetries, backoff)
+	select {
+	case <-time.After(backoff):
+	case <-ctx.Done():
 	}
-	s := err.Error()
-	// Rate limits and server errors
-	if strings.Contains(s, "429") || strings.Contains(s, "rate limit") {
-		return true
-	}
-	if strings.Contains(s, "500") || strings.Contains(s, "502") || strings.Contains(s, "503") || strings.Contains(s, "504") {
-		return true
-	}
-	// Timeout and connection errors
-	if strings.Contains(s, "timeout") || strings.Contains(s, "deadline exceeded") {
-		return true
-	}
-	if strings.Contains(s, "connection reset") || strings.Contains(s, "connection refused") {
-		return true
-	}
-	if strings.Contains(s, "EOF") || strings.Contains(s, "broken pipe") {
-		return true
-	}
-	// Context cancellation is NOT retryable
-	if strings.Contains(s, "context canceled") || strings.Contains(s, "context deadline exceeded") {
-		return false
-	}
-	// Auth errors are NOT retryable
-	if strings.Contains(s, "401") || strings.Contains(s, "403") {
-		return false
-	}
-	return false
 }
 
 // detectContextBloat scans messages for tool-result blocks and returns a
@@ -671,4 +660,18 @@ func detectContextBloat(messages []client.Message) string {
 	}
 
 	return ""
+}
+
+// isContextTooLargeError returns true if the error indicates the context
+// exceeded the model's maximum input length.
+func isContextTooLargeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "context_length_exceeded") ||
+		strings.Contains(s, "maximum context length") ||
+		strings.Contains(s, "too many tokens") ||
+		strings.Contains(s, "request too large") ||
+		strings.Contains(s, "max_tokens")
 }

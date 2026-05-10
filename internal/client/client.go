@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sync"
 	"fmt"
 	"io"
 	"net/http"
@@ -92,6 +93,7 @@ type LLMClient interface {
 
 // AnthropicClient implements the Anthropic Messages API.
 type AnthropicClient struct {
+	mu       sync.Mutex
 	apiKey   string
 	endpoint string
 	model    string
@@ -117,7 +119,9 @@ func NewAnthropicClient(apiKey, endpoint, model string) *AnthropicClient {
 
 // SetModel sets the model to use
 func (c *AnthropicClient) SetModel(model string) {
+	c.mu.Lock()
 	c.model = model
+	c.mu.Unlock()
 }
 
 // Complete performs a non-chat completion. Implements the context.Completer interface.
@@ -126,7 +130,9 @@ func (c *AnthropicClient) Complete(ctx context.Context, req CompletionRequest) (
 	if maxTokens == 0 {
 		maxTokens = 1000
 	}
+	c.mu.Lock()
 	model := c.model
+	c.mu.Unlock()
 	if req.ModelTier == "small" && model != "" {
 		// Use same model for now; could be made configurable for cost savings
 	}
@@ -162,7 +168,9 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt string, message
 	}
 
 	// Determine model
+	c.mu.Lock()
 	model := c.model
+	c.mu.Unlock()
 	if opts != nil && opts.SpecificModel != "" {
 		model = opts.SpecificModel
 	}

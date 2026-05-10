@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"io"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 // OpenAIClient implements the LLMClient interface for OpenAI-compatible APIs.
 type OpenAIClient struct {
+	mu         sync.Mutex
 	apiKey     string
 	baseURL    string
 	model      string
@@ -157,13 +159,13 @@ func parseOpenAIResponse(result map[string]any) (*Response, error) {
 
 	choice, ok := choices[0].(map[string]any)
 	if !ok {
-		return resp, nil
+		return nil, fmt.Errorf("unexpected choice type in response")
 	}
 
 	// Parse message
 	msg, ok := choice["message"].(map[string]any)
 	if !ok {
-		return resp, nil
+		return nil, fmt.Errorf("missing message in choice")
 	}
 
 	// Parse content
@@ -225,6 +227,7 @@ func (c *OpenAIClient) Complete(ctx context.Context, req CompletionRequest) (*Co
 	}
 
 	opts := &ChatOptions{
+		Thinking:        req.Thinking,
 		ReasoningEffort: req.ReasoningEffort,
 		SpecificModel:   req.SpecificModel,
 	}
@@ -238,5 +241,90 @@ func (c *OpenAIClient) Complete(ctx context.Context, req CompletionRequest) (*Co
 
 // SetModel sets the model to use for subsequent requests.
 func (c *OpenAIClient) SetModel(model string) {
+	c.mu.Lock()
 	c.model = model
+	c.mu.Unlock()
+}
+
+// StreamChat implements StreamingLLMClient for OpenAI-compatible APIs.
+func (c *OpenAIClient) StreamChat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions, onDelta func(delta string)) (*Response, error) {
+	if maxTokens == 0 {
+		maxTokens = 4096
+	}
+
+	model := c.model
+	if opts != nil && opts.SpecificModel != "" {
+		model = opts.SpecificModel
+	}
+
+	openAIMessages := make([]map[string]any, 0, len(messages)+1)
+	if systemPrompt != "" {
+		openAIMessages = append(openAIMessages, map[string]any{
+			"role":    "system",
+			"content": systemPrompt,
+		})
+	}
+	for _, msg := range messages {
+		openAIMessages = append(openAIMessages, map[string]any{
+			"role":    msg.Role,
+			"content": msg.Content,
+		})
+	}
+
+	reqBody := map[string]any{
+		"model":      model,
+		"max_tokens": maxTokens,
+		"messages":   openAIMessages,
+		"stream":     true,
+		"stream_options": map[string]any{
+			"include_usage": true,
+		},
+	}
+
+	if len(tools) > 0 {
+		openAITools := make([]map[string]any, len(tools))
+		for i, tool := range tools {
+			openAITools[i] = map[string]any{
+				"type": "function",
+				"function": map[string]any{
+					"name":        tool.Name,
+					"description": tool.Description,
+					"parameters":  tool.InputSchema,
+				},
+			}
+		}
+		reqBody["tools"] = openAITools
+	}
+
+	if opts != nil && opts.ReasoningEffort != "" {
+		reqBody["reasoning_effort"] = opts.ReasoningEffort
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	reqURL := c.baseURL + "/v1/chat/completions"
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("OpenAI API error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	return ParseOpenAIStream(resp.Body, onDelta)
 }

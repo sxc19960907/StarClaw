@@ -3,10 +3,12 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"sync"
 )
 
 // MockClient is a mock LLM client for testing
 type MockClient struct {
+	mu             sync.Mutex
 	response       string
 	toolCallName   string
 	toolCallArgs   string
@@ -39,6 +41,8 @@ func NewMockClient() *MockClient {
 
 // SetResponse sets a simple text response
 func (m *MockClient) SetResponse(response string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.response = response
 	m.toolCallName = ""
 	m.toolCallArgs = ""
@@ -47,6 +51,8 @@ func (m *MockClient) SetResponse(response string) {
 
 // SetToolCallResponse configures the mock to return a tool call
 func (m *MockClient) SetToolCallResponse(toolName, toolArgs string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.toolCallName = toolName
 	m.toolCallArgs = toolArgs
 	m.response = ""
@@ -54,11 +60,15 @@ func (m *MockClient) SetToolCallResponse(toolName, toolArgs string) {
 
 // SetHandler sets a custom response handler
 func (m *MockClient) SetHandler(handler func(input string) *MockMessage) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.responseFunc = handler
 }
 
 // Chat implements the LLMClient interface
 func (m *MockClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions) (*Response, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.callCount++
 	m.lastMessages = messages
 	m.lastTools = tools
@@ -111,18 +121,27 @@ func (m *MockClient) Chat(ctx context.Context, systemPrompt string, messages []M
 
 // GetCallCount returns the number of Chat calls
 func (m *MockClient) GetCallCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.callCount
 }
 
 // GetLastMessages returns the messages from the last call
 func (m *MockClient) GetLastMessages() []Message {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.lastMessages
 }
 
 // GetLastTools returns the tools from the last call
 func (m *MockClient) GetLastTools() []ToolDef {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.lastTools
 }
 
 // SetModel is a no-op for the mock client
-func (m *MockClient) SetModel(model string) {}
+func (m *MockClient) SetModel(model string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+}

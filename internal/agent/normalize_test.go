@@ -227,3 +227,57 @@ func TestExtractResultSignature_Lowercase(t *testing.T) {
 		t.Errorf("URLs should be lowercased, got %q", result)
 	}
 }
+
+func TestNormalizeInput_ControlChars(t *testing.T) {
+	input := "hello\x00world\x01test\ttab\nnewline"
+	got := NormalizeInput(input)
+	for _, r := range got {
+		if r != '\t' && r != '\n' && r != '\r' && r < 0x20 {
+			t.Errorf("control char %U not stripped", r)
+		}
+	}
+}
+
+func TestNormalizeInput_CollapseBlankLines(t *testing.T) {
+	input := "line1\n\n\n\n\nline2"
+	got := NormalizeInput(input)
+	if got != "line1\n\nline2" {
+		t.Errorf("got %q, want %q", got, "line1\n\nline2")
+	}
+}
+
+func TestNormalizeInput_Trim(t *testing.T) {
+	input := "  \n  hello  \n  "
+	got := NormalizeInput(input)
+	if got != "hello" {
+		t.Errorf("got %q, want %q", got, "hello")
+	}
+}
+
+func TestExtractURLs(t *testing.T) {
+	input := "check https://example.com/path and http://foo.bar/baz"
+	urls := ExtractURLs(input)
+	if len(urls) != 2 {
+		t.Fatalf("got %d URLs, want 2", len(urls))
+	}
+}
+
+func TestIsSearchIntent(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"search for golang streaming", true},
+		{"what is SSE", true},
+		{"how to parse JSON", true},
+		{"搜索 golang", true},
+		{"fix the bug in main.go", false},
+		{"add a new feature", false},
+	}
+	for _, tt := range tests {
+		got := IsSearchIntent(tt.input)
+		if got != tt.want {
+			t.Errorf("IsSearchIntent(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}

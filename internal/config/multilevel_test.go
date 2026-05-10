@@ -1,0 +1,170 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestLoadMultiLevel_GlobalOnly(t *testing.T) {
+	// Setup temp home
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	os.MkdirAll(globalDir, 0700)
+	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+endpoint: "https://custom.api.com"
+api_key: "test-key"
+agent:
+  max_iterations: 50
+`), 0600)
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+
+	if cfg.Endpoint != "https://custom.api.com" {
+		t.Errorf("endpoint = %q, want custom", cfg.Endpoint)
+	}
+	if cfg.APIKey != "test-key" {
+		t.Errorf("api_key = %q, want test-key", cfg.APIKey)
+	}
+	if cfg.Agent.MaxIterations != 50 {
+		t.Errorf("max_iterations = %d, want 50", cfg.Agent.MaxIterations)
+	}
+	if source.Endpoint != LayerGlobal {
+		t.Errorf("endpoint source = %v, want global", source.Endpoint)
+	}
+}
+
+func TestLoadMultiLevel_ProjectOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	// Global config
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	os.MkdirAll(globalDir, 0700)
+	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+endpoint: "https://global.api.com"
+api_key: "global-key"
+agent:
+  max_iterations: 25
+`), 0600)
+
+	// Project config in cwd
+	projectDir := filepath.Join(tmpDir, "project", ".starclaw")
+	os.MkdirAll(projectDir, 0700)
+	os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
+agent:
+  max_iterations: 100
+  model: "claude-opus"
+`), 0600)
+
+	// Change to project dir
+	origDir, _ := os.Getwd()
+	os.Chdir(filepath.Join(tmpDir, "project"))
+	defer os.Chdir(origDir)
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+
+	// Global values preserved
+	if cfg.Endpoint != "https://global.api.com" {
+		t.Errorf("endpoint = %q, want global", cfg.Endpoint)
+	}
+	// Project overrides
+	if cfg.Agent.MaxIterations != 100 {
+		t.Errorf("max_iterations = %d, want 100", cfg.Agent.MaxIterations)
+	}
+	if cfg.Agent.Model != "claude-opus" {
+		t.Errorf("model = %q, want claude-opus", cfg.Agent.Model)
+	}
+	if source.Agent != LayerProject {
+		t.Errorf("agent source = %v, want project", source.Agent)
+	}
+}
+
+func TestLoadMultiLevel_LocalOverridesProject(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	os.MkdirAll(globalDir, 0700)
+	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+api_key: "global-key"
+`), 0600)
+
+	projectDir := filepath.Join(tmpDir, "project", ".starclaw")
+	os.MkdirAll(projectDir, 0700)
+	os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
+agent:
+  max_tokens: 4096
+`), 0600)
+	os.WriteFile(filepath.Join(projectDir, "config.local.yaml"), []byte(`
+agent:
+  max_tokens: 16384
+`), 0600)
+
+	origDir, _ := os.Getwd()
+	os.Chdir(filepath.Join(tmpDir, "project"))
+	defer os.Chdir(origDir)
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+
+	if cfg.Agent.MaxTokens != 16384 {
+		t.Errorf("max_tokens = %d, want 16384", cfg.Agent.MaxTokens)
+	}
+	if source.Agent != LayerLocal {
+		t.Errorf("agent source = %v, want local", source.Agent)
+	}
+}
+
+func TestLoadMultiLevel_EnvOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("ANTHROPIC_API_KEY", "env-key")
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	os.MkdirAll(globalDir, 0700)
+	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+api_key: "file-key"
+`), 0600)
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+
+	if cfg.APIKey != "env-key" {
+		t.Errorf("api_key = %q, want env-key", cfg.APIKey)
+	}
+	if source.APIKey != LayerEnv {
+		t.Errorf("api_key source = %v, want env", source.APIKey)
+	}
+}
+
+func TestConfigLayer_String(t *testing.T) {
+	tests := []struct {
+		layer ConfigLayer
+		want  string
+	}{
+		{LayerDefault, "default"},
+		{LayerGlobal, "global"},
+		{LayerProject, "project"},
+		{LayerLocal, "local"},
+		{LayerEnv, "env"},
+		{ConfigLayer(99), "unknown"},
+	}
+	for _, tt := range tests {
+		if got := tt.layer.String(); got != tt.want {
+			t.Errorf("%d.String() = %q, want %q", tt.layer, got, tt.want)
+		}
+	}
+}
