@@ -30,6 +30,7 @@ func TestRegisterLocalTools(t *testing.T) {
 		"glob",
 		"grep",
 		"http",
+		"imaging",
 		"memory",
 		"memory_append",
 		"notify",

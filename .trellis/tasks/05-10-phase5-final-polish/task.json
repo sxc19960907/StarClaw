@@ -1,0 +1,30 @@
+{
+  "id": "phase5-final-polish",
+  "name": "phase5-final-polish",
+  "title": "Phase 5: 最后补全 — Agent/Daemon/TUI/Session/Config/MCP/Tools",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-05-10",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "05-10-batch5a-agent",
+    "05-10-batch5b-daemon-tui",
+    "05-10-batch5c-tools-mcp"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

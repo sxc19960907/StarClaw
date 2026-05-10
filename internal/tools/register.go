@@ -74,6 +74,9 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	// Process management tool
 	reg.Register(&ProcessTool{})
 
+	// Image processing tool
+	reg.Register(&ImagingTool{})
+
 	// Publish to web tool
 	reg.Register(NewPublishToWebTool())
 
