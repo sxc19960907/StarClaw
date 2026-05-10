@@ -533,3 +533,36 @@ Added 21 implementation files across Agent (7), Daemon (6), Tools (7), and Clien
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Phase 5: final polish across all modules
+
+**Date**: 2026-05-10
+**Task**: Phase 5: final polish across all modules
+**Branch**: `main`
+
+### Summary
+
+Added Agent enhancements (resultshape/warmset/cachemetric/testing_helpers), Daemon (project_init/checkpoint), TUI (compact/doctor), Session (index), Config (settings), Tools (imaging/mcp_error_hints), MCP (supervisor/readiness). 30 files, 3758 lines. 3 parallel batches.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7232137` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

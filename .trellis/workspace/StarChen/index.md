@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
+- **Total Sessions**: 17
 - **Last Active**: 2026-05-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~535 | Active |
+| `journal-1.md` | ~568 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-05-10 | Phase 5: final polish across all modules | `7232137` | `main` |
 | 16 | 2026-05-10 | Phase 4: comprehensive ShanClaw gap closure | `8a019ec` | `main` |
 | 15 | 2026-05-09 | Phase 3: add 5 macOS/cross-platform desktop tools | `2f491c8` | `main` |
 | 14 | 2026-05-09 | Phase 2: loop detection, compaction, and MCP server | `65d653a` | `main` |
