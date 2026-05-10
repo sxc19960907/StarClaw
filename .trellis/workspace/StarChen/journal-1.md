@@ -666,3 +666,36 @@ Implemented OpenAI/Ollama StreamChat (SSE), shared stream parser with tool_call 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: Phase C: Cloud agent delegation
+
+**Date**: 2026-05-10
+**Task**: Phase C: Cloud agent delegation
+**Branch**: `main`
+
+### Summary
+
+Implemented CloudClient (Delegate/DelegateStream with SSE progress), cloud_delegate tool for LLM-driven sub-task offloading, CloudConfig with multi-level merge, and daemon EventBus cloud delegation events. All unit tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `667f424` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
