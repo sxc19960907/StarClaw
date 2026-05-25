@@ -133,3 +133,123 @@ data: [DONE]
 		t.Errorf("content = %q, want %q", resp.Content, "test")
 	}
 }
+
+func TestParseAnthropicStream_TextOnly(t *testing.T) {
+	stream := `event: message_start
+data: {"type":"message_start","message":{"usage":{"input_tokens":12,"output_tokens":1}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" world"}}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":4}}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`
+	var deltas []string
+	resp, err := ParseAnthropicStream(strings.NewReader(stream), func(delta string) {
+		deltas = append(deltas, delta)
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Content != "Hello world" {
+		t.Fatalf("content = %q, want Hello world", resp.Content)
+	}
+	if resp.StopReason != "end_turn" {
+		t.Fatalf("stop reason = %q, want end_turn", resp.StopReason)
+	}
+	if resp.Usage.InputTokens != 12 || resp.Usage.OutputTokens != 4 {
+		t.Fatalf("usage = %+v, want 12/4", resp.Usage)
+	}
+	if got := strings.Join(deltas, ""); got != "Hello world" {
+		t.Fatalf("deltas = %q, want Hello world", got)
+	}
+}
+
+func TestParseAnthropicStream_ToolUse(t *testing.T) {
+	stream := `event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Checking"}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_1","name":"file_read","input":{}}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"path\":"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"\"README.md\"}"}}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":8}}
+
+`
+	resp, err := ParseAnthropicStream(strings.NewReader(stream), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Content != "Checking" {
+		t.Fatalf("content = %q, want Checking", resp.Content)
+	}
+	if resp.StopReason != "tool_use" {
+		t.Fatalf("stop reason = %q, want tool_use", resp.StopReason)
+	}
+	if len(resp.ToolUses) != 1 {
+		t.Fatalf("tool uses = %d, want 1", len(resp.ToolUses))
+	}
+	toolUse := resp.ToolUses[0]
+	if toolUse.ID != "toolu_1" || toolUse.Name != "file_read" {
+		t.Fatalf("tool use = %+v, want toolu_1/file_read", toolUse)
+	}
+	if string(toolUse.Input) != `{"path":"README.md"}` {
+		t.Fatalf("tool input = %q, want accumulated JSON chunks", string(toolUse.Input))
+	}
+}
+
+func TestParseAnthropicStream_ToolUseEmptyInputStartsWithDeltas(t *testing.T) {
+	stream := `event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"file_read","input":{}}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"README.md\"}"}}
+
+`
+	resp, err := ParseAnthropicStream(strings.NewReader(stream), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.ToolUses) != 1 {
+		t.Fatalf("tool uses = %d, want 1", len(resp.ToolUses))
+	}
+	if string(resp.ToolUses[0].Input) != `{"path":"README.md"}` {
+		t.Fatalf("tool input = %q, want accumulated start input plus delta", string(resp.ToolUses[0].Input))
+	}
+}
+
+func TestParseAnthropicStream_InvalidJSONReturnsPartial(t *testing.T) {
+	stream := `event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}
+
+event: content_block_delta
+data: {"type":
+
+`
+	resp, err := ParseAnthropicStream(strings.NewReader(stream), nil)
+	if err == nil {
+		t.Fatal("expected parse error")
+	}
+	if resp.Content != "partial" {
+		t.Fatalf("partial content = %q, want partial", resp.Content)
+	}
+}

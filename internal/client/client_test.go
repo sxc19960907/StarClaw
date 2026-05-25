@@ -3,6 +3,10 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -104,6 +108,124 @@ func TestResponse(t *testing.T) {
 	}
 	if len(resp.ToolUses) != 1 {
 		t.Errorf("Expected 1 tool use, got %d", len(resp.ToolUses))
+	}
+}
+
+func TestAnthropicClient_StreamChat(t *testing.T) {
+	var gotRequest map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/messages" {
+			t.Fatalf("path = %q, want /v1/messages", r.URL.Path)
+		}
+		if r.Header.Get("Accept") != "text/event-stream" {
+			t.Fatalf("Accept = %q, want text/event-stream", r.Header.Get("Accept"))
+		}
+		if r.Header.Get("x-api-key") != "test-key" {
+			t.Fatalf("x-api-key = %q, want test-key", r.Header.Get("x-api-key"))
+		}
+		if err := json.NewDecoder(r.Body).Decode(&gotRequest); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, `event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" Anthropic"}}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":3}}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`)
+	}))
+	defer server.Close()
+
+	client := NewAnthropicClient("test-key", server.URL, "default-model")
+	var deltas []string
+	resp, err := client.StreamChat(
+		context.Background(),
+		"system prompt",
+		[]Message{{Role: "user", Content: "hello"}},
+		[]ToolDef{{
+			Name:        "file_read",
+			Description: "Read files",
+			InputSchema: map[string]any{
+				"type": "object",
+			},
+		}},
+		123,
+		&ChatOptions{
+			Thinking:        &ThinkingConfig{Type: "enabled", BudgetTokens: 1024},
+			ReasoningEffort: "high",
+			SpecificModel:   "specific-model",
+		},
+		func(delta string) {
+			deltas = append(deltas, delta)
+		},
+	)
+	if err != nil {
+		t.Fatalf("StreamChat() error = %v", err)
+	}
+	if resp.Content != "Hello Anthropic" {
+		t.Fatalf("content = %q, want Hello Anthropic", resp.Content)
+	}
+	if resp.StopReason != "end_turn" {
+		t.Fatalf("stop reason = %q, want end_turn", resp.StopReason)
+	}
+	if resp.Usage.OutputTokens != 3 {
+		t.Fatalf("output tokens = %d, want 3", resp.Usage.OutputTokens)
+	}
+	if strings.Join(deltas, "") != "Hello Anthropic" {
+		t.Fatalf("deltas = %v, want Hello Anthropic", deltas)
+	}
+	if gotRequest["stream"] != true {
+		t.Fatalf("stream = %v, want true", gotRequest["stream"])
+	}
+	if gotRequest["model"] != "specific-model" {
+		t.Fatalf("model = %v, want specific-model", gotRequest["model"])
+	}
+	if gotRequest["system"] != "system prompt" {
+		t.Fatalf("system = %v, want system prompt", gotRequest["system"])
+	}
+	if gotRequest["max_tokens"] != float64(123) {
+		t.Fatalf("max_tokens = %v, want 123", gotRequest["max_tokens"])
+	}
+	if _, ok := gotRequest["tools"].([]any); !ok {
+		t.Fatalf("tools missing from request: %#v", gotRequest["tools"])
+	}
+	thinking, ok := gotRequest["thinking"].(map[string]any)
+	if !ok {
+		t.Fatalf("thinking missing from request: %#v", gotRequest["thinking"])
+	}
+	if thinking["type"] != "enabled" || thinking["budget_tokens"] != float64(1024) {
+		t.Fatalf("thinking = %#v, want enabled/1024", thinking)
+	}
+	if gotRequest["reasoning_effort"] != "high" {
+		t.Fatalf("reasoning_effort = %v, want high", gotRequest["reasoning_effort"])
+	}
+}
+
+func TestAnthropicClient_StreamChat_ErrorResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"error":{"message":"bad stream request"}}`)
+	}))
+	defer server.Close()
+
+	client := NewAnthropicClient("test-key", server.URL, "model")
+	_, err := client.StreamChat(context.Background(), "", []Message{{Role: "user", Content: "hi"}}, nil, 0, nil, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got := err.Error(); got != "API error (400): bad stream request" {
+		t.Fatalf("error = %q, want parsed API error", got)
 	}
 }
 

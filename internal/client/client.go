@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"sync"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -65,11 +65,11 @@ type FunctionDef struct {
 
 // Tool represents a complete tool definition (function or native).
 type Tool struct {
-	Type            string       `json:"type"`
-	Name            string       `json:"name,omitempty"`
-	Function        FunctionDef  `json:"function,omitempty"`
-	DisplayWidthPx  int          `json:"display_width_px,omitempty"`
-	DisplayHeightPx int          `json:"display_height_px,omitempty"`
+	Type            string      `json:"type"`
+	Name            string      `json:"name,omitempty"`
+	Function        FunctionDef `json:"function,omitempty"`
+	DisplayWidthPx  int         `json:"display_width_px,omitempty"`
+	DisplayHeightPx int         `json:"display_height_px,omitempty"`
 }
 
 type ToolDef struct {
@@ -167,47 +167,7 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt string, message
 		maxTokens = 8192
 	}
 
-	// Determine model
-	c.mu.Lock()
-	model := c.model
-	c.mu.Unlock()
-	if opts != nil && opts.SpecificModel != "" {
-		model = opts.SpecificModel
-	}
-
-	// Build request body
-	reqBody := map[string]any{
-		"model":      model,
-		"max_tokens": maxTokens,
-		"messages":   messages,
-	}
-
-	if systemPrompt != "" {
-		reqBody["system"] = systemPrompt
-	}
-
-	if len(tools) > 0 {
-		anthropicTools := make([]map[string]any, len(tools))
-		for i, tool := range tools {
-			anthropicTools[i] = map[string]any{
-				"name":         tool.Name,
-				"description":  tool.Description,
-				"input_schema": tool.InputSchema,
-			}
-		}
-		reqBody["tools"] = anthropicTools
-	}
-
-	// Wire thinking config if provided
-	if opts != nil && opts.Thinking != nil {
-		reqBody["thinking"] = opts.Thinking
-	}
-
-	// Wire reasoning effort if provided
-	if opts != nil && opts.ReasoningEffort != "" {
-		reqBody["reasoning_effort"] = opts.ReasoningEffort
-	}
-
+	reqBody := c.buildMessagesRequestBody(systemPrompt, messages, tools, maxTokens, opts, false)
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -240,13 +200,8 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt string, message
 	// Check for errors
 	if resp.StatusCode != http.StatusOK {
 		// Try to parse error
-		var errorResult map[string]any
-		if err := json.Unmarshal(body, &errorResult); err == nil {
-			if errObj, ok := errorResult["error"].(map[string]any); ok {
-				if msg, ok := errObj["message"].(string); ok {
-					return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, msg)
-				}
-			}
+		if msg := parseAnthropicErrorMessage(body); msg != "" {
+			return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, msg)
 		}
 		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 	}
@@ -258,6 +213,90 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt string, message
 	}
 
 	return parseResponse(result)
+}
+
+// StreamChat sends a streaming request to the Anthropic Messages API.
+func (c *AnthropicClient) StreamChat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions, onDelta func(delta string)) (*Response, error) {
+	if maxTokens == 0 {
+		maxTokens = 8192
+	}
+
+	reqBody := c.buildMessagesRequestBody(systemPrompt, messages, tools, maxTokens, opts, true)
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	reqURL := c.endpoint + "/v1/messages"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("x-api-key", c.apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		if msg := parseAnthropicErrorMessage(body); msg != "" {
+			return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, msg)
+		}
+		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	return ParseAnthropicStream(resp.Body, onDelta)
+}
+
+func (c *AnthropicClient) buildMessagesRequestBody(systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions, stream bool) map[string]any {
+	c.mu.Lock()
+	model := c.model
+	c.mu.Unlock()
+	if opts != nil && opts.SpecificModel != "" {
+		model = opts.SpecificModel
+	}
+
+	reqBody := map[string]any{
+		"model":      model,
+		"max_tokens": maxTokens,
+		"messages":   messages,
+	}
+	if stream {
+		reqBody["stream"] = true
+	}
+
+	if systemPrompt != "" {
+		reqBody["system"] = systemPrompt
+	}
+
+	if len(tools) > 0 {
+		anthropicTools := make([]map[string]any, len(tools))
+		for i, tool := range tools {
+			anthropicTools[i] = map[string]any{
+				"name":         tool.Name,
+				"description":  tool.Description,
+				"input_schema": tool.InputSchema,
+			}
+		}
+		reqBody["tools"] = anthropicTools
+	}
+
+	if opts != nil && opts.Thinking != nil {
+		reqBody["thinking"] = opts.Thinking
+	}
+
+	if opts != nil && opts.ReasoningEffort != "" {
+		reqBody["reasoning_effort"] = opts.ReasoningEffort
+	}
+
+	return reqBody
 }
 
 // parseResponse parses the API response
@@ -306,6 +345,19 @@ func getString(m map[string]any, key string) string {
 		return v
 	}
 	return ""
+}
+
+func parseAnthropicErrorMessage(body []byte) string {
+	var errorResult map[string]any
+	if err := json.Unmarshal(body, &errorResult); err != nil {
+		return ""
+	}
+	errObj, ok := errorResult["error"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	msg, _ := errObj["message"].(string)
+	return msg
 }
 
 // CompletionRequest is a generic LLM completion request (non-chat).
