@@ -60,8 +60,10 @@ func TestPublishToWebTool_Run_MissingPath(t *testing.T) {
 }
 
 func TestPublishToWebTool_Run_FileNotFound(t *testing.T) {
+	dir := t.TempDir()
+	chdirForTest(t, dir)
 	tool := NewPublishToWebTool()
-	result, err := tool.Run(context.Background(), `{"path": "/nonexistent/file.txt", "purpose": "testing"}`)
+	result, err := tool.Run(context.Background(), `{"path": "missing.txt", "purpose": "testing"}`)
 	if err != nil {
 		t.Fatalf("Run should not return error for nonexistent file: %v", err)
 	}
@@ -76,6 +78,7 @@ func TestPublishToWebTool_Run_FileNotFound(t *testing.T) {
 func TestPublishToWebTool_Run_HappyPath(t *testing.T) {
 	// Create a temporary file to publish
 	tmpDir := t.TempDir()
+	chdirForTest(t, tmpDir)
 	src := filepath.Join(tmpDir, "test.html")
 	srcContent := "<html><body><h1>Hello World</h1></body></html>"
 	if err := os.WriteFile(src, []byte(srcContent), 0644); err != nil {
@@ -139,6 +142,7 @@ func TestPublishToWebTool_Run_HappyPath(t *testing.T) {
 
 func TestPublishToWebTool_Run_DirectoryPath(t *testing.T) {
 	tmpDir := t.TempDir()
+	chdirForTest(t, tmpDir)
 	tool := NewPublishToWebTool()
 	result, err := tool.Run(context.Background(), `{"path": "`+tmpDir+`", "purpose": "testing directory rejection"}`)
 	if err != nil {
@@ -152,8 +156,39 @@ func TestPublishToWebTool_Run_DirectoryPath(t *testing.T) {
 	}
 }
 
+func TestPublishToWebTool_Run_UnsafePath(t *testing.T) {
+	parent := t.TempDir()
+	project := filepath.Join(parent, "project")
+	outside := filepath.Join(parent, "outside")
+	if err := os.MkdirAll(project, 0755); err != nil {
+		t.Fatalf("mkdir project: %v", err)
+	}
+	if err := os.MkdirAll(outside, 0755); err != nil {
+		t.Fatalf("mkdir outside: %v", err)
+	}
+	outsideFile := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(outsideFile, []byte("secret"), 0644); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+
+	chdirForTest(t, project)
+
+	tool := NewPublishToWebTool()
+	result, err := tool.Run(context.Background(), `{"path": "`+outsideFile+`"}`)
+	if err != nil {
+		t.Fatalf("Run returned err: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected unsafe path error")
+	}
+	if !strings.Contains(result.Content, "unsafe path") {
+		t.Fatalf("expected unsafe path message, got: %s", result.Content)
+	}
+}
+
 func TestPublishToWebTool_Run_WithPurpose(t *testing.T) {
 	tmpDir := t.TempDir()
+	chdirForTest(t, tmpDir)
 	src := filepath.Join(tmpDir, "report.md")
 	if err := os.WriteFile(src, []byte("# Test Report"), 0644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)
@@ -178,6 +213,7 @@ func TestPublishToWebTool_Run_WithPurpose(t *testing.T) {
 
 func TestPublishToWebTool_Run_WithoutPurpose(t *testing.T) {
 	tmpDir := t.TempDir()
+	chdirForTest(t, tmpDir)
 	src := filepath.Join(tmpDir, "data.json")
 	if err := os.WriteFile(src, []byte(`{"key": "value"}`), 0644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)

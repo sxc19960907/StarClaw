@@ -34,11 +34,12 @@ type Deps struct {
 
 // Manager runs periodic heartbeat checks for all configured agents.
 type Manager struct {
-	agents []*agentHeartbeat
-	deps   *Deps
-	mu     sync.Mutex
-	cancel context.CancelFunc
-	done   chan struct{}
+	agents  []*agentHeartbeat
+	deps    *Deps
+	mu      sync.Mutex
+	cancel  context.CancelFunc
+	done    chan struct{}
+	running bool
 }
 
 // agentHeartbeat holds per-agent heartbeat state.
@@ -148,7 +149,6 @@ func New(agentsDir string, deps *Deps) (*Manager, error) {
 	return &Manager{
 		agents: entries,
 		deps:   deps,
-		done:   make(chan struct{}),
 	}, nil
 }
 
@@ -157,7 +157,13 @@ func New(agentsDir string, deps *Deps) (*Manager, error) {
 // launching the goroutines. The caller should call Close() to clean up.
 func (m *Manager) Start(ctx context.Context) {
 	m.mu.Lock()
+	if m.running {
+		m.mu.Unlock()
+		return
+	}
 	ctx, m.cancel = context.WithCancel(ctx)
+	m.done = make(chan struct{})
+	m.running = true
 	m.mu.Unlock()
 
 	var wg sync.WaitGroup
@@ -171,7 +177,13 @@ func (m *Manager) Start(ctx context.Context) {
 
 	go func() {
 		wg.Wait()
-		close(m.done)
+		m.mu.Lock()
+		done := m.done
+		m.cancel = nil
+		m.done = nil
+		m.running = false
+		m.mu.Unlock()
+		close(done)
 	}()
 }
 
@@ -237,11 +249,13 @@ func (m *Manager) tick(ctx context.Context, ah *agentHeartbeat) {
 // It is safe to call multiple times; subsequent calls are no-ops.
 func (m *Manager) Close() {
 	m.mu.Lock()
-	if m.cancel != nil {
-		m.cancel()
-	}
+	cancel := m.cancel
 	done := m.done
 	m.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
 	if done != nil {
 		<-done
 	}

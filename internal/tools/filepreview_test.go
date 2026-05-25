@@ -21,6 +21,7 @@ func TestFilePreviewTool_Info(t *testing.T) {
 
 func TestFilePreviewTool_BasicPreview(t *testing.T) {
 	dir := t.TempDir()
+	chdirForTest(t, dir)
 	path := filepath.Join(dir, "test.txt")
 	content := "line1\nline2\nline3\nline4\nline5\n"
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
@@ -45,6 +46,7 @@ func TestFilePreviewTool_BasicPreview(t *testing.T) {
 
 func TestFilePreviewTool_LinesLimit(t *testing.T) {
 	dir := t.TempDir()
+	chdirForTest(t, dir)
 	path := filepath.Join(dir, "many.txt")
 	content := "line1\nline2\nline3\nline4\nline5\n"
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
@@ -72,8 +74,10 @@ func TestFilePreviewTool_LinesLimit(t *testing.T) {
 }
 
 func TestFilePreviewTool_MissingFile(t *testing.T) {
+	dir := t.TempDir()
+	chdirForTest(t, dir)
 	tool := &FilePreviewTool{}
-	result, err := tool.Run(context.Background(), `{"path":"/nonexistent/file.txt"}`)
+	result, err := tool.Run(context.Background(), `{"path":"missing.txt"}`)
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}

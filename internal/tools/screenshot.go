@@ -38,6 +38,19 @@ func (t *ScreenshotTool) Info() agent.ToolInfo {
 
 // Run executes the screenshot tool.
 func (t *ScreenshotTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, error) {
+	var args screenshotArgs
+	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+		return agent.ValidationError("invalid arguments: " + err.Error()), nil
+	}
+
+	path := args.Path
+	if path != "" {
+		path = ExpandHome(path)
+		if err := IsSafePath(path); err != nil {
+			return agent.ValidationError("unsafe path: " + err.Error()), nil
+		}
+	}
+
 	if runtime.GOOS != "darwin" {
 		return agent.ToolResult{
 			Content: "screenshot only available on macOS",
@@ -45,19 +58,8 @@ func (t *ScreenshotTool) Run(ctx context.Context, argsJSON string) (agent.ToolRe
 		}, nil
 	}
 
-	var args screenshotArgs
-	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
-		return agent.ValidationError("invalid arguments: " + err.Error()), nil
-	}
-
-	path := args.Path
 	if path == "" {
 		path = fmt.Sprintf("/tmp/screenshot_%d.png", time.Now().UnixMilli())
-	} else {
-		path = ExpandHome(path)
-		if err := IsSafePath(path); err != nil {
-			return agent.ValidationError("unsafe path: " + err.Error()), nil
-		}
 	}
 
 	cmd := exec.CommandContext(ctx, "screencapture", "-x", path)

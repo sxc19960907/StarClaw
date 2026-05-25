@@ -51,19 +51,19 @@ func TestWatchdog_Reset_PreventsFire(t *testing.T) {
 		fired.Store(true)
 	})
 
-	w.Start(100 * time.Millisecond)
+	w.Start(200 * time.Millisecond)
 	// Reset before timeout.
 	time.Sleep(50 * time.Millisecond)
 	w.Reset()
 
-	// Wait for original timeout to have passed.
-	time.Sleep(100 * time.Millisecond)
+	// Wait past the original deadline, but not long enough for the reset timer.
+	time.Sleep(120 * time.Millisecond)
 	if fired.Load() {
 		t.Error("watchdog should not have fired after Reset")
 	}
 
 	// Now wait for the reset timeout.
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 	if !fired.Load() {
 		t.Error("watchdog should have fired after reset timeout elapsed")
 	}

@@ -78,8 +78,10 @@ func TestImagingTool_Run_EmptyPath(t *testing.T) {
 }
 
 func TestImagingTool_Run_FileNotFound(t *testing.T) {
+	dir := t.TempDir()
+	chdirForTest(t, dir)
 	tool := &ImagingTool{}
-	result, err := tool.Run(context.Background(), `{"action": "describe", "path": "/nonexistent/image.png"}`)
+	result, err := tool.Run(context.Background(), `{"action": "describe", "path": "missing.png"}`)
 	if err != nil {
 		t.Fatalf("Run returned err: %v", err)
 	}
@@ -93,7 +95,9 @@ func TestImagingTool_Run_FileNotFound(t *testing.T) {
 
 func TestImagingTool_Run_UnknownAction(t *testing.T) {
 	// Create a temp file to avoid "file not found" error
-	tmpFile := filepath.Join(t.TempDir(), "test.png")
+	dir := t.TempDir()
+	chdirForTest(t, dir)
+	tmpFile := filepath.Join(dir, "test.png")
 	if err := os.WriteFile(tmpFile, []byte("fake image data"), 0644); err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -121,7 +125,9 @@ func TestImagingTool_RequiresApproval(t *testing.T) {
 func TestImagingTool_Describe_UnsupportedPlatform(t *testing.T) {
 	// Tests that describe handles platform-specific logic gracefully
 	// by creating a valid file and calling describe
-	tmpFile := filepath.Join(t.TempDir(), "test.png")
+	dir := t.TempDir()
+	chdirForTest(t, dir)
+	tmpFile := filepath.Join(dir, "test.png")
 	if err := os.WriteFile(tmpFile, []byte("fake image data"), 0644); err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -135,8 +141,10 @@ func TestImagingTool_Describe_UnsupportedPlatform(t *testing.T) {
 }
 
 func TestImagingTool_Resize_MissingDimensions(t *testing.T) {
+	dir := t.TempDir()
+	chdirForTest(t, dir)
 	tool := &ImagingTool{}
-	result, err := tool.Run(context.Background(), `{"action": "resize", "path": "/tmp/test.png"}`)
+	result, err := tool.Run(context.Background(), `{"action": "resize", "path": "test.png"}`)
 	if err != nil {
 		t.Fatalf("Run returned err: %v", err)
 	}
@@ -149,8 +157,10 @@ func TestImagingTool_Resize_MissingDimensions(t *testing.T) {
 }
 
 func TestImagingTool_Convert_MissingFormat(t *testing.T) {
+	dir := t.TempDir()
+	chdirForTest(t, dir)
 	tool := &ImagingTool{}
-	result, err := tool.Run(context.Background(), `{"action": "convert", "path": "/tmp/test.png"}`)
+	result, err := tool.Run(context.Background(), `{"action": "convert", "path": "test.png"}`)
 	if err != nil {
 		t.Fatalf("Run returned err: %v", err)
 	}
@@ -164,9 +174,9 @@ func TestImagingTool_Convert_MissingFormat(t *testing.T) {
 
 func TestChangeExtension(t *testing.T) {
 	tests := []struct {
-		path    string
-		newExt  string
-		want    string
+		path   string
+		newExt string
+		want   string
 	}{
 		{"/tmp/image.png", "jpeg", "/tmp/image.jpeg"},
 		{"/tmp/image.png", ".jpeg", "/tmp/image.jpeg"},

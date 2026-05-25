@@ -2,8 +2,10 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -116,6 +118,22 @@ func TestReadTrackerKey(t *testing.T) {
 	if key == nil {
 		t.Error("ReadTrackerKey should return non-nil")
 	}
+}
+
+func TestReadTracker_ConcurrentAccess(t *testing.T) {
+	rt := NewReadTracker()
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			path := fmt.Sprintf("/tmp/file-%d.go", i)
+			rt.MarkRead(path)
+			_ = rt.HasRead(path)
+			_ = rt.HasRead("/tmp/other.go")
+		}(i)
+	}
+	wg.Wait()
 }
 
 func TestIsMemoryPath(t *testing.T) {

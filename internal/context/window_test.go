@@ -121,6 +121,34 @@ func TestCompressOldToolResults(t *testing.T) {
 	}
 }
 
+func TestCompressOldToolResults_CountsTurnPairsOnce(t *testing.T) {
+	longOld := strings.Repeat("old result ", 100)
+	longRecent1 := strings.Repeat("recent one ", 100)
+	longRecent2 := strings.Repeat("recent two ", 100)
+	msgs := []client.Message{
+		{Role: "system", Content: "system prompt"},
+		{Role: "user", Content: "query"},
+		{Role: "assistant", Content: "old response"},
+		{Role: "user", Content: longOld},
+		{Role: "assistant", Content: "recent response 1"},
+		{Role: "user", Content: longRecent1},
+		{Role: "assistant", Content: "recent response 2"},
+		{Role: "user", Content: longRecent2},
+	}
+
+	CompressOldToolResults(msgs, 2, 20)
+
+	if !strings.Contains(msgs[3].Content, "[truncated]") {
+		t.Fatalf("old result should be truncated")
+	}
+	if strings.Contains(msgs[5].Content, "[truncated]") {
+		t.Fatalf("first recent result should not be truncated")
+	}
+	if strings.Contains(msgs[7].Content, "[truncated]") {
+		t.Fatalf("second recent result should not be truncated")
+	}
+}
+
 func TestCompressOldToolResults_Empty(t *testing.T) {
 	// Should not panic on empty or small message lists
 	CompressOldToolResults(nil, 3, 300)

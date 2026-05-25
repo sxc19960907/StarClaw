@@ -60,12 +60,9 @@ func IsSafePath(path string) error {
 		}
 	}
 
-	// Resolve symlinks to get the real path for CWD/home checks.
-	// This prevents symlink attacks where a file inside the project
-	// points to a sensitive location.
-	resolvedPath := cleanPath
-	if rp, err := filepath.EvalSymlinks(cleanPath); err == nil {
-		resolvedPath = filepath.Clean(rp)
+	resolvedPath, err := resolvePath(cleanPath)
+	if err != nil {
+		return fmt.Errorf("cannot resolve path: %w", err)
 	}
 
 	// Check sensitive paths again on the resolved path
@@ -75,24 +72,31 @@ func IsSafePath(path string) error {
 		}
 	}
 
-	// Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("cannot determine working directory: %w", err)
 	}
+	resolvedCWD, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		resolvedCWD = filepath.Clean(cwd)
+	}
 
-	// Allow paths under CWD (check with separator to avoid prefix collisions)
-	if strings.HasPrefix(resolvedPath, cwd+string(filepath.Separator)) || resolvedPath == cwd {
+	if isSubpath(resolvedCWD, resolvedPath) {
 		return nil
 	}
 
-	// Allow paths under home directory
-	home, _ := os.UserHomeDir()
-	if home != "" && (strings.HasPrefix(resolvedPath, home+string(filepath.Separator)) || resolvedPath == home) {
-		return nil
+	home, err := os.UserHomeDir()
+	if err == nil && home != "" {
+		resolvedHome, err := filepath.EvalSymlinks(home)
+		if err != nil {
+			resolvedHome = filepath.Clean(home)
+		}
+		if isSubpath(resolvedHome, resolvedPath) {
+			return nil
+		}
 	}
 
-	return nil
+	return fmt.Errorf("path outside allowed directories: %s", cleanPath)
 }
 
 // IsPathUnderCWD checks if a path is under current working directory
@@ -108,7 +112,16 @@ func IsPathUnderCWD(path string) bool {
 		return false
 	}
 
-	return strings.HasPrefix(absPath, cwd+string(filepath.Separator)) || absPath == cwd
+	resolvedPath, err := resolvePath(filepath.Clean(absPath))
+	if err != nil {
+		return false
+	}
+	resolvedCWD, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		resolvedCWD = filepath.Clean(cwd)
+	}
+
+	return isSubpath(resolvedCWD, resolvedPath)
 }
 
 // NormalizePath converts path to absolute and clean
@@ -119,4 +132,39 @@ func NormalizePath(path string) (string, error) {
 		return "", err
 	}
 	return filepath.Clean(absPath), nil
+}
+
+func resolvePath(path string) (string, error) {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return filepath.Clean(resolved), nil
+	}
+
+	dir := path
+	var missing []string
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("no existing ancestor for %s", path)
+		}
+		missing = append(missing, filepath.Base(dir))
+		dir = parent
+		resolvedParent, err := filepath.EvalSymlinks(dir)
+		if err == nil {
+			resolved := filepath.Clean(resolvedParent)
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			return filepath.Clean(resolved), nil
+		}
+	}
+}
+
+func isSubpath(base, target string) bool {
+	base = filepath.Clean(base)
+	target = filepath.Clean(target)
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }

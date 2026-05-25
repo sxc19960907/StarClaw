@@ -8,6 +8,22 @@ import (
 	"testing"
 )
 
+func chdirForTest(t *testing.T, dir string) {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get cwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir %s: %v", dir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("restore cwd: %v", err)
+		}
+	})
+}
+
 func TestExpandHome(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -36,11 +52,7 @@ func TestExpandHome(t *testing.T) {
 func TestIsSafePath(t *testing.T) {
 	// Create temp directory for testing
 	tmpDir := t.TempDir()
-	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
-
-	// Change to temp directory
-	os.Chdir(tmpDir)
+	chdirForTest(t, tmpDir)
 
 	tests := []struct {
 		name    string
@@ -50,7 +62,7 @@ func TestIsSafePath(t *testing.T) {
 		{"relative path", "file.txt", false},
 		{"subdirectory", "subdir/file.go", false},
 		{"current dir", ".", false},
-		{"parent dir", "..", false}, // .. 经过 Clean 后是合法的（当前目录的父目录）
+		{"parent dir", "..", true},
 		{"traversal outside home", "/etc/passwd", true}, // 系统路径
 	}
 
@@ -89,11 +101,71 @@ func TestIsSafePath(t *testing.T) {
 	}
 }
 
+func TestIsSafePath_RejectsSiblingPrefix(t *testing.T) {
+	parent := t.TempDir()
+	project := filepath.Join(parent, "project")
+	sibling := filepath.Join(parent, "project-other")
+	if err := os.MkdirAll(project, 0755); err != nil {
+		t.Fatalf("mkdir project: %v", err)
+	}
+	if err := os.MkdirAll(sibling, 0755); err != nil {
+		t.Fatalf("mkdir sibling: %v", err)
+	}
+	chdirForTest(t, project)
+
+	if err := IsSafePath(filepath.Join(sibling, "secret.txt")); err == nil {
+		t.Fatal("sibling-prefix path should be rejected")
+	}
+}
+
+func TestIsSafePath_RejectsSymlinkEscape(t *testing.T) {
+	parent := t.TempDir()
+	project := filepath.Join(parent, "project")
+	outside := filepath.Join(parent, "outside")
+	if err := os.MkdirAll(project, 0755); err != nil {
+		t.Fatalf("mkdir project: %v", err)
+	}
+	if err := os.MkdirAll(outside, 0755); err != nil {
+		t.Fatalf("mkdir outside: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("secret"), 0644); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+	link := filepath.Join(project, "link")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	chdirForTest(t, project)
+
+	if err := IsSafePath(filepath.Join(link, "secret.txt")); err == nil {
+		t.Fatal("symlink escape should be rejected")
+	}
+}
+
+func TestIsPathUnderCWD_RejectsSymlinkEscape(t *testing.T) {
+	parent := t.TempDir()
+	project := filepath.Join(parent, "project")
+	outside := filepath.Join(parent, "outside")
+	if err := os.MkdirAll(project, 0755); err != nil {
+		t.Fatalf("mkdir project: %v", err)
+	}
+	if err := os.MkdirAll(outside, 0755); err != nil {
+		t.Fatalf("mkdir outside: %v", err)
+	}
+	link := filepath.Join(project, "link")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	chdirForTest(t, project)
+
+	if IsPathUnderCWD(filepath.Join(link, "secret.txt")) {
+		t.Fatal("symlink escape should not be considered under CWD")
+	}
+}
+
 func TestIsPathUnderCWD(t *testing.T) {
 	tmpDir := t.TempDir()
-	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
-	os.Chdir(tmpDir)
+	chdirForTest(t, tmpDir)
 
 	tests := []struct {
 		path     string
@@ -116,9 +188,7 @@ func TestIsPathUnderCWD(t *testing.T) {
 
 func TestNormalizePath(t *testing.T) {
 	tmpDir := t.TempDir()
-	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
-	os.Chdir(tmpDir)
+	chdirForTest(t, tmpDir)
 
 	// 在 macOS 上 /var 是 /private/var 的符号链接，所以我们只检查结果是否以目录名结尾
 	result, err := NormalizePath("file.txt")

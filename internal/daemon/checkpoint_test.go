@@ -152,6 +152,30 @@ func TestCheckpoint_SanitizeID_PathTraversal(t *testing.T) {
 	}
 }
 
+func TestCheckpoint_SanitizeID_BackslashTraversal(t *testing.T) {
+	tmpDir := t.TempDir()
+	cp := NewCheckpoint(filepath.Join(tmpDir, "checkpoints"))
+
+	if err := cp.Save(`..\..\outside`, []byte("data")); err != nil {
+		t.Fatalf("Save() with backslash traversal ID error = %v", err)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(tmpDir, "checkpoints"))
+	if err != nil {
+		t.Fatalf("ReadDir error = %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("Expected 1 file, got %d", len(entries))
+	}
+	name := entries[0].Name()
+	if strings.Contains(name, `\`) || strings.Contains(name, "/") || strings.Contains(name, "..") {
+		t.Fatalf("Checkpoint file name was not safely sanitized: %q", name)
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "outside")); !os.IsNotExist(err) {
+		t.Fatalf("Traversal created file outside checkpoint dir or stat failed unexpectedly: %v", err)
+	}
+}
+
 func TestCheckpoint_FilePermissions(t *testing.T) {
 	tmpDir := t.TempDir()
 	cp := NewCheckpoint(filepath.Join(tmpDir, "checkpoints"))

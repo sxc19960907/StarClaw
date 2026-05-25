@@ -506,6 +506,67 @@ func TestClose_StopsAllGoroutines(t *testing.T) {
 	// If we got here without hanging, all goroutines stopped successfully.
 }
 
+func TestClose_BeforeStart_DoesNotHang(t *testing.T) {
+	dir := t.TempDir()
+	agentsDir := filepath.Join(dir, "agents")
+	writeAgent(t, agentsDir, "agent1")
+	writeHeartbeatConfig(t, agentsDir, "agent1", "1h", "")
+
+	m, err := New(agentsDir, &Deps{
+		RunAgent: func(ctx context.Context, agent, prompt string) (string, error) {
+			return "HEARTBEAT_OK", nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		m.Close()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Close before Start hung")
+	}
+}
+
+func TestStartClose_ConcurrentCalls(t *testing.T) {
+	dir := t.TempDir()
+	agentsDir := filepath.Join(dir, "agents")
+	writeAgent(t, agentsDir, "agent1")
+	writeHeartbeatConfig(t, agentsDir, "agent1", "1h", "")
+
+	m, err := New(agentsDir, &Deps{
+		RunAgent: func(ctx context.Context, agent, prompt string) (string, error) {
+			return "HEARTBEAT_OK", nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			m.Start(ctx)
+		}()
+		go func() {
+			defer wg.Done()
+			m.Close()
+		}()
+	}
+	wg.Wait()
+}
+
 func TestStart_WithMultipleAgents_StartsAndStops(t *testing.T) {
 	dir := t.TempDir()
 	agentsDir := filepath.Join(dir, "agents")

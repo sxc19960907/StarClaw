@@ -8,11 +8,12 @@ import (
 // Watchdog provides a timer that fires a callback when a timeout is exceeded.
 // Supports start, reset, and stop operations. Safe for concurrent use.
 type Watchdog struct {
-	mu       sync.Mutex
-	timer    *time.Timer
-	timeout  time.Duration
-	callback func()
-	stopped  bool
+	mu         sync.Mutex
+	timer      *time.Timer
+	timeout    time.Duration
+	callback   func()
+	stopped    bool
+	generation uint64
 }
 
 // NewWatchdog creates a new watchdog with the given callback function.
@@ -31,8 +32,14 @@ func (w *Watchdog) Start(timeout time.Duration) {
 	}
 	w.timeout = timeout
 	w.stopped = false
+	w.generation++
+	generation := w.generation
 	w.timer = time.AfterFunc(timeout, func() {
 		w.mu.Lock()
+		if w.stopped || generation != w.generation {
+			w.mu.Unlock()
+			return
+		}
 		cb := w.callback
 		w.mu.Unlock()
 		if cb != nil {
@@ -47,7 +54,21 @@ func (w *Watchdog) Reset() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.timer != nil && !w.stopped {
-		w.timer.Reset(w.timeout)
+		w.generation++
+		generation := w.generation
+		w.timer.Stop()
+		w.timer = time.AfterFunc(w.timeout, func() {
+			w.mu.Lock()
+			if w.stopped || generation != w.generation {
+				w.mu.Unlock()
+				return
+			}
+			cb := w.callback
+			w.mu.Unlock()
+			if cb != nil {
+				cb()
+			}
+		})
 	}
 }
 
@@ -60,4 +81,5 @@ func (w *Watchdog) Stop() {
 		w.timer.Stop()
 	}
 	w.stopped = true
+	w.generation++
 }

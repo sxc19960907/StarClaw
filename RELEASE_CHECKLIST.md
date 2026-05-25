@@ -1,5 +1,17 @@
 # Release Checklist
 
+## Current Readiness Notes
+
+- Hardening pass is documented in `CHANGELOG.md` under `Unreleased`.
+- Current product-code changes should be committed separately from the pre-existing Trellis/agent infrastructure migration.
+- Final verification for this pass should include:
+  - `go test ./...`
+  - `go test -race ./internal/client ./internal/agent ./internal/context ./internal/daemon ./internal/tools ./internal/heartbeat`
+  - `make build`
+  - `make build-all`
+  - CLI smoke: `starclaw version`, `starclaw --help`, `starclaw completion zsh`, `starclaw mcp --help`
+- As of this pass, no release tag has been created.
+
 ## Pre-Release
 
 - [ ] Update version in `cmd/root.go`

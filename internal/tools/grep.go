@@ -54,6 +54,9 @@ func (t *GrepTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, 
 	}
 
 	args.Path = ExpandHome(args.Path)
+	if err := IsSafePath(args.Path); err != nil {
+		return agent.PermissionError(fmt.Sprintf("unsafe path: %v", err)), nil
+	}
 
 	// Try ripgrep first for better performance and features
 	if bin, err := exec.LookPath("rg"); err == nil {

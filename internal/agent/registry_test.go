@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 )
 
@@ -306,6 +308,26 @@ func TestToolRegistry_BuildToolSchema(t *testing.T) {
 	if schema.Function.Name != "test_tool" {
 		t.Errorf("Function name = %q", schema.Function.Name)
 	}
+}
+
+func TestToolRegistry_ConcurrentAccess(t *testing.T) {
+	reg := NewToolRegistry()
+	var wg sync.WaitGroup
+	for i := 0; i < 25; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			reg.Register(&MockTool{name: fmt.Sprintf("tool_%d", i), description: "test"})
+			_, _ = reg.Get("tool_0")
+			_ = reg.List()
+			_ = reg.Names()
+			_ = reg.Count()
+			_ = reg.Clone()
+			_ = reg.Schemas()
+			_ = reg.SortedNames()
+		}(i)
+	}
+	wg.Wait()
 }
 
 // NewMCPToolForTest creates a minimal MCP tool for registry testing.

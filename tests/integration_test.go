@@ -113,8 +113,15 @@ tools:
 func TestAgentToolExecution(t *testing.T) {
 	// Create temp directory with test files
 	tempDir := t.TempDir()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(cwd))
+	})
+
 	testFile := filepath.Join(tempDir, "test.txt")
-	err := os.WriteFile(testFile, []byte("Hello, World!"), 0644)
+	err = os.WriteFile(testFile, []byte("Hello, World!"), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}

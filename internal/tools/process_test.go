@@ -2,8 +2,11 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestProcessTool_Info(t *testing.T) {
@@ -146,6 +149,32 @@ func TestProcessTool_Start(t *testing.T) {
 	}
 }
 
+func TestProcessTool_StatusWhileProcessWrites(t *testing.T) {
+	tool := NewProcessTool(5 * time.Second)
+	result, err := tool.Run(context.Background(), `{"action":"start","command":"sh","args":["-c","for i in 1 2 3 4 5; do echo line-$i; sleep 0.05; done"]}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error result: %s", result.Content)
+	}
+
+	var pid int
+	if _, err := fmt.Sscanf(result.Content, "Started PID %d:", &pid); err != nil {
+		t.Fatalf("failed to parse pid from %q: %v", result.Content, err)
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = tool.Run(context.Background(), fmt.Sprintf(`{"action":"status","pid":%d}`, pid))
+		}()
+	}
+	wg.Wait()
+}
+
 func TestProcessTool_Start_EmptyCommand(t *testing.T) {
 	tool := NewProcessTool(30)
 	result, err := tool.Run(context.Background(), `{"action":"start","command":""}`)
@@ -200,7 +229,6 @@ func TestProcessTool_Status_NoPID(t *testing.T) {
 		t.Error("expected error for missing pid")
 	}
 }
-
 
 func TestProcessTool_IsSafeArgs_NewActions(t *testing.T) {
 	tool := NewProcessTool(30)

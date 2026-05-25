@@ -8,14 +8,14 @@ import (
 
 // MockClient is a mock LLM client for testing
 type MockClient struct {
-	mu             sync.Mutex
-	response       string
-	toolCallName   string
-	toolCallArgs   string
-	responseFunc   func(input string) *MockMessage
-	lastMessages   []Message
-	lastTools      []ToolDef
-	callCount      int
+	mu           sync.Mutex
+	response     string
+	toolCallName string
+	toolCallArgs string
+	responseFunc func(input string) *MockMessage
+	lastMessages []Message
+	lastTools    []ToolDef
+	callCount    int
 }
 
 // MockMessage is a simple message struct for mock responses
@@ -70,8 +70,8 @@ func (m *MockClient) Chat(ctx context.Context, systemPrompt string, messages []M
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.callCount++
-	m.lastMessages = messages
-	m.lastTools = tools
+	m.lastMessages = cloneMessages(messages)
+	m.lastTools = cloneToolDefs(tools)
 
 	// Use custom handler if set
 	if m.responseFunc != nil {
@@ -130,18 +130,71 @@ func (m *MockClient) GetCallCount() int {
 func (m *MockClient) GetLastMessages() []Message {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.lastMessages
+	return cloneMessages(m.lastMessages)
 }
 
 // GetLastTools returns the tools from the last call
 func (m *MockClient) GetLastTools() []ToolDef {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.lastTools
+	return cloneToolDefs(m.lastTools)
 }
 
 // SetModel is a no-op for the mock client
 func (m *MockClient) SetModel(model string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+}
+
+func cloneMessages(messages []Message) []Message {
+	if messages == nil {
+		return nil
+	}
+	out := make([]Message, len(messages))
+	copy(out, messages)
+	return out
+}
+
+func cloneToolDefs(tools []ToolDef) []ToolDef {
+	if tools == nil {
+		return nil
+	}
+	out := make([]ToolDef, len(tools))
+	for i, tool := range tools {
+		out[i] = tool
+		if tool.InputSchema != nil {
+			out[i].InputSchema = cloneMap(tool.InputSchema)
+		}
+	}
+	return out
+}
+
+func cloneMap(in map[string]any) map[string]any {
+	out := make(map[string]any, len(in))
+	for k, v := range in {
+		switch typed := v.(type) {
+		case map[string]any:
+			out[k] = cloneMap(typed)
+		case []any:
+			out[k] = cloneAnySlice(typed)
+		default:
+			out[k] = typed
+		}
+	}
+	return out
+}
+
+func cloneAnySlice(in []any) []any {
+	out := make([]any, len(in))
+	for i, v := range in {
+		switch typed := v.(type) {
+		case map[string]any:
+			out[i] = cloneMap(typed)
+		case []any:
+			out[i] = cloneAnySlice(typed)
+		default:
+			out[i] = typed
+		}
+	}
+	return out
 }

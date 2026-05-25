@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -61,5 +63,34 @@ func TestScreenshotTool_NonDarwin(t *testing.T) {
 	}
 	if !strings.Contains(result.Content, "only available on macOS") {
 		t.Errorf("Expected macOS-only error, got: %s", result.Content)
+	}
+}
+
+func TestScreenshotTool_UnsafePathValidatedBeforePlatform(t *testing.T) {
+	parent := t.TempDir()
+	project := filepath.Join(parent, "project")
+	outside := filepath.Join(parent, "outside")
+	if err := os.MkdirAll(project, 0755); err != nil {
+		t.Fatalf("mkdir project: %v", err)
+	}
+	if err := os.MkdirAll(outside, 0755); err != nil {
+		t.Fatalf("mkdir outside: %v", err)
+	}
+	cwd, _ := os.Getwd()
+	defer os.Chdir(cwd)
+	if err := os.Chdir(project); err != nil {
+		t.Fatalf("chdir project: %v", err)
+	}
+
+	tool := &ScreenshotTool{}
+	result, err := tool.Run(context.Background(), `{"path":"`+filepath.Join(outside, "shot.png")+`"}`)
+	if err != nil {
+		t.Fatalf("Run returned err: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected unsafe path error")
+	}
+	if !strings.Contains(result.Content, "unsafe path") {
+		t.Fatalf("expected unsafe path message, got: %s", result.Content)
 	}
 }

@@ -1,7 +1,9 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
+	"sync"
 	"testing"
 )
 
@@ -41,8 +43,8 @@ func TestMessage(t *testing.T) {
 
 func TestToolUse(t *testing.T) {
 	toolUse := ToolUse{
-		ID:   "toolu_123",
-		Name: "file_read",
+		ID:    "toolu_123",
+		Name:  "file_read",
 		Input: json.RawMessage(`{"path": "/test.txt"}`),
 	}
 	if toolUse.Name != "file_read" {
@@ -103,6 +105,66 @@ func TestResponse(t *testing.T) {
 	if len(resp.ToolUses) != 1 {
 		t.Errorf("Expected 1 tool use, got %d", len(resp.ToolUses))
 	}
+}
+
+func TestMockClient_DefensiveCopies(t *testing.T) {
+	mock := NewMockClient()
+	messages := []Message{{Role: "user", Content: "original"}}
+	tools := []ToolDef{{
+		Name:        "test_tool",
+		Description: "A test tool",
+		InputSchema: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"path": map[string]any{"type": "string"}},
+		},
+	}}
+
+	if _, err := mock.Chat(context.Background(), "", messages, tools, 0, nil); err != nil {
+		t.Fatalf("Chat() error = %v", err)
+	}
+
+	messages[0].Content = "mutated"
+	tools[0].InputSchema["type"] = "mutated"
+	gotMessages := mock.GetLastMessages()
+	gotTools := mock.GetLastTools()
+
+	if gotMessages[0].Content != "original" {
+		t.Fatalf("stored messages were mutated through caller slice: %q", gotMessages[0].Content)
+	}
+	if gotTools[0].InputSchema["type"] != "object" {
+		t.Fatalf("stored tool schema was mutated through caller map: %v", gotTools[0].InputSchema["type"])
+	}
+
+	gotMessages[0].Content = "changed again"
+	gotTools[0].InputSchema["type"] = "changed again"
+	gotMessages = mock.GetLastMessages()
+	gotTools = mock.GetLastTools()
+
+	if gotMessages[0].Content != "original" {
+		t.Fatalf("GetLastMessages exposed internal slice: %q", gotMessages[0].Content)
+	}
+	if gotTools[0].InputSchema["type"] != "object" {
+		t.Fatalf("GetLastTools exposed internal schema: %v", gotTools[0].InputSchema["type"])
+	}
+}
+
+func TestMockClient_ConcurrentUse(t *testing.T) {
+	mock := NewMockClient()
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mock.SetResponse("ok")
+			if _, err := mock.Chat(context.Background(), "", []Message{{Role: "user", Content: "hi"}}, nil, 0, nil); err != nil {
+				t.Errorf("Chat() error = %v", err)
+			}
+			_ = mock.GetCallCount()
+			_ = mock.GetLastMessages()
+			_ = mock.GetLastTools()
+		}()
+	}
+	wg.Wait()
 }
 
 func TestGetString(t *testing.T) {

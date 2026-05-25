@@ -13,6 +13,7 @@ import (
 func TestFileReadTool(t *testing.T) {
 	// Create temp file
 	tmpDir := t.TempDir()
+	chdirForTest(t, tmpDir)
 	testFile := filepath.Join(tmpDir, "test.txt")
 	content := "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
 	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
@@ -59,7 +60,7 @@ func TestFileReadTool(t *testing.T) {
 	}
 
 	// Test non-existent file
-	result, _ = tool.Run(context.Background(), `{"path": "/nonexistent/file.txt"}`)
+	result, _ = tool.Run(context.Background(), `{"path": "missing.txt"}`)
 	if !result.IsError {
 		t.Error("Expected error for non-existent file")
 	}

@@ -65,6 +65,8 @@ func sanitizeID(id string) string {
 	if strings.HasPrefix(cleaned, "..") {
 		return "_default"
 	}
+	cleaned = strings.ReplaceAll(cleaned, "/", "_")
+	cleaned = strings.ReplaceAll(cleaned, "\\", "_")
 	cleaned = strings.ReplaceAll(cleaned, string(filepath.Separator), "_")
 	if cleaned == "." || cleaned == "" {
 		return "_default"

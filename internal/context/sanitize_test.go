@@ -42,19 +42,48 @@ func TestSanitizeHistory_ConsecutiveRoles(t *testing.T) {
 		{Role: "system", Content: "system"},
 		{Role: "user", Content: "hello"},
 		{Role: "assistant", Content: "first"},
-		{Role: "assistant", Content: "second"}, // should replace first
+		{Role: "assistant", Content: "second"}, // should merge with first
 		{Role: "user", Content: "next"},
 	}
 	result := SanitizeHistory(msgs)
-	// Count assistant messages
 	assistantCount := 0
+	var assistantContent string
 	for _, m := range result {
 		if m.Role == "assistant" {
 			assistantCount++
+			assistantContent = m.Content
 		}
 	}
 	if assistantCount != 1 {
 		t.Errorf("Expected 1 assistant after merging, got %d", assistantCount)
+	}
+	if assistantContent != "first\nsecond" {
+		t.Errorf("Expected merged assistant content, got %q", assistantContent)
+	}
+}
+
+func TestSanitizeHistory_ConsecutiveUsersPreserveBothMessages(t *testing.T) {
+	msgs := []client.Message{
+		{Role: "system", Content: "system"},
+		{Role: "user", Content: "first user"},
+		{Role: "user", Content: "second user"},
+		{Role: "assistant", Content: "response"},
+	}
+
+	result := SanitizeHistory(msgs)
+	userCount := 0
+	var userContent string
+	for _, m := range result {
+		if m.Role == "user" {
+			userCount++
+			userContent = m.Content
+		}
+	}
+	if userCount != 1 {
+		t.Fatalf("Expected 1 user after merging, got %d", userCount)
+	}
+	if userContent != "first user\nsecond user" {
+		t.Fatalf("Expected both user messages to be preserved, got %q", userContent)
 	}
 }
 

@@ -2,7 +2,6 @@
 package tools
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,26 +17,59 @@ import (
 
 // ProcessTool manages processes: list, kill, start, signal, and status.
 type ProcessTool struct {
-	mu       sync.Mutex
-	spawned  map[int]*spawnedProcess
-	timeout  time.Duration
+	mu      sync.Mutex
+	spawned map[int]*spawnedProcess
+	timeout time.Duration
 }
 
 type spawnedProcess struct {
 	cmd    *exec.Cmd
-	stdout *bytes.Buffer
-	stderr *bytes.Buffer
+	stdout *safeProcessBuffer
+	stderr *safeProcessBuffer
 	done   chan struct{}
 }
 
+type safeProcessBuffer struct {
+	mu  sync.Mutex
+	buf []byte
+}
+
+func (b *safeProcessBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buf = append(b.buf, p...)
+	return len(p), nil
+}
+
+func (b *safeProcessBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return string(b.buf)
+}
+
+func (b *safeProcessBuffer) Len() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return len(b.buf)
+}
+
+func (b *safeProcessBuffer) Tail(max int) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.buf) <= max {
+		return string(b.buf)
+	}
+	return string(b.buf[len(b.buf)-max:])
+}
+
 type processArgs struct {
-	Action  string `json:"action"`
-	PID     int    `json:"pid,omitempty"`
-	Name    string `json:"name,omitempty"`
-	Command string `json:"command,omitempty"`
+	Action  string   `json:"action"`
+	PID     int      `json:"pid,omitempty"`
+	Name    string   `json:"name,omitempty"`
+	Command string   `json:"command,omitempty"`
 	Args    []string `json:"args,omitempty"`
-	Signal  string `json:"signal,omitempty"`
-	Timeout int    `json:"timeout,omitempty"`
+	Signal  string   `json:"signal,omitempty"`
+	Timeout int      `json:"timeout,omitempty"`
 }
 
 // NewProcessTool creates a process tool with a default spawn timeout.
@@ -156,17 +188,18 @@ func (t *ProcessTool) startProcess(_ context.Context, args processArgs) (agent.T
 		return agent.ValidationError("command is required for start action"), nil
 	}
 
-	var stdout, stderr bytes.Buffer
+	stdout := &safeProcessBuffer{}
+	stderr := &safeProcessBuffer{}
 	cmd := exec.Command(args.Command, args.Args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	if err := cmd.Start(); err != nil {
 		return agent.ToolResult{Content: fmt.Sprintf("failed to start process: %v", err), IsError: true}, nil
 	}
 
 	pid := cmd.Process.Pid
-	sp := &spawnedProcess{cmd: cmd, stdout: &stdout, stderr: &stderr, done: make(chan struct{})}
+	sp := &spawnedProcess{cmd: cmd, stdout: stdout, stderr: stderr, done: make(chan struct{})}
 
 	t.mu.Lock()
 	t.spawned[pid] = sp
@@ -241,11 +274,7 @@ func (t *ProcessTool) statusProcess(args processArgs) (agent.ToolResult, error) 
 		default:
 			result := fmt.Sprintf("PID %d: running", args.PID)
 			if sp.stdout.Len() > 0 {
-				out := sp.stdout.String()
-				if len(out) > 2000 {
-					out = out[len(out)-2000:]
-				}
-				result += fmt.Sprintf("\n\nstdout (tail):\n%s", out)
+				result += fmt.Sprintf("\n\nstdout (tail):\n%s", sp.stdout.Tail(2000))
 			}
 			return agent.ToolResult{Content: result}, nil
 		}

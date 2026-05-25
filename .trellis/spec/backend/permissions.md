@@ -82,6 +82,10 @@ curl * | sh, wget * | sh
 
 Read-only system tools, build tools, linters: `ls`, `cat`, `grep`, `go build`, `go test`, `git status`, `golangci-lint`, `docker ps`, `gh pr list`, etc.
 
+## Path Containment
+
+File-oriented tools must validate paths before filesystem access. Expand `~`, convert to an absolute clean path, resolve symlinks or the nearest existing ancestor for new files, then check containment with relative-path logic such as `filepath.Rel`. Do not use raw string prefixes for containment; sibling paths like `/project-other` and symlink escapes must not pass as being under `/project`.
+
 ## Adding a New Permissions Handler
 
 In `CheckToolCall()`, add a case for the tool name:

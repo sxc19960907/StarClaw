@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -10,10 +11,10 @@ import (
 
 // MockEventHandler for testing
 type MockEventHandler struct {
-	toolCalls  []string
+	toolCalls   []string
 	toolResults []string
-	texts      []string
-	usages     []client.Usage
+	texts       []string
+	usages      []client.Usage
 }
 
 func (m *MockEventHandler) OnToolCall(name string, args string) {
@@ -192,6 +193,45 @@ func TestAgentLoop_executeTool_UnknownTool(t *testing.T) {
 	}
 	if result.ErrorCategory != ErrCategoryValidation {
 		t.Errorf("Expected validation error, got %s", result.ErrorCategory)
+	}
+}
+
+type streamingOnlyClient struct {
+	streamCalls int
+	chatCalls   int
+}
+
+func (c *streamingOnlyClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
+	c.chatCalls++
+	return nil, fmt.Errorf("non-streaming Chat should not be called after successful stream")
+}
+
+func (c *streamingOnlyClient) StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error) {
+	c.streamCalls++
+	if onDelta != nil {
+		onDelta("streamed")
+	}
+	return &client.Response{Content: "streamed response"}, nil
+}
+
+func TestAgentLoop_StreamingSuccessDoesNotCallChat(t *testing.T) {
+	llmClient := &streamingOnlyClient{}
+	registry := NewToolRegistry()
+	loop := NewAgentLoop(llmClient, registry)
+	loop.SetEnableStreaming(true)
+
+	resp, err := loop.Run(context.Background(), "hello")
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if resp.Content != "streamed response" {
+		t.Fatalf("Response content = %q, want streamed response", resp.Content)
+	}
+	if llmClient.streamCalls != 1 {
+		t.Fatalf("StreamChat calls = %d, want 1", llmClient.streamCalls)
+	}
+	if llmClient.chatCalls != 0 {
+		t.Fatalf("Chat calls = %d, want 0", llmClient.chatCalls)
 	}
 }
 

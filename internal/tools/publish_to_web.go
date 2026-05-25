@@ -61,6 +61,9 @@ func (t *PublishToWebTool) Run(ctx context.Context, argsJSON string) (agent.Tool
 	}
 
 	path := ExpandHome(args.Path)
+	if err := IsSafePath(path); err != nil {
+		return agent.PermissionError(fmt.Sprintf("unsafe path: %v", err)), nil
+	}
 
 	// Verify the file exists and is a regular file
 	info, err := os.Stat(path)

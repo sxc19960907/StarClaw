@@ -2,7 +2,7 @@
 
 BINARY_NAME=starclaw
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-LDFLAGS=-ldflags "-X github.com/starclaw/starclaw/cmd.Version=${VERSION}"
+LDFLAGS=-ldflags "-X main.Version=${VERSION} -X github.com/starclaw/starclaw/cmd.Version=${VERSION}"
 
 build:
 	go build ${LDFLAGS} -o ${BINARY_NAME} .

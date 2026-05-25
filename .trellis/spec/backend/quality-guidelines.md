@@ -71,6 +71,12 @@ for _, tt := range tests {
 - Define mock types in the same test file
 - Implement the full interface
 - Verify at compile time: `var _ Interface = (*MockType)(nil)`
+- Shared test mocks must be concurrency-safe when used across goroutines. If a mock records slice or map inputs, store defensive copies and return defensive copies from getters.
+
+### Timers and Callbacks
+
+- For resettable/stoppable timers, guard callbacks with a generation or cancellation token so callbacks queued before `Reset` or `Stop` cannot fire after the state changed.
+- Do not share plain `bytes.Buffer` instances between `os/exec` stdout/stderr copy goroutines and status readers. Use a synchronized writer/reader wrapper or wait for the process to exit before reading captured output.
 
 ---
 
