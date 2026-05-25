@@ -182,10 +182,67 @@ func TestModel_renderApprovalDialog(t *testing.T) {
 	}
 }
 
+func TestModel_Update_ToolCallAndResultMessages(t *testing.T) {
+	loop := agent.NewAgentLoop(&MockLLMClient{}, agent.NewToolRegistry())
+	model := NewModel(loop)
+
+	newModel, _ := model.Update(toolCallMsg{name: "file_read", args: `{"path":"test.txt"}`})
+	m := newModel.(*Model)
+	if m.state != StateThinking {
+		t.Fatalf("state = %d, want StateThinking", m.state)
+	}
+	if m.pendingTool == nil || m.pendingTool.Name != "file_read" {
+		t.Fatalf("pendingTool = %+v, want file_read", m.pendingTool)
+	}
+	if len(m.messages) != 1 || m.messages[0].ToolCall == nil {
+		t.Fatalf("messages = %+v, want visible tool call row", m.messages)
+	}
+
+	newModel, _ = m.Update(toolResultMsg{
+		name:    "file_read",
+		args:    `{"path":"test.txt"}`,
+		result:  "file contents",
+		isError: false,
+	})
+	m = newModel.(*Model)
+	if m.state != StateThinking {
+		t.Fatalf("state = %d, want StateThinking after tool result", m.state)
+	}
+	if m.pendingTool.Result != "file contents" {
+		t.Fatalf("pending result = %q, want file contents", m.pendingTool.Result)
+	}
+	if len(m.lastToolResults) != 1 {
+		t.Fatalf("lastToolResults = %d, want 1", len(m.lastToolResults))
+	}
+	if m.lastToolResults[0].args != `{"path":"test.txt"}` {
+		t.Fatalf("recorded args = %q", m.lastToolResults[0].args)
+	}
+}
+
+func TestModel_Update_AgentDoneAfterStreaming(t *testing.T) {
+	loop := agent.NewAgentLoop(&MockLLMClient{}, agent.NewToolRegistry())
+	model := NewModel(loop)
+
+	newModel, _ := model.Update(streamingMsg("hello"))
+	m := newModel.(*Model)
+	if m.state != StateStreaming {
+		t.Fatalf("state = %d, want StateStreaming", m.state)
+	}
+
+	newModel, _ = m.Update(agentDoneMsg{})
+	m = newModel.(*Model)
+	if m.state != StateIdle {
+		t.Fatalf("state = %d, want StateIdle", m.state)
+	}
+	if len(m.messages) != 1 || m.messages[0].Content != "hello" {
+		t.Fatalf("messages = %+v, want streamed assistant content only", m.messages)
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	tests := []struct {
-		input   string
-		maxLen  int
+		input    string
+		maxLen   int
 		expected string
 	}{
 		{"hello", 10, "hello"},
@@ -217,21 +274,30 @@ func TestTUIEventHandler_OnToolCall(t *testing.T) {
 		t.Errorf("Expected tool name 'file_read', got '%s'", model.pendingTool.Name)
 	}
 
-	if model.state != StateAwaitingApproval {
-		t.Errorf("Expected state StateAwaitingApproval, got %d", model.state)
+	if model.state != StateThinking {
+		t.Errorf("Expected state StateThinking, got %d", model.state)
 	}
 }
 
 func TestTUIEventHandler_OnToolResult(t *testing.T) {
 	loop := agent.NewAgentLoop(&MockLLMClient{}, agent.NewToolRegistry())
 	model := NewModel(loop)
-	model.pendingTool = &ToolCallInfo{Name: "file_read"}
+	model.pendingTool = &ToolCallInfo{Name: "file_read", Args: `{"path":"test.txt"}`}
 
 	handler := &TUIEventHandler{model: model}
 	handler.OnToolResult("file_read", agent.ToolResult{Content: "result", IsError: false})
 
 	if model.pendingTool.Result != "result" {
 		t.Errorf("Expected result 'result', got '%s'", model.pendingTool.Result)
+	}
+	if model.state != StateThinking {
+		t.Errorf("Expected state StateThinking, got %d", model.state)
+	}
+	if len(model.lastToolResults) != 1 {
+		t.Fatalf("Expected one tracked tool result, got %d", len(model.lastToolResults))
+	}
+	if model.lastToolResults[0].args != `{"path":"test.txt"}` {
+		t.Errorf("Expected args to be recorded, got %q", model.lastToolResults[0].args)
 	}
 }
 

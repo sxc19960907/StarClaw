@@ -243,6 +243,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = StateIdle
 		return m, nil
 
+	case agentDoneMsg:
+		m.state = StateIdle
+		return m, nil
+
 	case streamingMsg:
 		// Streaming text update - append to last assistant message or create new one
 		m.state = StateStreaming
@@ -259,24 +263,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case toolCallMsg:
-		// Tool call started
-		m.state = StateAwaitingApproval
-		m.pendingTool = &ToolCallInfo{
-			Name: msg.name,
-			Args: msg.args,
-		}
-		m.messages = append(m.messages, Message{
-			Role:     "system",
-			ToolCall: m.pendingTool,
-		})
+		m.applyToolCall(msg)
 		return m, nil
 
 	case toolResultMsg:
-		// Tool result received
-		if m.pendingTool != nil {
-			m.pendingTool.Result = msg.result
-			m.pendingTool.Error = msg.isError
-		}
+		m.applyToolResult(msg)
 		return m, nil
 
 	case usageMsg:
@@ -394,6 +385,53 @@ func (m *Model) renderApprovalDialog() string {
 	return b.String()
 }
 
+func (m *Model) applyToolCall(msg toolCallMsg) {
+	m.state = StateThinking
+	m.pendingTool = &ToolCallInfo{
+		Name: msg.name,
+		Args: msg.args,
+	}
+	m.messages = append(m.messages, Message{
+		Role:     "system",
+		ToolCall: m.pendingTool,
+	})
+}
+
+func (m *Model) applyToolResult(msg toolResultMsg) {
+	if msg.args == "" && m.pendingTool != nil && m.pendingTool.Name == msg.name {
+		msg.args = m.pendingTool.Args
+	}
+	if m.pendingTool != nil && m.pendingTool.Name == msg.name {
+		m.pendingTool.Result = msg.result
+		m.pendingTool.Error = msg.isError
+	} else {
+		tool := &ToolCallInfo{
+			Name:   msg.name,
+			Args:   msg.args,
+			Result: msg.result,
+			Error:  msg.isError,
+		}
+		m.messages = append(m.messages, Message{
+			Role:     "system",
+			ToolCall: tool,
+		})
+	}
+
+	entry := toolResultEntry{
+		name:    msg.name,
+		args:    msg.args,
+		content: msg.result,
+		isError: msg.isError,
+		elapsed: msg.elapsed,
+	}
+	m.lastToolResults = append(m.lastToolResults, entry)
+	if len(m.lastToolResults) > 20 {
+		m.lastToolResults = m.lastToolResults[1:]
+	}
+	m.toolExpandLevel = 0
+	m.state = StateThinking
+}
+
 // sendMessage sends a message to the agent
 func (m *Model) sendMessage(content string) tea.Cmd {
 	return func() tea.Msg {
@@ -417,7 +455,7 @@ func (m *Model) sendMessage(content string) tea.Cmd {
 			return agentMessage(fmt.Sprintf("Error: %v", err))
 		}
 		if handler.streamed {
-			return nil
+			return agentDoneMsg{}
 		}
 
 		return agentMessage(resp.Content)
@@ -443,34 +481,31 @@ type TUIEventHandler struct {
 }
 
 func (h *TUIEventHandler) OnToolCall(name string, args string) {
-	// Send tool call message to update UI
-	// This would need a proper command to update state
-	h.model.pendingTool = &ToolCallInfo{
-		Name: name,
-		Args: args,
+	msg := toolCallMsg{name: name, args: args}
+	if h.model.program != nil {
+		h.model.program.Send(msg)
+		return
 	}
-	h.model.state = StateAwaitingApproval
+	h.model.applyToolCall(msg)
 }
 
 func (h *TUIEventHandler) OnToolResult(name string, result agent.ToolResult) {
-	if h.model.pendingTool != nil {
-		h.model.pendingTool.Result = result.Content
-		h.model.pendingTool.Error = result.IsError
-
-		// Track tool result for expandable display
-		entry := toolResultEntry{
-			name:    name,
-			args:    h.model.pendingTool.Args,
-			content: result.Content,
-			isError: result.IsError,
-			elapsed: 0,
-		}
-		h.model.lastToolResults = append(h.model.lastToolResults, entry)
-		if len(h.model.lastToolResults) > 20 {
-			h.model.lastToolResults = h.model.lastToolResults[1:]
-		}
-		h.model.toolExpandLevel = 0
+	args := ""
+	if h.model.pendingTool != nil && h.model.pendingTool.Name == name {
+		args = h.model.pendingTool.Args
 	}
+	msg := toolResultMsg{
+		name:    name,
+		args:    args,
+		result:  result.Content,
+		isError: result.IsError,
+		elapsed: 0,
+	}
+	if h.model.program != nil {
+		h.model.program.Send(msg)
+		return
+	}
+	h.model.applyToolResult(msg)
 }
 
 func (h *TUIEventHandler) OnText(text string) {
@@ -494,14 +529,18 @@ func (h *TUIEventHandler) OnPreamble(preamble string) {
 
 // Message types for tea.Cmd
 type agentMessage string
+type agentDoneMsg struct{}
 type streamingMsg string
 type toolCallMsg struct {
 	name string
 	args string
 }
 type toolResultMsg struct {
+	name    string
+	args    string
 	result  string
 	isError bool
+	elapsed time.Duration
 }
 type usageMsg struct {
 	input  int
