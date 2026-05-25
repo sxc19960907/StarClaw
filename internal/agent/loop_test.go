@@ -199,6 +199,7 @@ func TestAgentLoop_executeTool_UnknownTool(t *testing.T) {
 type streamingOnlyClient struct {
 	streamCalls int
 	chatCalls   int
+	lastOpts    *client.ChatOptions
 }
 
 func (c *streamingOnlyClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
@@ -208,6 +209,7 @@ func (c *streamingOnlyClient) Chat(ctx context.Context, systemPrompt string, mes
 
 func (c *streamingOnlyClient) StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error) {
 	c.streamCalls++
+	c.lastOpts = opts
 	if onDelta != nil {
 		onDelta("streamed")
 	}
@@ -232,6 +234,43 @@ func TestAgentLoop_StreamingSuccessDoesNotCallChat(t *testing.T) {
 	}
 	if llmClient.chatCalls != 0 {
 		t.Fatalf("Chat calls = %d, want 0", llmClient.chatCalls)
+	}
+}
+
+type optionCaptureClient struct {
+	lastOpts *client.ChatOptions
+}
+
+func (c *optionCaptureClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
+	c.lastOpts = opts
+	return &client.Response{Content: "ok"}, nil
+}
+
+func TestAgentLoop_PassesChatOptions(t *testing.T) {
+	llmClient := &optionCaptureClient{}
+	loop := NewAgentLoop(llmClient, NewToolRegistry())
+	loop.SetThinking(&client.ThinkingConfig{Type: "enabled", BudgetTokens: 2048})
+	loop.SetReasoningEffort("high")
+	loop.SetSpecificModel("claude-opus-test")
+
+	resp, err := loop.Run(context.Background(), "hello")
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if resp.Content != "ok" {
+		t.Fatalf("Response content = %q, want ok", resp.Content)
+	}
+	if llmClient.lastOpts == nil {
+		t.Fatal("ChatOptions not passed")
+	}
+	if llmClient.lastOpts.Thinking == nil || llmClient.lastOpts.Thinking.Type != "enabled" || llmClient.lastOpts.Thinking.BudgetTokens != 2048 {
+		t.Fatalf("Thinking options = %#v, want enabled/2048", llmClient.lastOpts.Thinking)
+	}
+	if llmClient.lastOpts.ReasoningEffort != "high" {
+		t.Fatalf("ReasoningEffort = %q, want high", llmClient.lastOpts.ReasoningEffort)
+	}
+	if llmClient.lastOpts.SpecificModel != "claude-opus-test" {
+		t.Fatalf("SpecificModel = %q, want claude-opus-test", llmClient.lastOpts.SpecificModel)
 	}
 }
 

@@ -27,17 +27,17 @@ const (
 
 // Message represents a chat message
 type Message struct {
-	Role    string
-	Content string
+	Role     string
+	Content  string
 	ToolCall *ToolCallInfo
 }
 
 // ToolCallInfo represents tool call information
 type ToolCallInfo struct {
-	Name   string
-	Args   string
-	Result string
-	Error  bool
+	Name     string
+	Args     string
+	Result   string
+	Error    bool
 	Approved bool
 }
 
@@ -46,6 +46,7 @@ type Model struct {
 	// Core components
 	loop    *agent.AgentLoop
 	ctx     context.Context
+	program *tea.Program
 
 	// UI Components
 	textarea textarea.Model
@@ -53,10 +54,10 @@ type Model struct {
 	viewport int
 
 	// State
-	state        State
-	pendingTool  *ToolCallInfo
-	width        int
-	height       int
+	state       State
+	pendingTool *ToolCallInfo
+	width       int
+	height      int
 
 	// Startup header animation
 	headerFrame    int
@@ -66,8 +67,8 @@ type Model struct {
 	headerCWD      string
 
 	// Tool result tracking
-	lastToolResults []toolResultEntry
-	toolExpandLevel int
+	lastToolResults     []toolResultEntry
+	toolExpandLevel     int
 	processingStartTime time.Time
 
 	// Styling
@@ -385,9 +386,9 @@ func (m *Model) renderApprovalDialog() string {
 		Padding(1).
 		Render(
 			m.toolStyle.Render("⚠️  Tool Approval Required\n\n") +
-			fmt.Sprintf("Tool: %s\n", m.pendingTool.Name) +
-			fmt.Sprintf("Args: %s\n\n", keyArg) +
-			"Approve? [Y/n] (or Ctrl+Y to auto-approve all)",
+				fmt.Sprintf("Tool: %s\n", m.pendingTool.Name) +
+				fmt.Sprintf("Args: %s\n\n", keyArg) +
+				"Approve? [Y/n] (or Ctrl+Y to auto-approve all)",
 		))
 
 	return b.String()
@@ -415,6 +416,9 @@ func (m *Model) sendMessage(content string) tea.Cmd {
 		if err != nil {
 			return agentMessage(fmt.Sprintf("Error: %v", err))
 		}
+		if handler.streamed {
+			return nil
+		}
 
 		return agentMessage(resp.Content)
 	}
@@ -434,7 +438,8 @@ func (m *Model) processToolResponse(approved bool) tea.Cmd {
 
 // TUIEventHandler handles events for TUI
 type TUIEventHandler struct {
-	model *Model
+	model    *Model
+	streamed bool
 }
 
 func (h *TUIEventHandler) OnToolCall(name string, args string) {
@@ -477,7 +482,10 @@ func (h *TUIEventHandler) OnUsage(usage client.Usage) {
 }
 
 func (h *TUIEventHandler) OnStreamDelta(delta string) {
-	// Streamed text handling for TUI (to be implemented)
+	h.streamed = true
+	if h.model.program != nil {
+		h.model.program.Send(streamingMsg(delta))
+	}
 }
 
 func (h *TUIEventHandler) OnPreamble(preamble string) {
@@ -522,7 +530,9 @@ func truncate(s string, maxLen int) string {
 
 // Run starts the TUI
 func Run(loop *agent.AgentLoop) error {
-	p := tea.NewProgram(NewModel(loop), tea.WithAltScreen())
+	model := NewModel(loop)
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	model.program = p
 	_, err := p.Run()
 	return err
 }

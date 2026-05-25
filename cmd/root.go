@@ -80,8 +80,8 @@ func init() {
 	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(interactiveCmd)
 	rootCmd.AddCommand(sessionsCmd)
-	rootCmd.AddCommand(mcpCmd)    // New: MCP subcommand
-	rootCmd.AddCommand(updateCmd) // New: Update subcommand
+	rootCmd.AddCommand(mcpCmd)        // New: MCP subcommand
+	rootCmd.AddCommand(updateCmd)     // New: Update subcommand
 	rootCmd.AddCommand(completionCmd) // Shell completion
 
 	// Global flags
@@ -159,6 +159,7 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetConfigDir(config.StarclawDir())
 	loop.SetContextWindow(cfg.Agent.ContextWindow)
 	loop.SetPermissions(cfg.Permissions)
+	applyAgentOptions(loop, cfg)
 	if cfg.Hooks != nil {
 		loop.SetHookRunner(hooks.NewRunner(*cfg.Hooks))
 	}
@@ -232,8 +233,10 @@ func runChat(cfg *config.Config, query string) error {
 	}
 
 	// Print final response
-	if resp.Content != "" {
+	if resp.Content != "" && !handler.streamed {
 		fmt.Println(resp.Content)
+	} else if handler.streamed {
+		fmt.Println()
 	}
 
 	// Print usage
@@ -298,6 +301,7 @@ func isTTY() bool {
 // CLIEventHandler handles events for CLI mode
 type CLIEventHandler struct {
 	autoApprove bool
+	streamed    bool
 }
 
 func (h *CLIEventHandler) OnToolCall(name string, args string) {
@@ -325,6 +329,7 @@ func (h *CLIEventHandler) OnUsage(usage client.Usage) {
 
 func (h *CLIEventHandler) OnStreamDelta(delta string) {
 	// Streamed text is printed inline
+	h.streamed = true
 	fmt.Print(delta)
 }
 
@@ -367,6 +372,13 @@ func newLLMClient(cfg *config.Config) client.LLMClient {
 	default:
 		return client.NewAnthropicClient(cfg.APIKey, cfg.Endpoint, cfg.ModelTier)
 	}
+}
+
+func applyAgentOptions(loop *agent.AgentLoop, cfg *config.Config) {
+	loop.SetThinking(agent.ThinkingConfigFromAgent(cfg.Agent))
+	loop.SetReasoningEffort(cfg.Agent.ReasoningEffort)
+	loop.SetSpecificModel(cfg.Agent.Model)
+	loop.SetEnableStreaming(true)
 }
 
 func Execute(version string) {
@@ -567,9 +579,10 @@ var interactiveCmd = &cobra.Command{
 		loop.SetConfigDir(config.StarclawDir())
 		loop.SetContextWindow(cfg.Agent.ContextWindow)
 		loop.SetPermissions(cfg.Permissions)
-	if cfg.Hooks != nil {
-		loop.SetHookRunner(hooks.NewRunner(*cfg.Hooks))
-	}
+		applyAgentOptions(loop, cfg)
+		if cfg.Hooks != nil {
+			loop.SetHookRunner(hooks.NewRunner(*cfg.Hooks))
+		}
 
 		// Set up session management (agent-scoped or global)
 		var baseDir string

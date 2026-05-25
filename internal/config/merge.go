@@ -29,7 +29,19 @@ func MergeAgentConfig(global *Config, ag *agents.Agent) *Config {
 			merged.Agent.ContextWindow = *ac.Agent.ContextWindow
 		}
 		if ac.Agent.Model != nil {
-			merged.ModelTier = *ac.Agent.Model
+			merged.Agent.Model = *ac.Agent.Model
+		}
+		if ac.Agent.Thinking != nil {
+			merged.Agent.Thinking = *ac.Agent.Thinking
+		}
+		if ac.Agent.ThinkingMode != nil {
+			merged.Agent.ThinkingMode = *ac.Agent.ThinkingMode
+		}
+		if ac.Agent.ThinkingBudget != nil {
+			merged.Agent.ThinkingBudget = *ac.Agent.ThinkingBudget
+		}
+		if ac.Agent.ReasoningEffort != nil {
+			merged.Agent.ReasoningEffort = *ac.Agent.ReasoningEffort
 		}
 	}
 

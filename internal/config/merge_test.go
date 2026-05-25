@@ -41,6 +41,7 @@ func TestMergeAgentConfig_AgentOverrides(t *testing.T) {
 			MaxIterations: 25,
 			Temperature:   0.0,
 			MaxTokens:     8192,
+			Model:         "",
 		},
 	}
 
@@ -62,9 +63,11 @@ func TestMergeAgentConfig_AgentOverrides(t *testing.T) {
 
 	result := MergeAgentConfig(global, ag)
 
-	// Agent overrides should take effect
-	if result.ModelTier != "opus" {
-		t.Errorf("ModelTier = %q, want 'opus'", result.ModelTier)
+	if result.Agent.Model != "opus" {
+		t.Errorf("Agent.Model = %q, want 'opus'", result.Agent.Model)
+	}
+	if result.ModelTier != "medium" {
+		t.Errorf("ModelTier = %q, want 'medium'", result.ModelTier)
 	}
 	if result.Agent.MaxIterations != 50 {
 		t.Errorf("MaxIterations = %d, want 50", result.Agent.MaxIterations)
@@ -78,6 +81,9 @@ func TestMergeAgentConfig_AgentOverrides(t *testing.T) {
 
 	// Global config should be unchanged
 	if global.ModelTier != "medium" {
+		t.Error("Global config should not be modified")
+	}
+	if global.Agent.Model != "" {
 		t.Error("Global config should not be modified")
 	}
 	if global.Agent.MaxIterations != 25 {
@@ -119,6 +125,57 @@ func TestMergeAgentConfig_PartialOverrides(t *testing.T) {
 	}
 	if result.ModelTier != "medium" {
 		t.Errorf("ModelTier should keep global value 'medium', got %q", result.ModelTier)
+	}
+}
+
+func TestMergeAgentConfig_AdvancedAgentOptions(t *testing.T) {
+	global := &Config{
+		ModelTier: "medium",
+		Agent: AgentConfig{
+			Thinking:        true,
+			ThinkingMode:    "adaptive",
+			ThinkingBudget:  10000,
+			ReasoningEffort: "",
+		},
+	}
+
+	thinking := false
+	mode := "enabled"
+	budget := 2048
+	effort := "high"
+	model := "claude-opus-test"
+	ag := &agents.Agent{
+		Name: "reasoner",
+		Config: &agents.AgentConfig{
+			Agent: &agents.AgentModelConfig{
+				Model:           &model,
+				Thinking:        &thinking,
+				ThinkingMode:    &mode,
+				ThinkingBudget:  &budget,
+				ReasoningEffort: &effort,
+			},
+		},
+	}
+
+	result := MergeAgentConfig(global, ag)
+
+	if result.Agent.Model != "claude-opus-test" {
+		t.Fatalf("Agent.Model = %q, want claude-opus-test", result.Agent.Model)
+	}
+	if result.Agent.Thinking {
+		t.Fatal("Agent.Thinking = true, want false")
+	}
+	if result.Agent.ThinkingMode != "enabled" {
+		t.Fatalf("Agent.ThinkingMode = %q, want enabled", result.Agent.ThinkingMode)
+	}
+	if result.Agent.ThinkingBudget != 2048 {
+		t.Fatalf("Agent.ThinkingBudget = %d, want 2048", result.Agent.ThinkingBudget)
+	}
+	if result.Agent.ReasoningEffort != "high" {
+		t.Fatalf("Agent.ReasoningEffort = %q, want high", result.Agent.ReasoningEffort)
+	}
+	if global.Agent.ReasoningEffort != "" {
+		t.Fatal("Global config should not be modified")
 	}
 }
 
