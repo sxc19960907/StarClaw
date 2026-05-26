@@ -864,3 +864,36 @@ Replaced WaitTool's time.After wait with a stoppable timer so cancelled waits re
 ### Next Steps
 
 - None - task complete
+
+
+## Session 27: Stop retry after cancel
+
+**Date**: 2026-05-26
+**Task**: Stop retry after cancel
+**Branch**: `main`
+
+### Summary
+
+Changed AgentLoop retry backoff to use a stoppable timer and return context cancellation so LLM retries stop promptly instead of issuing another call with an already-cancelled context.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f10f05a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
