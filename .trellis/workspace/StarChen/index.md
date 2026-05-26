@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
-- **Last Active**: 2026-05-10
+- **Total Sessions**: 23
+- **Last Active**: 2026-05-26
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~734 | Active |
+| `journal-1.md` | ~767 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 23 | 2026-05-26 | Harden MCP serve config | `44c0e92` | `main` |
 | 22 | 2026-05-10 | Phase D-lite: MCP Server + Process tool | `ee6396d` | `main` |
 | 21 | 2026-05-10 | Phase C: Cloud agent delegation | `667f424` | `main` |
 | 20 | 2026-05-10 | Phase A: Client streaming, retry, config merge | `6a14946`, `3c7aeff` | `main` |

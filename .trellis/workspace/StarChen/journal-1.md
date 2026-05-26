@@ -732,3 +732,36 @@ Enhanced process tool with start/signal/status actions and background process ma
 ### Next Steps
 
 - None - task complete
+
+
+## Session 23: Harden MCP serve config
+
+**Date**: 2026-05-26
+**Task**: Harden MCP serve config
+**Branch**: `main`
+
+### Summary
+
+Wired mcp serve to load tool config, enforce MCP tool timeouts, honor mcp_expose filtering, sync config defaults and overlay behavior, and added regression coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `44c0e92` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
