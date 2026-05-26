@@ -897,3 +897,36 @@ Changed AgentLoop retry backoff to use a stoppable timer and return context canc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 28: Document MCP serve config
+
+**Date**: 2026-05-26
+**Task**: Document MCP serve config
+**Branch**: `main`
+
+### Summary
+
+Documented starclaw mcp serve usage, tools.mcp_expose allow-listing, and tools.server_tool_timeout in README and configuration guide.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `78d4ed1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

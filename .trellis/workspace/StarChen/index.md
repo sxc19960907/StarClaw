@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 27
+- **Total Sessions**: 28
 - **Last Active**: 2026-05-26
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~899 | Active |
+| `journal-1.md` | ~932 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 28 | 2026-05-26 | Document MCP serve config | `78d4ed1` | `main` |
 | 27 | 2026-05-26 | Stop retry after cancel | `f10f05a` | `main` |
 | 26 | 2026-05-26 | Stop wait tool timer | `1ff0628` | `main` |
 | 25 | 2026-05-26 | Stop SSE reconnect timer | `36f00e8` | `main` |
