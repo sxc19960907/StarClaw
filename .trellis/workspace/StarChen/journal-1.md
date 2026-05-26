@@ -765,3 +765,36 @@ Wired mcp serve to load tool config, enforce MCP tool timeouts, honor mcp_expose
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: Flush final SSE event
+
+**Date**: 2026-05-26
+**Task**: Flush final SSE event
+**Branch**: `main`
+
+### Summary
+
+Fixed daemon SSE event parsing so a pending final event is emitted when the stream ends without a trailing blank-line delimiter, added regression coverage, and recorded the streaming parser rule in backend quality guidelines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c71dfca` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
