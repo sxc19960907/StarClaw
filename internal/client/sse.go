@@ -84,10 +84,17 @@ func (c *SSEClient) run(ctx context.Context, url string, ch chan<- SSEEvent) {
 		}
 
 		// Wait with backoff before reconnecting.
+		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
 			return
-		case <-time.After(delay):
+		case <-timer.C:
 		}
 
 		delay *= 2

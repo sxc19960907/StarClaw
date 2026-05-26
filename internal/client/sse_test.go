@@ -296,3 +296,32 @@ func TestSSEClientHTTPError(t *testing.T) {
 	// Channel should close after context expires.
 	<-ch
 }
+
+func TestSSEClientCancelDuringReconnectDelay(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := NewSSEClient(srv.URL, "")
+	client.reconnectDelay = time.Hour
+	client.maxReconnectDelay = time.Hour
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := client.Connect(ctx, srv.URL+"/events")
+	if err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("expected channel to close after cancellation")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("channel did not close promptly during reconnect delay")
+	}
+}
