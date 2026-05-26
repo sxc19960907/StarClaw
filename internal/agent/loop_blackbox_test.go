@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/starclaw/starclaw/internal/client"
 )
@@ -18,9 +19,9 @@ type blackboxMockClient struct {
 }
 
 type blackboxResponse struct {
-	text     string
+	text      string
 	toolCalls []client.ToolUse
-	err      error
+	err       error
 }
 
 var _ client.LLMClient = (*blackboxMockClient)(nil)
@@ -256,8 +257,8 @@ func TestAgentLoop_MultiToolTurn(t *testing.T) {
 func TestAgentLoop_RetryThenSucceed(t *testing.T) {
 	mock := &blackboxMockClient{
 		responses: []blackboxResponse{
-			{err: fmt.Errorf("502 Bad Gateway")},                     // retry 1
-			{text: "Final answer after retry."},                      // succeeds
+			{err: fmt.Errorf("502 Bad Gateway")}, // retry 1
+			{text: "Final answer after retry."},  // succeeds
 		},
 	}
 	reg := NewToolRegistry()
@@ -272,6 +273,40 @@ func TestAgentLoop_RetryThenSucceed(t *testing.T) {
 		t.Errorf("Expected 2 calls (1 retry + 1 success), got %d", mock.callCount)
 	}
 	_ = resp
+}
+
+func TestAgentLoop_RetryBackoffStopsOnCancel(t *testing.T) {
+	mock := &blackboxMockClient{
+		responses: []blackboxResponse{
+			{err: fmt.Errorf("502 Bad Gateway")},
+			{text: "should not be called"},
+		},
+	}
+	reg := NewToolRegistry()
+	loop := NewAgentLoop(mock, reg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := loop.Run(ctx, "cancel during retry")
+		done <- err
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("Expected cancellation error")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Run did not return promptly after cancellation")
+	}
+
+	if mock.callCount != 1 {
+		t.Fatalf("Expected retry loop to stop after 1 call, got %d", mock.callCount)
+	}
 }
 
 // TestAgentLoop_RetryExhausted tests max retries exhausted.

@@ -67,15 +67,15 @@ type AgentLoop struct {
 	memoryDir     string // directory for persistent memory
 	configDir     string // starclaw config dir (~/.starclaw)
 	loopDetector  *LoopDetector
-	contextWindow int                  // max context window in tokens (0 = disabled)
-	permsConfig   *permissions.Config  // tool permission rules
-	hookRunner    *hooks.Runner        // lifecycle hook runner
+	contextWindow int                 // max context window in tokens (0 = disabled)
+	permsConfig   *permissions.Config // tool permission rules
+	hookRunner    *hooks.Runner       // lifecycle hook runner
 
-	thinking          *client.ThinkingConfig
-	reasoningEffort   string
-	specificModel     string
-	enableStreaming   bool
-	lastRunStatus     RunStatus
+	thinking        *client.ThinkingConfig
+	reasoningEffort string
+	specificModel   string
+	enableStreaming bool
+	lastRunStatus   RunStatus
 }
 
 // NewAgentLoop creates a new agent loop
@@ -567,9 +567,9 @@ func (a *AgentLoop) buildToolResultContent(toolUse client.ToolUse, result ToolRe
 	}
 
 	toolResult := map[string]any{
-		"type":       "tool_result",
+		"type":        "tool_result",
 		"tool_use_id": toolUse.ID,
-		"content":    content,
+		"content":     content,
 	}
 
 	if result.IsError {
@@ -602,7 +602,9 @@ func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, mess
 				}
 				lastErr = err
 				if attempt < retryCfg.MaxRetries-1 {
-					a.retryWait(ctx, attempt, retryCfg)
+					if err := a.retryWait(ctx, attempt, retryCfg); err != nil {
+						return nil, fmt.Errorf("retry wait cancelled: %w", err)
+					}
 				}
 				continue
 			}
@@ -618,18 +620,31 @@ func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, mess
 			break
 		}
 
-		a.retryWait(ctx, attempt, retryCfg)
+		if err := a.retryWait(ctx, attempt, retryCfg); err != nil {
+			return nil, fmt.Errorf("retry wait cancelled: %w", err)
+		}
 	}
 
 	return nil, fmt.Errorf("LLM call failed after %d attempts: %w", retryCfg.MaxRetries, lastErr)
 }
 
-func (a *AgentLoop) retryWait(ctx context.Context, attempt int, cfg client.RetryConfig) {
+func (a *AgentLoop) retryWait(ctx context.Context, attempt int, cfg client.RetryConfig) error {
 	backoff := client.BackoffDelay(attempt, cfg)
 	fmt.Fprintf(os.Stderr, "[agent] LLM call failed (attempt %d/%d), retrying in %v\n", attempt+1, cfg.MaxRetries, backoff)
+	timer := time.NewTimer(backoff)
+	defer func() {
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+	}()
 	select {
-	case <-time.After(backoff):
+	case <-timer.C:
+		return nil
 	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
