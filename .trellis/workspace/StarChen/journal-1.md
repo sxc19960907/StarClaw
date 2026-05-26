@@ -831,3 +831,36 @@ Replaced SSE reconnect backoff time.After with a stoppable timer, added cancella
 ### Next Steps
 
 - None - task complete
+
+
+## Session 26: Stop wait tool timer
+
+**Date**: 2026-05-26
+**Task**: Stop wait tool timer
+**Branch**: `main`
+
+### Summary
+
+Replaced WaitTool's time.After wait with a stoppable timer so cancelled waits release timer resources promptly while preserving existing wait behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1ff0628` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
