@@ -48,9 +48,18 @@ func (t *WaitTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, 
 	}
 
 	duration := time.Duration(secs * float64(time.Second))
+	timer := time.NewTimer(duration)
+	defer func() {
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+	}()
 
 	select {
-	case <-time.After(duration):
+	case <-timer.C:
 	case <-ctx.Done():
 		return agent.ToolResult{Content: "wait cancelled", IsError: true}, nil
 	}
