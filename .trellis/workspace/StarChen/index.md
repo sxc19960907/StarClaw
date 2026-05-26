@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 24
+- **Total Sessions**: 25
 - **Last Active**: 2026-05-26
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~800 | Active |
+| `journal-1.md` | ~833 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 25 | 2026-05-26 | Stop SSE reconnect timer | `36f00e8` | `main` |
 | 24 | 2026-05-26 | Flush final SSE event | `c71dfca` | `main` |
 | 23 | 2026-05-26 | Harden MCP serve config | `44c0e92` | `main` |
 | 22 | 2026-05-10 | Phase D-lite: MCP Server + Process tool | `ee6396d` | `main` |

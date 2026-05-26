@@ -798,3 +798,36 @@ Fixed daemon SSE event parsing so a pending final event is emitted when the stre
 ### Next Steps
 
 - None - task complete
+
+
+## Session 25: Stop SSE reconnect timer
+
+**Date**: 2026-05-26
+**Task**: Stop SSE reconnect timer
+**Branch**: `main`
+
+### Summary
+
+Replaced SSE reconnect backoff time.After with a stoppable timer, added cancellation regression coverage, and documented timer cleanup guidance.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `36f00e8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
