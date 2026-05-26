@@ -173,6 +173,10 @@ func (c *SSEClient) readEvents(ctx context.Context, body io.Reader, ch chan<- SS
 		return fmt.Errorf("SSE read error: %w", err)
 	}
 
+	if current.Type != "" || current.Data != "" {
+		c.sendEvent(ctx, ch, current)
+	}
+
 	return nil
 }
 

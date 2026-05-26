@@ -182,6 +182,39 @@ func TestSSEClientEventWithID(t *testing.T) {
 	}
 }
 
+func TestSSEClientFlushesFinalEventWithoutBlankLine(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "event: done\ndata: ok")
+	}))
+	defer srv.Close()
+
+	client := NewSSEClient(srv.URL, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	ch, err := client.Connect(ctx, srv.URL+"/events")
+	if err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+
+	var received []SSEEvent
+	for evt := range ch {
+		received = append(received, evt)
+	}
+
+	if len(received) != 1 {
+		t.Fatalf("expected 1 final event, got %d", len(received))
+	}
+	if received[0].Type != "done" {
+		t.Errorf("expected Type 'done', got %q", received[0].Type)
+	}
+	if received[0].Data != "ok" {
+		t.Errorf("expected Data 'ok', got %q", received[0].Data)
+	}
+}
+
 func TestSSEClientRelativeURL(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
