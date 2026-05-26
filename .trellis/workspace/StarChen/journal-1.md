@@ -930,3 +930,36 @@ Documented starclaw mcp serve usage, tools.mcp_expose allow-listing, and tools.s
 ### Next Steps
 
 - None - task complete
+
+
+## Session 29: Stop approval timeout timer
+
+**Date**: 2026-05-26
+**Task**: Stop approval timeout timer
+**Branch**: `main`
+
+### Summary
+
+Replaced ApprovalBroker's time.After timeout with a stoppable timer so resolved or cancelled approval waits release timer resources promptly while preserving approval behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f2a8bf6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
