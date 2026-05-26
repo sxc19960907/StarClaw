@@ -689,10 +689,18 @@ over stdin/stdout.
 The server auto-approves all tool calls — the MCP consumer handles
 its own authorization layer.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		registry := tools.RegisterLocalTools()
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+
+		registry := tools.RegisterLocalTools(cfg.Tools)
 		tools.RegisterVersionTool(registry, Version)
 
-		srv := tools.NewMCPServer(registry, "starclaw", Version, tools.MCPServerConfig{})
+		srv := tools.NewMCPServer(registry, "starclaw", Version, tools.MCPServerConfig{
+			ToolTimeout: cfg.Tools.ServerToolTimeout,
+			ExposeTools: cfg.Tools.MCPExpose,
+		})
 		return srv.Serve(cmd.Context())
 	},
 }

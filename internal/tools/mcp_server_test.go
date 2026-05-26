@@ -3,7 +3,9 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/starclaw/starclaw/internal/agent"
@@ -73,6 +75,49 @@ func TestNewMCPServer_ToolListCount(t *testing.T) {
 	}
 }
 
+func TestNewMCPServer_ExposeToolsFilter(t *testing.T) {
+	reg := agent.NewToolRegistry()
+	reg.Register(&MockTool{name: "first_tool", description: "First mock tool"})
+	reg.Register(&MockTool{name: "second_tool", description: "Second mock tool"})
+
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{
+		ExposeTools: []string{"second_tool"},
+	})
+	mcpSrv := srv.Server()
+
+	if tool := mcpSrv.GetTool("second_tool"); tool == nil {
+		t.Fatal("Expected second_tool to be exposed")
+	}
+
+	if tool := mcpSrv.GetTool("first_tool"); tool != nil {
+		t.Fatal("Expected first_tool to be hidden by expose filter")
+	}
+
+	tools := mcpSrv.ListTools()
+	if len(tools) != 1 {
+		t.Fatalf("Expected 1 exposed MCP tool, got %d", len(tools))
+	}
+}
+
+func TestMCPServer_ServerInfoCountsExposedTools(t *testing.T) {
+	reg := agent.NewToolRegistry()
+	reg.Register(&MockTool{name: "first_tool"})
+	reg.Register(&MockTool{name: "second_tool"})
+
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{
+		ToolTimeout: 7,
+		ExposeTools: []string{"first_tool"},
+	})
+
+	info := srv.ServerInfo()
+	if info["tool_count"] != 1 {
+		t.Fatalf("Expected tool_count 1, got %v", info["tool_count"])
+	}
+	if info["timeout"] != 7 {
+		t.Fatalf("Expected timeout 7, got %v", info["timeout"])
+	}
+}
+
 func TestNewMCPServer_ReadOnlyDetection(t *testing.T) {
 	// Create a registry with known read-only and read-write tools
 	reg := agent.NewToolRegistry()
@@ -104,6 +149,48 @@ func TestNewMCPServer_ReadOnlyDetection(t *testing.T) {
 	}
 	if *bashTool.Tool.Annotations.ReadOnlyHint {
 		t.Error("bash should have ReadOnlyHint = false")
+	}
+}
+
+func TestMCPServer_ToolExecution_TimesOut(t *testing.T) {
+	reg := agent.NewToolRegistry()
+	reg.Register(&SlowTool{name: "slow_tool"})
+
+	srv := NewMCPServer(reg, "test", "1.0.0", MCPServerConfig{ToolTimeout: 1})
+	serverTool := srv.Server().GetTool("slow_tool")
+	if serverTool == nil {
+		t.Fatal("slow_tool not found in MCP server")
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name:      "slow_tool",
+			Arguments: map[string]any{},
+		},
+	}
+
+	start := time.Now()
+	result, err := serverTool.Handler(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("Expected timeout near 1s, took %s", elapsed)
+	}
+
+	if !result.IsError {
+		t.Fatal("Expected timeout to return an MCP error result")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected timeout result content")
+	}
+
+	textContent, ok := result.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatal("Expected TextContent")
+	}
+	if !strings.Contains(textContent.Text, context.DeadlineExceeded.Error()) {
+		t.Fatalf("Expected deadline error text, got %q", textContent.Text)
 	}
 }
 
@@ -338,4 +425,25 @@ func TestMCPServer_EmptyRegistry(t *testing.T) {
 	if serverTool := mcpSrv.GetTool("anything"); serverTool != nil {
 		t.Error("Expected nil for tool lookup on empty server")
 	}
+}
+
+type SlowTool struct {
+	name string
+}
+
+func (s *SlowTool) Info() agent.ToolInfo {
+	return agent.ToolInfo{
+		Name:        s.name,
+		Description: "A slow test tool",
+		Parameters:  map[string]any{},
+	}
+}
+
+func (s *SlowTool) Run(ctx context.Context, args string) (agent.ToolResult, error) {
+	<-ctx.Done()
+	return agent.ToolResult{}, ctx.Err()
+}
+
+func (s *SlowTool) RequiresApproval() bool {
+	return false
 }

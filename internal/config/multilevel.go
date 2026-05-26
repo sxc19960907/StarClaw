@@ -107,11 +107,12 @@ func defaultConfig() *Config {
 			ThinkingBudget: 10000,
 		},
 		Tools: ToolsConfig{
-			BashTimeout:      120,
-			BashMaxOutput:    30000,
-			ResultTruncation: 30000,
-			ArgsTruncation:   200,
-			GrepMaxResults:   100,
+			BashTimeout:       120,
+			BashMaxOutput:     30000,
+			ResultTruncation:  30000,
+			ArgsTruncation:    200,
+			GrepMaxResults:    100,
+			ServerToolTimeout: 0,
 		},
 		Audit:  AuditConfig{Enabled: true},
 		Update: UpdateConfig{AutoCheck: true, Channel: "stable", CacheTTL: "24h"},
@@ -241,6 +242,14 @@ func overlayTools(base, overlay *ToolsConfig, source *ConfigSource, layer Config
 	}
 	if overlay.GrepMaxResults != 0 {
 		base.GrepMaxResults = overlay.GrepMaxResults
+		changed = true
+	}
+	if overlay.ServerToolTimeout != 0 {
+		base.ServerToolTimeout = overlay.ServerToolTimeout
+		changed = true
+	}
+	if len(overlay.MCPExpose) > 0 {
+		base.MCPExpose = overlay.MCPExpose
 		changed = true
 	}
 	if len(overlay.Allowed) > 0 {

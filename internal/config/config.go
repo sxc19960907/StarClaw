@@ -19,23 +19,23 @@ type MCPServerConfig = mcp.MCPServerConfig
 
 // Config holds all configuration for StarClaw
 type Config struct {
-	Endpoint        string                       `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
-	APIKey          string                       `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
-	Provider        string                       `mapstructure:"provider"         yaml:"provider"         json:"provider"`
-	OpenAIAPIKey    string                       `mapstructure:"openai_api_key"   yaml:"openai_api_key"   json:"openai_api_key"`
-	OpenAIEndpoint  string                       `mapstructure:"openai_endpoint"  yaml:"openai_endpoint"  json:"openai_endpoint"`
-	OpenAIModel     string                       `mapstructure:"openai_model"     yaml:"openai_model"     json:"openai_model"`
-	OllamaEndpoint  string                       `mapstructure:"ollama_endpoint"  yaml:"ollama_endpoint"  json:"ollama_endpoint"`
-	OllamaModel     string                       `mapstructure:"ollama_model"     yaml:"ollama_model"     json:"ollama_model"`
-	ModelTier       string                       `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
-	Agent      AgentConfig                  `mapstructure:"agent" yaml:"agent" json:"agent"`
-	Tools      ToolsConfig                  `mapstructure:"tools" yaml:"tools" json:"tools"`
-	Audit      AuditConfig                  `mapstructure:"audit" yaml:"audit" json:"audit"`
-	MCPServers map[string]mcp.MCPServerConfig `mapstructure:"mcp_servers" yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
-	Update      UpdateConfig                 `mapstructure:"update" yaml:"update,omitempty" json:"update,omitempty"`
-	Cloud       CloudConfig                  `mapstructure:"cloud" yaml:"cloud,omitempty" json:"cloud,omitempty"`
-	Permissions *permissions.Config          `mapstructure:"permissions" yaml:"permissions,omitempty" json:"permissions,omitempty"`
-	Hooks       *hooks.Config                `mapstructure:"hooks" yaml:"hooks,omitempty" json:"hooks,omitempty"`
+	Endpoint       string                         `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
+	APIKey         string                         `mapstructure:"api_key" yaml:"api_key" json:"api_key"`
+	Provider       string                         `mapstructure:"provider"         yaml:"provider"         json:"provider"`
+	OpenAIAPIKey   string                         `mapstructure:"openai_api_key"   yaml:"openai_api_key"   json:"openai_api_key"`
+	OpenAIEndpoint string                         `mapstructure:"openai_endpoint"  yaml:"openai_endpoint"  json:"openai_endpoint"`
+	OpenAIModel    string                         `mapstructure:"openai_model"     yaml:"openai_model"     json:"openai_model"`
+	OllamaEndpoint string                         `mapstructure:"ollama_endpoint"  yaml:"ollama_endpoint"  json:"ollama_endpoint"`
+	OllamaModel    string                         `mapstructure:"ollama_model"     yaml:"ollama_model"     json:"ollama_model"`
+	ModelTier      string                         `mapstructure:"model_tier" yaml:"model_tier" json:"model_tier"`
+	Agent          AgentConfig                    `mapstructure:"agent" yaml:"agent" json:"agent"`
+	Tools          ToolsConfig                    `mapstructure:"tools" yaml:"tools" json:"tools"`
+	Audit          AuditConfig                    `mapstructure:"audit" yaml:"audit" json:"audit"`
+	MCPServers     map[string]mcp.MCPServerConfig `mapstructure:"mcp_servers" yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
+	Update         UpdateConfig                   `mapstructure:"update" yaml:"update,omitempty" json:"update,omitempty"`
+	Cloud          CloudConfig                    `mapstructure:"cloud" yaml:"cloud,omitempty" json:"cloud,omitempty"`
+	Permissions    *permissions.Config            `mapstructure:"permissions" yaml:"permissions,omitempty" json:"permissions,omitempty"`
+	Hooks          *hooks.Config                  `mapstructure:"hooks" yaml:"hooks,omitempty" json:"hooks,omitempty"`
 }
 
 // AgentConfig holds agent-specific settings
@@ -53,15 +53,15 @@ type AgentConfig struct {
 
 // ToolsConfig holds tool-specific settings
 type ToolsConfig struct {
-	BashTimeout        int      `mapstructure:"bash_timeout" yaml:"bash_timeout"`
-	BashMaxOutput      int      `mapstructure:"bash_max_output" yaml:"bash_max_output"`
-	ResultTruncation   int      `mapstructure:"result_truncation" yaml:"result_truncation"`
-	ArgsTruncation     int      `mapstructure:"args_truncation" yaml:"args_truncation"`
-	GrepMaxResults     int      `mapstructure:"grep_max_results" yaml:"grep_max_results"`
-	ServerToolTimeout  int      `mapstructure:"server_tool_timeout" yaml:"server_tool_timeout" json:"server_tool_timeout"`
-	MCPExpose          []string `mapstructure:"mcp_expose" yaml:"mcp_expose,omitempty" json:"mcp_expose,omitempty"`
-	Allowed            []string `mapstructure:"allowed" yaml:"allowed"`
-	Denied             []string `mapstructure:"denied" yaml:"denied"`
+	BashTimeout       int      `mapstructure:"bash_timeout" yaml:"bash_timeout"`
+	BashMaxOutput     int      `mapstructure:"bash_max_output" yaml:"bash_max_output"`
+	ResultTruncation  int      `mapstructure:"result_truncation" yaml:"result_truncation"`
+	ArgsTruncation    int      `mapstructure:"args_truncation" yaml:"args_truncation"`
+	GrepMaxResults    int      `mapstructure:"grep_max_results" yaml:"grep_max_results"`
+	ServerToolTimeout int      `mapstructure:"server_tool_timeout" yaml:"server_tool_timeout" json:"server_tool_timeout"`
+	MCPExpose         []string `mapstructure:"mcp_expose" yaml:"mcp_expose,omitempty" json:"mcp_expose,omitempty"`
+	Allowed           []string `mapstructure:"allowed" yaml:"allowed"`
+	Denied            []string `mapstructure:"denied" yaml:"denied"`
 }
 
 // UpdateConfig holds auto-update settings
@@ -134,6 +134,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("tools.result_truncation", 30000)
 	viper.SetDefault("tools.args_truncation", 200)
 	viper.SetDefault("tools.grep_max_results", 100)
+	viper.SetDefault("tools.server_tool_timeout", 0)
 	viper.SetDefault("audit.enabled", true)
 	viper.SetDefault("update.auto_check", true)
 	viper.SetDefault("update.auto_install", false)
@@ -251,6 +252,9 @@ tools:
   bash_max_output: 30000
   result_truncation: 30000
   args_truncation: 200
+  grep_max_results: 100
+  server_tool_timeout: 0  # seconds; 0 disables MCP server tool timeout
+  # mcp_expose: ["file_read", "grep", "version"]  # optional allow-list for starclaw mcp serve
 
 audit:
   enabled: true

@@ -57,10 +57,12 @@ func SetupWizard() (*Config, error) {
 			MaxTokens:     8192,
 		},
 		Tools: ToolsConfig{
-			BashTimeout:      120,
-			BashMaxOutput:    30000,
-			ResultTruncation: 30000,
-			ArgsTruncation:   200,
+			BashTimeout:       120,
+			BashMaxOutput:     30000,
+			ResultTruncation:  30000,
+			ArgsTruncation:    200,
+			GrepMaxResults:    100,
+			ServerToolTimeout: 0,
 		},
 	}
 

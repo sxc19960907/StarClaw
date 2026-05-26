@@ -88,6 +88,37 @@ agent:
 	}
 }
 
+func TestLoadMultiLevel_ToolsMCPServeOverrides(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	os.MkdirAll(globalDir, 0700)
+	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+api_key: "global-key"
+tools:
+  server_tool_timeout: 10
+  mcp_expose:
+    - file_read
+    - grep
+`), 0600)
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+
+	if cfg.Tools.ServerToolTimeout != 10 {
+		t.Errorf("server_tool_timeout = %d, want 10", cfg.Tools.ServerToolTimeout)
+	}
+	if len(cfg.Tools.MCPExpose) != 2 || cfg.Tools.MCPExpose[0] != "file_read" || cfg.Tools.MCPExpose[1] != "grep" {
+		t.Errorf("mcp_expose = %#v, want [file_read grep]", cfg.Tools.MCPExpose)
+	}
+	if source.Tools != LayerGlobal {
+		t.Errorf("tools source = %v, want global", source.Tools)
+	}
+}
+
 func TestLoadMultiLevel_LocalOverridesProject(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)

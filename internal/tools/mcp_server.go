@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
@@ -18,11 +19,12 @@ type MCPServerConfig struct {
 
 // MCPServer wraps a StarClaw ToolRegistry as an MCP stdio server.
 type MCPServer struct {
-	registry *agent.ToolRegistry
-	name     string
-	version  string
-	config   MCPServerConfig
-	srv      *mcpserver.MCPServer
+	registry  *agent.ToolRegistry
+	name      string
+	version   string
+	config    MCPServerConfig
+	srv       *mcpserver.MCPServer
+	toolCount int
 }
 
 // NewMCPServer creates a new MCP server that exposes registered local tools.
@@ -52,8 +54,9 @@ func NewMCPServer(registry *agent.ToolRegistry, name, version string, config MCP
 			continue
 		}
 		mcpTool := toMCPTool(info, tool)
-		handler := toMCPHandler(tool)
+		handler := toMCPHandler(tool, config)
 		srv.AddTool(mcpTool, handler)
+		s.toolCount++
 	}
 
 	s.srv = srv
@@ -72,14 +75,10 @@ func (s *MCPServer) Server() *mcpserver.MCPServer {
 
 // ServerInfo returns metadata about this MCP server.
 func (s *MCPServer) ServerInfo() map[string]any {
-	toolCount := 0
-	for range s.registry.List() {
-		toolCount++
-	}
 	return map[string]any{
 		"name":       s.name,
 		"version":    s.version,
-		"tool_count": toolCount,
+		"tool_count": s.toolCount,
 		"timeout":    s.config.ToolTimeout,
 	}
 }
@@ -115,7 +114,7 @@ func toMCPTool(info agent.ToolInfo, tool agent.Tool) mcp.Tool {
 // toMCPHandler creates an MCP ToolHandlerFunc that delegates to a StarClaw tool.
 // In server mode, tools requiring approval are auto-approved (the MCP consumer
 // handles its own authorization).
-func toMCPHandler(tool agent.Tool) mcpserver.ToolHandlerFunc {
+func toMCPHandler(tool agent.Tool, config MCPServerConfig) mcpserver.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		// Marshal arguments to JSON string for the StarClaw tool
 		argsJSON := "{}"
@@ -134,8 +133,15 @@ func toMCPHandler(tool agent.Tool) mcpserver.ToolHandlerFunc {
 			}
 		}
 
+		runCtx := ctx
+		var cancel context.CancelFunc
+		if config.ToolTimeout > 0 {
+			runCtx, cancel = context.WithTimeout(ctx, time.Duration(config.ToolTimeout)*time.Second)
+			defer cancel()
+		}
+
 		// Execute the tool (auto-approved — no RequiresApproval check)
-		result, err := tool.Run(ctx, argsJSON)
+		result, err := tool.Run(runCtx, argsJSON)
 		if err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{

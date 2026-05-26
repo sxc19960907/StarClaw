@@ -108,6 +108,19 @@ type Config struct {
 }
 ```
 
+### Config activation checklist
+
+When adding or activating a config field, keep every config path in sync:
+
+- Struct tags on the config type.
+- `viper.SetDefault` in `Load` for global config defaults.
+- The default YAML emitted by `SaveDefault`.
+- Setup-generated config in `setup.go`, when the field belongs in first-run config.
+- Multi-level defaults and overlay logic in `multilevel.go`, when project or local config should override it.
+- Unit tests for parsing/overlay behavior when the field affects runtime behavior.
+
+Missing one path can make a setting work in chat/TUI but silently fail in project-level config or server mode.
+
 ### Pointer fields for optional values
 
 Use `*string`, `*int`, `*bool` to distinguish "not set" from zero:
