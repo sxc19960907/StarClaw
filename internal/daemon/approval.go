@@ -52,10 +52,20 @@ func (b *ApprovalBroker) WaitForApproval(ctx context.Context, req ApprovalReques
 		b.mu.Unlock()
 	}()
 
+	timer := time.NewTimer(b.timeout)
+	defer func() {
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+	}()
+
 	select {
 	case decision := <-ch:
 		return decision, nil
-	case <-time.After(b.timeout):
+	case <-timer.C:
 		return DecisionDeny, nil
 	case <-ctx.Done():
 		return DecisionDeny, ctx.Err()
