@@ -38,6 +38,9 @@ tools:
   bash_max_output: 30000    # characters
   result_truncation: 30000  # characters
   args_truncation: 200      # characters
+  grep_max_results: 100      # maximum grep matches
+  server_tool_timeout: 0     # MCP server tool timeout in seconds (0 = disabled)
+  mcp_expose: []             # MCP server expose allow-list (empty = all local tools)
   allowed: []               # Restrict to these tools (empty = all)
   denied: []                # Block these tools
 ```
@@ -78,6 +81,34 @@ tools:
     - bash
     - file_write
 ```
+
+## MCP Server Mode
+
+Run StarClaw as an MCP stdio server with:
+
+```bash
+starclaw mcp serve
+```
+
+The server exposes StarClaw local tools to MCP-compatible clients. By default, all registered local tools are exposed.
+
+### Safer MCP Server Exposure
+
+Use `tools.mcp_expose` to publish only the tools another MCP client should see:
+
+```yaml
+tools:
+  server_tool_timeout: 30
+  mcp_expose:
+    - file_read
+    - grep
+    - directory_list
+    - version
+```
+
+`server_tool_timeout` is measured in seconds. Set it to `0` to disable the MCP server-level timeout.
+
+`mcp_expose` is separate from `tools.allowed` and `tools.denied`: it controls which tools are registered with the MCP server. If `mcp_expose` is omitted or empty, `starclaw mcp serve` exposes all registered local tools.
 
 ## Model Tiers
 

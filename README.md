@@ -145,6 +145,8 @@ tools:
   bash_max_output: 30000
   grep_max_results: 100
   result_truncation: 30000
+  server_tool_timeout: 0  # MCP server tool timeout in seconds (0 = disabled)
+  # mcp_expose: ["file_read", "grep", "directory_list", "version"]
   allowed: []  # Restrict to specific tools
   denied: []   # Block specific tools
 
@@ -343,6 +345,28 @@ mcp_servers:
 # List configured servers
 starclaw mcp list
 ```
+
+## MCP Server Support
+
+StarClaw can also expose its local tools as an MCP stdio server:
+
+```bash
+starclaw mcp serve
+```
+
+By default, `mcp serve` exposes all registered local tools. For safer use with another MCP client, configure an allow-list and optional per-tool timeout:
+
+```yaml
+tools:
+  server_tool_timeout: 30
+  mcp_expose:
+    - file_read
+    - grep
+    - directory_list
+    - version
+```
+
+An empty or omitted `mcp_expose` list means "expose all local tools". MCP server calls are auto-approved because the MCP consumer is expected to provide its own authorization layer.
 
 ## Skills System
 
