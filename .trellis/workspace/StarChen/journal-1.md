@@ -996,3 +996,36 @@ Replaced the scheduler initial alignment time.After with a stoppable timer so ca
 ### Next Steps
 
 - None - task complete
+
+
+## Session 31: Guard watcher debounce timer
+
+**Date**: 2026-05-27
+**Task**: Guard watcher debounce timer
+**Branch**: `main`
+
+### Summary
+
+Added per-agent debounce timer generations so stale watcher timer callbacks cannot flush newer batches after reset or close.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5a51220` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
