@@ -82,10 +82,11 @@ type Watcher struct {
 	runFn    RunFunc
 	Debounce time.Duration
 
-	mu      sync.Mutex
-	batches map[string]map[string]string // agent -> path -> eventType
-	timers  map[string]*time.Timer       // agent -> debounce timer
-	lastRun map[string]time.Time
+	mu       sync.Mutex
+	batches  map[string]map[string]string // agent -> path -> eventType
+	timers   map[string]*time.Timer       // agent -> debounce timer
+	timerGen map[string]uint64            // agent -> debounce generation
+	lastRun  map[string]time.Time
 
 	// skip policy: built-in defaults merged with user-supplied ignores
 	skipDirs map[string]bool
@@ -141,6 +142,7 @@ func New(agentWatches map[string][]WatchEntry, runFn RunFunc, opts ...Option) (*
 		Debounce:   2 * time.Second,
 		batches:    make(map[string]map[string]string),
 		timers:     make(map[string]*time.Timer),
+		timerGen:   make(map[string]uint64),
 		lastRun:    make(map[string]time.Time),
 		skipDirs:   make(map[string]bool, len(defaultSkipDirs)),
 		watchedMap: make(map[string]bool),
@@ -354,18 +356,24 @@ func (w *Watcher) appendEvent(agent, path, eventType string) {
 	if t, ok := w.timers[agent]; ok {
 		t.Stop()
 	}
+	w.timerGen[agent]++
+	generation := w.timerGen[agent]
 	agentCopy := agent
 	w.timers[agent] = time.AfterFunc(w.Debounce, func() {
-		w.flush(agentCopy)
+		w.flush(agentCopy, generation)
 	})
 }
 
-func (w *Watcher) flush(agent string) {
-	if w.ctx.Err() != nil {
+func (w *Watcher) flush(agent string, generation uint64) {
+	if w.ctx != nil && w.ctx.Err() != nil {
 		return
 	}
 
 	w.mu.Lock()
+	if generation != w.timerGen[agent] {
+		w.mu.Unlock()
+		return
+	}
 	batch := w.batches[agent]
 	delete(w.batches, agent)
 	delete(w.timers, agent)
@@ -387,7 +395,11 @@ func (w *Watcher) flush(agent string) {
 	}
 
 	prompt := FormatPrompt(events)
-	w.runFn(w.ctx, agent, prompt)
+	ctx := w.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	w.runFn(ctx, agent, prompt)
 }
 
 type watchAddOutcome int
@@ -441,7 +453,8 @@ func (w *Watcher) Close() {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	for _, t := range w.timers {
+	for agent, t := range w.timers {
+		w.timerGen[agent]++
 		t.Stop()
 	}
 }

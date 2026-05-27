@@ -86,6 +86,51 @@ func TestDedupEvents(t *testing.T) {
 	}
 }
 
+func TestWatcherDebounceStaleGenerationDoesNotFlush(t *testing.T) {
+	var mu sync.Mutex
+	var calls []string
+	runFn := func(ctx context.Context, agent, prompt string) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, prompt)
+	}
+
+	w, err := New(map[string][]WatchEntry{}, runFn)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	w.Debounce = time.Hour
+	defer w.Close()
+
+	w.appendEvent("agent", "/tmp/old.txt", "modified")
+
+	w.mu.Lock()
+	staleGeneration := w.timerGen["agent"]
+	w.mu.Unlock()
+
+	w.appendEvent("agent", "/tmp/new.txt", "created")
+	w.flush("agent", staleGeneration)
+
+	w.mu.Lock()
+	if _, ok := w.batches["agent"]; !ok {
+		w.mu.Unlock()
+		t.Fatal("stale generation flushed current batch")
+	}
+	currentGeneration := w.timerGen["agent"]
+	w.mu.Unlock()
+
+	w.flush("agent", currentGeneration)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(calls) != 1 {
+		t.Fatalf("expected one callback from current generation, got %d", len(calls))
+	}
+	if !strings.Contains(calls[0], "new.txt") {
+		t.Fatalf("expected current batch to include new event, got: %s", calls[0])
+	}
+}
+
 func TestActiveHoursWindow(t *testing.T) {
 	tests := []struct {
 		name   string
