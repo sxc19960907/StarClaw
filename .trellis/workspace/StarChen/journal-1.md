@@ -963,3 +963,36 @@ Replaced ApprovalBroker's time.After timeout with a stoppable timer so resolved 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 30: Stop scheduler align timer
+
+**Date**: 2026-05-27
+**Task**: Stop scheduler align timer
+**Branch**: `main`
+
+### Summary
+
+Replaced the scheduler initial alignment time.After with a stoppable timer so cancellation releases timer resources promptly.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a09d18d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
