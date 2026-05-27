@@ -43,9 +43,16 @@ func (s *Scheduler) Start(ctx context.Context) {
 	// Align to next wall-clock minute boundary.
 	now := time.Now()
 	next := now.Truncate(time.Minute).Add(time.Minute)
+	timer := time.NewTimer(next.Sub(now))
 	select {
-	case <-time.After(next.Sub(now)):
+	case <-timer.C:
 	case <-ctx.Done():
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
 		return
 	}
 
