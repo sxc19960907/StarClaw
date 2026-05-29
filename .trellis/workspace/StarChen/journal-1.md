@@ -1062,3 +1062,36 @@ Ran the release checklist validation loop: full tests, targeted race tests, loca
 ### Next Steps
 
 - None - task complete
+
+
+## Session 33: Run extended CLI smoke checks
+
+**Date**: 2026-05-29
+**Task**: Run extended CLI smoke checks
+**Branch**: `main`
+
+### Summary
+
+Ran extended release smoke checks for daemon lifecycle, schedule list/create/remove, and MCP serve help; recorded passing results in RELEASE_CHECKLIST.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fa5977c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
