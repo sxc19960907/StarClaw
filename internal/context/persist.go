@@ -9,10 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/filelock"
 )
 
 const persistPrompt = `You are extracting durable knowledge from a conversation before context is compacted.
@@ -166,10 +166,10 @@ func BoundedAppend(memoryDir, content string) error {
 	}
 	defer lockFile.Close()
 
-	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
-		return fmt.Errorf("flock: %w", err)
+	if err := filelock.Exclusive(lockFile); err != nil {
+		return err
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer filelock.Unlock(lockFile)
 
 	existing, _ := os.ReadFile(memoryPath)
 	writeContent := content
@@ -258,10 +258,10 @@ func ConsolidateMemory(ctx context.Context, c Completer, memoryDir string) error
 		return fmt.Errorf("consolidate: open lock: %w", err)
 	}
 	defer lockFile.Close()
-	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
-		return fmt.Errorf("consolidate: flock: %w", err)
+	if err := filelock.Exclusive(lockFile); err != nil {
+		return fmt.Errorf("consolidate: %w", err)
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer filelock.Unlock(lockFile)
 
 	existing, _ := os.ReadFile(memoryPath)
 	userContent, autoFromMemory := splitMemory(string(existing))

@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/starclaw/starclaw/internal/agents"
+	"github.com/starclaw/starclaw/internal/filelock"
 )
 
 // cronFieldRe matches a single cron field: wildcard, number, range, step, or list.
@@ -91,10 +91,10 @@ func (m *Manager) load() ([]Schedule, error) {
 		return nil, err
 	}
 	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil {
-		return nil, fmt.Errorf("flock shared: %w", err)
+	if err := filelock.Shared(f); err != nil {
+		return nil, err
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	defer filelock.Unlock(f)
 	var schedules []Schedule
 	if err := json.NewDecoder(f).Decode(&schedules); err != nil {
 		return nil, err
@@ -112,10 +112,10 @@ func (m *Manager) save(schedules []Schedule) error {
 		return fmt.Errorf("create temp: %w", err)
 	}
 	tmpPath := tmp.Name()
-	if err := syscall.Flock(int(tmp.Fd()), syscall.LOCK_EX); err != nil {
+	if err := filelock.Exclusive(tmp); err != nil {
 		tmp.Close()
 		os.Remove(tmpPath)
-		return fmt.Errorf("flock exclusive: %w", err)
+		return err
 	}
 	data, err := json.MarshalIndent(schedules, "", "  ")
 	if err != nil {
@@ -150,10 +150,10 @@ func (m *Manager) lockedModify(fn func([]Schedule) ([]Schedule, error)) error {
 		return fmt.Errorf("open lock file: %w", err)
 	}
 	defer lockFile.Close()
-	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
-		return fmt.Errorf("flock: %w", err)
+	if err := filelock.Exclusive(lockFile); err != nil {
+		return err
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer filelock.Unlock(lockFile)
 	var schedules []Schedule
 	if data, err := os.ReadFile(m.indexPath); err == nil {
 		json.Unmarshal(data, &schedules)

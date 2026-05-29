@@ -2,12 +2,17 @@
 
 ## Steps
 
-- [ ] Run final `go test ./...`.
-- [ ] Run final `make build-all`.
-- [ ] Push `main` to `origin`.
-- [ ] Create annotated `v0.2.1` tag.
-- [ ] Push `v0.2.1` tag to `origin`.
-- [ ] Check GitHub Actions release workflow.
+- [x] Run final `go test ./...`.
+- [x] Run final `make build-all`.
+- [x] Push `main` to `origin`.
+- [x] Create annotated `v0.2.1` tag.
+- [x] Push `v0.2.1` tag to `origin`.
+- [x] Check GitHub Actions release workflow.
+- [x] Fix Windows release build failure.
+- [x] Re-run `go test ./...`.
+- [x] Re-run `make build-all` with Windows targets.
+- [ ] Move and push `v0.2.1` tag to the fixed commit.
+- [ ] Confirm GitHub Actions release workflow succeeds.
 - [ ] Record release status.
 
 ## Validation
