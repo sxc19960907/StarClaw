@@ -271,7 +271,7 @@ audit:
 # Update configuration (optional)
 # update:
 #   auto_check: true
-#   auto_install: false
+#   auto_install: false  # do not install automatically on startup
 #   channel: stable
 #   cache_ttl: 24h
 `

@@ -1,8 +1,15 @@
 package update
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -133,6 +140,29 @@ func TestFindAssetForPlatform(t *testing.T) {
 	}
 }
 
+func TestPlatformAssetName(t *testing.T) {
+	tests := []struct {
+		goos   string
+		goarch string
+		want   string
+	}{
+		{"darwin", "amd64", "starclaw_Darwin_x86_64.tar.gz"},
+		{"darwin", "arm64", "starclaw_Darwin_arm64.tar.gz"},
+		{"linux", "amd64", "starclaw_Linux_x86_64.tar.gz"},
+		{"linux", "arm64", "starclaw_Linux_arm64.tar.gz"},
+		{"windows", "amd64", "starclaw_Windows_x86_64.zip"},
+		{"windows", "arm64", "starclaw_Windows_arm64.zip"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.goos+"_"+tt.goarch, func(t *testing.T) {
+			if got := platformAssetName(tt.goos, tt.goarch); got != tt.want {
+				t.Fatalf("platformAssetName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUpdateCache(t *testing.T) {
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "update-cache.json")
@@ -213,7 +243,7 @@ func TestCheckForUpdate_NonSemver(t *testing.T) {
 func TestCheckForUpdate_WithMockServer(t *testing.T) {
 	// Create mock GitHub API server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/repos/starclaw/starclaw/releases/latest" {
+		if r.URL.Path == "/repos/sxc19960907/StarClaw/releases/latest" {
 			release := Release{
 				TagName:     "v2.0.0",
 				Name:        "Release v2.0.0",
@@ -319,34 +349,6 @@ func TestDoUpdate_AlreadyLatest(t *testing.T) {
 	_, err := DoUpdate("v1.0.0")
 	if err == nil {
 		t.Error("DoUpdate should error when already latest")
-	}
-}
-
-func TestDoUpdate_HasUpdateInstallationNotImplemented(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		release := Release{
-			TagName: "v2.0.0",
-			Assets: []Asset{
-				{Name: "starclaw_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz", BrowserDownloadURL: "https://example.com/asset"},
-			},
-		}
-		json.NewEncoder(w).Encode(release)
-	}))
-	defer server.Close()
-
-	oldAPI := GitHubAPI
-	GitHubAPI = server.URL
-	defer func() { GitHubAPI = oldAPI }()
-
-	version, err := DoUpdate("v1.0.0")
-	if err == nil {
-		t.Fatal("DoUpdate should error until automatic installation is implemented")
-	}
-	if version != "v2.0.0" {
-		t.Fatalf("DoUpdate version = %q, want v2.0.0", version)
-	}
-	if !strings.Contains(err.Error(), "automatic update installation is not implemented yet") {
-		t.Fatalf("DoUpdate error should explain installation limitation, got: %v", err)
 	}
 }
 
@@ -459,7 +461,233 @@ func TestDownloadRelease_ContextCancellation(t *testing.T) {
 	}
 }
 
-// contains is a helper for string matching in test messages.
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
+func TestExpectedChecksum(t *testing.T) {
+	tmpDir := t.TempDir()
+	checksumPath := filepath.Join(tmpDir, "checksums.txt")
+	if err := os.WriteFile(checksumPath, []byte("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789  starclaw_Linux_x86_64.tar.gz\n"), 0644); err != nil {
+		t.Fatalf("write checksum: %v", err)
+	}
+
+	got, err := expectedChecksum("starclaw_Linux_x86_64.tar.gz", checksumPath)
+	if err != nil {
+		t.Fatalf("expectedChecksum failed: %v", err)
+	}
+	if got != "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" {
+		t.Fatalf("checksum = %q", got)
+	}
+}
+
+func TestVerifyChecksumFile_Mismatch(t *testing.T) {
+	tmpDir := t.TempDir()
+	archivePath := filepath.Join(tmpDir, "starclaw_Linux_x86_64.tar.gz")
+	checksumPath := filepath.Join(tmpDir, "checksums.txt")
+	if err := os.WriteFile(archivePath, []byte("archive"), 0644); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+	if err := os.WriteFile(checksumPath, []byte("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789  starclaw_Linux_x86_64.tar.gz\n"), 0644); err != nil {
+		t.Fatalf("write checksum: %v", err)
+	}
+
+	if err := verifyChecksumFile(archivePath, "starclaw_Linux_x86_64.tar.gz", checksumPath); err == nil {
+		t.Fatal("verifyChecksumFile should fail on mismatch")
+	}
+}
+
+func TestExtractArchive_TarGz(t *testing.T) {
+	tmpDir := t.TempDir()
+	archivePath := filepath.Join(tmpDir, "starclaw_Linux_x86_64.tar.gz")
+	if err := writeTarGz(archivePath, "starclaw", []byte("new-binary")); err != nil {
+		t.Fatalf("write tar.gz: %v", err)
+	}
+
+	extracted, err := extractArchive(archivePath, tmpDir)
+	if err != nil {
+		t.Fatalf("extractArchive failed: %v", err)
+	}
+	data, err := os.ReadFile(extracted)
+	if err != nil {
+		t.Fatalf("read extracted: %v", err)
+	}
+	if string(data) != "new-binary" {
+		t.Fatalf("extracted content = %q", data)
+	}
+}
+
+func TestExtractArchive_Zip(t *testing.T) {
+	tmpDir := t.TempDir()
+	archivePath := filepath.Join(tmpDir, "starclaw_Windows_x86_64.zip")
+	if err := writeZip(archivePath, "starclaw.exe", []byte("new-binary")); err != nil {
+		t.Fatalf("write zip: %v", err)
+	}
+
+	extracted, err := extractArchive(archivePath, tmpDir)
+	if err != nil {
+		t.Fatalf("extractArchive failed: %v", err)
+	}
+	data, err := os.ReadFile(extracted)
+	if err != nil {
+		t.Fatalf("read extracted: %v", err)
+	}
+	if string(data) != "new-binary" {
+		t.Fatalf("extracted content = %q", data)
+	}
+}
+
+func TestReplaceExecutable_RestoresOnInstallFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	currentPath := filepath.Join(tmpDir, "starclaw")
+	newPath := filepath.Join(tmpDir, "new-starclaw")
+	if err := os.WriteFile(currentPath, []byte("old"), 0755); err != nil {
+		t.Fatalf("write current: %v", err)
+	}
+	if err := os.WriteFile(newPath, []byte("new"), 0755); err != nil {
+		t.Fatalf("write new: %v", err)
+	}
+
+	oldRename := renameFile
+	renameFile = func(oldpath, newpath string) error {
+		if strings.HasSuffix(oldpath, ".starclaw.new") && newpath == currentPath {
+			return fmt.Errorf("injected install failure")
+		}
+		return oldRename(oldpath, newpath)
+	}
+	defer func() { renameFile = oldRename }()
+
+	err := replaceExecutable(newPath, currentPath)
+	if err == nil {
+		t.Fatal("replaceExecutable should fail when staged temp path cannot be replaced")
+	}
+	data, readErr := os.ReadFile(currentPath)
+	if readErr != nil {
+		t.Fatalf("read restored executable: %v", readErr)
+	}
+	if string(data) != "old" {
+		t.Fatalf("current executable = %q, want old", data)
+	}
+}
+
+func TestInstallReleaseAsset_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	exePath := filepath.Join(tmpDir, "starclaw")
+	if runtime.GOOS == "windows" {
+		exePath += ".exe"
+	}
+	if err := os.WriteFile(exePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write exe: %v", err)
+	}
+
+	archiveName := platformAssetName(runtime.GOOS, runtime.GOARCH)
+	archiveBytes := archiveForCurrentPlatform(t, []byte("new-binary"))
+	checksumBytes := []byte(fmt.Sprintf("%x  %s\n", sha256.Sum256(archiveBytes), archiveName))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/" + archiveName:
+			w.Write(archiveBytes)
+		case "/checksums.txt":
+			w.Write(checksumBytes)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	asset := &Asset{Name: archiveName, BrowserDownloadURL: server.URL + "/" + archiveName}
+	checksums := &Asset{Name: "checksums.txt", BrowserDownloadURL: server.URL + "/checksums.txt"}
+
+	if err := installReleaseAsset(context.Background(), asset, checksums, exePath); err != nil {
+		t.Fatalf("installReleaseAsset failed: %v", err)
+	}
+	data, err := os.ReadFile(exePath)
+	if err != nil {
+		t.Fatalf("read installed executable: %v", err)
+	}
+	if string(data) != "new-binary" {
+		t.Fatalf("installed executable = %q, want new-binary", data)
+	}
+}
+
+func TestInstallReleaseAsset_ChecksumMismatchKeepsExistingBinary(t *testing.T) {
+	tmpDir := t.TempDir()
+	exePath := filepath.Join(tmpDir, "starclaw")
+	if err := os.WriteFile(exePath, []byte("old-binary"), 0755); err != nil {
+		t.Fatalf("write exe: %v", err)
+	}
+
+	archiveName := platformAssetName(runtime.GOOS, runtime.GOARCH)
+	archiveBytes := archiveForCurrentPlatform(t, []byte("new-binary"))
+	checksumBytes := []byte(fmt.Sprintf("%064x  %s\n", 1, archiveName))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/" + archiveName:
+			w.Write(archiveBytes)
+		case "/checksums.txt":
+			w.Write(checksumBytes)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	asset := &Asset{Name: archiveName, BrowserDownloadURL: server.URL + "/" + archiveName}
+	checksums := &Asset{Name: "checksums.txt", BrowserDownloadURL: server.URL + "/checksums.txt"}
+
+	err := installReleaseAsset(context.Background(), asset, checksums, exePath)
+	if err == nil {
+		t.Fatal("installReleaseAsset should fail on checksum mismatch")
+	}
+	data, readErr := os.ReadFile(exePath)
+	if readErr != nil {
+		t.Fatalf("read existing executable: %v", readErr)
+	}
+	if string(data) != "old-binary" {
+		t.Fatalf("existing executable = %q, want old-binary", data)
+	}
+}
+
+func archiveForCurrentPlatform(t *testing.T, content []byte) []byte {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return zipBytes(t, "starclaw.exe", content)
+	}
+	return tarGzBytes(t, "starclaw", content)
+}
+
+func writeTarGz(path, name string, content []byte) error {
+	return os.WriteFile(path, tarGzBytesForName(name, content), 0644)
+}
+
+func tarGzBytes(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+	return tarGzBytesForName(name, content)
+}
+
+func tarGzBytesForName(name string, content []byte) []byte {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	_ = tw.WriteHeader(&tar.Header{Name: name, Mode: 0755, Size: int64(len(content))})
+	_, _ = tw.Write(content)
+	_ = tw.Close()
+	_ = gz.Close()
+	return buf.Bytes()
+}
+
+func writeZip(path, name string, content []byte) error {
+	return os.WriteFile(path, zipBytesForName(name, content), 0644)
+}
+
+func zipBytes(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+	return zipBytesForName(name, content)
+}
+
+func zipBytesForName(name string, content []byte) []byte {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create(name)
+	_, _ = io.Copy(w, bytes.NewReader(content))
+	_ = zw.Close()
+	return buf.Bytes()
 }

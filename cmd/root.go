@@ -708,8 +708,8 @@ its own authorization layer.`,
 // updateCmd checks for updates.
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Check for updates",
-	Long:  "Check for new versions of StarClaw. Automatic binary installation is not implemented yet.",
+	Short: "Check for and install updates",
+	Long:  "Check for new versions of StarClaw and install the latest release for this platform.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkOnly, _ := cmd.Flags().GetBool("check")
 
@@ -748,7 +748,7 @@ var updateCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Update available: %s\n", release.TagName)
-		fmt.Println("Automatic installation is not implemented yet.")
+		fmt.Println("Installing update...")
 
 		newVersion, err := update.DoUpdate(Version)
 		if err != nil {

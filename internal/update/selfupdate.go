@@ -2,7 +2,12 @@
 package update
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,13 +20,15 @@ import (
 )
 
 // RepoOwner is the GitHub owner for releases.
-const RepoOwner = "starclaw"
+const RepoOwner = "sxc19960907"
 
 // RepoName is the GitHub repo name for releases.
-const RepoName = "starclaw"
+const RepoName = "StarClaw"
 
 // GitHubAPI is the base URL for the GitHub API.
 var GitHubAPI = "https://api.github.com"
+
+var renameFile = os.Rename
 
 // Release represents a GitHub release.
 type Release struct {
@@ -190,35 +197,58 @@ func DoUpdate(currentVersion string) (string, error) {
 		return currentVersion, fmt.Errorf("already up to date (%s)", currentVersion)
 	}
 
-	// Find appropriate asset for current platform
 	asset := findAssetForPlatform(release.Assets)
 	if asset == nil {
 		return "", fmt.Errorf("no update available for %s", PlatformInfo())
 	}
 
-	// Binary replacement is not implemented yet. A full implementation would:
-	// 1. Download the asset
-	// 2. Verify checksum
-	// 3. Extract if archive
-	// 4. Atomic replace current binary
-	// 5. Verify new binary works
+	checksums := findAssetByName(release.Assets, "checksums.txt")
+	if checksums == nil {
+		return "", fmt.Errorf("release %s does not include checksums.txt", release.TagName)
+	}
 
-	return release.TagName, fmt.Errorf("automatic update installation is not implemented yet (download manually: %s)", asset.BrowserDownloadURL)
+	exePath, err := currentExecutablePath()
+	if err != nil {
+		return "", fmt.Errorf("resolve current executable: %w", err)
+	}
+
+	if err := installReleaseAsset(context.Background(), asset, checksums, exePath); err != nil {
+		return release.TagName, err
+	}
+
+	return release.TagName, nil
 }
 
 // findAssetForPlatform finds the appropriate asset for the current platform.
 func findAssetForPlatform(assets []Asset) *Asset {
-	platform := PlatformInfo()
-	osArch := strings.Replace(platform, "/", "_", -1)
+	return findAssetByName(assets, platformAssetName(runtime.GOOS, runtime.GOARCH))
+}
 
+func findAssetByName(assets []Asset, name string) *Asset {
 	for _, asset := range assets {
-		// Look for asset matching platform (e.g., starclaw_Darwin_arm64.tar.gz)
-		if strings.Contains(asset.Name, osArch) || strings.Contains(asset.Name, runtime.GOOS) {
+		if asset.Name == name {
 			return &asset
 		}
 	}
-
 	return nil
+}
+
+func platformAssetName(goos, goarch string) string {
+	arch := goarch
+	if goarch == "amd64" {
+		arch = "x86_64"
+	}
+
+	switch goos {
+	case "darwin":
+		return fmt.Sprintf("starclaw_Darwin_%s.tar.gz", arch)
+	case "linux":
+		return fmt.Sprintf("starclaw_Linux_%s.tar.gz", arch)
+	case "windows":
+		return fmt.Sprintf("starclaw_Windows_%s.zip", arch)
+	default:
+		return fmt.Sprintf("starclaw_%s_%s", goos, arch)
+	}
 }
 
 // PlatformInfo returns the current platform string (e.g., "darwin/arm64").
@@ -355,7 +385,7 @@ func DownloadRelease(ctx context.Context, asset *Asset, targetPath string) error
 
 	// Create temp file first for atomic write
 	tmpPath := targetPath + ".tmp"
-	f, err := os.Create(tmpPath)
+	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -369,5 +399,241 @@ func DownloadRelease(ctx context.Context, asset *Asset, targetPath string) error
 	}
 
 	// Atomic rename
-	return os.Rename(tmpPath, targetPath)
+	return renameFile(tmpPath, targetPath)
+}
+
+func installReleaseAsset(ctx context.Context, asset, checksums *Asset, exePath string) error {
+	tempDir, err := os.MkdirTemp("", "starclaw-update-*")
+	if err != nil {
+		return fmt.Errorf("create update temp dir: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	archivePath := filepath.Join(tempDir, asset.Name)
+	if err := DownloadRelease(ctx, asset, archivePath); err != nil {
+		return fmt.Errorf("download %s: %w", asset.Name, err)
+	}
+
+	checksumPath := filepath.Join(tempDir, checksums.Name)
+	if err := DownloadRelease(ctx, checksums, checksumPath); err != nil {
+		return fmt.Errorf("download checksums: %w", err)
+	}
+
+	if err := verifyChecksumFile(archivePath, asset.Name, checksumPath); err != nil {
+		return fmt.Errorf("verify checksum: %w", err)
+	}
+
+	extractedPath, err := extractArchive(archivePath, tempDir)
+	if err != nil {
+		return fmt.Errorf("extract %s: %w", asset.Name, err)
+	}
+
+	if err := replaceExecutable(extractedPath, exePath); err != nil {
+		return fmt.Errorf("replace executable: %w", err)
+	}
+
+	return nil
+}
+
+func currentExecutablePath() (string, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	if resolved, err := filepath.EvalSymlinks(exePath); err == nil {
+		return resolved, nil
+	}
+	return exePath, nil
+}
+
+func verifyChecksumFile(filePath, assetName, checksumPath string) error {
+	expected, err := expectedChecksum(assetName, checksumPath)
+	if err != nil {
+		return err
+	}
+
+	actual, err := sha256File(filePath)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(actual, expected) {
+		return fmt.Errorf("checksum mismatch for %s", assetName)
+	}
+	return nil
+}
+
+func expectedChecksum(assetName, checksumPath string) (string, error) {
+	data, err := os.ReadFile(checksumPath)
+	if err != nil {
+		return "", fmt.Errorf("read checksums: %w", err)
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		name := strings.TrimPrefix(fields[len(fields)-1], "*")
+		if filepath.Base(name) == assetName {
+			if len(fields[0]) != sha256.Size*2 {
+				return "", fmt.Errorf("invalid sha256 for %s", assetName)
+			}
+			return fields[0], nil
+		}
+	}
+
+	return "", fmt.Errorf("checksum for %s not found", assetName)
+}
+
+func sha256File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("hash file: %w", err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func extractArchive(archivePath, destDir string) (string, error) {
+	switch {
+	case strings.HasSuffix(archivePath, ".tar.gz"):
+		return extractTarGz(archivePath, destDir)
+	case strings.HasSuffix(archivePath, ".zip"):
+		return extractZip(archivePath, destDir)
+	default:
+		return "", fmt.Errorf("unsupported archive format: %s", filepath.Base(archivePath))
+	}
+}
+
+func extractTarGz(archivePath, destDir string) (string, error) {
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("open archive: %w", err)
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return "", fmt.Errorf("open gzip: %w", err)
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", fmt.Errorf("read tar: %w", err)
+		}
+		if header.Typeflag != tar.TypeReg || filepath.Base(header.Name) != "starclaw" {
+			continue
+		}
+		target := filepath.Join(destDir, "starclaw-new")
+		if err := writeExecutable(target, tr, 0755); err != nil {
+			return "", err
+		}
+		return target, nil
+	}
+
+	return "", fmt.Errorf("starclaw binary not found in archive")
+}
+
+func extractZip(archivePath, destDir string) (string, error) {
+	zr, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("open zip: %w", err)
+	}
+	defer zr.Close()
+
+	for _, file := range zr.File {
+		if file.FileInfo().IsDir() || filepath.Base(file.Name) != "starclaw.exe" {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return "", fmt.Errorf("open zip entry: %w", err)
+		}
+		target := filepath.Join(destDir, "starclaw-new.exe")
+		err = writeExecutable(target, rc, 0755)
+		rc.Close()
+		if err != nil {
+			return "", err
+		}
+		return target, nil
+	}
+
+	return "", fmt.Errorf("starclaw.exe not found in archive")
+}
+
+func writeExecutable(path string, r io.Reader, mode os.FileMode) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return fmt.Errorf("create executable: %w", err)
+	}
+	if _, err := io.Copy(f, r); err != nil {
+		f.Close()
+		return fmt.Errorf("write executable: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close executable: %w", err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		return fmt.Errorf("chmod executable: %w", err)
+	}
+	return nil
+}
+
+func replaceExecutable(newPath, targetPath string) error {
+	targetDir := filepath.Dir(targetPath)
+	tempPath := filepath.Join(targetDir, "."+filepath.Base(targetPath)+".new")
+	backupPath := targetPath + ".old"
+
+	_ = os.Remove(tempPath)
+	_ = os.Remove(backupPath)
+
+	if err := copyFile(newPath, tempPath, 0755); err != nil {
+		return fmt.Errorf("stage new executable: %w", err)
+	}
+	if err := renameFile(targetPath, backupPath); err != nil {
+		_ = os.Remove(tempPath)
+		return fmt.Errorf("backup current executable: %w", err)
+	}
+	if err := renameFile(tempPath, targetPath); err != nil {
+		restoreErr := renameFile(backupPath, targetPath)
+		if restoreErr != nil {
+			return fmt.Errorf("install new executable: %w; restore failed: %v", err, restoreErr)
+		}
+		return fmt.Errorf("install new executable: %w", err)
+	}
+
+	_ = os.Remove(backupPath)
+	return nil
+}
+
+func copyFile(src, dst string, mode os.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open source: %w", err)
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return fmt.Errorf("create destination: %w", err)
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return fmt.Errorf("copy file: %w", err)
+	}
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("close destination: %w", err)
+	}
+	return os.Chmod(dst, mode)
 }

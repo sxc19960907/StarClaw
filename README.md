@@ -161,7 +161,7 @@ audit:
 # Update configuration (optional)
 # update:
 #   auto_check: true      # Check for updates on startup
-#   auto_install: false   # Reserved for future automatic installation
+#   auto_install: false   # Do not install automatically on startup
 #   channel: stable       # Update channel (stable, beta)
 #   cache_ttl: 24h        # How often to check
 ```
@@ -448,7 +448,7 @@ starclaw --agent coder chat "Review this Go code for issues"
 
 ## Self-Update
 
-StarClaw includes built-in update checks. Automatic binary replacement is not implemented yet, so the update command currently reports available releases and exits with a clear message when installation would be required.
+StarClaw includes built-in update checks and one-command binary installation from GitHub Release assets.
 
 ### Manual Update Check
 
@@ -456,7 +456,7 @@ StarClaw includes built-in update checks. Automatic binary replacement is not im
 # Check for updates
 starclaw update --check
 
-# Attempt install (currently reports that binary replacement is not implemented)
+# Install the latest version for your platform
 starclaw update
 ```
 
@@ -467,7 +467,7 @@ Enable automatic update checks on startup:
 ```yaml
 update:
   auto_check: true    # Check on startup (once per day)
-  auto_install: false # Reserved for future automatic installation
+  auto_install: false # Do not install automatically on startup
   channel: stable     # Use stable releases
 ```
 
