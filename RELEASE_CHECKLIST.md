@@ -4,6 +4,12 @@
 
 - Hardening pass is documented in `CHANGELOG.md` under `Unreleased`.
 - Current product-code changes should be committed separately from the pre-existing Trellis/agent infrastructure migration.
+- Latest verification on 2026-05-29 passed:
+  - `go test ./...`
+  - `go test -race ./internal/client ./internal/agent ./internal/context ./internal/daemon ./internal/tools ./internal/heartbeat`
+  - `make build`
+  - `make build-all`
+  - CLI smoke: `starclaw version`, `starclaw --help`, `starclaw completion zsh`, `starclaw mcp --help`
 - Final verification for this pass should include:
   - `go test ./...`
   - `go test -race ./internal/client ./internal/agent ./internal/context ./internal/daemon ./internal/tools ./internal/heartbeat`
@@ -16,8 +22,8 @@
 
 - [ ] Update version in `cmd/root.go`
 - [ ] Update CHANGELOG.md
-- [ ] Run full test suite: `go test ./...`
-- [ ] Check cross-platform builds: `make build-all`
+- [x] Run full test suite: `go test ./...`
+- [x] Check cross-platform builds: `make build-all`
 - [ ] Update documentation if needed
 
 ## Release Process
