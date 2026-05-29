@@ -10,6 +10,12 @@
   - `make build`
   - `make build-all`
   - CLI smoke: `starclaw version`, `starclaw --help`, `starclaw completion zsh`, `starclaw mcp --help`
+- Extended CLI smoke on 2026-05-29 passed:
+  - `starclaw daemon --help`
+  - `starclaw daemon start` in foreground, verified with `starclaw daemon status`, stopped with `starclaw daemon stop`
+  - `starclaw schedule --help`, `starclaw schedule list`
+  - `starclaw schedule create --cron '0 0 1 1 *' --prompt 'release smoke schedule 2026-05-29'`, then `starclaw schedule remove <id>`
+  - `starclaw mcp serve --help`
 - Final verification for this pass should include:
   - `go test ./...`
   - `go test -race ./internal/client ./internal/agent ./internal/context ./internal/daemon ./internal/tools ./internal/heartbeat`
