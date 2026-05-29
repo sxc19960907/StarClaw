@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 35
-- **Last Active**: 2026-05-29
+- **Total Sessions**: 36
+- **Last Active**: 2026-05-30
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1165 | Active |
+| `journal-1.md` | ~1198 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 36 | 2026-05-30 | Automatic update installation | `74e6492` | `main` |
 | 35 | 2026-05-29 | Release v0.2.1 | `85c677e`, `ba6e470`, `22000eb` | `main` |
 | 34 | 2026-05-29 | Prepare v0.2.1 release docs | `2ea2004` | `main` |
 | 33 | 2026-05-29 | Run extended CLI smoke checks | `fa5977c` | `main` |

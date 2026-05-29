@@ -1163,3 +1163,36 @@ Released v0.2.1, fixed Windows release builds, confirmed GitHub release assets, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 36: Automatic update installation
+
+**Date**: 2026-05-30
+**Task**: Automatic update installation
+**Branch**: `main`
+
+### Summary
+
+Implemented release asset installation for starclaw update with exact platform asset matching, checksum verification, archive extraction, executable replacement rollback, CLI/docs updates, and regression tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `74e6492` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
