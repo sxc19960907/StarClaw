@@ -1029,3 +1029,36 @@ Added per-agent debounce timer generations so stale watcher timer callbacks cann
 ### Next Steps
 
 - None - task complete
+
+
+## Session 32: Run release hardening checks
+
+**Date**: 2026-05-29
+**Task**: Run release hardening checks
+**Branch**: `main`
+
+### Summary
+
+Ran the release checklist validation loop: full tests, targeted race tests, local build, cross-platform builds, and CLI smoke checks all passed; recorded results in RELEASE_CHECKLIST.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `650d88a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

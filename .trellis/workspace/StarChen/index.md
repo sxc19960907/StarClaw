@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 31
-- **Last Active**: 2026-05-27
+- **Total Sessions**: 32
+- **Last Active**: 2026-05-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1031 | Active |
+| `journal-1.md` | ~1064 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 32 | 2026-05-29 | Run release hardening checks | `650d88a` | `main` |
 | 31 | 2026-05-27 | Guard watcher debounce timer | `5a51220` | `main` |
 | 30 | 2026-05-27 | Stop scheduler align timer | `a09d18d` | `main` |
 | 29 | 2026-05-26 | Stop approval timeout timer | `f2a8bf6` | `main` |
