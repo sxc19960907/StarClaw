@@ -1,4 +1,4 @@
-// Package update provides self-update functionality.
+// Package update provides update check functionality.
 package update
 
 import (
@@ -25,18 +25,18 @@ var GitHubAPI = "https://api.github.com"
 
 // Release represents a GitHub release.
 type Release struct {
-	TagName     string `json:"tag_name"`
-	Name        string `json:"name"`
-	HTMLURL     string `json:"html_url"`
-	PublishedAt string `json:"published_at"`
+	TagName     string  `json:"tag_name"`
+	Name        string  `json:"name"`
+	HTMLURL     string  `json:"html_url"`
+	PublishedAt string  `json:"published_at"`
 	Assets      []Asset `json:"assets"`
 }
 
 // Asset represents a release asset.
 type Asset struct {
-	Name                 string `json:"name"`
-	Size                 int    `json:"size"`
-	BrowserDownloadURL   string `json:"browser_download_url"`
+	Name               string `json:"name"`
+	Size               int    `json:"size"`
+	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
 // VersionInfo represents parsed version information.
@@ -196,15 +196,14 @@ func DoUpdate(currentVersion string) (string, error) {
 		return "", fmt.Errorf("no update available for %s", PlatformInfo())
 	}
 
-	// TODO: Download and replace binary
-	// This is a placeholder - full implementation would:
+	// Binary replacement is not implemented yet. A full implementation would:
 	// 1. Download the asset
 	// 2. Verify checksum
 	// 3. Extract if archive
 	// 4. Atomic replace current binary
 	// 5. Verify new binary works
 
-	return release.TagName, fmt.Errorf("update download not implemented (would download %s)", asset.Name)
+	return release.TagName, fmt.Errorf("automatic update installation is not implemented yet (download manually: %s)", asset.BrowserDownloadURL)
 }
 
 // findAssetForPlatform finds the appropriate asset for the current platform.
@@ -229,9 +228,9 @@ func PlatformInfo() string {
 
 // UpdateCache tracks when updates were last checked.
 type UpdateCache struct {
-	Path          string
-	LastChecked   time.Time
-	LastVersion   string
+	Path        string
+	LastChecked time.Time
+	LastVersion string
 }
 
 // NewUpdateCache creates a new update cache.
@@ -333,7 +332,7 @@ func AutoUpdate(currentVersion, cacheDir string) string {
 	cache.Record(release.TagName)
 	_ = cache.Save()
 
-	return fmt.Sprintf("Update available: %s — run 'starclaw update' to install", release.TagName)
+	return fmt.Sprintf("Update available: %s — run 'starclaw update --check' for details", release.TagName)
 }
 
 // DownloadRelease downloads a release asset to the specified path.

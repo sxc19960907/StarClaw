@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -318,6 +319,34 @@ func TestDoUpdate_AlreadyLatest(t *testing.T) {
 	_, err := DoUpdate("v1.0.0")
 	if err == nil {
 		t.Error("DoUpdate should error when already latest")
+	}
+}
+
+func TestDoUpdate_HasUpdateInstallationNotImplemented(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		release := Release{
+			TagName: "v2.0.0",
+			Assets: []Asset{
+				{Name: "starclaw_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz", BrowserDownloadURL: "https://example.com/asset"},
+			},
+		}
+		json.NewEncoder(w).Encode(release)
+	}))
+	defer server.Close()
+
+	oldAPI := GitHubAPI
+	GitHubAPI = server.URL
+	defer func() { GitHubAPI = oldAPI }()
+
+	version, err := DoUpdate("v1.0.0")
+	if err == nil {
+		t.Fatal("DoUpdate should error until automatic installation is implemented")
+	}
+	if version != "v2.0.0" {
+		t.Fatalf("DoUpdate version = %q, want v2.0.0", version)
+	}
+	if !strings.Contains(err.Error(), "automatic update installation is not implemented yet") {
+		t.Fatalf("DoUpdate error should explain installation limitation, got: %v", err)
 	}
 }
 

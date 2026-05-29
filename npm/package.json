@@ -1,6 +1,6 @@
 {
   "name": "@starclaw/cli",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "AI-powered CLI agent with local tool execution",
   "bin": {
     "starclaw": "bin/starclaw"

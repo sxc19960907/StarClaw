@@ -2,13 +2,19 @@
 
 All notable changes to StarClaw are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased — hardening pass
+## v0.2.1 — 2026-05-29 — release hardening
 
 ### Fixed
 
 - **Critical bug-review fixes** — hardened `MockClient` concurrent test use, locked in streaming behavior so successful streams do not issue duplicate non-streaming calls, preserved content when sanitizing consecutive same-role messages, covered context-window turn counting, and strengthened checkpoint ID sanitization.
 - **Path and publish security** — replaced string-prefix path containment with symlink-aware relative containment, rejected sibling-prefix and symlink escapes, validated `grep` and `publish_to_web` paths before access, and validated screenshot output paths before platform execution.
-- **Concurrency and lifecycle** — made process stdout/stderr capture safe while status readers poll running processes, guarded heartbeat Start/Close lifecycle state, added concurrent registry/read-tracker regression tests, and widened watchdog reset timing coverage for race-mode stability.
+- **Concurrency and lifecycle** — made process stdout/stderr capture safe while status readers poll running processes, guarded heartbeat Start/Close lifecycle state, added concurrent registry/read-tracker regression tests, widened watchdog reset timing coverage for race-mode stability, and guarded watcher debounce timer callbacks against stale generations.
+- **Cancellation and timers** — stopped wait-tool, SSE reconnect, approval timeout, LLM retry, and scheduler alignment timers promptly on cancellation so cancelled runs do not leave delayed operations behind.
+
+### Changed
+
+- **Release readiness** — recorded passing full tests, targeted race tests, local/cross-platform builds, daemon lifecycle smoke, schedule create/remove smoke, shell completion smoke, and MCP serve help smoke.
+- **Update UX** — clarified that StarClaw currently supports update checks and notifications; automatic binary replacement remains a documented follow-up.
 
 ## v0.2.0 — 2026-05-10 — Phase 4+5: full ShanClaw parity
 

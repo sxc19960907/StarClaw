@@ -11,7 +11,7 @@
 ## Features
 
 - 🤖 **Multi-Model AI** — Anthropic Claude + OpenAI GPT-4o + Ollama (local)
-- 🛠️ **36 Built-in Tools** — Files, shell, search, desktop automation, macOS, imaging, scheduling, MCP
+- 🛠️ **33 Built-in Tools** — Files, shell, search, desktop automation, macOS, imaging, scheduling, MCP
 - 🖥️ **macOS Desktop Control** — Accessibility, mouse/keyboard, browser, screenshots, clipboard, notifications
 - 🔌 **MCP Client + Server** — Connect to MCP servers, or expose tools via stdio
 - 👤 **Named Agents** — Per-agent config, memory, custom prompts, heartbeat monitoring
@@ -108,7 +108,6 @@ StarClaw provides 33 built-in tools for the AI agent:
 | Schedule | `schedule_create`, `schedule_list`, `schedule_update`, `schedule_remove` |
 | Skills | `use_skill`, `skill` |
 | Memory | `memory` |
-| Security | `readonly` |
 | Publish | `publish_to_web` |
 | Imaging | `imaging` (describe/resize/convert/OCR) |
 | MCP | `mcp_tool` (varies by server) |
@@ -165,7 +164,7 @@ audit:
 # Update configuration (optional)
 # update:
 #   auto_check: true      # Check for updates on startup
-#   auto_install: false   # Automatically install updates
+#   auto_install: false   # Reserved for future automatic installation
 #   channel: stable       # Update channel (stable, beta)
 #   cache_ttl: 24h        # How often to check
 ```
@@ -452,7 +451,7 @@ starclaw --agent coder chat "Review this Go code for issues"
 
 ## Self-Update
 
-StarClaw includes a built-in update mechanism.
+StarClaw includes built-in update checks. Automatic binary replacement is not implemented yet, so the update command currently reports available releases and exits with a clear message when installation would be required.
 
 ### Manual Update Check
 
@@ -460,7 +459,7 @@ StarClaw includes a built-in update mechanism.
 # Check for updates
 starclaw update --check
 
-# Install update
+# Attempt install (currently reports that binary replacement is not implemented)
 starclaw update
 ```
 
@@ -471,13 +470,13 @@ Enable automatic update checks on startup:
 ```yaml
 update:
   auto_check: true    # Check on startup (once per day)
-  auto_install: false # Don't auto-install (manual confirmation required)
+  auto_install: false # Reserved for future automatic installation
   channel: stable     # Use stable releases
 ```
 
 When an update is available, you'll see:
 ```
-📦 Update available: v1.2.0 — run 'starclaw update' to install
+📦 Update available: v1.2.0 — run 'starclaw update --check' for details
 ```
 
 ## Security
