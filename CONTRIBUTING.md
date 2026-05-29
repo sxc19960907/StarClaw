@@ -6,7 +6,7 @@ Thanks for your interest in contributing to StarClaw. This document covers the p
 
 ### Prerequisites
 
-- **Go 1.23+** (the project currently uses Go 1.25)
+- **Go 1.25+** (the project currently targets Go 1.25)
 - Git
 
 ### Setup
