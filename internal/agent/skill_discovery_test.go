@@ -10,9 +10,15 @@ func TestDiscoverSkills_Directory(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create skill subdirectories and files.
-	os.MkdirAll(filepath.Join(dir, "code-review"), 0755)
-	os.MkdirAll(filepath.Join(dir, "git-helper"), 0755)
-	os.WriteFile(filepath.Join(dir, "test-runner.yaml"), []byte("name: test-runner"), 0644)
+	if err := os.MkdirAll(filepath.Join(dir, "code-review"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "git-helper"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "test-runner.yaml"), []byte("name: test-runner"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	skills := DiscoverSkills(dir)
 	if len(skills) != 3 {

@@ -51,7 +51,6 @@ type Model struct {
 	// UI Components
 	textarea textarea.Model
 	messages []Message
-	viewport int
 
 	// State
 	state       State
@@ -67,9 +66,8 @@ type Model struct {
 	headerCWD      string
 
 	// Tool result tracking
-	lastToolResults     []toolResultEntry
-	toolExpandLevel     int
-	processingStartTime time.Time
+	lastToolResults []toolResultEntry
+	toolExpandLevel int
 
 	// Styling
 	userStyle      lipgloss.Style

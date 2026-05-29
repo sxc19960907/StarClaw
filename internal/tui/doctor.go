@@ -1,10 +1,10 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/starclaw/starclaw/internal/config"
@@ -172,10 +172,10 @@ func compareGoVersion(a, b string) int {
 	for i := 0; i < maxLen; i++ {
 		var ai, bi int
 		if i < len(aParts) {
-			fmt.Sscanf(aParts[i], "%d", &ai)
+			ai, _ = strconv.Atoi(aParts[i])
 		}
 		if i < len(bParts) {
-			fmt.Sscanf(bParts[i], "%d", &bi)
+			bi, _ = strconv.Atoi(bParts[i])
 		}
 		if ai < bi {
 			return -1

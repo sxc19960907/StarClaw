@@ -373,7 +373,9 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 				a.session.Messages = messages
 				a.session.UpdatedAt = time.Now()
 				if a.sessionMgr != nil {
-					a.sessionMgr.Save()
+					if err := a.sessionMgr.Save(); err != nil {
+						a.lastRunStatus = RunStatus{Code: "session_save_failed", Detail: err.Error()}
+					}
 				}
 			}
 
@@ -426,7 +428,9 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 			a.session.Messages = messages
 			a.session.UpdatedAt = time.Now()
 			if a.sessionMgr != nil {
-				a.sessionMgr.Save()
+				if err := a.sessionMgr.Save(); err != nil {
+					a.lastRunStatus = RunStatus{Code: "session_save_failed", Detail: err.Error()}
+				}
 			}
 		}
 	}
