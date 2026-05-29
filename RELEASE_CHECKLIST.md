@@ -7,6 +7,7 @@
 - Go binary versions are injected by `ldflags`/GoReleaser; source builds keep `cmd.Version`/`main.Version` at `dev`.
 - npm package metadata has been updated to `0.2.1`.
 - Update checks are supported, but automatic binary replacement is not implemented yet and is documented as a follow-up.
+- Homebrew distribution is disabled until a real tap repository exists.
 - Current product-code changes should be committed separately from the pre-existing Trellis/agent infrastructure migration.
 - Latest verification on 2026-05-29 passed:
   - `go test ./...`
@@ -26,7 +27,7 @@
   - `make build`
   - `make build-all`
   - CLI smoke: `starclaw version`, `starclaw --help`, `starclaw completion zsh`, `starclaw mcp --help`
-- As of this pass, no release tag has been created.
+- `v0.2.1` was tagged and published on 2026-05-29. GitHub release assets are available; the release workflow initially failed after asset upload because the configured Homebrew tap repository did not exist.
 
 ## Pre-Release
 
@@ -56,8 +57,7 @@
    - Verify checksums
 
 4. **Update Homebrew tap**
-   - GoReleaser should auto-update
-   - Verify formula is correct
+   - Skipped until a real tap repository exists and `.goreleaser.yaml` is re-enabled for Homebrew publishing
 
 5. **Publish to npm** (if applicable)
    ```bash

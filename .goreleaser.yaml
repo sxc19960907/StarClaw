@@ -54,21 +54,6 @@ changelog:
       - '^test:'
       - '^chore:'
 
-brews:
-  - name: starclaw
-    repository:
-      owner: starclaw
-      name: homebrew-tap
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    directory: Formula
-    homepage: https://github.com/starclaw/starclaw
-    description: "AI-powered CLI agent with local tool execution"
-    license: "MIT"
-    test: |
-      system "#{bin}/starclaw", "version"
-
 nfpms:
   - id: packages
     package_name: starclaw

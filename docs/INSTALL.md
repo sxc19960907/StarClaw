@@ -27,10 +27,7 @@ iwr -useb https://get.starclaw.dev/windows | iex
 
 #### Homebrew (macOS/Linux)
 
-```bash
-brew tap starclaw/tap
-brew install starclaw
-```
+Homebrew distribution is not available yet. Use the pre-built release binaries, Go, or npm for now.
 
 #### npm (Cross-platform)
 
@@ -89,10 +86,7 @@ rm -rf ~/.starclaw
 
 ### Homebrew
 
-```bash
-brew uninstall starclaw
-brew untap starclaw/tap
-```
+No Homebrew formula is published yet, so there is nothing to uninstall through Homebrew.
 
 ### npm
 

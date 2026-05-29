@@ -37,10 +37,7 @@ go install github.com/starclaw/starclaw@latest
 
 ### Using Homebrew
 
-```bash
-brew tap starclaw/tap
-brew install starclaw
-```
+Homebrew distribution is not available yet. Use the pre-built release binaries, Go, or npm for now.
 
 ### Using npm
 
