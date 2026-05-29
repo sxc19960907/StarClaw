@@ -1128,3 +1128,38 @@ Prepared v0.2.1 release documentation: changelog, README tool/update wording, re
 ### Next Steps
 
 - None - task complete
+
+
+## Session 35: Release v0.2.1
+
+**Date**: 2026-05-29
+**Task**: Release v0.2.1
+**Branch**: `main`
+
+### Summary
+
+Released v0.2.1, fixed Windows release builds, confirmed GitHub release assets, and disabled unavailable Homebrew publishing until a real tap exists.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85c677e` | (see git log) |
+| `ba6e470` | (see git log) |
+| `22000eb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
