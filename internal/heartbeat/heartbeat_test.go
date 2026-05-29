@@ -236,7 +236,9 @@ func TestReadChecklist(t *testing.T) {
 	}
 
 	// Valid file.
-	os.WriteFile(filepath.Join(dir, "HEARTBEAT.md"), []byte("- Check disk\n- Check memory"), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "HEARTBEAT.md"), []byte("- Check disk\n- Check memory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	content, err = ReadChecklist(filepath.Join(dir, "HEARTBEAT.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -249,9 +251,15 @@ func TestReadChecklist(t *testing.T) {
 func TestReadChecklist_PermissionError(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "HEARTBEAT.md")
-	os.WriteFile(path, []byte("- Check disk"), 0o644)
-	os.Chmod(path, 0o000)
-	defer os.Chmod(path, 0o644) // restore so temp dir cleanup can proceed
+	if err := os.WriteFile(path, []byte("- Check disk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Chmod(path, 0o644) // restore so temp dir cleanup can proceed
+	}()
 
 	content, err := ReadChecklist(path)
 	if err == nil {

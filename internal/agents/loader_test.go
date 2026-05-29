@@ -8,20 +8,20 @@ import (
 
 func TestValidateAgentName(t *testing.T) {
 	tests := []struct {
-		name    string
-		valid   bool
+		name  string
+		valid bool
 	}{
 		{"agent1", true},
 		{"my-agent", true},
 		{"my_agent", true},
 		{"a", true},
 		{"agent-123", true},
-		{"Agent", false},       // uppercase
-		{"-agent", false},      // starts with hyphen
-		{"_agent", false},      // starts with underscore
-		{"agent!", false},      // special character
-		{"", false},            // empty
-		{"agent name", false},  // space
+		{"Agent", false},      // uppercase
+		{"-agent", false},     // starts with hyphen
+		{"_agent", false},     // starts with underscore
+		{"agent!", false},     // special character
+		{"", false},           // empty
+		{"agent name", false}, // space
 	}
 
 	for _, tt := range tests {
@@ -41,23 +41,31 @@ func TestLoadAgent(t *testing.T) {
 	// Create temp agents directory
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create test agent
 	agentDir := filepath.Join(agentsDir, "test-agent")
-	os.MkdirAll(agentDir, 0755)
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create AGENT.md
 	agentPrompt := `# Test Agent
 
 You are a test agent for unit testing.`
-	os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte(agentPrompt), 0644)
+	if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte(agentPrompt), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create MEMORY.md
 	agentMemory := `# Memory
 
 Remember to be helpful.`
-	os.WriteFile(filepath.Join(agentDir, "MEMORY.md"), []byte(agentMemory), 0644)
+	if err := os.WriteFile(filepath.Join(agentDir, "MEMORY.md"), []byte(agentMemory), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create config.yaml
 	configData := `agent:
@@ -68,7 +76,9 @@ tools:
     - file_read
     - file_write
 `
-	os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte(configData), 0644)
+	if err := os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte(configData), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load the agent
 	agent, err := LoadAgent(agentsDir, "test-agent")
@@ -117,11 +127,15 @@ tools:
 func TestLoadAgent_MissingAgentFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create agent dir but no AGENT.md
 	agentDir := filepath.Join(agentsDir, "incomplete")
-	os.MkdirAll(agentDir, 0755)
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := LoadAgent(agentsDir, "incomplete")
 	if err == nil {

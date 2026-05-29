@@ -94,7 +94,9 @@ func (m *Manager) load() ([]Schedule, error) {
 	if err := filelock.Shared(f); err != nil {
 		return nil, err
 	}
-	defer filelock.Unlock(f)
+	defer func() {
+		_ = filelock.Unlock(f)
+	}()
 	var schedules []Schedule
 	if err := json.NewDecoder(f).Decode(&schedules); err != nil {
 		return nil, err
@@ -143,7 +145,9 @@ func (m *Manager) save(schedules []Schedule) error {
 
 func (m *Manager) lockedModify(fn func([]Schedule) ([]Schedule, error)) error {
 	dir := filepath.Dir(m.indexPath)
-	os.MkdirAll(dir, 0700)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("create schedule dir: %w", err)
+	}
 	lockPath := m.indexPath + ".lock"
 	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
@@ -153,10 +157,14 @@ func (m *Manager) lockedModify(fn func([]Schedule) ([]Schedule, error)) error {
 	if err := filelock.Exclusive(lockFile); err != nil {
 		return err
 	}
-	defer filelock.Unlock(lockFile)
+	defer func() {
+		_ = filelock.Unlock(lockFile)
+	}()
 	var schedules []Schedule
 	if data, err := os.ReadFile(m.indexPath); err == nil {
-		json.Unmarshal(data, &schedules)
+		if err := json.Unmarshal(data, &schedules); err != nil {
+			return fmt.Errorf("parse schedules: %w", err)
+		}
 	}
 	schedules, err = fn(schedules)
 	if err != nil {
