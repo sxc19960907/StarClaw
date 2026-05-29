@@ -206,7 +206,9 @@ func TestUpdateCache_LoadMissing(t *testing.T) {
 func TestUpdateCache_LoadCorrupted(t *testing.T) {
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "bad-cache.json")
-	os.WriteFile(cachePath, []byte("not valid json"), 0644)
+	if err := os.WriteFile(cachePath, []byte("not valid json"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	cache := NewUpdateCache(cachePath)
 	if err := cache.Load(); err == nil {
@@ -253,7 +255,9 @@ func TestCheckForUpdate_WithMockServer(t *testing.T) {
 					{Name: "starclaw_Darwin_arm64.tar.gz", Size: 100, BrowserDownloadURL: "https://example.com/asset"},
 				},
 			}
-			json.NewEncoder(w).Encode(release)
+			if err := json.NewEncoder(w).Encode(release); err != nil {
+				t.Errorf("encode release: %v", err)
+			}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -287,7 +291,9 @@ func TestCheckForUpdate_AlreadyLatest(t *testing.T) {
 			Name:    "Release v1.0.0",
 			HTMLURL: "https://github.com/starclaw/starclaw/releases/v1.0.0",
 		}
-		json.NewEncoder(w).Encode(release)
+		if err := json.NewEncoder(w).Encode(release); err != nil {
+			t.Errorf("encode release: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -338,7 +344,9 @@ func TestDoUpdate_AlreadyLatest(t *testing.T) {
 				{Name: "starclaw_Darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/asset"},
 			},
 		}
-		json.NewEncoder(w).Encode(release)
+		if err := json.NewEncoder(w).Encode(release); err != nil {
+			t.Errorf("encode release: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -365,7 +373,9 @@ func TestAutoUpdate_CacheFresh(t *testing.T) {
 
 	cache := NewUpdateCache(filepath.Join(tmpDir, "update-check.json"))
 	cache.Record("v1.0.0")
-	cache.Save()
+	if err := cache.Save(); err != nil {
+		t.Fatal(err)
+	}
 
 	msg := AutoUpdate("v1.0.0", tmpDir)
 	// Should not check because cache is fresh
@@ -401,7 +411,7 @@ func TestAutoUpdate_HasUpdate(t *testing.T) {
 func TestDownloadRelease_ToTemp(t *testing.T) {
 	// Create a test server serving a small file
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("fake-binary-content"))
+		_, _ = w.Write([]byte("fake-binary-content"))
 	}))
 	defer server.Close()
 
@@ -583,9 +593,9 @@ func TestInstallReleaseAsset_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/" + archiveName:
-			w.Write(archiveBytes)
+			_, _ = w.Write(archiveBytes)
 		case "/checksums.txt":
-			w.Write(checksumBytes)
+			_, _ = w.Write(checksumBytes)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -621,9 +631,9 @@ func TestInstallReleaseAsset_ChecksumMismatchKeepsExistingBinary(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/" + archiveName:
-			w.Write(archiveBytes)
+			_, _ = w.Write(archiveBytes)
 		case "/checksums.txt":
-			w.Write(checksumBytes)
+			_, _ = w.Write(checksumBytes)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
