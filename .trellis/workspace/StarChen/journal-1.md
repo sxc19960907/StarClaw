@@ -1095,3 +1095,36 @@ Ran extended release smoke checks for daemon lifecycle, schedule list/create/rem
 ### Next Steps
 
 - None - task complete
+
+
+## Session 34: Prepare v0.2.1 release docs
+
+**Date**: 2026-05-29
+**Task**: Prepare v0.2.1 release docs
+**Branch**: `main`
+
+### Summary
+
+Prepared v0.2.1 release documentation: changelog, README tool/update wording, release checklist, npm package version, and update limitation regression coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2ea2004` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
