@@ -66,7 +66,9 @@ func TestSpillToDisk_SmallContent(t *testing.T) {
 func TestSpillToDisk_MkdirError(t *testing.T) {
 	// Create a file where the tmp directory should be
 	tmpDir := t.TempDir()
-	os.WriteFile(filepath.Join(tmpDir, "tmp"), []byte("block"), 0644)
+	if err := os.WriteFile(filepath.Join(tmpDir, "tmp"), []byte("block"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := spillToDisk(tmpDir, "sess", "call", strings.Repeat("x", 60000))
 	if err == nil {
@@ -80,12 +82,16 @@ func TestCleanupSpills(t *testing.T) {
 	// Create some spill files
 	sessionID := "cleanup-test"
 	for i := 0; i < 3; i++ {
-		spillToDisk(tmpDir, sessionID, "call-"+string(rune('0'+i)), strings.Repeat("x", 60000))
+		if _, err := spillToDisk(tmpDir, sessionID, "call-"+string(rune('0'+i)), strings.Repeat("x", 60000)); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Create a file for a DIFFERENT session (should not be cleaned up)
 	otherSession := "other-session"
-	spillToDisk(tmpDir, otherSession, "call-0", strings.Repeat("x", 60000))
+	if _, err := spillToDisk(tmpDir, otherSession, "call-0", strings.Repeat("x", 60000)); err != nil {
+		t.Fatal(err)
+	}
 
 	// Cleanup the first session
 	cleanupSpills(tmpDir, sessionID)

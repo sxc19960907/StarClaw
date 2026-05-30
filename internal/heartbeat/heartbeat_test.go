@@ -226,7 +226,9 @@ func TestReadChecklist(t *testing.T) {
 	}
 
 	// Empty / whitespace-only file.
-	os.WriteFile(filepath.Join(dir, "HEARTBEAT.md"), []byte("   \n\n  "), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "HEARTBEAT.md"), []byte("   \n\n  "), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	content, err = ReadChecklist(filepath.Join(dir, "HEARTBEAT.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -273,7 +275,9 @@ func TestReadChecklist_PermissionError(t *testing.T) {
 func TestReadChecklist_MaxSize(t *testing.T) {
 	dir := t.TempDir()
 	big := strings.Repeat("x", maxChecklistChars+1000)
-	os.WriteFile(filepath.Join(dir, "HEARTBEAT.md"), []byte(big), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "HEARTBEAT.md"), []byte(big), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	content, err := ReadChecklist(filepath.Join(dir, "HEARTBEAT.md"))
 	if err != nil {
@@ -295,7 +299,9 @@ func TestTick_CallsRunAgentOnHappyPath(t *testing.T) {
 	writeHeartbeatConfig(t, agentsDir, "agent1", "5m", "")
 
 	agentDir := filepath.Join(agentsDir, "agent1")
-	os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644)
+	if err := os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	called := make(chan struct{}, 1)
 	deps := &Deps{
@@ -327,7 +333,9 @@ func TestTick_RespectsTryLock(t *testing.T) {
 	writeHeartbeatConfig(t, agentsDir, "agent1", "5m", "")
 
 	agentDir := filepath.Join(agentsDir, "agent1")
-	os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644)
+	if err := os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	var mu sync.Mutex
 	calls := 0
@@ -368,7 +376,9 @@ func TestTick_RespectsActiveHours(t *testing.T) {
 	writeHeartbeatConfig(t, agentsDir, "agent1", "5m", "00:00-00:00")
 
 	agentDir := filepath.Join(agentsDir, "agent1")
-	os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644)
+	if err := os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	var called bool
 	deps := &Deps{
@@ -424,7 +434,9 @@ func TestTick_LogsNonOKReply(t *testing.T) {
 	writeHeartbeatConfig(t, agentsDir, "agent1", "5m", "")
 
 	agentDir := filepath.Join(agentsDir, "agent1")
-	os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644)
+	if err := os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	called := make(chan struct{}, 1)
 	deps := &Deps{
@@ -456,7 +468,9 @@ func TestTick_PropagatesContextCancel(t *testing.T) {
 	writeHeartbeatConfig(t, agentsDir, "agent1", "5m", "")
 
 	agentDir := filepath.Join(agentsDir, "agent1")
-	os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644)
+	if err := os.WriteFile(filepath.Join(agentDir, "HEARTBEAT.md"), []byte("- Check something"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Pre-cancel the context.
@@ -618,7 +632,9 @@ func TestNew_WithEmptyHeartbeatEvery(t *testing.T) {
 
 	// Write config with heartbeat block but empty every.
 	cfg := "heartbeat:\n  active_hours: 09:00-17:00\n"
-	os.WriteFile(filepath.Join(agentsDir, "agent1", "config.yaml"), []byte(cfg), 0o644)
+	if err := os.WriteFile(filepath.Join(agentsDir, "agent1", "config.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	deps := &Deps{
 		RunAgent: func(ctx context.Context, agent, prompt string) (string, error) {

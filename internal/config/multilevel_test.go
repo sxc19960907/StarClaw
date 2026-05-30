@@ -112,15 +112,19 @@ func TestLoadMultiLevel_ToolsMCPServeOverrides(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 
 	globalDir := filepath.Join(tmpDir, ".starclaw")
-	os.MkdirAll(globalDir, 0700)
-	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
 api_key: "global-key"
 tools:
   server_tool_timeout: 10
   mcp_expose:
     - file_read
     - grep
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, source, err := LoadMultiLevel()
 	if err != nil {
@@ -143,25 +147,42 @@ func TestLoadMultiLevel_LocalOverridesProject(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 
 	globalDir := filepath.Join(tmpDir, ".starclaw")
-	os.MkdirAll(globalDir, 0700)
-	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
 api_key: "global-key"
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	projectDir := filepath.Join(tmpDir, "project", ".starclaw")
-	os.MkdirAll(projectDir, 0700)
-	os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(projectDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
 agent:
   max_tokens: 4096
-`), 0600)
-	os.WriteFile(filepath.Join(projectDir, "config.local.yaml"), []byte(`
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "config.local.yaml"), []byte(`
 agent:
   max_tokens: 16384
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
-	origDir, _ := os.Getwd()
-	os.Chdir(filepath.Join(tmpDir, "project"))
-	defer os.Chdir(origDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(filepath.Join(tmpDir, "project")); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
 
 	cfg, source, err := LoadMultiLevel()
 	if err != nil {
@@ -182,10 +203,14 @@ func TestLoadMultiLevel_EnvOverride(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "env-key")
 
 	globalDir := filepath.Join(tmpDir, ".starclaw")
-	os.MkdirAll(globalDir, 0700)
-	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
 api_key: "file-key"
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, source, err := LoadMultiLevel()
 	if err != nil {

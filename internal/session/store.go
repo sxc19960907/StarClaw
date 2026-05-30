@@ -17,7 +17,7 @@ type Store struct {
 
 // NewStore creates a new session store
 func NewStore(dir string) *Store {
-	os.MkdirAll(dir, 0700)
+	_ = os.MkdirAll(dir, 0700)
 	return &Store{dir: dir}
 }
 
