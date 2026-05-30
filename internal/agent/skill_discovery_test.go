@@ -68,8 +68,12 @@ func TestDiscoverSkills_EmptyString(t *testing.T) {
 
 func TestDiscoverSkills_HiddenFilesIgnored(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, ".hidden"), []byte("secret"), 0644)
-	os.MkdirAll(filepath.Join(dir, "visible"), 0755)
+	if err := os.WriteFile(filepath.Join(dir, ".hidden"), []byte("secret"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "visible"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	skills := DiscoverSkills(dir)
 	if len(skills) != 1 {
@@ -82,8 +86,12 @@ func TestDiscoverSkills_HiddenFilesIgnored(t *testing.T) {
 
 func TestDiscoverSkills_FileExtStripped(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "my-skill.yaml"), []byte(""), 0644)
-	os.WriteFile(filepath.Join(dir, "another.toml"), []byte(""), 0644)
+	if err := os.WriteFile(filepath.Join(dir, "my-skill.yaml"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "another.toml"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	skills := DiscoverSkills(dir)
 	if len(skills) != 2 {
@@ -106,7 +114,9 @@ func TestDiscoverSkills_Symlink(t *testing.T) {
 	// On most platforms symlink creation works. Skip if not supported.
 	dir := t.TempDir()
 	realDir := t.TempDir()
-	os.WriteFile(filepath.Join(realDir, "content.txt"), []byte("data"), 0644)
+	if err := os.WriteFile(filepath.Join(realDir, "content.txt"), []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := os.Symlink(realDir, filepath.Join(dir, "linked-skill"))
 	if err != nil {

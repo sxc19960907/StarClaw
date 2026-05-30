@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +34,7 @@ func TestHTTPTool_Run_GET(t *testing.T) {
 		assert.Equal(t, "GET", r.Method)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"status": "ok"}`))
+		_, _ = w.Write([]byte(`{"status": "ok"}`))
 	}))
 	defer server.Close()
 
@@ -54,12 +55,13 @@ func TestHTTPTool_Run_POSTWithBody(t *testing.T) {
 
 		// Read body
 		body := make([]byte, r.ContentLength)
-		r.Body.Read(body)
+		_, err := io.ReadFull(r.Body, body)
+		require.NoError(t, err)
 
 		assert.Equal(t, `{"name": "test"}`, string(body))
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
-		w.Write([]byte(`{"id": 123}`))
+		_, _ = w.Write([]byte(`{"id": 123}`))
 	}))
 	defer server.Close()
 
@@ -81,7 +83,7 @@ func TestHTTPTool_Run_CustomHeaders(t *testing.T) {
 		assert.Equal(t, "Bearer token123", r.Header.Get("Authorization"))
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(200)
-		w.Write([]byte(`"ok"`))
+		_, _ = w.Write([]byte(`"ok"`))
 	}))
 	defer server.Close()
 
@@ -103,7 +105,7 @@ func TestHTTPTool_Run_PUT(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "PUT", r.Method)
 		w.WriteHeader(200)
-		w.Write([]byte(`"updated"`))
+		_, _ = w.Write([]byte(`"updated"`))
 	}))
 	defer server.Close()
 
@@ -221,7 +223,7 @@ func TestHTTPTool_Run_ResponseTruncation(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
-		w.Write(largeResponse)
+		_, _ = w.Write(largeResponse)
 	}))
 	defer server.Close()
 

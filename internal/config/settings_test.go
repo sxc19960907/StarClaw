@@ -103,8 +103,12 @@ func TestSettings_LoadSettings_CorruptedFile(t *testing.T) {
 
 	// Write invalid JSON
 	settingsPath := filepath.Join(tmpDir, ".starclaw", "settings.json")
-	os.MkdirAll(filepath.Dir(settingsPath), 0700)
-	os.WriteFile(settingsPath, []byte("not valid json"), 0600)
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settingsPath, []byte("not valid json"), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	// LoadSettings should return an error on parse failure
 	s, err := LoadSettings()

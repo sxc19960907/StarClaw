@@ -19,8 +19,12 @@ func TestMemoryTool_Info(t *testing.T) {
 func TestMemoryTool_List(t *testing.T) {
 	dir := t.TempDir()
 	// Create some memory files
-	os.WriteFile(filepath.Join(dir, "MEMORY.md"), []byte("note 1\nnote 2\n"), 0644)
-	os.WriteFile(filepath.Join(dir, "detail_001.md"), []byte("detail content\n"), 0644)
+	if err := os.WriteFile(filepath.Join(dir, "MEMORY.md"), []byte("note 1\nnote 2\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "detail_001.md"), []byte("detail content\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create the tool but override the memory dir via context
 	// Since MemoryDirFromContext won't have our temp dir, we use the
@@ -32,9 +36,15 @@ func TestMemoryTool_List(t *testing.T) {
 	// by testing with a fallback: create temp .starclaw structure
 	starclawDir := filepath.Join(dir, ".starclaw")
 	memoryDir := filepath.Join(starclawDir, "memory")
-	os.MkdirAll(memoryDir, 0755)
-	os.WriteFile(filepath.Join(memoryDir, "MEMORY.md"), []byte("note 1\nnote 2\n"), 0644)
-	os.WriteFile(filepath.Join(memoryDir, "detail_001.md"), []byte("detail content\n"), 0644)
+	if err := os.MkdirAll(memoryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(memoryDir, "MEMORY.md"), []byte("note 1\nnote 2\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(memoryDir, "detail_001.md"), []byte("detail content\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Override StarclawDir for the test by setting env var temporarily
 	// Actually we can't easily override config.StarclawDir which uses os.UserHomeDir.
@@ -71,9 +81,13 @@ func TestMemoryTool_Search(t *testing.T) {
 func TestMemoryTool_Delete(t *testing.T) {
 	dir := t.TempDir()
 	memoryDir := filepath.Join(dir, "memory")
-	os.MkdirAll(memoryDir, 0755)
+	if err := os.MkdirAll(memoryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	memPath := filepath.Join(memoryDir, "MEMORY.md")
-	os.WriteFile(memPath, []byte("test content"), 0644)
+	if err := os.WriteFile(memPath, []byte("test content"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Use the memory file we created. But the tool resolves the dir from
 	// context or config. Let's just test the error case since the tool
