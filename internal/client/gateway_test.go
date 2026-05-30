@@ -109,7 +109,7 @@ func TestGatewayClientError(t *testing.T) {
 func TestGatewayClientNotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`not found`))
+		_, _ = w.Write([]byte(`not found`))
 	}))
 	defer srv.Close()
 
@@ -133,7 +133,7 @@ func TestGatewayClientNoAPIKey(t *testing.T) {
 			t.Error("expected no X-API-Key header when api key is empty")
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 

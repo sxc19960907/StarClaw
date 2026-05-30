@@ -294,13 +294,17 @@ func TestListSkills(t *testing.T) {
 	// Create skills
 	for _, name := range []string{"zebra", "alpha", "beta"} {
 		skillDir := filepath.Join(tmpDir, name)
-		os.MkdirAll(skillDir, 0755)
+		if err := os.MkdirAll(skillDir, 0755); err != nil {
+			t.Fatal(err)
+		}
 		content := fmt.Sprintf(`---
 name: %s
 description: Skill %s
 ---
 `, name, name)
-		os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0644)
+		if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	metas, err := ListSkills(source)

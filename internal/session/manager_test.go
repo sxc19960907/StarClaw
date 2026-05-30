@@ -383,7 +383,7 @@ func TestManager_ListFavorites_Empty(t *testing.T) {
 	mgr := NewManager(tmpDir)
 
 	mgr.NewSession()
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	favorites := mgr.ListFavorites()
 	assert.Empty(t, favorites)
@@ -410,7 +410,9 @@ func TestManager_ThreadSafety(t *testing.T) {
 				Role:    "user",
 				Content: "Message " + string(rune('0'+n)),
 			})
-			mgr.Save()
+			if err := mgr.Save(); err != nil {
+				t.Errorf("Save failed: %v", err)
+			}
 			mu.Unlock()
 		}(i)
 	}

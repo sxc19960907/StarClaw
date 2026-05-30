@@ -21,7 +21,7 @@ func ollamaTestHandler(t *testing.T, statusCode int, responseBody string) http.H
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
-		w.Write([]byte(responseBody))
+		_, _ = w.Write([]byte(responseBody))
 	}
 }
 
@@ -54,7 +54,7 @@ func TestOllamaClient_Chat_TextResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, _ = w.Write([]byte(`{
 			"id": "chatcmpl-123",
 			"model": "llama3.1",
 			"choices": [{
@@ -260,7 +260,7 @@ func TestOllamaClient_Complete(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, _ = w.Write([]byte(`{
 			"id": "chatcmpl-999",
 			"model": "test-model",
 			"choices": [{

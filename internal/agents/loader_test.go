@@ -212,7 +212,9 @@ func TestListAgents(t *testing.T) {
 func TestListAgents_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	agents, err := ListAgents(agentsDir)
 	if err != nil {
@@ -285,16 +287,30 @@ func TestLoadAgent_CustomCommands(t *testing.T) {
 	agentsDir := filepath.Join(tmpDir, "agents")
 
 	agentDir := filepath.Join(agentsDir, "test-agent")
-	os.MkdirAll(agentDir, 0755)
-	os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Test\n\nTest agent."), 0644)
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Test\n\nTest agent."), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create commands directory
 	commandsDir := filepath.Join(agentDir, "commands")
-	os.MkdirAll(commandsDir, 0755)
-	os.WriteFile(filepath.Join(commandsDir, "deploy.md"), []byte("# Deploy Command\n\nDeploy to production."), 0644)
-	os.WriteFile(filepath.Join(commandsDir, "review.md"), []byte("# Review Command\n\nReview the code."), 0644)
-	os.WriteFile(filepath.Join(commandsDir, "not-a-command.txt"), []byte("ignored"), 0644) // non-.md, should skip
-	os.WriteFile(filepath.Join(commandsDir, "README.md"), []byte("# README\n\nDocumentation."), 0644)
+	if err := os.MkdirAll(commandsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(commandsDir, "deploy.md"), []byte("# Deploy Command\n\nDeploy to production."), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(commandsDir, "review.md"), []byte("# Review Command\n\nReview the code."), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(commandsDir, "not-a-command.txt"), []byte("ignored"), 0644); err != nil { // non-.md, should skip
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(commandsDir, "README.md"), []byte("# README\n\nDocumentation."), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	agent, err := LoadAgent(agentsDir, "test-agent")
 	if err != nil {
@@ -322,8 +338,12 @@ func TestLoadAgent_WithoutOptionalFiles(t *testing.T) {
 	agentsDir := filepath.Join(tmpDir, "agents")
 
 	agentDir := filepath.Join(agentsDir, "minimal")
-	os.MkdirAll(agentDir, 0755)
-	os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Minimal\n\nMinimal agent."), 0644)
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Minimal\n\nMinimal agent."), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	agent, err := LoadAgent(agentsDir, "minimal")
 	if err != nil {
@@ -349,9 +369,15 @@ func TestLoadAgent_BadConfig(t *testing.T) {
 	agentsDir := filepath.Join(tmpDir, "agents")
 
 	agentDir := filepath.Join(agentsDir, "test-agent")
-	os.MkdirAll(agentDir, 0755)
-	os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Test\n\nTest agent."), 0644)
-	os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte("invalid: [yaml: : bad"), 0644)
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Test\n\nTest agent."), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte("invalid: [yaml: : bad"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := LoadAgent(agentsDir, "test-agent")
 	if err == nil {
@@ -362,7 +388,9 @@ func TestLoadAgent_BadConfig(t *testing.T) {
 func TestLoadAgent_AgentNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := LoadAgent(agentsDir, "nonexistent")
 	if err == nil {
@@ -373,13 +401,19 @@ func TestLoadAgent_AgentNotFound(t *testing.T) {
 func TestListAgents_OnlyValidNames(t *testing.T) {
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create an invalid-name agent with valid AGENT.md
 	// It should be skipped by ListAgents
 	invalidDir := filepath.Join(agentsDir, "Invalid!")
-	os.MkdirAll(invalidDir, 0755)
-	os.WriteFile(filepath.Join(invalidDir, "AGENT.md"), []byte("# Invalid"), 0644)
+	if err := os.MkdirAll(invalidDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(invalidDir, "AGENT.md"), []byte("# Invalid"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	agents, err := ListAgents(agentsDir)
 	if err != nil {
