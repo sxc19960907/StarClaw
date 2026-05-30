@@ -3,7 +3,6 @@ package daemon
 import (
 	"encoding/json"
 	"sync"
-	"time"
 	"unicode/utf8"
 
 	"github.com/starclaw/starclaw/internal/agent"
@@ -88,11 +87,6 @@ func (h *BusHandler) emit(eventType string, payload any) {
 		return
 	}
 	h.bus.Publish(Event{Type: eventType, Data: string(data)})
-}
-
-// nowISO returns the current wall time in RFC3339 format.
-func nowISO() string {
-	return time.Now().UTC().Format(time.RFC3339)
 }
 
 // truncateString truncates s to at most max bytes, never slicing mid-rune.

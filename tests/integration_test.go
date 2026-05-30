@@ -225,8 +225,12 @@ func TestAgentMultipleToolCalls(t *testing.T) {
 
 	// Create a test Go file
 	testFile := filepath.Join(tempDir, "test.go")
-	os.WriteFile(testFile, []byte("package main"), 0644)
-	os.Chdir(tempDir)
+	if err := os.WriteFile(testFile, []byte("package main"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Run the agent
 	ctx := context.Background()
@@ -334,7 +338,9 @@ func TestErrorHandling(t *testing.T) {
 func TestToolSecurity(t *testing.T) {
 	// Create temp directory for safe operations
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a test file
 	testFile := filepath.Join(tempDir, "test.txt")
@@ -545,7 +551,7 @@ func TestHTTPToolExecution(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"status": "ok"}`))
+		_, _ = w.Write([]byte(`{"status": "ok"}`))
 	}))
 	defer server.Close()
 

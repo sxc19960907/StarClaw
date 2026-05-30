@@ -10,12 +10,6 @@ import (
 
 const (
 	microCompactMarker = "[micro-compact] "
-
-	// microCompactMinChars is the minimum content length for LLM summarization.
-	microCompactMinChars = 2000
-
-	// microCompactMaxPerPass caps LLM attempts per invocation.
-	microCompactMaxPerPass = 2
 )
 
 // microCompactSkipTools lists tools whose results should never be micro-compacted.

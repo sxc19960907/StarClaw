@@ -17,10 +17,9 @@ import (
 // the global skills directory, unloading previously loaded skills, and
 // listing currently available or loaded skills.
 type SkillTool struct {
-	mu       sync.Mutex
-	skills   []*skills.Skill
-	bundled  []*skills.Skill
-	loaded   map[string]*skills.Skill // name -> skill for loaded skills
+	mu     sync.Mutex
+	skills []*skills.Skill
+	loaded map[string]*skills.Skill // name -> skill for loaded skills
 }
 
 // NewSkillTool creates a new SkillTool and pre-loads all available skills

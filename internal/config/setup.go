@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"syscall"
-
-	"golang.org/x/term"
 )
 
 // SetupWizard runs an interactive configuration wizard
@@ -78,25 +75,6 @@ func SetupWizard() (*Config, error) {
 	fmt.Println("You can now run 'starclaw' to start.")
 
 	return cfg, nil
-}
-
-// readPassword reads a password from terminal without echoing
-func readPassword() (string, error) {
-	// Check if stdin is a terminal
-	if !term.IsTerminal(int(syscall.Stdin)) {
-		// Not a terminal, read normally
-		reader := bufio.NewReader(os.Stdin)
-		return reader.ReadString('\n')
-	}
-
-	// Terminal: use hidden input
-	fd := int(syscall.Stdin)
-	password, err := term.ReadPassword(fd)
-	fmt.Println() // New line after password input
-	if err != nil {
-		return "", err
-	}
-	return string(password), nil
 }
 
 // RunSetup checks if setup is needed and runs the wizard

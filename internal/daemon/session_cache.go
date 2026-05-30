@@ -31,7 +31,6 @@ type SessionCache struct {
 // a done channel that is closed when the run completes.
 type routeEntry struct {
 	mu            sync.Mutex
-	manager       *session.Manager
 	cancel        context.CancelFunc
 	done          chan struct{}
 	cancelPending bool
