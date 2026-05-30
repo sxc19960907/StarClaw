@@ -149,7 +149,9 @@ func TestConcurrentCreates(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			mgr.Create("bot", "0 9 * * *", "task")
+			if _, err := mgr.Create("bot", "0 9 * * *", "task"); err != nil {
+				t.Errorf("Create failed: %v", err)
+			}
 		}()
 	}
 	wg.Wait()

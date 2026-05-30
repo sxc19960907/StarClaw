@@ -256,12 +256,16 @@ func TestLoadSkill(t *testing.T) {
 
 	// Create skill
 	skillDir := filepath.Join(tmpDir, "find-me")
-	os.MkdirAll(skillDir, 0755)
-	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(`---
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(`---
 name: find-me
 description: Found me!
 ---
-`), 0644)
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load specific skill
 	skill, err := LoadSkill("find-me", source)

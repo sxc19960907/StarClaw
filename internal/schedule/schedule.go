@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -282,6 +283,8 @@ func (m *Manager) Sync() (int, error) {
 
 func generateScheduleID() string {
 	b := make([]byte, 4)
-	rand.Read(b)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		panic(fmt.Errorf("generate schedule id randomness: %w", err))
+	}
 	return hex.EncodeToString(b)
 }

@@ -390,7 +390,9 @@ func TestAutoUpdate_HasUpdate(t *testing.T) {
 				{Name: "starclaw_Darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/asset"},
 			},
 		}
-		json.NewEncoder(w).Encode(release)
+		if err := json.NewEncoder(w).Encode(release); err != nil {
+			t.Errorf("encode release: %v", err)
+		}
 	}))
 	defer server.Close()
 

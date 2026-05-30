@@ -141,7 +141,9 @@ func TestLoadInstructions_NonMDSkipped(t *testing.T) {
 
 func TestLoadInstructions_SourceComments(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "instructions.md"), []byte("hello"), 0644)
+	if err := os.WriteFile(filepath.Join(dir, "instructions.md"), []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, _ := LoadInstructions(dir, "", 10000)
 	if !strings.Contains(result, "<!-- from:") {
@@ -154,10 +156,18 @@ func TestLoadInstructions_SourceComments(t *testing.T) {
 
 func TestLoadInstructions_RulesAlphabetical(t *testing.T) {
 	dir := t.TempDir()
-	os.MkdirAll(filepath.Join(dir, "rules"), 0755)
-	os.WriteFile(filepath.Join(dir, "rules", "charlie.md"), []byte("charlie"), 0644)
-	os.WriteFile(filepath.Join(dir, "rules", "alice.md"), []byte("alice"), 0644)
-	os.WriteFile(filepath.Join(dir, "rules", "bob.md"), []byte("bob"), 0644)
+	if err := os.MkdirAll(filepath.Join(dir, "rules"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "rules", "charlie.md"), []byte("charlie"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "rules", "alice.md"), []byte("alice"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "rules", "bob.md"), []byte("bob"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, _ := LoadInstructions(dir, "", 10000)
 	ai := strings.Index(result, "alice")
@@ -171,9 +181,13 @@ func TestLoadInstructions_RulesAlphabetical(t *testing.T) {
 func TestLoadMemory_Exists(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
-	os.MkdirAll(memDir, 0755)
+	if err := os.MkdirAll(memDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	content := strings.Repeat("line\n", 10)
-	os.WriteFile(filepath.Join(memDir, "MEMORY.md"), []byte(content), 0644)
+	if err := os.WriteFile(filepath.Join(memDir, "MEMORY.md"), []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, err := LoadMemory(dir, 5)
 	if err != nil {

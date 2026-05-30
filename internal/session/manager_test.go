@@ -344,7 +344,7 @@ func TestManager_SearchByTag_NoMatch(t *testing.T) {
 
 	sess := mgr.NewSession()
 	sess.Tags = []string{"one"}
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	results := mgr.SearchByTag("nonexistent")
 	assert.Empty(t, results)
