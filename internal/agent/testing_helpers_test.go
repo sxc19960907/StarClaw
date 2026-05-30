@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 )
 
@@ -40,7 +41,7 @@ func TestTestTool(t *testing.T) {
 		t.Error("expected RequiresApproval() = false")
 	}
 
-	result, err := tool.Run(nil, "")
+	result, err := tool.Run(context.Background(), "")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -124,7 +125,7 @@ func TestTestTool_EmptyName(t *testing.T) {
 	if tool.Info().Name != "" {
 		t.Errorf("expected empty name, got %q", tool.Info().Name)
 	}
-	_, err := tool.Run(nil, "")
+	_, err := tool.Run(context.Background(), "")
 	if err != nil {
 		t.Errorf("unexpected error for empty-name tool: %v", err)
 	}

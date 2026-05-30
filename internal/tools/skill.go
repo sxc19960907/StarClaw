@@ -188,7 +188,7 @@ func (t *SkillTool) listSkills(_ context.Context) (agent.ToolResult, error) {
 		sb.WriteString(fmt.Sprintf("    source: %s\n", s.Source))
 	}
 
-	sb.WriteString(fmt.Sprintf("\nUse 'load' to activate a skill, 'unload' to deactivate."))
+	sb.WriteString("\nUse 'load' to activate a skill, 'unload' to deactivate.")
 	return agent.ToolResult{Content: sb.String()}, nil
 }
 

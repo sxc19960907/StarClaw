@@ -93,9 +93,7 @@ func (h *testDeltaHandler) OnDelta(text string) {
 
 func TestDeltaHandlerInterface(t *testing.T) {
 	var handler DeltaHandler = &testDeltaHandler{}
-	if handler == nil {
-		t.Fatal("DeltaHandler should not be nil")
-	}
+	handler.OnDelta("via interface")
 
 	h := &testDeltaHandler{}
 	h.OnDelta("first")

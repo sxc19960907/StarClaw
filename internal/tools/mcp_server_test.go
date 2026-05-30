@@ -417,7 +417,7 @@ func TestMCPServer_EmptyRegistry(t *testing.T) {
 
 	tools := mcpSrv.ListTools()
 	// ListTools returns nil when empty; that's valid - means no tools
-	if tools != nil && len(tools) != 0 {
+	if len(tools) != 0 {
 		t.Errorf("Expected 0 tools for empty registry, got %d", len(tools))
 	}
 

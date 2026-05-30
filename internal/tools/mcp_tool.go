@@ -54,9 +54,7 @@ func (t *MCPTool) Info() agent.ToolInfo {
 	}
 
 	var required []string
-	for _, r := range t.tool.InputSchema.Required {
-		required = append(required, r)
-	}
+	required = append(required, t.tool.InputSchema.Required...)
 
 	return agent.ToolInfo{
 		Name:        name,

@@ -168,17 +168,15 @@ func TestSSEClientEventWithID(t *testing.T) {
 		t.Fatalf("Connect failed: %v", err)
 	}
 
-	for evt := range ch {
-		if evt.ID != "abc123" {
-			t.Errorf("expected ID 'abc123', got %q", evt.ID)
-		}
-		if evt.Type != "status" {
-			t.Errorf("expected Type 'status', got %q", evt.Type)
-		}
-		if evt.Data != "running" {
-			t.Errorf("expected Data 'running', got %q", evt.Data)
-		}
-		break
+	evt := <-ch
+	if evt.ID != "abc123" {
+		t.Errorf("expected ID 'abc123', got %q", evt.ID)
+	}
+	if evt.Type != "status" {
+		t.Errorf("expected Type 'status', got %q", evt.Type)
+	}
+	if evt.Data != "running" {
+		t.Errorf("expected Data 'running', got %q", evt.Data)
 	}
 }
 

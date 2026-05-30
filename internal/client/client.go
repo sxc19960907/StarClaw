@@ -130,12 +130,6 @@ func (c *AnthropicClient) Complete(ctx context.Context, req CompletionRequest) (
 	if maxTokens == 0 {
 		maxTokens = 1000
 	}
-	c.mu.Lock()
-	model := c.model
-	c.mu.Unlock()
-	if req.ModelTier == "small" && model != "" {
-		// Use same model for now; could be made configurable for cost savings
-	}
 
 	var systemPrompt string
 	var userContent string
