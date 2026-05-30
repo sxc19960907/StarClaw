@@ -146,7 +146,9 @@ func TestLoadAgent_MissingAgentFile(t *testing.T) {
 func TestLoadAgent_InvalidName(t *testing.T) {
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := LoadAgent(agentsDir, "Invalid-Name")
 	if err == nil {
@@ -158,24 +160,38 @@ func TestListAgents(t *testing.T) {
 	// Create temp agents directory
 	tmpDir := t.TempDir()
 	agentsDir := filepath.Join(tmpDir, "agents")
-	os.MkdirAll(agentsDir, 0755)
+	if err := os.MkdirAll(agentsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create two test agents
 	for _, name := range []string{"agent-a", "agent-b"} {
 		agentDir := filepath.Join(agentsDir, name)
-		os.MkdirAll(agentDir, 0755)
-		os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# "+name+"\n\nDescription."), 0644)
+		if err := os.MkdirAll(agentDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# "+name+"\n\nDescription."), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Create an incomplete agent (no AGENT.md)
 	incompleteDir := filepath.Join(agentsDir, "incomplete")
-	os.MkdirAll(incompleteDir, 0755)
-	os.WriteFile(filepath.Join(incompleteDir, "README.md"), []byte("not an agent"), 0644)
+	if err := os.MkdirAll(incompleteDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(incompleteDir, "README.md"), []byte("not an agent"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create an invalid agent name
 	invalidDir := filepath.Join(agentsDir, "Invalid-Name")
-	os.MkdirAll(invalidDir, 0755)
-	os.WriteFile(filepath.Join(invalidDir, "AGENT.md"), []byte("# Invalid"), 0644)
+	if err := os.MkdirAll(invalidDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(invalidDir, "AGENT.md"), []byte("# Invalid"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// List agents
 	agents, err := ListAgents(agentsDir)

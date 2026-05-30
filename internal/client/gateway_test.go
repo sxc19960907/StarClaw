@@ -34,7 +34,7 @@ func TestGatewayClientPost(t *testing.T) {
 			t.Errorf("expected X-API-Key header")
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	}))
 	defer srv.Close()
 
@@ -63,7 +63,7 @@ func TestGatewayClientGet(t *testing.T) {
 			t.Errorf("expected X-API-Key header")
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"value":42}`))
+		_, _ = w.Write([]byte(`{"value":42}`))
 	}))
 	defer srv.Close()
 
@@ -85,7 +85,7 @@ func TestGatewayClientGet(t *testing.T) {
 func TestGatewayClientError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"bad request"}`))
+		_, _ = w.Write([]byte(`{"error":"bad request"}`))
 	}))
 	defer srv.Close()
 

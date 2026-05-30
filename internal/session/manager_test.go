@@ -358,16 +358,16 @@ func TestManager_ListFavorites(t *testing.T) {
 	sess1 := mgr.NewSession()
 	sess1.Title = "Fav1"
 	sess1.Favorite = true
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	sess2 := mgr.NewSession()
 	sess2.Title = "NotFav"
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	sess3 := mgr.NewSession()
 	sess3.Title = "Fav2"
 	sess3.Favorite = true
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	// List favorites
 	favorites := mgr.ListFavorites()
