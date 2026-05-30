@@ -163,7 +163,9 @@ func TestResolveLatestSession_ErrRouteActive(t *testing.T) {
 	// Ensure a session exists.
 	mgr := sc.GetOrCreateManager(sessionsDir)
 	mgr.NewSession()
-	mgr.Save()
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
 
 	// Lock the route (simulates an active run).
 	entry := sc.LockRoute("route1")
@@ -477,7 +479,9 @@ func TestNewManager_ResumesExisting(t *testing.T) {
 	mgr1 := newManager(sessionsDir)
 	sess1 := mgr1.Current()
 	sess1.Messages = append(sess1.Messages, client.Message{Role: "user", Content: "existing"})
-	mgr1.Save()
+	if err := mgr1.Save(); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create another manager for the same directory — should resume.
 	mgr2 := newManager(sessionsDir)

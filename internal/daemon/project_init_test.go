@@ -75,7 +75,9 @@ func TestProjectInit_InitProject_PreservesExistingFiles(t *testing.T) {
 
 	// Create the directory with a custom instructions.md
 	starclawDir := filepath.Join(tmpDir, ".starclaw")
-	os.MkdirAll(starclawDir, 0700)
+	if err := os.MkdirAll(starclawDir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	customInstructions := "# Custom project instructions"
 	if err := os.WriteFile(filepath.Join(starclawDir, "instructions.md"), []byte(customInstructions), 0600); err != nil {
 		t.Fatalf("Failed to create custom instructions.md: %v", err)

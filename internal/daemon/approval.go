@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -94,6 +95,8 @@ func (b *ApprovalBroker) Resolve(payload ApprovalResolvedPayload) {
 // NewApprovalRequestID generates a unique ID for an approval request.
 func NewApprovalRequestID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("apr_%d", time.Now().UnixNano())
+	}
 	return "apr_" + hex.EncodeToString(b)
 }

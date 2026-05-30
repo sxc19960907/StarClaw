@@ -26,7 +26,9 @@ func TestSaveAttachment_ValidFile(t *testing.T) {
 	if _, err := part.Write([]byte("hello world")); err != nil {
 		t.Fatal(err)
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	r := httptest.NewRequest(http.MethodPost, "/", body)
 	r.Header.Set("Content-Type", writer.FormDataContentType())
@@ -85,7 +87,9 @@ func TestSaveAttachment_NoFile(t *testing.T) {
 	dir := t.TempDir()
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	r := httptest.NewRequest(http.MethodPost, "/", body)
 	r.Header.Set("Content-Type", writer.FormDataContentType())
@@ -110,7 +114,9 @@ func TestSaveAttachment_SanitisesPath(t *testing.T) {
 	if _, err := part.Write([]byte("data")); err != nil {
 		t.Fatal(err)
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	r := httptest.NewRequest(http.MethodPost, "/", body)
 	r.Header.Set("Content-Type", writer.FormDataContentType())
@@ -166,7 +172,9 @@ func TestListAttachments_MultipleFiles(t *testing.T) {
 	}
 	for name, content := range files {
 		if name == "subdir" {
-			os.MkdirAll(filepath.Join(attachDir, name), 0755)
+			if err := os.MkdirAll(filepath.Join(attachDir, name), 0755); err != nil {
+				t.Fatal(err)
+			}
 			continue
 		}
 		if err := os.WriteFile(filepath.Join(attachDir, name), []byte(content), 0644); err != nil {
@@ -280,7 +288,9 @@ func TestSaveAttachment_BinaryContent(t *testing.T) {
 	if _, err := part.Write(binaryData); err != nil {
 		t.Fatal(err)
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	r := httptest.NewRequest(http.MethodPost, "/", body)
 	r.Header.Set("Content-Type", writer.FormDataContentType())
@@ -311,8 +321,12 @@ func TestSaveAttachment_ConcurrentSessions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		io.WriteString(part, content)
-		writer.Close()
+		if _, err := io.WriteString(part, content); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
 
 		r := httptest.NewRequest(http.MethodPost, "/", body)
 		r.Header.Set("Content-Type", writer.FormDataContentType())

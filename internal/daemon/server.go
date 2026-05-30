@@ -503,11 +503,9 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	var cfg interface{}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		if err := json.Unmarshal(data, &cfg); err != nil {
-			// If JSON parsing fails, return raw content as a string.
-			writeJSON(w, http.StatusOK, map[string]interface{}{"config": string(data)})
-			return
-		}
+		// If JSON parsing fails, return raw content as a string.
+		writeJSON(w, http.StatusOK, map[string]interface{}{"config": string(data)})
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"config": cfg})
 }
@@ -527,7 +525,7 @@ func (s *Server) handlePatchConfig(w http.ResponseWriter, r *http.Request) {
 	data, err := os.ReadFile(s.deps.ConfigPath)
 	var current map[string]interface{}
 	if err == nil {
-		json.Unmarshal(data, &current)
+		_ = json.Unmarshal(data, &current)
 	}
 	if current == nil {
 		current = make(map[string]interface{})
@@ -823,14 +821,14 @@ const maxBodySize = 1 << 20 // 1 MB
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 // writeError writes a JSON error response.
 func writeError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
 // decodeBody reads a JSON request body with a size limit. Returns false and
@@ -856,6 +854,8 @@ func mustJSON(v interface{}) string {
 // generateRequestID creates a unique request identifier.
 func generateRequestID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return "req_" + hex.EncodeToString([]byte(time.Now().Format("150405.000000")))
+	}
 	return "req_" + hex.EncodeToString(b)
 }
