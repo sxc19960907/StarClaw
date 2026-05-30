@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -94,6 +95,9 @@ func TestBrowserTool_NavigateNoURL(t *testing.T) {
 }
 
 func TestBrowserTool_Navigate(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("skipping in CI because opening a real browser requires a desktop environment")
+	}
 	if runtime.GOOS == "darwin" {
 		t.Skip("skipping on macOS — opens real browser window")
 	}
