@@ -70,8 +70,10 @@ func (a *AuditLogger) Log(entry AuditEntry) {
 		return
 	}
 
-	a.file.Write(data)
-	a.file.Write([]byte("\n"))
+	if _, err := a.file.Write(data); err != nil {
+		return
+	}
+	_, _ = a.file.Write([]byte("\n"))
 }
 
 // Close closes the underlying log file

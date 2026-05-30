@@ -142,7 +142,9 @@ func TestConsolidateMemory_NotEnoughFiles(t *testing.T) {
 	// Only 2 auto files — below threshold
 	for i := 0; i < 2; i++ {
 		f := filepath.Join(dir, "auto-2026-01-01-xxxxxx.md")
-		os.WriteFile(f, []byte("- fact"), 0644)
+		if err := os.WriteFile(f, []byte("- fact"), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	err := ConsolidateMemory(context.Background(), nil, dir)
@@ -156,7 +158,9 @@ func TestConsolidateMemory_NilCompleter(t *testing.T) {
 	// 12 files but nil completer — should skip
 	for i := 0; i < 12; i++ {
 		f := filepath.Join(dir, "auto-2026-01-01-xxxxx"+string(rune('a'+i))+".md")
-		os.WriteFile(f, []byte("- fact"), 0644)
+		if err := os.WriteFile(f, []byte("- fact"), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	err := ConsolidateMemory(context.Background(), nil, dir)

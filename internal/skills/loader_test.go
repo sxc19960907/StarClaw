@@ -17,10 +17,10 @@ func TestValidateSkillName(t *testing.T) {
 		{"my_skill", true},
 		{"a", true},
 		{"skill-123", true},
-		{"Skill", false},       // uppercase
-		{"-skill", false},      // starts with hyphen
-		{"", false},            // empty
-		{"skill name", false},  // space
+		{"Skill", false},      // uppercase
+		{"-skill", false},     // starts with hyphen
+		{"", false},           // empty
+		{"skill name", false}, // space
 	}
 
 	for _, tt := range tests {
@@ -60,10 +60,10 @@ allowed-tools: file_read bash
 
 This is the skill body.
 `,
-			wantName:    "test-skill",
-			wantDesc:    "A test skill",
-			wantLicense: "MIT",
-			wantBody:    "# Test Skill\n\nThis is the skill body.",
+			wantName:     "test-skill",
+			wantDesc:     "A test skill",
+			wantLicense:  "MIT",
+			wantBody:     "# Test Skill\n\nThis is the skill body.",
 			wantMetadata: map[string]string{},
 		},
 		{
@@ -130,7 +130,9 @@ func TestLoadSkills(t *testing.T) {
 
 	// Create test skill
 	skillDir := filepath.Join(tmpDir, "test-skill")
-	os.MkdirAll(skillDir, 0755)
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	skillContent := `---
 name: test-skill
@@ -143,7 +145,9 @@ allowed-tools: file_read file_write
 
 You are a test skill.
 `
-	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillContent), 0644)
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load skills
 	skills, err := LoadSkills(source)
@@ -185,28 +189,40 @@ func TestLoadSkills_MultipleSources(t *testing.T) {
 
 	// Create skill in first source
 	skillDir1 := filepath.Join(tmpDir1, "skill-a")
-	os.MkdirAll(skillDir1, 0755)
-	os.WriteFile(filepath.Join(skillDir1, "SKILL.md"), []byte(`---
+	if err := os.MkdirAll(skillDir1, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir1, "SKILL.md"), []byte(`---
 name: skill-a
 description: Skill A
 ---
-`), 0644)
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create skills in second source (including duplicate)
 	skillDir2a := filepath.Join(tmpDir2, "skill-a") // Duplicate
 	skillDir2b := filepath.Join(tmpDir2, "skill-b") // New
-	os.MkdirAll(skillDir2a, 0755)
-	os.MkdirAll(skillDir2b, 0755)
-	os.WriteFile(filepath.Join(skillDir2a, "SKILL.md"), []byte(`---
+	if err := os.MkdirAll(skillDir2a, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(skillDir2b, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir2a, "SKILL.md"), []byte(`---
 name: skill-a
 description: Skill A Override
 ---
-`), 0644)
-	os.WriteFile(filepath.Join(skillDir2b, "SKILL.md"), []byte(`---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir2b, "SKILL.md"), []byte(`---
 name: skill-b
 description: Skill B
 ---
-`), 0644)
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	skills, err := LoadSkills(sources...)
 	if err != nil {

@@ -169,7 +169,9 @@ func BoundedAppend(memoryDir, content string) error {
 	if err := filelock.Exclusive(lockFile); err != nil {
 		return err
 	}
-	defer filelock.Unlock(lockFile)
+	defer func() {
+		_ = filelock.Unlock(lockFile)
+	}()
 
 	existing, _ := os.ReadFile(memoryPath)
 	writeContent := content
@@ -261,7 +263,9 @@ func ConsolidateMemory(ctx context.Context, c Completer, memoryDir string) error
 	if err := filelock.Exclusive(lockFile); err != nil {
 		return fmt.Errorf("consolidate: %w", err)
 	}
-	defer filelock.Unlock(lockFile)
+	defer func() {
+		_ = filelock.Unlock(lockFile)
+	}()
 
 	existing, _ := os.ReadFile(memoryPath)
 	userContent, autoFromMemory := splitMemory(string(existing))
