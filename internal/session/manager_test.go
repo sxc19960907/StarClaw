@@ -317,17 +317,17 @@ func TestManager_SearchByTag(t *testing.T) {
 	sess1 := mgr.NewSession()
 	sess1.Title = "Alpha"
 	sess1.Tags = []string{"important"}
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	sess2 := mgr.NewSession()
 	sess2.Title = "Beta"
 	sess2.Tags = []string{"important"}
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	sess3 := mgr.NewSession()
 	sess3.Title = "Gamma"
 	sess3.Tags = []string{"archived"}
-	mgr.Save()
+	require.NoError(t, mgr.Save())
 
 	// Search by tag
 	results := mgr.SearchByTag("important")

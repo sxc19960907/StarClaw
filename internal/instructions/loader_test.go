@@ -12,15 +12,31 @@ func TestLoadInstructions_Hierarchy(t *testing.T) {
 	globalDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	os.WriteFile(filepath.Join(globalDir, "instructions.md"), []byte("global instructions"), 0644)
-	os.MkdirAll(filepath.Join(globalDir, "rules"), 0755)
-	os.WriteFile(filepath.Join(globalDir, "rules", "alpha.md"), []byte("rule alpha"), 0644)
-	os.WriteFile(filepath.Join(globalDir, "rules", "beta.md"), []byte("rule beta"), 0644)
+	if err := os.WriteFile(filepath.Join(globalDir, "instructions.md"), []byte("global instructions"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(globalDir, "rules"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "rules", "alpha.md"), []byte("rule alpha"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "rules", "beta.md"), []byte("rule beta"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
-	os.WriteFile(filepath.Join(projectDir, "instructions.md"), []byte("project instructions"), 0644)
-	os.MkdirAll(filepath.Join(projectDir, "rules"), 0755)
-	os.WriteFile(filepath.Join(projectDir, "rules", "gamma.md"), []byte("rule gamma"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "instructions.local.md"), []byte("local overrides"), 0644)
+	if err := os.WriteFile(filepath.Join(projectDir, "instructions.md"), []byte("project instructions"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(projectDir, "rules"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "rules", "gamma.md"), []byte("rule gamma"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "instructions.local.md"), []byte("local overrides"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, err := LoadInstructions(globalDir, projectDir, 10000)
 	if err != nil {
@@ -63,8 +79,12 @@ func TestLoadInstructions_Dedup(t *testing.T) {
 	globalDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	os.WriteFile(filepath.Join(globalDir, "instructions.md"), []byte("shared line\nglobal only"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "instructions.md"), []byte("shared line\nproject only"), 0644)
+	if err := os.WriteFile(filepath.Join(globalDir, "instructions.md"), []byte("shared line\nglobal only"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "instructions.md"), []byte("shared line\nproject only"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, err := LoadInstructions(globalDir, projectDir, 10000)
 	if err != nil {
@@ -84,7 +104,9 @@ func TestLoadInstructions_Dedup(t *testing.T) {
 
 func TestLoadInstructions_Truncation(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "instructions.md"), []byte(strings.Repeat("x", 5000)), 0644)
+	if err := os.WriteFile(filepath.Join(dir, "instructions.md"), []byte(strings.Repeat("x", 5000)), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Budget 500 tokens = 2000 chars
 	result, err := LoadInstructions(dir, "", 500)
@@ -98,9 +120,15 @@ func TestLoadInstructions_Truncation(t *testing.T) {
 
 func TestLoadInstructions_NonMDSkipped(t *testing.T) {
 	dir := t.TempDir()
-	os.MkdirAll(filepath.Join(dir, "rules"), 0755)
-	os.WriteFile(filepath.Join(dir, "rules", "valid.md"), []byte("valid"), 0644)
-	os.WriteFile(filepath.Join(dir, "rules", "skip.txt"), []byte("skip"), 0644)
+	if err := os.MkdirAll(filepath.Join(dir, "rules"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "rules", "valid.md"), []byte("valid"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "rules", "skip.txt"), []byte("skip"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, _ := LoadInstructions(dir, "", 10000)
 	if !strings.Contains(result, "valid") {

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -218,7 +219,9 @@ func (m *Manager) Export(sessionID string, format string) (string, error) {
 func generateSessionID() string {
 	now := time.Now().UTC()
 	random := make([]byte, 4)
-	rand.Read(random)
+	if _, err := io.ReadFull(rand.Reader, random); err != nil {
+		panic(fmt.Errorf("generate session id randomness: %w", err))
+	}
 
 	return fmt.Sprintf("%s-%s",
 		now.Format("2006-01-02-15-04-05"),
