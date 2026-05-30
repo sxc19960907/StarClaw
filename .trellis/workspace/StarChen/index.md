@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 36
+- **Total Sessions**: 37
 - **Last Active**: 2026-05-30
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1198 | Active |
+| `journal-1.md` | ~1248 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 37 | 2026-05-30 | Fix CI lint and test failures | `37dea55`, `fc38896`, `715bf6e`, `32eff90`, `f0d88e3`, `011b828`, `65f1ace`, `493b875`, `47aa476`, `e8212bd`, `1c66d35`, `780c5b4`, `84d383c`, `9a09c8d`, `8979d79`, `98e4535`, `2669470`, `319cd94` | `main` |
 | 36 | 2026-05-30 | Automatic update installation | `74e6492` | `main` |
 | 35 | 2026-05-29 | Release v0.2.1 | `85c677e`, `ba6e470`, `22000eb` | `main` |
 | 34 | 2026-05-29 | Prepare v0.2.1 release docs | `2ea2004` | `main` |

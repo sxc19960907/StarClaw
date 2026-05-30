@@ -1196,3 +1196,53 @@ Implemented release asset installation for starclaw update with exact platform a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 37: Fix CI lint and test failures
+
+**Date**: 2026-05-30
+**Task**: Fix CI lint and test failures
+**Branch**: `main`
+
+### Summary
+
+Restored GitHub Actions CI by building golangci-lint with the module Go toolchain, then resolving lint/test failures exposed by the stricter CI run. Final CI run 26670522902 passed tidy, vet, lint, build, and test.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `37dea55` | (see git log) |
+| `fc38896` | (see git log) |
+| `715bf6e` | (see git log) |
+| `32eff90` | (see git log) |
+| `f0d88e3` | (see git log) |
+| `011b828` | (see git log) |
+| `65f1ace` | (see git log) |
+| `493b875` | (see git log) |
+| `47aa476` | (see git log) |
+| `e8212bd` | (see git log) |
+| `1c66d35` | (see git log) |
+| `780c5b4` | (see git log) |
+| `84d383c` | (see git log) |
+| `9a09c8d` | (see git log) |
+| `8979d79` | (see git log) |
+| `98e4535` | (see git log) |
+| `2669470` | (see git log) |
+| `319cd94` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
