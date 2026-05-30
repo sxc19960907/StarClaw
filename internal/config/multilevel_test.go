@@ -12,13 +12,17 @@ func TestLoadMultiLevel_GlobalOnly(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 
 	globalDir := filepath.Join(tmpDir, ".starclaw")
-	os.MkdirAll(globalDir, 0700)
-	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
 endpoint: "https://custom.api.com"
 api_key: "test-key"
 agent:
   max_iterations: 50
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, source, err := LoadMultiLevel()
 	if err != nil {
@@ -45,27 +49,42 @@ func TestLoadMultiLevel_ProjectOverride(t *testing.T) {
 
 	// Global config
 	globalDir := filepath.Join(tmpDir, ".starclaw")
-	os.MkdirAll(globalDir, 0700)
-	os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
 endpoint: "https://global.api.com"
 api_key: "global-key"
 agent:
   max_iterations: 25
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	// Project config in cwd
 	projectDir := filepath.Join(tmpDir, "project", ".starclaw")
-	os.MkdirAll(projectDir, 0700)
-	os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
+	if err := os.MkdirAll(projectDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
 agent:
   max_iterations: 100
   model: "claude-opus"
-`), 0600)
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	// Change to project dir
-	origDir, _ := os.Getwd()
-	os.Chdir(filepath.Join(tmpDir, "project"))
-	defer os.Chdir(origDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(filepath.Join(tmpDir, "project")); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
 
 	cfg, source, err := LoadMultiLevel()
 	if err != nil {

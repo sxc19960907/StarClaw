@@ -142,8 +142,12 @@ func Load() (*Config, error) {
 	viper.SetDefault("update.cache_ttl", "24h")
 
 	// Bind environment variables
-	viper.BindEnv("openai_api_key", "OPENAI_API_KEY")
-	viper.BindEnv("openai_endpoint", "OPENAI_BASE_URL")
+	if err := viper.BindEnv("openai_api_key", "OPENAI_API_KEY"); err != nil {
+		return nil, fmt.Errorf("bind OPENAI_API_KEY: %w", err)
+	}
+	if err := viper.BindEnv("openai_endpoint", "OPENAI_BASE_URL"); err != nil {
+		return nil, fmt.Errorf("bind OPENAI_BASE_URL: %w", err)
+	}
 
 	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
