@@ -213,9 +213,9 @@ func (t *ProcessTool) startProcess(_ context.Context, args processArgs) (agent.T
 	go func() {
 		defer close(sp.done)
 		timer := time.AfterFunc(timeout, func() {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		})
-		cmd.Wait()
+		_ = cmd.Wait()
 		timer.Stop()
 		t.mu.Lock()
 		delete(t.spawned, pid)

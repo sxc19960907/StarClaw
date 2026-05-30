@@ -76,8 +76,13 @@ func TestScreenshotTool_UnsafePathValidatedBeforePlatform(t *testing.T) {
 	if err := os.MkdirAll(outside, 0755); err != nil {
 		t.Fatalf("mkdir outside: %v", err)
 	}
-	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Chdir(cwd)
+	}()
 	if err := os.Chdir(project); err != nil {
 		t.Fatalf("chdir project: %v", err)
 	}

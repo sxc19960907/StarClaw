@@ -77,8 +77,16 @@ func TestScheduleTool_List(t *testing.T) {
 	createTool := tools[0]
 	listTool := tools[1]
 
-	createTool.Run(context.Background(), `{"cron":"0 9 * * *","prompt":"task one"}`)
-	createTool.Run(context.Background(), `{"cron":"30 */2 * * *","prompt":"task two"}`)
+	if result, err := createTool.Run(context.Background(), `{"cron":"0 9 * * *","prompt":"task one"}`); err != nil {
+		t.Fatalf("Create task one: %v", err)
+	} else if result.IsError {
+		t.Fatalf("Create task one returned error: %s", result.Content)
+	}
+	if result, err := createTool.Run(context.Background(), `{"cron":"30 */2 * * *","prompt":"task two"}`); err != nil {
+		t.Fatalf("Create task two: %v", err)
+	} else if result.IsError {
+		t.Fatalf("Create task two returned error: %s", result.Content)
+	}
 
 	result, err := listTool.Run(context.Background(), `{}`)
 	if err != nil {

@@ -142,7 +142,9 @@ func runChat(cfg *config.Config, query string) error {
 		}
 		agentOverride = ag
 		// Ensure agent sessions directory exists
-		os.MkdirAll(filepath.Join(agentsDir, agentName, "sessions"), 0700)
+		if err := os.MkdirAll(filepath.Join(agentsDir, agentName, "sessions"), 0700); err != nil {
+			return fmt.Errorf("create agent sessions dir: %w", err)
+		}
 		// Apply agent config overrides
 		cfg = config.MergeAgentConfig(cfg, ag)
 	}
@@ -561,7 +563,9 @@ var interactiveCmd = &cobra.Command{
 				return fmt.Errorf("agent %q: %w", agentName, err)
 			}
 			agentOverride = ag
-			os.MkdirAll(filepath.Join(agentsDir, agentName, "sessions"), 0700)
+			if err := os.MkdirAll(filepath.Join(agentsDir, agentName, "sessions"), 0700); err != nil {
+				return fmt.Errorf("create agent sessions dir: %w", err)
+			}
 			cfg = config.MergeAgentConfig(cfg, ag)
 		}
 

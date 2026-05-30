@@ -139,9 +139,15 @@ func TestToolCall_Glob(t *testing.T) {
 
 	// Create some test files
 	tempDir := t.TempDir()
-	os.WriteFile(filepath.Join(tempDir, "test1.go"), []byte("package main"), 0644)
-	os.WriteFile(filepath.Join(tempDir, "test2.go"), []byte("package main"), 0644)
-	os.WriteFile(filepath.Join(tempDir, "readme.md"), []byte("# README"), 0644)
+	if err := os.WriteFile(filepath.Join(tempDir, "test1.go"), []byte("package main"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tempDir, "test2.go"), []byte("package main"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tempDir, "readme.md"), []byte("# README"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
@@ -322,7 +328,9 @@ func TestMultiToolChain(t *testing.T) {
 	// Create test environment
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "numbers.txt")
-	os.WriteFile(testFile, []byte("1\n2\n3\n4\n5\n"), 0644)
+	if err := os.WriteFile(testFile, []byte("1\n2\n3\n4\n5\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
