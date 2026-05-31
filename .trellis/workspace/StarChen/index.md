@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 39
+- **Total Sessions**: 40
 - **Last Active**: 2026-05-31
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1316 | Active |
+| `journal-1.md` | ~1349 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 40 | 2026-05-31 | Validate named agent skill workflow | `53bc6ba` | `main` |
 | 39 | 2026-05-31 | Validate real agent workflow | `39c5d37`, `0667877` | `main` |
 | 38 | 2026-05-31 | Validate general agent CLI usability | `c46b37b`, `cdb9be8` | `main` |
 | 37 | 2026-05-30 | Fix CI lint and test failures | `37dea55`, `fc38896`, `715bf6e`, `32eff90`, `f0d88e3`, `011b828`, `65f1ace`, `493b875`, `47aa476`, `e8212bd`, `1c66d35`, `780c5b4`, `84d383c`, `9a09c8d`, `8979d79`, `98e4535`, `2669470`, `319cd94` | `main` |

@@ -1314,3 +1314,36 @@ Added deterministic integration coverage for a realistic local multi-tool AgentL
 ### Next Steps
 
 - None - task complete
+
+
+## Session 40: Validate named agent skill workflow
+
+**Date**: 2026-05-31
+**Task**: Validate named agent skill workflow
+**Branch**: `main`
+
+### Summary
+
+Validated named agent plus skills workflow. Added runtime tool-filter propagation for agent configs, deterministic coverage for named agent loading, agent-scoped sessions, prompt memory injection, use_skill activation, and skill list/load/unload. Local go test ./... and go vet ./... passed; GitHub Actions run 26702347852 passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `53bc6ba` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
