@@ -33,7 +33,7 @@ After the CLI smoke validation, this task verifies the actual agent runtime path
 - [x] The test verifies session data is persisted and resumable.
 - [x] `go test ./...` passes locally.
 - [x] `go vet ./...` passes locally.
-- [ ] CI passes after push.
+- [x] CI passes after push.
 
 ## Validation Results
 

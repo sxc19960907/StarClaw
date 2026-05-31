@@ -7,7 +7,7 @@
 - [x] Run targeted tests.
 - [x] Run `go test ./...`.
 - [x] Run `go vet ./...`.
-- [ ] Push and verify CI.
+- [x] Push and verify CI.
 
 ## Validation Commands
 
