@@ -1446,3 +1446,36 @@ Implemented the daemon-hosted Codex-style Web UI at /app/, including embedded as
 ### Next Steps
 
 - None - task complete
+
+
+## Session 44: GUI Tool Approvals
+
+**Date**: 2026-06-01
+**Task**: GUI Tool Approvals
+**Branch**: `main`
+
+### Summary
+
+Implemented daemon/Web UI tool approval flow: agent approval requester, daemon broker/event adapter, approval_needed and approval_resolved events, Web UI approval cards, allow/deny decisions, backend tests, and permissions spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `41ff6ab` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

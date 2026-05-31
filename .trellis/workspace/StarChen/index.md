@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 43
+- **Total Sessions**: 44
 - **Last Active**: 2026-06-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1448 | Active |
+| `journal-1.md` | ~1481 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 44 | 2026-06-01 | GUI Tool Approvals | `41ff6ab` | `main` |
 | 43 | 2026-06-01 | Daemon Web GUI | `661c24b` | `main` |
 | 42 | 2026-05-31 | Align daemon named agent runtime | `c259898` | `main` |
 | 41 | 2026-05-31 | Validate daemon API smoke workflow | `c253d7a` | `main` |
