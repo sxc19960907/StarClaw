@@ -11,7 +11,7 @@
 - [x] Run `go test ./...`.
 - [x] Run `go vet ./...`.
 - [x] Run the new smoke validation script.
-- [ ] Push changes and verify GitHub Actions CI.
+- [x] Push changes and verify GitHub Actions CI.
 
 ## Validation Commands
 

@@ -35,7 +35,7 @@ A user should be able to install/build StarClaw, inspect the CLI, run common non
 - [x] Any blocking bugs found by the validation are fixed or explicitly documented if out of scope.
 - [x] `go test ./...` passes locally.
 - [x] `go vet ./...` passes locally.
-- [ ] CI remains green after the changes are pushed.
+- [x] CI remains green after the changes are pushed.
 - [x] Results are summarized so the next development priority is clear.
 
 ## Validation Results
