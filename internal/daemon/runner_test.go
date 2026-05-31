@@ -4,10 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/config"
 )
 
 // mockLLMClient implements client.LLMClient for testing.
@@ -26,13 +29,44 @@ func (m *mockLLMClient) Chat(_ context.Context, systemPrompt string, messages []
 	}, nil
 }
 
+type captureLLMClient struct {
+	mu           sync.Mutex
+	systemPrompt string
+	tools        []client.ToolDef
+	maxTokens    int
+	opts         *client.ChatOptions
+}
+
+func (c *captureLLMClient) Chat(_ context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.systemPrompt = systemPrompt
+	c.tools = append([]client.ToolDef(nil), tools...)
+	c.maxTokens = maxTokens
+	if opts != nil {
+		copied := *opts
+		c.opts = &copied
+	}
+	return &client.Response{Content: "captured"}, nil
+}
+
+func (c *captureLLMClient) toolNames() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	names := make([]string, 0, len(c.tools))
+	for _, tool := range c.tools {
+		names = append(names, tool.Name)
+	}
+	return names
+}
+
 // mockHandler implements agent.EventHandler for testing.
 type mockHandler struct {
-	t          *testing.T
-	toolCalls  int
+	t           *testing.T
+	toolCalls   int
 	toolResults int
-	texts      int
-	usages     int
+	texts       int
+	usages      int
 }
 
 func (h *mockHandler) OnToolCall(name string, args string) {
@@ -156,6 +190,116 @@ func TestRunAgent_NamedAgent(t *testing.T) {
 	sessionFile := filepath.Join(deps.StarclawDir, "sessions", "helper", resp.SessionID+".json")
 	if _, err := os.Stat(sessionFile); err != nil {
 		t.Errorf("expected session file at %s: %v", sessionFile, err)
+	}
+}
+
+func TestRunAgent_NamedAgentRuntimeParity(t *testing.T) {
+	ctx := context.Background()
+
+	agentsDir := t.TempDir()
+	agentDir := filepath.Join(agentsDir, "helper")
+	if err := os.MkdirAll(agentDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("You are a daemon helper."), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "MEMORY.md"), []byte("Remember daemon parity memory."), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte(`agent:
+  model: daemon-agent-model
+  max_iterations: 3
+  max_tokens: 1234
+  thinking: true
+  thinking_mode: enabled
+  thinking_budget: 222
+  reasoning_effort: high
+tools:
+  allow:
+    - allowed_tool
+    - denied_tool
+  deny:
+    - denied_tool
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	registry := agent.NewToolRegistry()
+	registry.Register(agent.TestTool("allowed_tool"))
+	registry.Register(agent.TestTool("denied_tool"))
+	registry.Register(agent.TestTool("other_tool"))
+
+	llmClient := &captureLLMClient{}
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		Config: &config.Config{
+			Agent: config.AgentConfig{
+				MaxIterations:   25,
+				MaxTokens:       8192,
+				Thinking:        false,
+				ThinkingMode:    "adaptive",
+				ThinkingBudget:  10000,
+				ReasoningEffort: "",
+				Model:           "global-model",
+			},
+			Tools: config.ToolsConfig{
+				ResultTruncation: 30000,
+			},
+		},
+		AgentsDir: agentsDir,
+		LLMClient: llmClient,
+		Registry:  registry,
+	}
+
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "hello", Agent: "helper"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.Error != "" {
+		t.Fatalf("expected no response error, got %q", resp.Error)
+	}
+	if resp.Messages[0] != "captured" {
+		t.Fatalf("message = %q, want captured", resp.Messages[0])
+	}
+
+	if llmClient.systemPrompt == "" {
+		t.Fatal("expected system prompt to be captured")
+	}
+	if !strings.Contains(llmClient.systemPrompt, "You are a daemon helper.") {
+		t.Fatalf("system prompt missing agent prompt: %q", llmClient.systemPrompt)
+	}
+	if !strings.Contains(llmClient.systemPrompt, "<agent_memory>") ||
+		!strings.Contains(llmClient.systemPrompt, "Remember daemon parity memory.") {
+		t.Fatalf("system prompt missing agent memory: %q", llmClient.systemPrompt)
+	}
+	if llmClient.maxTokens != 1234 {
+		t.Fatalf("maxTokens = %d, want 1234", llmClient.maxTokens)
+	}
+	if llmClient.opts == nil {
+		t.Fatal("expected chat options")
+	}
+	if llmClient.opts.SpecificModel != "daemon-agent-model" {
+		t.Fatalf("SpecificModel = %q, want daemon-agent-model", llmClient.opts.SpecificModel)
+	}
+	if llmClient.opts.ReasoningEffort != "high" {
+		t.Fatalf("ReasoningEffort = %q, want high", llmClient.opts.ReasoningEffort)
+	}
+	if llmClient.opts.Thinking == nil ||
+		llmClient.opts.Thinking.Type != "enabled" ||
+		llmClient.opts.Thinking.BudgetTokens != 222 {
+		t.Fatalf("Thinking opts = %#v, want enabled/222", llmClient.opts.Thinking)
+	}
+
+	names := llmClient.toolNames()
+	if len(names) != 1 || names[0] != "allowed_tool" {
+		t.Fatalf("tools = %#v, want [allowed_tool]", names)
+	}
+	if _, ok := deps.Registry.Get("denied_tool"); !ok {
+		t.Fatal("base registry should not be mutated")
+	}
+	if _, ok := deps.Registry.Get("other_tool"); !ok {
+		t.Fatal("base registry should keep tools excluded from per-run filter")
 	}
 }
 

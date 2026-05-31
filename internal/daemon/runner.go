@@ -9,6 +9,7 @@ import (
 
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/agents"
+	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/session"
 )
 
@@ -43,6 +44,8 @@ func RunAgent(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handle
 			return RunAgentResponse{}, fmt.Errorf("failed to load agent %q: %w", agentName, err)
 		}
 	}
+	effectiveCfg := effectiveRunConfig(deps, agentCfg)
+	registry := filteredRegistry(deps.Registry, effectiveCfg.Tools)
 
 	// --- Session setup ---
 	sessionsDir := sessionsDirFor(deps, agentName)
@@ -80,19 +83,26 @@ func RunAgent(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handle
 		sess.Title = "Agent: " + agentName
 	}
 
-	// --- Build system prompt ---
-	systemPrompt := ""
-	if agentCfg != nil && agentCfg.Prompt != "" {
-		systemPrompt = agentCfg.Prompt
-	}
-
 	// --- Create and configure agent loop ---
-	loop := agent.NewAgentLoop(deps.LLMClient, deps.Registry)
-	if systemPrompt != "" {
-		loop.SetSystemPrompt(systemPrompt)
-	}
+	loop := agent.NewAgentLoop(deps.LLMClient, registry)
+	loop.SetMaxIterations(effectiveCfg.Agent.MaxIterations)
+	loop.SetMaxTokens(effectiveCfg.Agent.MaxTokens)
+	loop.SetResultTruncation(effectiveCfg.Tools.ResultTruncation)
+	loop.SetConfigDir(deps.StarclawDir)
+	loop.SetContextWindow(effectiveCfg.Agent.ContextWindow)
+	loop.SetPermissions(effectiveCfg.Permissions)
+	loop.SetThinking(agent.ThinkingConfigFromAgent(effectiveCfg.Agent))
+	loop.SetReasoningEffort(effectiveCfg.Agent.ReasoningEffort)
+	loop.SetSpecificModel(effectiveCfg.Agent.Model)
 	loop.SetSession(sess)
 	loop.SetSessionManager(sessMgr)
+	if agentCfg != nil {
+		agentDir := filepath.Join(deps.AgentsDir, agentName)
+		loop.SwitchAgent(agentCfg.Prompt, agentDir)
+		if agentCfg.Memory != "" {
+			loop.SetMemory(agentCfg.Memory)
+		}
+	}
 	if handler != nil {
 		loop.SetEventHandler(handler)
 	}
@@ -126,6 +136,42 @@ func RunAgent(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handle
 	}
 
 	return response, nil
+}
+
+func effectiveRunConfig(deps *ServerDeps, agentCfg *agents.Agent) *config.Config {
+	var base *config.Config
+	if deps.Config != nil {
+		base = deps.Config
+	} else {
+		base = defaultRunConfig()
+	}
+	if agentCfg != nil {
+		return config.MergeAgentConfig(base, agentCfg)
+	}
+	return base
+}
+
+func defaultRunConfig() *config.Config {
+	return &config.Config{
+		Agent: config.AgentConfig{
+			MaxIterations: 25,
+			MaxTokens:     8192,
+		},
+		Tools: config.ToolsConfig{
+			ResultTruncation: 30000,
+		},
+	}
+}
+
+func filteredRegistry(registry *agent.ToolRegistry, cfg config.ToolsConfig) *agent.ToolRegistry {
+	filtered := registry.Clone()
+	if len(cfg.Allowed) > 0 {
+		filtered = filtered.FilterByAllow(cfg.Allowed)
+	}
+	if len(cfg.Denied) > 0 {
+		filtered = filtered.FilterByDeny(cfg.Denied)
+	}
+	return filtered
 }
 
 // sessionsDirFor returns the directory for session storage under the given

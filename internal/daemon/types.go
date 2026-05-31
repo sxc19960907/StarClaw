@@ -3,6 +3,7 @@ package daemon
 import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/schedule"
 )
 
@@ -15,15 +16,15 @@ const (
 
 // RunAgentRequest is a request to execute an agent.
 type RunAgentRequest struct {
-	Text       string   `json:"text"`
-	Agent      string   `json:"agent,omitempty"`
-	Source     string   `json:"source,omitempty"`
-	Channel    string   `json:"channel,omitempty"`
-	Sender     string   `json:"sender,omitempty"`
-	NewSession bool     `json:"new_session,omitempty"`
-	SessionID  string   `json:"session_id,omitempty"`
-	Model      string   `json:"model,omitempty"`
-	RequestID  string   `json:"request_id,omitempty"`
+	Text        string   `json:"text"`
+	Agent       string   `json:"agent,omitempty"`
+	Source      string   `json:"source,omitempty"`
+	Channel     string   `json:"channel,omitempty"`
+	Sender      string   `json:"sender,omitempty"`
+	NewSession  bool     `json:"new_session,omitempty"`
+	SessionID   string   `json:"session_id,omitempty"`
+	Model       string   `json:"model,omitempty"`
+	RequestID   string   `json:"request_id,omitempty"`
 	Attachments []string `json:"attachments,omitempty"`
 }
 
@@ -37,14 +38,15 @@ type RunAgentResponse struct {
 
 // ServerDeps aggregates all dependencies the daemon server needs.
 type ServerDeps struct {
-	StarclawDir      string
-	ConfigPath       string
-	AgentsDir        string
-	SkillsDir        string
-	InstructionsDir  string
-	LLMClient        client.LLMClient
-	Registry         *agent.ToolRegistry
-	ScheduleManager  *schedule.Manager
+	StarclawDir     string
+	ConfigPath      string
+	Config          *config.Config
+	AgentsDir       string
+	SkillsDir       string
+	InstructionsDir string
+	LLMClient       client.LLMClient
+	Registry        *agent.ToolRegistry
+	ScheduleManager *schedule.Manager
 }
 
 // ApprovalDecision represents the user's response to a tool approval request.

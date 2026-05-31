@@ -3,6 +3,8 @@ package daemon
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/starclaw/starclaw/internal/config"
 )
 
 func TestChannelConstants(t *testing.T) {
@@ -115,18 +117,23 @@ func TestServerDepsDefaults(t *testing.T) {
 }
 
 func TestServerDepsFields(t *testing.T) {
+	cfg := &config.Config{}
 	deps := ServerDeps{
-		StarclawDir:      "/home/user/.starclaw",
-		ConfigPath:       "/home/user/.starclaw/config.yaml",
-		AgentsDir:        "/home/user/.starclaw/agents",
-		SkillsDir:        "/home/user/.starclaw/skills",
-		InstructionsDir:  "/home/user/.starclaw/instructions",
+		StarclawDir:     "/home/user/.starclaw",
+		ConfigPath:      "/home/user/.starclaw/config.yaml",
+		Config:          cfg,
+		AgentsDir:       "/home/user/.starclaw/agents",
+		SkillsDir:       "/home/user/.starclaw/skills",
+		InstructionsDir: "/home/user/.starclaw/instructions",
 	}
 	if deps.StarclawDir != "/home/user/.starclaw" {
 		t.Errorf("StarclawDir = %q", deps.StarclawDir)
 	}
 	if deps.ConfigPath != "/home/user/.starclaw/config.yaml" {
 		t.Errorf("ConfigPath = %q", deps.ConfigPath)
+	}
+	if deps.Config != cfg {
+		t.Error("Config should keep the provided pointer")
 	}
 	if deps.AgentsDir != "/home/user/.starclaw/agents" {
 		t.Errorf("AgentsDir = %q", deps.AgentsDir)

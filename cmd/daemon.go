@@ -61,14 +61,15 @@ var daemonStartCmd = &cobra.Command{
 		}()
 
 		deps := &daemon.ServerDeps{
-			StarclawDir:      starclawDir,
-			ConfigPath:       filepath.Join(starclawDir, "config.yaml"),
-			AgentsDir:        agentsDir,
-			SkillsDir:        skillsDir,
-			InstructionsDir:  instructionsDir,
-			LLMClient:        llmClient,
-			Registry:         registry,
-			ScheduleManager:  scheduleMgr,
+			StarclawDir:     starclawDir,
+			ConfigPath:      filepath.Join(starclawDir, "config.yaml"),
+			Config:          cfg,
+			AgentsDir:       agentsDir,
+			SkillsDir:       skillsDir,
+			InstructionsDir: instructionsDir,
+			LLMClient:       llmClient,
+			Registry:        registry,
+			ScheduleManager: scheduleMgr,
 		}
 
 		// Start cron scheduler.
@@ -122,9 +123,9 @@ var daemonStatusCmd = &cobra.Command{
 		defer resp.Body.Close()
 
 		var status struct {
-			Uptime      int    `json:"uptime"`
-			Version     string `json:"version"`
-			ActiveAgents int   `json:"active_agents"`
+			Uptime       int    `json:"uptime"`
+			Version      string `json:"version"`
+			ActiveAgents int    `json:"active_agents"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
 			return fmt.Errorf("daemon: failed to parse status: %w", err)
