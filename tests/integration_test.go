@@ -17,6 +17,7 @@ import (
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/tools"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -191,6 +192,11 @@ func TestAgentToolExecution(t *testing.T) {
 func TestAgentMultipleToolCalls(t *testing.T) {
 	// Create temp directory
 	tempDir := t.TempDir()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(cwd))
+	})
 
 	// Create mock client that returns multiple tool calls
 	mockClient := client.NewMockClient()
@@ -242,6 +248,100 @@ func TestAgentMultipleToolCalls(t *testing.T) {
 	if resp.Content != "Found the files" {
 		t.Errorf("Expected 'Found the files', got: %s", resp.Content)
 	}
+}
+
+// TestAgentRealisticLocalWorkflow validates a deterministic multi-tool agent
+// workflow without requiring live provider credentials.
+func TestAgentRealisticLocalWorkflow(t *testing.T) {
+	tempDir := t.TempDir()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	t.Cleanup(func() {
+		_ = os.Chdir(cwd)
+	})
+
+	inputPath := filepath.Join(tempDir, "input.txt")
+	outputPath := filepath.Join(tempDir, "summary.txt")
+	require.NoError(t, os.WriteFile(inputPath, []byte("alpha\nbeta\nneedle\n"), 0644))
+
+	mockClient := client.NewMockClient()
+	callCount := 0
+	mockClient.SetHandler(func(input string) *client.MockMessage {
+		callCount++
+		switch callCount {
+		case 1:
+			return &client.MockMessage{ToolCalls: []client.MockToolCall{{
+				ID:   "call_read",
+				Name: "file_read",
+				Args: fmt.Sprintf(`{"path":%q}`, inputPath),
+			}}}
+		case 2:
+			return &client.MockMessage{ToolCalls: []client.MockToolCall{{
+				ID:   "call_grep",
+				Name: "grep",
+				Args: fmt.Sprintf(`{"pattern":"needle","path":%q}`, tempDir),
+			}}}
+		case 3:
+			return &client.MockMessage{ToolCalls: []client.MockToolCall{{
+				ID:   "call_write",
+				Name: "file_write",
+				Args: fmt.Sprintf(`{"path":%q,"content":"status: draft\nfound: needle\n"}`, outputPath),
+			}}}
+		case 4:
+			return &client.MockMessage{ToolCalls: []client.MockToolCall{{
+				ID:   "call_edit",
+				Name: "file_edit",
+				Args: fmt.Sprintf(`{"path":%q,"old_string":"status: draft","new_string":"status: complete"}`, outputPath),
+			}}}
+		case 5:
+			return &client.MockMessage{ToolCalls: []client.MockToolCall{{
+				ID:   "call_bash",
+				Name: "bash",
+				Args: fmt.Sprintf(`{"command":"cat %s"}`, outputPath),
+			}}}
+		default:
+			return &client.MockMessage{
+				Role:    "assistant",
+				Content: "Workflow complete: summary.txt contains status complete and found needle.",
+			}
+		}
+	})
+
+	sessionDir := filepath.Join(tempDir, "sessions")
+	sessionMgr := session.NewManager(sessionDir)
+	sess := sessionMgr.NewSession()
+
+	registry := tools.RegisterLocalTools()
+	loop := agent.NewAgentLoop(mockClient, registry)
+	loop.SetMaxIterations(10)
+	loop.SetSession(sess)
+	loop.SetSessionManager(sessionMgr)
+
+	events := &recordingEventHandler{}
+	loop.SetEventHandler(events)
+
+	resp, err := loop.Run(context.Background(), "Read input.txt, find needle, write summary, edit status, and verify it.")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Content, "Workflow complete")
+
+	output, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	require.Contains(t, string(output), "status: complete")
+	require.Contains(t, string(output), "found: needle")
+
+	require.Equal(t, []string{"file_read", "grep", "file_write", "file_edit", "bash"}, events.toolCalls)
+	require.Contains(t, events.toolResults["file_read"], "needle")
+	require.Contains(t, events.toolResults["grep"], "needle")
+	require.Contains(t, events.toolResults["file_write"], "File created")
+	require.Contains(t, events.toolResults["file_edit"], "File edited")
+	require.Contains(t, events.toolResults["bash"], "status: complete")
+
+	resumed, err := session.NewManager(sessionDir).Resume(sess.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, resumed.Messages)
+	require.Contains(t, resumed.Messages[0].Content, "Read input.txt")
 }
 
 // TestErrorHandling tests error handling paths
@@ -614,6 +714,33 @@ func (h *testEventHandler) OnStreamDelta(delta string) {
 func (h *testEventHandler) OnPreamble(preamble string) {
 	// No-op for integration tests
 }
+
+type recordingEventHandler struct {
+	toolCalls   []string
+	toolResults map[string]string
+}
+
+func (h *recordingEventHandler) OnToolCall(name string, args string) {
+	h.toolCalls = append(h.toolCalls, name)
+	if h.toolResults == nil {
+		h.toolResults = make(map[string]string)
+	}
+}
+
+func (h *recordingEventHandler) OnToolResult(name string, result agent.ToolResult) {
+	if h.toolResults == nil {
+		h.toolResults = make(map[string]string)
+	}
+	h.toolResults[name] = result.Content
+}
+
+func (h *recordingEventHandler) OnText(text string) {}
+
+func (h *recordingEventHandler) OnUsage(usage client.Usage) {}
+
+func (h *recordingEventHandler) OnStreamDelta(delta string) {}
+
+func (h *recordingEventHandler) OnPreamble(preamble string) {}
 
 // TestAuditLoggingIntegration tests that tool calls are logged to audit file
 func TestAuditLoggingIntegration(t *testing.T) {
