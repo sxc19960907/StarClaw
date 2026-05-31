@@ -45,5 +45,15 @@ func MergeAgentConfig(global *Config, ag *agents.Agent) *Config {
 		}
 	}
 
+	// Tool filters
+	if ac.Tools != nil {
+		if len(ac.Tools.Allow) > 0 {
+			merged.Tools.Allowed = append([]string(nil), ac.Tools.Allow...)
+		}
+		if len(ac.Tools.Deny) > 0 {
+			merged.Tools.Denied = append([]string(nil), ac.Tools.Deny...)
+		}
+	}
+
 	return &merged
 }

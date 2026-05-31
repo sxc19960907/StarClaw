@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/audit"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
@@ -342,6 +343,117 @@ func TestAgentRealisticLocalWorkflow(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, resumed.Messages)
 	require.Contains(t, resumed.Messages[0].Content, "Read input.txt")
+}
+
+func TestNamedAgentSkillsWorkflow(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	starclawDir := filepath.Join(tempHome, ".starclaw")
+	agentsDir := filepath.Join(starclawDir, "agents")
+	agentName := "research-agent"
+	agentDir := filepath.Join(agentsDir, agentName)
+	require.NoError(t, os.MkdirAll(filepath.Join(agentDir, "commands"), 0700))
+	require.NoError(t, os.MkdirAll(filepath.Join(starclawDir, "skills", "summarizer"), 0700))
+
+	require.NoError(t, os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# Research Agent\n\nAlways cite local evidence."), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(agentDir, "MEMORY.md"), []byte("Remember project codename StarClaw."), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(agentDir, "commands", "review.md"), []byte("Review recent changes for regressions."), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte(`auto_approve: true
+agent:
+  model: named-agent-model
+  max_iterations: 7
+  max_tokens: 2048
+tools:
+  allow:
+    - file_read
+    - grep
+    - use_skill
+  deny:
+    - bash
+`), 0644))
+
+	require.NoError(t, os.WriteFile(filepath.Join(starclawDir, "skills", "summarizer", "SKILL.md"), []byte(`---
+name: summarizer
+description: Summarize local evidence
+allowed-tools: file_read grep
+---
+
+Summarize facts with source paths.
+`), 0644))
+
+	loadedAgent, err := agents.LoadAgent(agentsDir, agentName)
+	require.NoError(t, err)
+	require.Equal(t, agentName, loadedAgent.Name)
+	require.Contains(t, loadedAgent.Prompt, "Always cite local evidence")
+	require.Contains(t, loadedAgent.Memory, "project codename StarClaw")
+	require.Contains(t, loadedAgent.Commands["review"], "Review recent changes")
+	require.True(t, loadedAgent.AutoApproveEnabled())
+
+	global := &config.Config{
+		Agent: config.AgentConfig{
+			MaxIterations: 25,
+			MaxTokens:     8192,
+			Model:         "global-model",
+		},
+		Tools: config.ToolsConfig{
+			Allowed: []string{"file_read", "grep", "bash", "use_skill"},
+		},
+	}
+	merged := config.MergeAgentConfig(global, loadedAgent)
+	require.Equal(t, 7, merged.Agent.MaxIterations)
+	require.Equal(t, 2048, merged.Agent.MaxTokens)
+	require.Equal(t, "named-agent-model", merged.Agent.Model)
+	require.Equal(t, []string{"file_read", "grep", "use_skill"}, merged.Tools.Allowed)
+	require.Equal(t, []string{"bash"}, merged.Tools.Denied)
+
+	registry := tools.RegisterLocalTools(merged.Tools)
+	registry = registry.FilterByAllow(merged.Tools.Allowed).FilterByDeny(merged.Tools.Denied)
+	_, hasFileRead := registry.Get("file_read")
+	_, hasUseSkill := registry.Get("use_skill")
+	_, hasBash := registry.Get("bash")
+	require.True(t, hasFileRead)
+	require.True(t, hasUseSkill)
+	require.False(t, hasBash)
+
+	useSkill, ok := registry.Get("use_skill")
+	require.True(t, ok)
+	skillResult, err := useSkill.Run(context.Background(), `{"name":"summarizer"}`)
+	require.NoError(t, err)
+	require.False(t, skillResult.IsError, skillResult.Content)
+	require.Contains(t, skillResult.Content, "Skill 'summarizer' activated")
+	require.Contains(t, skillResult.Content, "Summarize facts with source paths")
+
+	sessionDir := filepath.Join(agentDir, "sessions")
+	sessionMgr := session.NewManager(sessionDir)
+	sess := sessionMgr.NewSession()
+	sess.Messages = []client.Message{{Role: "user", Content: "Use the summarizer skill."}}
+	require.NoError(t, sessionMgr.Save())
+
+	resumed, err := session.NewManager(sessionDir).Resume(sess.ID)
+	require.NoError(t, err)
+	require.Equal(t, sess.ID, resumed.ID)
+	require.Len(t, resumed.Messages, 1)
+	require.Contains(t, resumed.Messages[0].Content, "summarizer")
+
+	globalSessions, err := session.NewManager(filepath.Join(starclawDir, "sessions")).List()
+	require.NoError(t, err)
+	require.Empty(t, globalSessions)
+
+	capturingClient := &promptCaptureClient{}
+	loop := agent.NewAgentLoop(capturingClient, registry)
+	loop.SetSystemPrompt("Base system prompt")
+	loop.SwitchAgent(loadedAgent.Prompt, agentDir)
+	loop.SetMemory(loadedAgent.Memory)
+	loop.SetMaxIterations(1)
+
+	resp, err := loop.Run(context.Background(), "Check agent prompt and memory.")
+	require.NoError(t, err)
+	require.Equal(t, "ok", resp.Content)
+	require.Contains(t, capturingClient.systemPrompt, "Always cite local evidence")
+	require.Contains(t, capturingClient.systemPrompt, "Base system prompt")
+	require.Contains(t, capturingClient.systemPrompt, "<agent_memory>")
+	require.Contains(t, capturingClient.systemPrompt, "project codename StarClaw")
 }
 
 // TestErrorHandling tests error handling paths
@@ -741,6 +853,15 @@ func (h *recordingEventHandler) OnUsage(usage client.Usage) {}
 func (h *recordingEventHandler) OnStreamDelta(delta string) {}
 
 func (h *recordingEventHandler) OnPreamble(preamble string) {}
+
+type promptCaptureClient struct {
+	systemPrompt string
+}
+
+func (c *promptCaptureClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
+	c.systemPrompt = systemPrompt
+	return &client.Response{Content: "ok"}, nil
+}
 
 // TestAuditLoggingIntegration tests that tool calls are logged to audit file
 func TestAuditLoggingIntegration(t *testing.T) {

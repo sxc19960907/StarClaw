@@ -151,6 +151,7 @@ func runChat(cfg *config.Config, query string) error {
 
 	// Create tool registry
 	registry := tools.RegisterLocalTools(cfg.Tools)
+	registry = applyToolFilters(registry, cfg.Tools)
 	tools.RegisterVersionTool(registry, Version)
 
 	// Create agent loop
@@ -354,6 +355,16 @@ func buildSystemPrompt(registry *agent.ToolRegistry) string {
 	sb.WriteString("\nWhen facing complex multi-step tasks, use the `think` tool first to plan your approach.")
 	sb.WriteString("\nUse the tools when appropriate to help the user.")
 	return sb.String()
+}
+
+func applyToolFilters(registry *agent.ToolRegistry, cfg config.ToolsConfig) *agent.ToolRegistry {
+	if len(cfg.Allowed) > 0 {
+		registry = registry.FilterByAllow(cfg.Allowed)
+	}
+	if len(cfg.Denied) > 0 {
+		registry = registry.FilterByDeny(cfg.Denied)
+	}
+	return registry
 }
 
 // truncateString truncates a string to max length
@@ -574,6 +585,7 @@ var interactiveCmd = &cobra.Command{
 
 		// Create tool registry
 		registry := tools.RegisterLocalTools(cfg.Tools)
+		registry = applyToolFilters(registry, cfg.Tools)
 		tools.RegisterVersionTool(registry, Version)
 		// Create agent loop
 		loop := agent.NewAgentLoop(llmClient, registry)

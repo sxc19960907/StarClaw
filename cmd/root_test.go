@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/tools"
 )
 
 // executeCommand runs a cobra command and returns the output
@@ -137,6 +139,27 @@ func TestChatCmd_WithArgs(t *testing.T) {
 	// We expect an error due to no config
 	if err == nil {
 		t.Error("Expected chat command to fail without valid config")
+	}
+}
+
+func TestApplyToolFilters(t *testing.T) {
+	registry := tools.RegisterLocalTools()
+	filtered := applyToolFilters(registry, config.ToolsConfig{
+		Allowed: []string{"file_read", "grep", "bash"},
+		Denied:  []string{"bash"},
+	})
+
+	if _, ok := filtered.Get("file_read"); !ok {
+		t.Fatal("file_read should remain after allow filter")
+	}
+	if _, ok := filtered.Get("grep"); !ok {
+		t.Fatal("grep should remain after allow filter")
+	}
+	if _, ok := filtered.Get("bash"); ok {
+		t.Fatal("bash should be removed by deny filter")
+	}
+	if _, ok := filtered.Get("browser"); ok {
+		t.Fatal("browser should be removed by allow filter")
 	}
 }
 

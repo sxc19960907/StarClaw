@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -121,13 +123,64 @@ func TestSkillTool_InvalidJSON(t *testing.T) {
 }
 
 func TestSkillTool_LoadUnloadCycle(t *testing.T) {
-	// Test successful load and unload by creating a temp skill dir
-	dir := t.TempDir()
-	_ = dir + "/skills/test-skill"
-	// We use a workaround since we can't easily inject the skill dir
-	// Just verify the tool structure works
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	skillDir := filepath.Join(home, ".starclaw", "skills", "test-skill")
+	if err := os.MkdirAll(skillDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(`---
+name: test-skill
+description: Test skill for load cycle
+---
+
+Use this skill in tests.
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	tool := NewSkillTool()
-	if tool == nil {
-		t.Fatal("NewSkillTool returned nil")
+	ctx := context.Background()
+
+	listResult, err := tool.Run(ctx, `{"action":"list"}`)
+	if err != nil {
+		t.Fatalf("list failed: %v", err)
+	}
+	if listResult.IsError {
+		t.Fatalf("list returned error: %s", listResult.Content)
+	}
+	if !strings.Contains(listResult.Content, "test-skill") {
+		t.Fatalf("list should include test-skill, got: %s", listResult.Content)
+	}
+
+	loadResult, err := tool.Run(ctx, `{"action":"load","name":"test-skill"}`)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if loadResult.IsError {
+		t.Fatalf("load returned error: %s", loadResult.Content)
+	}
+	if !strings.Contains(loadResult.Content, "Use this skill in tests") {
+		t.Fatalf("load should return skill prompt, got: %s", loadResult.Content)
+	}
+
+	listLoaded, err := tool.Run(ctx, `{"action":"list"}`)
+	if err != nil {
+		t.Fatalf("list loaded failed: %v", err)
+	}
+	if !strings.Contains(listLoaded.Content, "test-skill [loaded]") {
+		t.Fatalf("list should mark test-skill loaded, got: %s", listLoaded.Content)
+	}
+
+	unloadResult, err := tool.Run(ctx, `{"action":"unload","name":"test-skill"}`)
+	if err != nil {
+		t.Fatalf("unload failed: %v", err)
+	}
+	if unloadResult.IsError {
+		t.Fatalf("unload returned error: %s", unloadResult.Content)
+	}
+	if !strings.Contains(unloadResult.Content, `Skill "test-skill" unloaded`) {
+		t.Fatalf("unexpected unload result: %s", unloadResult.Content)
 	}
 }

@@ -128,6 +128,39 @@ func TestMergeAgentConfig_PartialOverrides(t *testing.T) {
 	}
 }
 
+func TestMergeAgentConfig_ToolFilters(t *testing.T) {
+	global := &Config{
+		Tools: ToolsConfig{
+			Allowed: []string{"file_read", "grep", "bash"},
+			Denied:  []string{"browser"},
+		},
+	}
+
+	ag := &agents.Agent{
+		Name: "restricted",
+		Config: &agents.AgentConfig{
+			Tools: &agents.AgentToolsFilter{
+				Allow: []string{"file_read", "grep"},
+				Deny:  []string{"bash"},
+			},
+		},
+	}
+
+	result := MergeAgentConfig(global, ag)
+
+	if got := result.Tools.Allowed; len(got) != 2 || got[0] != "file_read" || got[1] != "grep" {
+		t.Fatalf("Tools.Allowed = %#v, want [file_read grep]", got)
+	}
+	if got := result.Tools.Denied; len(got) != 1 || got[0] != "bash" {
+		t.Fatalf("Tools.Denied = %#v, want [bash]", got)
+	}
+
+	result.Tools.Allowed[0] = "mutated"
+	if global.Tools.Allowed[0] != "file_read" {
+		t.Fatal("global allowed tools should not be modified through merged config")
+	}
+}
+
 func TestMergeAgentConfig_AdvancedAgentOptions(t *testing.T) {
 	global := &Config{
 		ModelTier: "medium",
