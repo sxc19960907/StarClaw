@@ -1280,3 +1280,37 @@ Added a repeatable CLI smoke validation script for StarClaw general-agent usabil
 ### Next Steps
 
 - None - task complete
+
+
+## Session 39: Validate real agent workflow
+
+**Date**: 2026-05-31
+**Task**: Validate real agent workflow
+**Branch**: `main`
+
+### Summary
+
+Added deterministic integration coverage for a realistic local multi-tool AgentLoop workflow using MockClient. The workflow validates file_read, grep, file_write, file_edit, bash output propagation, event observation, and session persistence. Fixed CWD cleanup leakage in an existing integration test. Local go test, go vet, and GitHub Actions CI run 26700816327 passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `39c5d37` | (see git log) |
+| `0667877` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
