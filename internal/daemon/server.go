@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -674,6 +675,35 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"sessions": summaries})
 }
 
+func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "session id required")
+		return
+	}
+	if id != filepath.Base(id) || strings.ContainsAny(id, `/\`) {
+		writeError(w, http.StatusBadRequest, "invalid session id")
+		return
+	}
+
+	agentName := r.URL.Query().Get("agent")
+	mgr := s.sessionManagerFor(agentName)
+	if mgr == nil {
+		writeError(w, http.StatusInternalServerError, "daemon deps not configured")
+		return
+	}
+	sess, err := mgr.Resume(id)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			writeError(w, http.StatusNotFound, fmt.Sprintf("session %q not found", id))
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, sess)
+}
+
 func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -800,7 +830,7 @@ type sseEventHandler struct {
 }
 
 func (h *sseEventHandler) OnToolCall(name string, args string) {
-	data := mustJSON(map[string]string{"tool": name, "status": "running"})
+	data := mustJSON(map[string]string{"tool": name, "status": "running", "args": args})
 	fmt.Fprintf(h.w, "event: tool_call\ndata: %s\n\n", data)
 	h.flusher.Flush()
 }
@@ -810,7 +840,13 @@ func (h *sseEventHandler) OnToolResult(name string, result agent.ToolResult) {
 	if result.IsError {
 		status = "error"
 	}
-	data := mustJSON(map[string]string{"tool": name, "status": status})
+	data := mustJSON(map[string]interface{}{
+		"tool":           name,
+		"status":         status,
+		"content":        result.Content,
+		"is_error":       result.IsError,
+		"error_category": string(result.ErrorCategory),
+	})
 	fmt.Fprintf(h.w, "event: tool_result\ndata: %s\n\n", data)
 	h.flusher.Flush()
 }

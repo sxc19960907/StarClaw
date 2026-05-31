@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/skills"
@@ -240,6 +241,10 @@ func TestDaemonAPISmokeWorkflow(t *testing.T) {
 	sessionMgr := session.NewManager(filepath.Join(deps.StarclawDir, "sessions"))
 	sess := sessionMgr.NewSession()
 	sess.Title = "API Smoke Session"
+	sess.Messages = []client.Message{
+		{Role: "user", Content: "smoke question"},
+		{Role: "assistant", Content: "smoke answer"},
+	}
 	if err := sessionMgr.Save(); err != nil {
 		t.Fatalf("save session: %v", err)
 	}
@@ -295,6 +300,15 @@ func TestDaemonAPISmokeWorkflow(t *testing.T) {
 	getJSON(t, ts.URL+"/sessions", http.StatusOK, &sessionsResp)
 	if len(sessionsResp.Sessions) != 1 || sessionsResp.Sessions[0].ID != sess.ID {
 		t.Fatalf("unexpected sessions response: %#v", sessionsResp.Sessions)
+	}
+
+	var sessionDetail session.Session
+	getJSON(t, ts.URL+"/sessions/"+sess.ID, http.StatusOK, &sessionDetail)
+	if sessionDetail.ID != sess.ID {
+		t.Fatalf("session detail id = %q, want %q", sessionDetail.ID, sess.ID)
+	}
+	if len(sessionDetail.Messages) != 2 || sessionDetail.Messages[1].Content != "smoke answer" {
+		t.Fatalf("unexpected session detail messages: %#v", sessionDetail.Messages)
 	}
 
 	var searchResp struct {
@@ -369,6 +383,46 @@ func TestHandleMessage(t *testing.T) {
 	}
 	if result.Error != "" {
 		t.Errorf("expected no error, got %q", result.Error)
+	}
+}
+
+func TestSSEEventHandlerToolPayloads(t *testing.T) {
+	rec := httptest.NewRecorder()
+	h := &sseEventHandler{w: rec, flusher: rec}
+
+	h.OnToolCall("file_read", `{"path":"README.md"}`)
+	h.OnToolResult("file_read", agent.ToolResult{
+		Content:       "read failed",
+		IsError:       true,
+		ErrorCategory: agent.ErrCategoryPermission,
+	})
+
+	toolCall := decodeSSEEventData(t, rec.Body.String(), "tool_call")
+	if toolCall["tool"] != "file_read" {
+		t.Fatalf("tool_call tool = %#v, want file_read", toolCall["tool"])
+	}
+	if toolCall["status"] != "running" {
+		t.Fatalf("tool_call status = %#v, want running", toolCall["status"])
+	}
+	if toolCall["args"] != `{"path":"README.md"}` {
+		t.Fatalf("tool_call args = %#v", toolCall["args"])
+	}
+
+	toolResult := decodeSSEEventData(t, rec.Body.String(), "tool_result")
+	if toolResult["tool"] != "file_read" {
+		t.Fatalf("tool_result tool = %#v, want file_read", toolResult["tool"])
+	}
+	if toolResult["status"] != "error" {
+		t.Fatalf("tool_result status = %#v, want error", toolResult["status"])
+	}
+	if toolResult["content"] != "read failed" {
+		t.Fatalf("tool_result content = %#v, want read failed", toolResult["content"])
+	}
+	if toolResult["is_error"] != true {
+		t.Fatalf("tool_result is_error = %#v, want true", toolResult["is_error"])
+	}
+	if toolResult["error_category"] != string(agent.ErrCategoryPermission) {
+		t.Fatalf("tool_result error_category = %#v, want %q", toolResult["error_category"], agent.ErrCategoryPermission)
 	}
 }
 
@@ -923,6 +977,25 @@ func deleteJSON(t *testing.T, url string, wantStatus int) {
 		t.Fatalf("DELETE %s: %v", url, err)
 	}
 	decodeJSONResponse(t, resp, wantStatus, &map[string]string{})
+}
+
+func decodeSSEEventData(t *testing.T, stream string, eventName string) map[string]interface{} {
+	t.Helper()
+	blocks := strings.Split(stream, "\n\n")
+	for _, block := range blocks {
+		lines := strings.Split(block, "\n")
+		if len(lines) < 2 || strings.TrimSpace(lines[0]) != "event: "+eventName {
+			continue
+		}
+		dataLine := strings.TrimPrefix(lines[1], "data: ")
+		var data map[string]interface{}
+		if err := json.Unmarshal([]byte(dataLine), &data); err != nil {
+			t.Fatalf("decode SSE %s data: %v", eventName, err)
+		}
+		return data
+	}
+	t.Fatalf("SSE event %q not found in stream:\n%s", eventName, stream)
+	return nil
 }
 
 func decodeJSONResponse(t *testing.T, resp *http.Response, wantStatus int, out interface{}) {

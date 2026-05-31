@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StarClaw</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/app/assets/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">S</div>
+          <div class="brand-copy">
+            <strong>StarClaw</strong>
+            <span>Local agent workspace</span>
+          </div>
+        </div>
+
+        <button class="new-chat-button" id="new-chat-button" type="button">New chat</button>
+
+        <nav class="nav-list" aria-label="Primary">
+          <button class="nav-item active" data-panel="chat">
+            <span>Chat</span>
+            <small id="daemon-pill">Checking</small>
+          </button>
+          <button class="nav-item" data-panel="agents">
+            <span>Agents</span>
+            <small id="agents-count">0</small>
+          </button>
+          <button class="nav-item" data-panel="skills">
+            <span>Skills</span>
+            <small id="skills-count">0</small>
+          </button>
+          <button class="nav-item" data-panel="schedules">
+            <span>Schedules</span>
+            <small id="schedules-count">0</small>
+          </button>
+        </nav>
+
+        <div class="sidebar-section">
+          <div class="section-kicker">Recent sessions</div>
+          <form class="search-form" id="session-search-form">
+            <input id="session-search" type="search" placeholder="Search">
+          </form>
+          <div class="session-list" id="sessions-list"></div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="crumb">StarClaw</span>
+            <h1 id="view-title">Chat</h1>
+          </div>
+          <div class="runtime-strip" aria-label="Daemon status">
+            <span class="status-chip"><strong id="metric-version">-</strong></span>
+            <span id="metric-uptime">-</span>
+            <span><strong id="metric-active">-</strong> active</span>
+            <button id="refresh-button" title="Refresh data" aria-label="Refresh data">Refresh</button>
+          </div>
+        </header>
+
+        <section class="panel conversation-panel active" id="panel-chat" aria-labelledby="chat-heading">
+          <div class="conversation-scroll">
+            <div class="transcript" id="chat-output" aria-live="polite">
+              <div class="empty-thread">
+                <div class="assistant-mark" aria-hidden="true">S</div>
+                <div>
+                  <strong id="chat-heading">StarClaw is ready.</strong>
+                  <span>Start a local task or choose an agent from the composer.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <form class="composer" id="chat-form">
+            <textarea id="chat-input" rows="1" placeholder="Message StarClaw"></textarea>
+            <div class="composer-controls">
+              <select id="chat-agent" aria-label="Agent">
+                <option value="">Default agent</option>
+              </select>
+              <label class="checkbox-label">
+                <input id="chat-new-session" type="checkbox">
+                New session
+              </label>
+              <span id="chat-state">Ready</span>
+              <button type="button" id="stop-button" class="danger-button" hidden>Stop</button>
+              <button type="submit" id="send-button" class="primary-button">Send</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel split-panel" id="panel-agents" aria-labelledby="agents-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="agents-heading">Agents</h2>
+              <p>Named agent profiles available to the daemon.</p>
+            </div>
+            <div class="data-list" id="agents-list"></div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Detail</h2>
+              <p id="selected-agent-description">Select an agent.</p>
+            </div>
+            <pre class="detail-block" id="agent-detail">No agent selected.</pre>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-skills" aria-labelledby="skills-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="skills-heading">Skills</h2>
+              <p>Reusable workflows and project capabilities.</p>
+            </div>
+            <div class="data-list two-column" id="skills-list"></div>
+          </div>
+        </section>
+
+        <section class="panel split-panel" id="panel-schedules" aria-labelledby="schedules-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="schedules-heading">Schedules</h2>
+              <p>Cron-based local agent runs.</p>
+            </div>
+            <div class="data-list" id="schedules-list"></div>
+          </div>
+          <aside class="detail-pane">
+            <form class="schedule-form" id="schedule-form">
+              <label>
+                Cron
+                <input id="schedule-cron" placeholder="* * * * *" aria-label="Cron expression">
+              </label>
+              <label>
+                Prompt
+                <textarea id="schedule-prompt" rows="5" placeholder="Prompt" aria-label="Schedule prompt"></textarea>
+              </label>
+              <label>
+                Agent
+                <select id="schedule-agent" aria-label="Schedule agent">
+                  <option value="">Default agent</option>
+                </select>
+              </label>
+              <button type="submit" class="primary-button">Create schedule</button>
+            </form>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/app/assets/app.js" defer></script>
+  </body>
+</html>

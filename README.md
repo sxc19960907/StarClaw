@@ -17,7 +17,7 @@
 - 👤 **Named Agents** — Per-agent config, memory, custom prompts, heartbeat monitoring
 - 🧩 **Skills System** — 14 bundled skills + dynamic skill discovery + loading
 - ⏰ **Scheduled Tasks** — Cron-based local task scheduling with flock-protected persistence
-- 🔄 **Background Daemon** — HTTP server (23 endpoints), scheduler, heartbeat, file watcher
+- 🔄 **Background Daemon + Web UI** — HTTP API, embedded `/app/` GUI, scheduler, heartbeat, file watcher
 - 💻 **Beautiful TUI** — Bubble Tea UI with markdown rendering and frog startup animation
 - 🛡️ **9 Loop Detection Patterns** — ExactDup, IdentityCycle, UnproductiveStreak, FileReadRepeat, etc.
 - 📦 **Context Management** — Spill to disk, time compaction, semantic consolidation, bloat detection
@@ -83,6 +83,15 @@ starclaw chat "What files are in this directory?"
 ```bash
 starclaw interactive
 ```
+
+**Daemon Web UI:**
+```bash
+starclaw daemon start
+# In another terminal:
+starclaw daemon open
+```
+
+The daemon serves the local Web UI at `http://127.0.0.1:7533/app/`. It provides a Codex-style workspace for chat, streaming runs, tool-call details, named agents, skills, sessions, and schedules.
 
 **Pipe input:**
 ```bash

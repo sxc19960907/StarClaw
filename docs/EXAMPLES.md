@@ -83,6 +83,33 @@ starclaw interactive
 - `Ctrl+L` - Clear screen
 - `Ctrl+Y` - Auto-approve all tools
 
+## Daemon Web UI
+
+### Start the Daemon
+```bash
+starclaw daemon start
+```
+
+The daemon serves the embedded Web UI at:
+
+```text
+http://127.0.0.1:7533/app/
+```
+
+### Open the Web UI
+```bash
+starclaw daemon open
+```
+
+The Web UI supports chat, streaming output, cancellable runs, expandable tool-call details, named agents, skills, session history, and schedule management.
+
+### Check Daemon Status
+```bash
+starclaw daemon status
+```
+
+The status output includes the Web UI URL when the daemon is reachable.
+
 ## Advanced Usage
 
 ### Pipe Input

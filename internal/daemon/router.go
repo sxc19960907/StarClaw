@@ -18,6 +18,7 @@ func NewRouter(srv *Server) *Router {
 // deps is accepted for future independent use even though the Router
 // accesses dependencies through its Server reference today.
 func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
+	r.registerWebRoutes(mux)
 	r.registerHealthRoutes(mux)
 	r.registerMessageRoutes(mux)
 	r.registerScheduleRoutes(mux)
@@ -32,6 +33,13 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 // ---------------------------------------------------------------------------
 // Per-module registration
 // ---------------------------------------------------------------------------
+
+func (r *Router) registerWebRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /", r.srv.handleWebRoot)
+	mux.HandleFunc("GET /app", r.srv.handleWebAppRedirect)
+	mux.HandleFunc("GET /app/", r.srv.handleWebApp)
+	mux.HandleFunc("GET /app/assets/", r.srv.handleWebAsset)
+}
 
 func (r *Router) registerHealthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", r.srv.handleHealth)
@@ -77,6 +85,7 @@ func (r *Router) registerInstructionsRoutes(mux *http.ServeMux) {
 
 func (r *Router) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sessions", r.srv.handleSessions)
+	mux.HandleFunc("GET /sessions/{id}", r.srv.handleGetSession)
 	mux.HandleFunc("DELETE /sessions/{id}", r.srv.handleDeleteSession)
 	mux.HandleFunc("GET /sessions/search", r.srv.handleSessionSearch)
 }

@@ -7,8 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -23,6 +25,10 @@ var daemonCmd = &cobra.Command{
 	Use:   "daemon",
 	Short: "Background daemon server with HTTP API and cron scheduler",
 }
+
+const daemonPort = 7533
+
+var daemonWebURL = fmt.Sprintf("http://127.0.0.1:%d/app/", daemonPort)
 
 var daemonStartCmd = &cobra.Command{
 	Use:   "start",
@@ -78,9 +84,10 @@ var daemonStartCmd = &cobra.Command{
 		log.Println("daemon: cron scheduler started")
 
 		// Start HTTP server (blocks until ctx is cancelled).
-		srv := daemon.NewServer(7533, deps, Version)
+		srv := daemon.NewServer(daemonPort, deps, Version)
 		srv.SetCancelFunc(cancel)
-		log.Printf("daemon: starting server on localhost:7533")
+		log.Printf("daemon: starting server on localhost:%d", daemonPort)
+		log.Printf("daemon: web UI available at %s", daemonWebURL)
 		if err := srv.Start(ctx); err != nil {
 			return fmt.Errorf("daemon: server error: %w", err)
 		}
@@ -92,7 +99,7 @@ var daemonStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the daemon server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		resp, err := http.Post("http://127.0.0.1:7533/shutdown", "application/json", nil)
+		resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/shutdown", daemonPort), "application/json", nil)
 		if err != nil {
 			return fmt.Errorf("daemon: not reachable: %w", err)
 		}
@@ -115,7 +122,7 @@ var daemonStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show daemon status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		resp, err := http.Get("http://127.0.0.1:7533/status")
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/status", daemonPort))
 		if err != nil {
 			fmt.Println("Daemon is not running.")
 			return nil
@@ -138,13 +145,48 @@ var daemonStatusCmd = &cobra.Command{
 		fmt.Printf("Active agents: %d\n", status.ActiveAgents)
 		uptime := time.Duration(status.Uptime) * time.Second
 		fmt.Printf("Uptime:        %s\n", uptime)
+		fmt.Printf("Web UI:        %s\n", daemonWebURL)
 		return nil
 	},
 }
+
+var openURLInBrowser = func(url string) error {
+	var command string
+	var args []string
+	switch runtime.GOOS {
+	case "darwin":
+		command = "open"
+		args = []string{url}
+	case "windows":
+		command = "rundll32"
+		args = []string{"url.dll,FileProtocolHandler", url}
+	default:
+		command = "xdg-open"
+		args = []string{url}
+	}
+	return exec.Command(command, args...).Start()
+}
+
+func newDaemonOpenCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "open",
+		Short: "Open the daemon Web UI in the default browser",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := openURLInBrowser(daemonWebURL); err != nil {
+				return fmt.Errorf("daemon: open web UI: %w", err)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
+			return nil
+		},
+	}
+}
+
+var daemonOpenCmd = newDaemonOpenCmd()
 
 func init() {
 	daemonCmd.AddCommand(daemonStartCmd)
 	daemonCmd.AddCommand(daemonStopCmd)
 	daemonCmd.AddCommand(daemonStatusCmd)
+	daemonCmd.AddCommand(daemonOpenCmd)
 	rootCmd.AddCommand(daemonCmd)
 }
