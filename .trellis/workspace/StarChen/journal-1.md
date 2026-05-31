@@ -1413,3 +1413,36 @@ Aligned daemon RunAgent named-agent execution with CLI runtime behavior. Daemon 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 43: Daemon Web GUI
+
+**Date**: 2026-06-01
+**Task**: Daemon Web GUI
+**Branch**: `main`
+
+### Summary
+
+Implemented the daemon-hosted Codex-style Web UI at /app/, including embedded assets, chat streaming, session history, tool-call details, schedule controls, daemon open/status integration, tests, docs, and backend spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `661c24b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
