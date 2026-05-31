@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/schedule"
+	"github.com/starclaw/starclaw/internal/session"
+	"github.com/starclaw/starclaw/internal/skills"
 )
 
 // ---------------------------------------------------------------------------
@@ -25,12 +28,13 @@ func newTestServer(t *testing.T, deps *ServerDeps) *Server {
 func newTestServerDeps(t *testing.T) *ServerDeps {
 	t.Helper()
 	return &ServerDeps{
-		StarclawDir:      t.TempDir(),
-		ConfigPath:       filepath.Join(t.TempDir(), "config.json"),
-		AgentsDir:        t.TempDir(),
-		InstructionsDir:  t.TempDir(),
-		LLMClient:        &mockLLMClient{t: t},
-		Registry:         agent.NewToolRegistry(),
+		StarclawDir:     t.TempDir(),
+		ConfigPath:      filepath.Join(t.TempDir(), "config.json"),
+		AgentsDir:       t.TempDir(),
+		SkillsDir:       t.TempDir(),
+		InstructionsDir: t.TempDir(),
+		LLMClient:       &mockLLMClient{t: t},
+		Registry:        agent.NewToolRegistry(),
 	}
 }
 
@@ -227,6 +231,112 @@ func TestScheduleCRUD(t *testing.T) {
 	}
 }
 
+func TestDaemonAPISmokeWorkflow(t *testing.T) {
+	deps := newTestServerDeps(t)
+	deps.ScheduleManager = schedule.NewManager(filepath.Join(t.TempDir(), "schedules.json"))
+	writeTestAgent(t, deps.AgentsDir, "api-agent")
+	writeTestSkill(t, deps.SkillsDir, "summarizer", "Summarize local evidence")
+
+	sessionMgr := session.NewManager(filepath.Join(deps.StarclawDir, "sessions"))
+	sess := sessionMgr.NewSession()
+	sess.Title = "API Smoke Session"
+	if err := sessionMgr.Save(); err != nil {
+		t.Fatalf("save session: %v", err)
+	}
+
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var health map[string]string
+	getJSON(t, ts.URL+"/health", http.StatusOK, &health)
+	if health["status"] != "ok" || health["version"] != "test-version" {
+		t.Fatalf("unexpected health response: %#v", health)
+	}
+
+	var status struct {
+		Uptime       int    `json:"uptime"`
+		Version      string `json:"version"`
+		ActiveAgents int    `json:"active_agents"`
+	}
+	getJSON(t, ts.URL+"/status", http.StatusOK, &status)
+	if status.Version != "test-version" {
+		t.Fatalf("status version = %q, want test-version", status.Version)
+	}
+
+	var agentsResp struct {
+		Agents []struct {
+			Name        string `json:"Name"`
+			Description string `json:"Description"`
+		} `json:"agents"`
+	}
+	getJSON(t, ts.URL+"/agents", http.StatusOK, &agentsResp)
+	if len(agentsResp.Agents) != 1 || agentsResp.Agents[0].Name != "api-agent" {
+		t.Fatalf("unexpected agents response: %#v", agentsResp.Agents)
+	}
+
+	var agentResp map[string]interface{}
+	getJSON(t, ts.URL+"/agents/api-agent", http.StatusOK, &agentResp)
+	if agentResp["Name"] != "api-agent" {
+		t.Fatalf("agent response missing Name: %#v", agentResp)
+	}
+
+	var skillsResp struct {
+		Skills []skills.SkillMeta `json:"skills"`
+	}
+	getJSON(t, ts.URL+"/skills", http.StatusOK, &skillsResp)
+	if len(skillsResp.Skills) != 1 || skillsResp.Skills[0].Name != "summarizer" {
+		t.Fatalf("unexpected skills response: %#v", skillsResp.Skills)
+	}
+
+	var sessionsResp struct {
+		Sessions []session.SessionSummary `json:"sessions"`
+	}
+	getJSON(t, ts.URL+"/sessions", http.StatusOK, &sessionsResp)
+	if len(sessionsResp.Sessions) != 1 || sessionsResp.Sessions[0].ID != sess.ID {
+		t.Fatalf("unexpected sessions response: %#v", sessionsResp.Sessions)
+	}
+
+	var searchResp struct {
+		Results []session.SessionSummary `json:"results"`
+	}
+	getJSON(t, ts.URL+"/sessions/search?q=smoke", http.StatusOK, &searchResp)
+	if len(searchResp.Results) != 1 || searchResp.Results[0].ID != sess.ID {
+		t.Fatalf("unexpected session search response: %#v", searchResp.Results)
+	}
+
+	var created schedule.Schedule
+	postJSON(t, ts.URL+"/schedules", `{"agent":"","cron":"* * * * *","prompt":"run smoke"}`, http.StatusCreated, &created)
+	if created.ID == "" || created.Prompt != "run smoke" || !created.Enabled {
+		t.Fatalf("unexpected created schedule: %#v", created)
+	}
+
+	var schedulesResp struct {
+		Schedules []schedule.Schedule `json:"schedules"`
+	}
+	getJSON(t, ts.URL+"/schedules", http.StatusOK, &schedulesResp)
+	if len(schedulesResp.Schedules) != 1 || schedulesResp.Schedules[0].ID != created.ID {
+		t.Fatalf("unexpected schedules response: %#v", schedulesResp.Schedules)
+	}
+
+	var gotSchedule schedule.Schedule
+	getJSON(t, ts.URL+"/schedules/"+created.ID, http.StatusOK, &gotSchedule)
+	if gotSchedule.ID != created.ID {
+		t.Fatalf("schedule id = %q, want %q", gotSchedule.ID, created.ID)
+	}
+
+	var updated schedule.Schedule
+	patchJSON(t, ts.URL+"/schedules/"+created.ID, `{"enabled":false}`, http.StatusOK, &updated)
+	if updated.Enabled {
+		t.Fatal("expected schedule to be disabled")
+	}
+
+	deleteJSON(t, ts.URL+"/schedules/"+created.ID, http.StatusOK)
+	getJSON(t, ts.URL+"/schedules/"+created.ID, http.StatusNotFound, &map[string]string{})
+	getJSON(t, ts.URL+"/agents/missing-agent", http.StatusNotFound, &map[string]string{})
+	getJSON(t, ts.URL+"/sessions/search", http.StatusBadRequest, &map[string]string{})
+}
+
 // ---------------------------------------------------------------------------
 // POST /message
 // ---------------------------------------------------------------------------
@@ -373,6 +483,77 @@ func TestHandleAgents(t *testing.T) {
 	}
 	if body.Agents == nil {
 		t.Error("expected empty agents list, not nil")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Skills
+// ---------------------------------------------------------------------------
+
+func TestHandleSkills(t *testing.T) {
+	deps := newTestServerDeps(t)
+	writeTestSkill(t, deps.SkillsDir, "summarizer", "Summarize local evidence")
+
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/skills")
+	if err != nil {
+		t.Fatalf("GET /skills: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Skills []skills.SkillMeta `json:"skills"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode skills: %v", err)
+	}
+	if len(body.Skills) != 1 {
+		t.Fatalf("expected 1 skill, got %d", len(body.Skills))
+	}
+	if body.Skills[0].Name != "summarizer" {
+		t.Fatalf("skill name = %q, want summarizer", body.Skills[0].Name)
+	}
+	if body.Skills[0].Description != "Summarize local evidence" {
+		t.Fatalf("skill description = %q", body.Skills[0].Description)
+	}
+	if body.Skills[0].Source != skills.SourceGlobal {
+		t.Fatalf("skill source = %q, want global", body.Skills[0].Source)
+	}
+}
+
+func TestHandleSkillsEmpty(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/skills")
+	if err != nil {
+		t.Fatalf("GET /skills: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Skills []skills.SkillMeta `json:"skills"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode skills: %v", err)
+	}
+	if body.Skills == nil {
+		t.Fatal("expected empty skills list, not nil")
+	}
+	if len(body.Skills) != 0 {
+		t.Fatalf("expected 0 skills, got %d", len(body.Skills))
 	}
 }
 
@@ -666,5 +847,93 @@ func TestHandleShutdown(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+func writeTestAgent(t *testing.T, agentsDir, name string) {
+	t.Helper()
+	agentDir := filepath.Join(agentsDir, name)
+	if err := os.MkdirAll(agentDir, 0700); err != nil {
+		t.Fatalf("create agent dir: %v", err)
+	}
+	content := "# API Agent\n\nAgent available through daemon API."
+	if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte(content), 0644); err != nil {
+		t.Fatalf("write AGENT.md: %v", err)
+	}
+}
+
+func writeTestSkill(t *testing.T, skillsDir, name, description string) {
+	t.Helper()
+	skillDir := filepath.Join(skillsDir, name)
+	if err := os.MkdirAll(skillDir, 0700); err != nil {
+		t.Fatalf("create skill dir: %v", err)
+	}
+	content := `---
+name: ` + name + `
+description: ` + description + `
+---
+
+Use this skill in daemon API tests.
+`
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+}
+
+func getJSON(t *testing.T, url string, wantStatus int, out interface{}) {
+	t.Helper()
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	decodeJSONResponse(t, resp, wantStatus, out)
+}
+
+func postJSON(t *testing.T, url string, body string, wantStatus int, out interface{}) {
+	t.Helper()
+	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST %s: %v", url, err)
+	}
+	decodeJSONResponse(t, resp, wantStatus, out)
+}
+
+func patchJSON(t *testing.T, url string, body string, wantStatus int, out interface{}) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPatch, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("new PATCH request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH %s: %v", url, err)
+	}
+	decodeJSONResponse(t, resp, wantStatus, out)
+}
+
+func deleteJSON(t *testing.T, url string, wantStatus int) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		t.Fatalf("new DELETE request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE %s: %v", url, err)
+	}
+	decodeJSONResponse(t, resp, wantStatus, &map[string]string{})
+}
+
+func decodeJSONResponse(t *testing.T, resp *http.Response, wantStatus int, out interface{}) {
+	t.Helper()
+	defer resp.Body.Close()
+	if resp.StatusCode != wantStatus {
+		t.Fatalf("expected HTTP %d, got %d", wantStatus, resp.StatusCode)
+	}
+	if out != nil {
+		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
 	}
 }

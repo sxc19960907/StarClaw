@@ -19,6 +19,7 @@ import (
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
+	"github.com/starclaw/starclaw/internal/skills"
 )
 
 // Server is the daemon HTTP server.
@@ -484,6 +485,29 @@ func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
+// Skills
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleSkills(w http.ResponseWriter, r *http.Request) {
+	if s.deps == nil || s.deps.SkillsDir == "" {
+		writeJSON(w, http.StatusOK, map[string]interface{}{"skills": []interface{}{}})
+		return
+	}
+	metas, err := skills.ListSkills(skills.SkillSource{
+		Dir:    s.deps.SkillsDir,
+		Source: skills.SourceGlobal,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if metas == nil {
+		metas = []skills.SkillMeta{}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"skills": metas})
+}
+
+// ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
@@ -764,7 +788,7 @@ func (h *httpEventHandler) OnToolCall(name string, args string) {}
 func (h *httpEventHandler) OnToolResult(name string, result agent.ToolResult) {
 	log.Printf("http: tool %s completed", name)
 }
-func (h *httpEventHandler) OnText(text string)            {}
+func (h *httpEventHandler) OnText(text string)         {}
 func (h *httpEventHandler) OnUsage(usage client.Usage) {}
 func (h *httpEventHandler) OnStreamDelta(delta string) {}
 func (h *httpEventHandler) OnPreamble(preamble string) {}

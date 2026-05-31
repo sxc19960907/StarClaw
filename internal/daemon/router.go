@@ -22,6 +22,7 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 	r.registerMessageRoutes(mux)
 	r.registerScheduleRoutes(mux)
 	r.registerAgentRoutes(mux)
+	r.registerSkillRoutes(mux)
 	r.registerConfigRoutes(mux)
 	r.registerInstructionsRoutes(mux)
 	r.registerSessionRoutes(mux)
@@ -58,6 +59,10 @@ func (r *Router) registerAgentRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /agents", r.srv.handleCreateAgent)
 	mux.HandleFunc("PUT /agents/{name}", r.srv.handleUpdateAgent)
 	mux.HandleFunc("DELETE /agents/{name}", r.srv.handleDeleteAgent)
+}
+
+func (r *Router) registerSkillRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /skills", r.srv.handleSkills)
 }
 
 func (r *Router) registerConfigRoutes(mux *http.ServeMux) {
