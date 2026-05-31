@@ -1347,3 +1347,36 @@ Validated named agent plus skills workflow. Added runtime tool-filter propagatio
 ### Next Steps
 
 - None - task complete
+
+
+## Session 41: Validate daemon API smoke workflow
+
+**Date**: 2026-05-31
+**Task**: Validate daemon API smoke workflow
+**Branch**: `main`
+
+### Summary
+
+Added read-only daemon /skills route and deterministic daemon API smoke coverage for health, status, agents, skills, sessions, session search, schedule CRUD, and representative JSON error responses. Local go test ./internal/daemon, go test ./..., and go vet ./... passed. GitHub Actions run 26702618596 passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c253d7a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

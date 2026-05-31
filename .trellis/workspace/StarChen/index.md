@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 40
+- **Total Sessions**: 41
 - **Last Active**: 2026-05-31
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1349 | Active |
+| `journal-1.md` | ~1382 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 41 | 2026-05-31 | Validate daemon API smoke workflow | `c253d7a` | `main` |
 | 40 | 2026-05-31 | Validate named agent skill workflow | `53bc6ba` | `main` |
 | 39 | 2026-05-31 | Validate real agent workflow | `39c5d37`, `0667877` | `main` |
 | 38 | 2026-05-31 | Validate general agent CLI usability | `c46b37b`, `cdb9be8` | `main` |
