@@ -65,6 +65,7 @@ type ApprovalRequest struct {
 	Tool      string `json:"tool"`
 	Args      string `json:"args"`
 	Agent     string `json:"agent"`
+	Reason    string `json:"reason,omitempty"`
 }
 
 // ApprovalResolvedPayload carries the resolution of an approval request.

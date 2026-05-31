@@ -49,6 +49,75 @@ if a.permsConfig != nil {
 }
 ```
 
+## Scenario: Daemon Tool Approval
+
+### 1. Scope / Trigger
+
+- Trigger: daemon or Web UI runs need to execute a tool call whose permission decision is `Ask`, or a tool declares `RequiresApproval()` and no permission rule explicitly allows it.
+- Scope: local daemon approval only; CLI/TUI approval UX is separate.
+
+### 2. Signatures
+
+- Agent loop setter: `SetApprovalRequester(requester ApprovalRequester)`.
+- Agent approval request:
+  ```go
+  type ApprovalRequest struct {
+      Tool string
+      Args string
+      Reason string
+  }
+  ```
+- Daemon API: `POST /approval` with `{"request_id":"apr_x","decision":"allow|deny"}`.
+- Daemon events: `approval_needed`, `approval_resolved` on `GET /events`.
+
+### 3. Contracts
+
+- `permissions.Deny` always returns a permission error and does not ask.
+- `permissions.Allow` bypasses explicit approval for the matching call.
+- `permissions.Ask` must ask through the configured approval requester.
+- If no approval requester is configured and a permission rule returns `Ask`, the tool must be denied, not silently executed.
+- `RequiresApproval()` is enforced for daemon runs because the daemon injects an approval requester; non-daemon surfaces keep their existing behavior until they wire their own requester.
+
+### 4. Validation & Error Matrix
+
+- Unknown approval id -> `/approval` returns OK but no waiting call is resolved.
+- Approval timeout -> deny.
+- Request context cancellation -> deny and return `ctx.Err()` to the requester.
+- User denies -> return `PermissionError`, do not execute the tool.
+
+### 5. Good/Base/Bad Cases
+
+- Good: Web UI receives `approval_needed`, user clicks Allow, tool executes.
+- Base: Web UI is closed; request times out and denies.
+- Bad: approval-needed tools run without a requester or explicit allow rule.
+
+### 6. Tests Required
+
+- Agent loop tests for approval allow and deny.
+- Daemon requester tests for `approval_needed` and `approval_resolved` event payloads.
+- API tests for `/approval` resolving a pending broker request.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+if decision == permissions.Ask {
+    // Treat as allow in daemon mode.
+}
+```
+
+#### Correct
+
+```go
+if decision == permissions.Ask {
+    decision, err := approver.RequestApproval(ctx, req)
+    if err != nil || decision != ApprovalAllow {
+        return PermissionError("denied by user")
+    }
+}
+```
+
 ## Configuration
 
 ```yaml

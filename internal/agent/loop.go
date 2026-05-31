@@ -45,6 +45,26 @@ type RunStatusHandler interface {
 	OnRunStatus(code string, detail string)
 }
 
+// ApprovalRequest describes a tool call that needs explicit human approval.
+type ApprovalRequest struct {
+	Tool   string
+	Args   string
+	Reason string
+}
+
+// ApprovalDecision is the response returned by an ApprovalRequester.
+type ApprovalDecision string
+
+const (
+	ApprovalAllow ApprovalDecision = "allow"
+	ApprovalDeny  ApprovalDecision = "deny"
+)
+
+// ApprovalRequester handles tool calls that require explicit approval.
+type ApprovalRequester interface {
+	RequestApproval(ctx context.Context, req ApprovalRequest) (ApprovalDecision, error)
+}
+
 // StreamingLLMClient is an optional interface for LLM clients that support streaming.
 type StreamingLLMClient interface {
 	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error)
@@ -70,6 +90,7 @@ type AgentLoop struct {
 	contextWindow int                 // max context window in tokens (0 = disabled)
 	permsConfig   *permissions.Config // tool permission rules
 	hookRunner    *hooks.Runner       // lifecycle hook runner
+	approver      ApprovalRequester
 
 	thinking        *client.ThinkingConfig
 	reasoningEffort string
@@ -178,6 +199,11 @@ func (a *AgentLoop) SetContextWindow(tokens int) {
 // SetPermissions sets the tool permission rules for this loop.
 func (a *AgentLoop) SetPermissions(cfg *permissions.Config) {
 	a.permsConfig = cfg
+}
+
+// SetApprovalRequester sets the handler for tool calls that require approval.
+func (a *AgentLoop) SetApprovalRequester(requester ApprovalRequester) {
+	a.approver = requester
 }
 
 // SetHookRunner sets the lifecycle hook runner for this loop.
@@ -461,10 +487,35 @@ func (a *AgentLoop) executeTool(ctx context.Context, toolUse client.ToolUse) Too
 	}
 
 	// Permission check
+	needsApproval := a.approver != nil && tool.RequiresApproval()
+	approvalReason := "tool requires approval"
 	if a.permsConfig != nil {
 		decision, reason := permissions.CheckToolCall(toolUse.Name, string(toolUse.Input), a.permsConfig)
 		if decision == permissions.Deny {
 			return PermissionError(fmt.Sprintf("%s: blocked (%s)", toolUse.Name, reason))
+		}
+		if decision == permissions.Allow {
+			needsApproval = false
+		}
+		if decision == permissions.Ask {
+			needsApproval = true
+			approvalReason = reason
+		}
+	}
+	if needsApproval {
+		if a.approver == nil {
+			return PermissionError(fmt.Sprintf("%s: approval required (%s)", toolUse.Name, approvalReason))
+		}
+		decision, err := a.approver.RequestApproval(ctx, ApprovalRequest{
+			Tool:   toolUse.Name,
+			Args:   string(toolUse.Input),
+			Reason: approvalReason,
+		})
+		if err != nil {
+			return PermissionError(fmt.Sprintf("%s: approval failed (%v)", toolUse.Name, err))
+		}
+		if decision != ApprovalAllow {
+			return PermissionError(fmt.Sprintf("%s: denied by user", toolUse.Name))
 		}
 	}
 

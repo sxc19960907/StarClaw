@@ -9,6 +9,8 @@ const state = {
   activeSessionID: "",
   toolEvents: new Map(),
   toolDetails: new Map(),
+  approvals: new Map(),
+  eventSource: null,
 };
 
 const views = {
@@ -90,6 +92,7 @@ function setRunControls(isRunning) {
 function renderEmptyThread() {
   state.toolEvents.clear();
   state.toolDetails.clear();
+  state.approvals.clear();
   $("chat-output").innerHTML = `<div class="empty-thread">
     <div class="assistant-mark" aria-hidden="true">S</div>
     <div>
@@ -128,6 +131,7 @@ function renderSessionThread(session) {
   const messages = Array.isArray(session.messages) ? session.messages : [];
   state.toolEvents.clear();
   state.toolDetails.clear();
+  state.approvals.clear();
   $("chat-output").innerHTML = "";
   if (!messages.length) {
     $("chat-output").innerHTML = `<div class="empty-thread">
@@ -152,6 +156,28 @@ function startNewChat() {
   document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
   renderEmptyThread();
   switchPanel("chat");
+}
+
+function connectEventStream() {
+  if (!("EventSource" in window) || state.eventSource) return;
+  const source = new EventSource("/events");
+  state.eventSource = source;
+  source.addEventListener("approval_needed", (event) => {
+    renderApprovalCard(parseEventData(event.data));
+  });
+  source.addEventListener("approval_resolved", (event) => {
+    markApprovalResolved(parseEventData(event.data));
+  });
+  source.onerror = () => {
+    $("daemon-pill").textContent = "Reconnecting";
+    $("daemon-pill").className = "bad";
+  };
+  source.onopen = () => {
+    if ($("daemon-pill").textContent === "Reconnecting") {
+      $("daemon-pill").textContent = "Running";
+      $("daemon-pill").className = "ok";
+    }
+  };
 }
 
 function formatUptime(seconds) {
@@ -419,6 +445,73 @@ function appendToolEvent(data, eventType) {
   </div>`;
 }
 
+function renderApprovalCard(data) {
+  const requestID = data.request_id || "";
+  if (!requestID || state.approvals.has(requestID)) return;
+  switchPanel("chat");
+  const card = document.createElement("div");
+  card.className = "approval-card pending";
+  card.dataset.approvalId = requestID;
+  card.innerHTML = approvalCardHTML(data, "pending");
+  $("chat-output").appendChild(card);
+  state.approvals.set(requestID, { data, element: card });
+  $("chat-state").textContent = "Approval required";
+  scrollConversationToBottom();
+}
+
+function approvalCardHTML(data, status) {
+  const args = data.args ? formatToolPayload(data.args) : "";
+  const reason = data.reason || "Approval required";
+  const statusLabel = status === "pending" ? "pending" : status;
+  const disabled = status === "pending" ? "" : "disabled";
+  return `<div class="approval-header">
+    <span>Approval required</span>
+    <strong>${escapeHTML(statusLabel)}</strong>
+  </div>
+  <div class="approval-body">
+    <div><span>Tool</span><strong>${escapeHTML(data.tool || "tool")}</strong></div>
+    <div><span>Reason</span><strong>${escapeHTML(reason)}</strong></div>
+    ${data.agent ? `<div><span>Agent</span><strong>${escapeHTML(data.agent)}</strong></div>` : ""}
+    ${args ? `<pre>${escapeHTML(args)}</pre>` : ""}
+  </div>
+  <div class="approval-actions">
+    <button class="primary-button" data-approval-decision="allow" data-approval-id="${escapeHTML(data.request_id || "")}" ${disabled}>Allow</button>
+    <button class="danger-button" data-approval-decision="deny" data-approval-id="${escapeHTML(data.request_id || "")}" ${disabled}>Deny</button>
+  </div>`;
+}
+
+function markApprovalResolved(data) {
+  const requestID = data.request_id || "";
+  const item = state.approvals.get(requestID);
+  if (!item) return;
+  const status = data.decision === "allow" ? "allowed" : "denied";
+  item.element.classList.remove("pending", "allowed", "denied");
+  item.element.classList.add(status);
+  item.element.innerHTML = approvalCardHTML(item.data, status);
+  $("chat-state").textContent = status === "allowed" ? "Approval allowed" : "Approval denied";
+}
+
+async function resolveApproval(requestID, decision) {
+  const item = state.approvals.get(requestID);
+  if (!item) return;
+  item.element.querySelectorAll("button").forEach((button) => {
+    button.disabled = true;
+  });
+  try {
+    await api("/approval", {
+      method: "POST",
+      body: JSON.stringify({ request_id: requestID, decision }),
+    });
+    markApprovalResolved({ request_id: requestID, decision });
+    showToast(decision === "allow" ? "Tool approved." : "Tool denied.");
+  } catch (error) {
+    item.element.querySelectorAll("button").forEach((button) => {
+      button.disabled = false;
+    });
+    showToast(error.message);
+  }
+}
+
 function formatToolPayload(value) {
   if (typeof value !== "string") return JSON.stringify(value, null, 2);
   try {
@@ -611,6 +704,12 @@ async function refreshAll() {
 }
 
 document.addEventListener("click", (event) => {
+  const approvalButton = event.target.closest("[data-approval-decision]");
+  if (approvalButton) {
+    resolveApproval(approvalButton.dataset.approvalId, approvalButton.dataset.approvalDecision);
+    return;
+  }
+
   const sessionDelete = event.target.closest("[data-session-delete]");
   if (sessionDelete) {
     event.stopPropagation();
@@ -651,4 +750,5 @@ $("session-search-form").addEventListener("submit", (event) => {
   loadSessions($("session-search").value.trim());
 });
 
+connectEventStream();
 refreshAll();

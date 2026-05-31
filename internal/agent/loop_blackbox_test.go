@@ -24,6 +24,16 @@ type blackboxResponse struct {
 	err       error
 }
 
+type recordingApprover struct {
+	decision ApprovalDecision
+	requests []ApprovalRequest
+}
+
+func (r *recordingApprover) RequestApproval(_ context.Context, req ApprovalRequest) (ApprovalDecision, error) {
+	r.requests = append(r.requests, req)
+	return r.decision, nil
+}
+
 var _ client.LLMClient = (*blackboxMockClient)(nil)
 
 func (m *blackboxMockClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
@@ -90,6 +100,77 @@ func TestAgentLoop_ToolCallThenResponse(t *testing.T) {
 	}
 	if len(handler.toolCalls) != 1 {
 		t.Errorf("Expected 1 tool call, got %d", len(handler.toolCalls))
+	}
+}
+
+func TestAgentLoop_RequiresApprovalAllowed(t *testing.T) {
+	mock := &blackboxMockClient{
+		responses: []blackboxResponse{
+			{
+				toolCalls: []client.ToolUse{
+					{ID: "toolu_1", Name: "write_file", Input: []byte(`{"path":"test.txt"}`)},
+				},
+			},
+			{text: "Write completed."},
+		},
+	}
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "write_file", requiresApproval: true})
+
+	approver := &recordingApprover{decision: ApprovalAllow}
+	loop := NewAgentLoop(mock, reg)
+	loop.SetApprovalRequester(approver)
+
+	resp, err := loop.Run(context.Background(), "write a file")
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if !strings.Contains(resp.Content, "completed") {
+		t.Fatalf("response = %q, want completed", resp.Content)
+	}
+	if len(approver.requests) != 1 {
+		t.Fatalf("approval requests = %d, want 1", len(approver.requests))
+	}
+	if approver.requests[0].Tool != "write_file" {
+		t.Fatalf("approval tool = %q, want write_file", approver.requests[0].Tool)
+	}
+}
+
+func TestAgentLoop_RequiresApprovalDenied(t *testing.T) {
+	executed := false
+	mock := &blackboxMockClient{
+		responses: []blackboxResponse{
+			{
+				toolCalls: []client.ToolUse{
+					{ID: "toolu_1", Name: "write_file", Input: []byte(`{"path":"test.txt"}`)},
+				},
+			},
+			{text: "Tool was denied."},
+		},
+	}
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{
+		name:             "write_file",
+		requiresApproval: true,
+		execute: func() ToolResult {
+			executed = true
+			return ToolResult{Content: "should not run"}
+		},
+	})
+
+	approver := &recordingApprover{decision: ApprovalDeny}
+	loop := NewAgentLoop(mock, reg)
+	loop.SetApprovalRequester(approver)
+
+	_, err := loop.Run(context.Background(), "write a file")
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if executed {
+		t.Fatal("tool executed after approval denial")
+	}
+	if len(approver.requests) != 1 {
+		t.Fatalf("approval requests = %d, want 1", len(approver.requests))
 	}
 }
 

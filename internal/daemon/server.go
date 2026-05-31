@@ -154,7 +154,7 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Synchronous JSON response.
 	handler := &httpEventHandler{}
-	result, err := RunAgent(ctx, s.deps, req, handler)
+	result, err := s.runAgent(ctx, req, handler)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -175,7 +175,7 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 	flusher.Flush()
 
 	handler := &sseEventHandler{w: w, flusher: flusher}
-	result, err := RunAgent(ctx, s.deps, req, handler)
+	result, err := s.runAgent(ctx, req, handler)
 	if err != nil {
 		fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]string{"error": err.Error()}))
 		flusher.Flush()
@@ -183,6 +183,11 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 	}
 	fmt.Fprintf(w, "event: done\ndata: %s\n\n", mustJSON(result))
 	flusher.Flush()
+}
+
+func (s *Server) runAgent(ctx context.Context, req RunAgentRequest, handler agent.EventHandler) (RunAgentResponse, error) {
+	approver := NewDaemonApprovalRequester(s.approvalBroker, s.eventBus, req.Channel, req.RequestID, req.Agent)
+	return RunAgentWithApproval(ctx, s.deps, req, handler, approver)
 }
 
 // ---------------------------------------------------------------------------
@@ -800,8 +805,9 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.approvalBroker.Resolve(ApprovalResolvedPayload{
-		RequestID: body.RequestID,
-		Decision:  body.Decision,
+		RequestID:  body.RequestID,
+		Decision:   body.Decision,
+		ResolvedBy: "api",
 	})
 
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

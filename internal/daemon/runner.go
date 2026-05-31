@@ -20,6 +20,11 @@ import (
 // after completion, and forwards events (tool calls, results, text)
 // to the handler.
 func RunAgent(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handler agent.EventHandler) (RunAgentResponse, error) {
+	return RunAgentWithApproval(ctx, deps, req, handler, nil)
+}
+
+// RunAgentWithApproval executes an agent turn and optionally wires tool approval.
+func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handler agent.EventHandler, approver agent.ApprovalRequester) (RunAgentResponse, error) {
 	// --- Validation ---
 	if strings.TrimSpace(req.Text) == "" {
 		return RunAgentResponse{}, fmt.Errorf("text is required")
@@ -96,6 +101,9 @@ func RunAgent(ctx context.Context, deps *ServerDeps, req RunAgentRequest, handle
 	loop.SetSpecificModel(effectiveCfg.Agent.Model)
 	loop.SetSession(sess)
 	loop.SetSessionManager(sessMgr)
+	if approver != nil {
+		loop.SetApprovalRequester(approver)
+	}
 	if agentCfg != nil {
 		agentDir := filepath.Join(deps.AgentsDir, agentName)
 		loop.SwitchAgent(agentCfg.Prompt, agentDir)
