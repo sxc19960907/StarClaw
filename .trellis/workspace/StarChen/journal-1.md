@@ -1246,3 +1246,37 @@ Restored GitHub Actions CI by building golangci-lint with the module Go toolchai
 ### Next Steps
 
 - None - task complete
+
+
+## Session 38: Validate general agent CLI usability
+
+**Date**: 2026-05-31
+**Task**: Validate general agent CLI usability
+**Branch**: `main`
+
+### Summary
+
+Added a repeatable CLI smoke validation script for StarClaw general-agent usability. Verified isolated binary behavior for version/help, missing config chat failure, sessions, MCP list, existing config, and shell completion. Local go test, go vet, smoke validation, and GitHub Actions CI run 26700442333 passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c46b37b` | (see git log) |
+| `cdb9be8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
