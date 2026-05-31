@@ -1380,3 +1380,36 @@ Added read-only daemon /skills route and deterministic daemon API smoke coverage
 ### Next Steps
 
 - None - task complete
+
+
+## Session 42: Align daemon named agent runtime
+
+**Date**: 2026-05-31
+**Task**: Align daemon named agent runtime
+**Branch**: `main`
+
+### Summary
+
+Aligned daemon RunAgent named-agent execution with CLI runtime behavior. Daemon dependencies now carry loaded config; RunAgent merges named-agent config, applies per-run tool filters without mutating the base registry, configures loop model/thinking/token settings, and injects named-agent memory. Added deterministic capture-client coverage. Local go test ./internal/daemon ./cmd, go test ./..., and go vet ./... passed. GitHub Actions run 26707292509 passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c259898` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
