@@ -216,6 +216,10 @@ textarea:focus {
   overflow: auto;
 }
 
+.compact-list {
+  max-height: 160px;
+}
+
 .workspace {
   min-width: 0;
   min-height: 100vh;
@@ -891,6 +895,12 @@ textarea:focus {
   gap: 10px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .empty-state,

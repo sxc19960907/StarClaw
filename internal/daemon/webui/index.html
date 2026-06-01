@@ -171,6 +171,22 @@
                   <input id="agent-heartbeat-model" aria-label="Agent heartbeat model" placeholder="optional">
                 </label>
               </fieldset>
+              <fieldset class="form-fieldset">
+                <legend>Commands</legend>
+                <div class="data-list compact-list" id="agent-command-list"></div>
+                <label>
+                  Command name
+                  <input id="agent-command-name" aria-label="Agent command name" placeholder="review">
+                </label>
+                <label>
+                  Command body
+                  <textarea id="agent-command-body" rows="5" aria-label="Agent command body" placeholder="Review recent changes for regressions."></textarea>
+                </label>
+                <div class="inline-actions">
+                  <button type="button" id="agent-command-save-button">Add command</button>
+                  <button type="button" class="danger-button" id="agent-command-delete-button" hidden>Delete command</button>
+                </div>
+              </fieldset>
               <div class="form-actions">
                 <span id="agent-form-state">New agent</span>
                 <button type="button" class="danger-button" id="agent-delete-button" hidden>Delete</button>

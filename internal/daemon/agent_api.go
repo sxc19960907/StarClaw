@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/starclaw/starclaw/internal/agents"
@@ -11,18 +12,21 @@ import (
 )
 
 type agentEditRequest struct {
-	Name            string   `json:"name"`
-	Prompt          string   `json:"prompt"`
-	Memory          string   `json:"memory"`
-	Model           string   `json:"model"`
-	ReasoningEffort string   `json:"reasoning_effort"`
-	ToolsAllow      []string `json:"tools_allow"`
-	ToolsDeny       []string `json:"tools_deny"`
-	AutoApprove     *bool    `json:"auto_approve"`
-	HeartbeatEvery  string   `json:"heartbeat_every"`
-	HeartbeatHours  string   `json:"heartbeat_active_hours"`
-	HeartbeatModel  string   `json:"heartbeat_model"`
+	Name            string             `json:"name"`
+	Prompt          string             `json:"prompt"`
+	Memory          string             `json:"memory"`
+	Model           string             `json:"model"`
+	ReasoningEffort string             `json:"reasoning_effort"`
+	ToolsAllow      []string           `json:"tools_allow"`
+	ToolsDeny       []string           `json:"tools_deny"`
+	AutoApprove     *bool              `json:"auto_approve"`
+	HeartbeatEvery  string             `json:"heartbeat_every"`
+	HeartbeatHours  string             `json:"heartbeat_active_hours"`
+	HeartbeatModel  string             `json:"heartbeat_model"`
+	Commands        *map[string]string `json:"commands"`
 }
+
+var agentCommandNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
 
 func saveAgentDefinition(agentsDir, name string, req agentEditRequest, create bool) (*agents.Agent, error) {
 	if err := agents.ValidateAgentName(name); err != nil {
@@ -78,6 +82,11 @@ func saveAgentDefinition(agentsDir, name string, req agentEditRequest, create bo
 			return nil, fmt.Errorf("write config.yaml: %w", err)
 		}
 	}
+	if req.Commands != nil {
+		if err := saveAgentCommands(agentDir, *req.Commands); err != nil {
+			return nil, err
+		}
+	}
 	return agents.LoadAgent(agentsDir, name)
 }
 
@@ -124,4 +133,39 @@ func trimStringList(values []string) []string {
 		}
 	}
 	return result
+}
+
+func saveAgentCommands(agentDir string, commands map[string]string) error {
+	commandsDir := filepath.Join(agentDir, "commands")
+	cleaned := make(map[string]string, len(commands))
+	for name, content := range commands {
+		trimmedName := strings.TrimSpace(name)
+		if !agentCommandNameRe.MatchString(trimmedName) {
+			return fmt.Errorf("invalid command name %q: must match %s", name, agentCommandNameRe.String())
+		}
+		trimmedContent := strings.TrimSpace(content)
+		if trimmedContent == "" {
+			continue
+		}
+		cleaned[trimmedName] = trimmedContent
+	}
+	if len(cleaned) == 0 {
+		if err := os.RemoveAll(commandsDir); err != nil {
+			return fmt.Errorf("remove commands directory: %w", err)
+		}
+		return nil
+	}
+	if err := os.RemoveAll(commandsDir); err != nil {
+		return fmt.Errorf("replace commands directory: %w", err)
+	}
+	if err := os.MkdirAll(commandsDir, 0700); err != nil {
+		return fmt.Errorf("create commands directory: %w", err)
+	}
+	for name, content := range cleaned {
+		path := filepath.Join(commandsDir, name+".md")
+		if err := os.WriteFile(path, []byte(content+"\n"), 0600); err != nil {
+			return fmt.Errorf("write command %q: %w", name, err)
+		}
+	}
+	return nil
 }

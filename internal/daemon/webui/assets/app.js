@@ -8,6 +8,8 @@ const state = {
   config: null,
   permissions: null,
   editingAgent: "",
+  selectedAgentCommand: "",
+  agentCommands: {},
   activeRequestID: "",
   activeAbort: null,
   activeSessionID: "",
@@ -489,6 +491,10 @@ function startNewAgent() {
   $("agent-heartbeat-every").value = "";
   $("agent-heartbeat-active-hours").value = "";
   $("agent-heartbeat-model").value = "";
+  state.selectedAgentCommand = "";
+  state.agentCommands = {};
+  clearAgentCommandEditor();
+  renderAgentCommands();
   $("agent-delete-button").hidden = true;
   $("agent-form-state").textContent = "New agent";
   $("selected-agent-description").textContent = "Create a named agent.";
@@ -500,6 +506,8 @@ function fillAgentForm(agent) {
   const toolsCfg = cfg.Tools || cfg.tools || {};
   const heartbeatCfg = cfg.Heartbeat || cfg.heartbeat || {};
   const autoApprove = cfg.AutoApprove ?? cfg.auto_approve;
+  state.selectedAgentCommand = "";
+  state.agentCommands = { ...(agent.Commands || agent.commands || {}) };
   state.editingAgent = agent.Name || agent.name || "";
   $("agent-name").disabled = true;
   $("agent-name").value = state.editingAgent;
@@ -513,6 +521,8 @@ function fillAgentForm(agent) {
   $("agent-heartbeat-every").value = heartbeatCfg.Every || heartbeatCfg.every || "";
   $("agent-heartbeat-active-hours").value = heartbeatCfg.ActiveHours || heartbeatCfg.active_hours || "";
   $("agent-heartbeat-model").value = heartbeatCfg.Model || heartbeatCfg.model || "";
+  clearAgentCommandEditor();
+  renderAgentCommands();
   $("agent-delete-button").hidden = false;
   $("agent-form-state").textContent = `Editing ${state.editingAgent}`;
   $("selected-agent-description").textContent = "Editing named agent.";
@@ -539,7 +549,68 @@ function buildAgentPayload() {
     heartbeat_every: $("agent-heartbeat-every").value.trim(),
     heartbeat_active_hours: $("agent-heartbeat-active-hours").value.trim(),
     heartbeat_model: $("agent-heartbeat-model").value.trim(),
+    commands: { ...state.agentCommands },
   };
+}
+
+function renderAgentCommands() {
+  const list = $("agent-command-list");
+  const names = Object.keys(state.agentCommands).sort((a, b) => a.localeCompare(b));
+  if (!names.length) {
+    renderEmpty(list, "No custom commands.");
+    return;
+  }
+  list.innerHTML = names.map((name) => {
+    const active = name === state.selectedAgentCommand ? " active" : "";
+    return `<div class="row-item${active}">
+      <div class="row-item-title"><span>${escapeHTML(name)}</span><span class="tag">command</span></div>
+      <div class="row-actions"><button type="button" data-agent-command="${escapeHTML(name)}">Edit</button></div>
+    </div>`;
+  }).join("");
+}
+
+function clearAgentCommandEditor() {
+  state.selectedAgentCommand = "";
+  $("agent-command-name").disabled = false;
+  $("agent-command-name").value = "";
+  $("agent-command-body").value = "";
+  $("agent-command-save-button").textContent = "Add command";
+  $("agent-command-delete-button").hidden = true;
+}
+
+function selectAgentCommand(name) {
+  state.selectedAgentCommand = name;
+  $("agent-command-name").disabled = true;
+  $("agent-command-name").value = name;
+  $("agent-command-body").value = state.agentCommands[name] || "";
+  $("agent-command-save-button").textContent = "Update command";
+  $("agent-command-delete-button").hidden = false;
+  renderAgentCommands();
+}
+
+function saveAgentCommand() {
+  const name = $("agent-command-name").value.trim();
+  const body = $("agent-command-body").value.trim();
+  if (!name || !body) {
+    showToast("Command name and body are required.");
+    return;
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) {
+    showToast("Command name must use letters, numbers, dashes, or underscores.");
+    return;
+  }
+  state.agentCommands[name] = body;
+  selectAgentCommand(name);
+  showToast("Command staged.");
+}
+
+function deleteAgentCommand() {
+  const name = state.selectedAgentCommand;
+  if (!name) return;
+  delete state.agentCommands[name];
+  clearAgentCommandEditor();
+  renderAgentCommands();
+  showToast("Command removed.");
 }
 
 async function submitAgent(event) {
@@ -1113,6 +1184,9 @@ document.addEventListener("click", (event) => {
   const agentButton = event.target.closest("[data-agent-detail]");
   if (agentButton) inspectAgent(agentButton.dataset.agentDetail);
 
+  const agentCommand = event.target.closest("[data-agent-command]");
+  if (agentCommand) selectAgentCommand(agentCommand.dataset.agentCommand);
+
   const toggle = event.target.closest("[data-schedule-toggle]");
   if (toggle) toggleSchedule(toggle.dataset.scheduleToggle, toggle.dataset.enabled === "true");
 
@@ -1137,6 +1211,8 @@ $("config-provider").addEventListener("change", updateProviderFields);
 $("agent-form").addEventListener("submit", submitAgent);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
+$("agent-command-save-button").addEventListener("click", saveAgentCommand);
+$("agent-command-delete-button").addEventListener("click", deleteAgentCommand);
 $("chat-agent").addEventListener("change", updateSelectedAgent);
 $("session-search-form").addEventListener("submit", (event) => {
   event.preventDefault();

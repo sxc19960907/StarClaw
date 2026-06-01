@@ -89,6 +89,70 @@ for _, tt := range tests {
 
 - When a UI click hydrates an editor from an API request, wait for the matching response before editing form fields. Otherwise the late response can overwrite test input and make save assertions flaky.
 
+## Scenario: Agent Command Editor
+
+### 1. Scope / Trigger
+
+- Trigger: daemon API and Web UI create/update named agent custom command files.
+
+### 2. Signatures
+
+- `POST /agents` and `PUT /agents/{name}` accept optional `commands`.
+- Request shape:
+  ```json
+  {
+    "commands": {
+      "review": "Review recent changes."
+    }
+  }
+  ```
+
+### 3. Contracts
+
+- Command names map to `<agent>/commands/<name>.md`.
+- Command names must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`.
+- Omitted `commands` preserves existing command files.
+- Present `commands` replaces the managed command directory with non-empty entries.
+- Empty command content is omitted; an empty object removes the command directory.
+
+### 4. Validation & Error Matrix
+
+- Invalid command name -> `400`.
+- Filesystem write/remove failure -> `400` from create/update path.
+- Missing command body in Web UI -> client-side toast, no API call.
+
+### 5. Good/Base/Bad Cases
+
+- Good: add `review`, save agent, reload detail, `Commands.review` returns the saved body.
+- Base: update agent prompt with no `commands` field, existing command files remain.
+- Bad: command name `../escape` is rejected.
+
+### 6. Tests Required
+
+- Backend create persists commands.
+- Backend update replaces commands and removes deleted entries.
+- Backend update without `commands` preserves existing command files.
+- Backend rejects invalid command names.
+- Web UI smoke covers add/edit/delete command round trip.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+path := filepath.Join(commandsDir, name+".md")
+```
+
+without validating `name`.
+
+#### Correct
+
+```go
+if !agentCommandNameRe.MatchString(name) {
+    return fmt.Errorf("invalid command name")
+}
+```
+
 ---
 
 ## Interface Design

@@ -130,6 +130,10 @@ function agentConfig(agent) {
   };
 }
 
+function agentCommands(agent) {
+  return agent.Commands || agent.commands || {};
+}
+
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
 
@@ -170,6 +174,10 @@ try {
   const agentHeartbeatEvery = page.locator("#agent-heartbeat-every");
   const agentHeartbeatActiveHours = page.locator("#agent-heartbeat-active-hours");
   const agentHeartbeatModel = page.locator("#agent-heartbeat-model");
+  const agentCommandName = page.locator("#agent-command-name");
+  const agentCommandBody = page.locator("#agent-command-body");
+  const saveCommandButton = page.locator("#agent-command-save-button");
+  const deleteCommandButton = page.locator("#agent-command-delete-button");
   const saveAgentButton = page.locator("#agent-form button[type=\"submit\"]");
   await agentToolsAllow.fill("file_read\ngrep");
   await agentToolsDeny.fill("bash");
@@ -177,6 +185,10 @@ try {
   await agentHeartbeatEvery.fill("15m");
   await agentHeartbeatActiveHours.fill("09:00-17:00");
   await agentHeartbeatModel.fill("smoke-heartbeat-model");
+  await agentCommandName.fill("review");
+  await agentCommandBody.fill("Review recent smoke changes.");
+  await saveCommandButton.click();
+  await page.locator("#agent-command-list").getByText("review").waitFor();
   await saveAgentButton.click();
   await page.getByText("Agent saved.").waitFor();
   await page.locator("#agents-list").getByText("smoke-agent").waitFor();
@@ -191,6 +203,8 @@ try {
   assert(await agentHeartbeatEvery.inputValue() === "15m", "agent heartbeat interval should reload after create");
   assert(await agentHeartbeatActiveHours.inputValue() === "09:00-17:00", "agent heartbeat active hours should reload after create");
   assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-model", "agent heartbeat model should reload after create");
+  await page.locator("#agent-command-list [data-agent-command=\"review\"]").click();
+  assert((await agentCommandBody.inputValue()).trim() === "Review recent smoke changes.", "agent command should reload after create");
   await page.getByLabel("Agent prompt").fill("You are an edited smoke agent.");
   await agentToolsAllow.fill("version, file_read");
   await agentToolsDeny.fill("bash\nhttp");
@@ -198,6 +212,12 @@ try {
   await agentHeartbeatEvery.fill("30m");
   await agentHeartbeatActiveHours.fill("10:00-18:00");
   await agentHeartbeatModel.fill("smoke-heartbeat-edited");
+  await agentCommandBody.fill("Updated smoke review command.");
+  await saveCommandButton.click();
+  await deleteCommandButton.click();
+  await agentCommandName.fill("deploy");
+  await agentCommandBody.fill("Deploy smoke changes safely.");
+  await saveCommandButton.click();
   const allowBeforeSave = await agentToolsAllow.inputValue();
   assert(allowBeforeSave === "version, file_read", `agent allow input should update before save, got ${JSON.stringify(allowBeforeSave)}`);
   const updateResponsePromise = page.waitForResponse((response) =>
@@ -208,12 +228,15 @@ try {
   assert(updateResponse.ok(), `agent update failed with ${updateResponse.status()}`);
   const updatedAgent = await updateResponse.json();
   const updatedConfig = agentConfig(updatedAgent);
+  const updatedCommands = agentCommands(updatedAgent);
   assert(updatedConfig.allow.join("\n") === "version\nfile_read", `agent allow rules should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.deny.join("\n") === "bash\nhttp", `agent deny rules should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.autoApprove === false, `agent auto approve should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.heartbeatEvery === "30m", `agent heartbeat interval should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.heartbeatActiveHours === "10:00-18:00", `agent heartbeat active hours should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.heartbeatModel === "smoke-heartbeat-edited", `agent heartbeat model should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  assert(!updatedCommands.review, `deleted command should not save after edit, got ${JSON.stringify(updatedCommands)}`);
+  assert(updatedCommands.deploy === "Deploy smoke changes safely.\n", `agent command should save after edit, got ${JSON.stringify(updatedCommands)}`);
   await page.getByRole("button", { name: "New agent" }).click();
   const updatedDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
@@ -228,11 +251,15 @@ try {
   assert(await agentHeartbeatEvery.inputValue() === "30m", "agent heartbeat interval should reload after edit");
   assert(await agentHeartbeatActiveHours.inputValue() === "10:00-18:00", "agent heartbeat active hours should reload after edit");
   assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-edited", "agent heartbeat model should reload after edit");
+  assert(await page.locator("#agent-command-list").getByText("deploy").count() === 1, "agent command list should reload after edit");
+  assert(await page.locator("#agent-command-list").getByText("review").count() === 0, "deleted agent command should stay deleted after reload");
+  await page.locator("#agent-command-list [data-agent-command=\"deploy\"]").click();
+  assert((await agentCommandBody.inputValue()).trim() === "Deploy smoke changes safely.", "agent command body should reload after edit");
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
     await dialog.accept();
   });
-  await page.getByRole("button", { name: "Delete" }).click();
+  await page.locator("#agent-delete-button").click();
   await page.getByText("Agent deleted.").waitFor();
 
   await page.getByRole("button", { name: /Schedules/ }).click();
