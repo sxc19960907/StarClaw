@@ -1546,3 +1546,37 @@ Added daemon diagnostics API, surfaced runtime readiness in the Web UI, covered 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 47: GUI provider config repair
+
+**Date**: 2026-06-01
+**Task**: GUI provider config repair
+**Branch**: `main`
+
+### Summary
+
+Added a Web UI provider setup panel, made daemon config GET/PATCH YAML-aware with secret redaction and in-memory refresh, updated smoke coverage, and recorded the config repair contract.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `23b0f70` | (see git log) |
+| `53d5541` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
