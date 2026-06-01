@@ -486,6 +486,9 @@ function startNewAgent() {
   $("agent-tools-allow").value = "";
   $("agent-tools-deny").value = "";
   $("agent-auto-approve").checked = false;
+  $("agent-heartbeat-every").value = "";
+  $("agent-heartbeat-active-hours").value = "";
+  $("agent-heartbeat-model").value = "";
   $("agent-delete-button").hidden = true;
   $("agent-form-state").textContent = "New agent";
   $("selected-agent-description").textContent = "Create a named agent.";
@@ -495,6 +498,7 @@ function fillAgentForm(agent) {
   const cfg = agent.Config || agent.config || {};
   const modelCfg = cfg.Agent || cfg.agent || {};
   const toolsCfg = cfg.Tools || cfg.tools || {};
+  const heartbeatCfg = cfg.Heartbeat || cfg.heartbeat || {};
   const autoApprove = cfg.AutoApprove ?? cfg.auto_approve;
   state.editingAgent = agent.Name || agent.name || "";
   $("agent-name").disabled = true;
@@ -506,6 +510,9 @@ function fillAgentForm(agent) {
   $("agent-tools-allow").value = formatRuleList(toolsCfg.Allow || toolsCfg.allow || []);
   $("agent-tools-deny").value = formatRuleList(toolsCfg.Deny || toolsCfg.deny || []);
   $("agent-auto-approve").checked = autoApprove === true;
+  $("agent-heartbeat-every").value = heartbeatCfg.Every || heartbeatCfg.every || "";
+  $("agent-heartbeat-active-hours").value = heartbeatCfg.ActiveHours || heartbeatCfg.active_hours || "";
+  $("agent-heartbeat-model").value = heartbeatCfg.Model || heartbeatCfg.model || "";
   $("agent-delete-button").hidden = false;
   $("agent-form-state").textContent = `Editing ${state.editingAgent}`;
   $("selected-agent-description").textContent = "Editing named agent.";
@@ -529,6 +536,9 @@ function buildAgentPayload() {
     tools_allow: parseCSVList($("agent-tools-allow").value),
     tools_deny: parseCSVList($("agent-tools-deny").value),
     auto_approve: $("agent-auto-approve").checked,
+    heartbeat_every: $("agent-heartbeat-every").value.trim(),
+    heartbeat_active_hours: $("agent-heartbeat-active-hours").value.trim(),
+    heartbeat_model: $("agent-heartbeat-model").value.trim(),
   };
 }
 

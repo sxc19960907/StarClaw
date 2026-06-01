@@ -119,10 +119,14 @@ function assert(condition, message) {
 function agentConfig(agent) {
   const config = agent.Config || agent.config || {};
   const tools = config.Tools || config.tools || {};
+  const heartbeat = config.Heartbeat || config.heartbeat || {};
   return {
     allow: tools.Allow || tools.allow || [],
     deny: tools.Deny || tools.deny || [],
     autoApprove: config.AutoApprove ?? config.auto_approve,
+    heartbeatEvery: heartbeat.Every || heartbeat.every || "",
+    heartbeatActiveHours: heartbeat.ActiveHours || heartbeat.active_hours || "",
+    heartbeatModel: heartbeat.Model || heartbeat.model || "",
   };
 }
 
@@ -163,10 +167,16 @@ try {
   const agentToolsAllow = page.locator("#agent-tools-allow");
   const agentToolsDeny = page.locator("#agent-tools-deny");
   const agentAutoApprove = page.locator("#agent-auto-approve");
+  const agentHeartbeatEvery = page.locator("#agent-heartbeat-every");
+  const agentHeartbeatActiveHours = page.locator("#agent-heartbeat-active-hours");
+  const agentHeartbeatModel = page.locator("#agent-heartbeat-model");
   const saveAgentButton = page.locator("#agent-form button[type=\"submit\"]");
   await agentToolsAllow.fill("file_read\ngrep");
   await agentToolsDeny.fill("bash");
   await agentAutoApprove.check();
+  await agentHeartbeatEvery.fill("15m");
+  await agentHeartbeatActiveHours.fill("09:00-17:00");
+  await agentHeartbeatModel.fill("smoke-heartbeat-model");
   await saveAgentButton.click();
   await page.getByText("Agent saved.").waitFor();
   await page.locator("#agents-list").getByText("smoke-agent").waitFor();
@@ -178,10 +188,16 @@ try {
   assert(await agentToolsAllow.inputValue() === "file_read\ngrep", "agent allow rules should reload after create");
   assert(await agentToolsDeny.inputValue() === "bash", "agent deny rules should reload after create");
   assert(await agentAutoApprove.isChecked(), "agent auto approve should reload after create");
+  assert(await agentHeartbeatEvery.inputValue() === "15m", "agent heartbeat interval should reload after create");
+  assert(await agentHeartbeatActiveHours.inputValue() === "09:00-17:00", "agent heartbeat active hours should reload after create");
+  assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-model", "agent heartbeat model should reload after create");
   await page.getByLabel("Agent prompt").fill("You are an edited smoke agent.");
   await agentToolsAllow.fill("version, file_read");
   await agentToolsDeny.fill("bash\nhttp");
   await agentAutoApprove.uncheck();
+  await agentHeartbeatEvery.fill("30m");
+  await agentHeartbeatActiveHours.fill("10:00-18:00");
+  await agentHeartbeatModel.fill("smoke-heartbeat-edited");
   const allowBeforeSave = await agentToolsAllow.inputValue();
   assert(allowBeforeSave === "version, file_read", `agent allow input should update before save, got ${JSON.stringify(allowBeforeSave)}`);
   const updateResponsePromise = page.waitForResponse((response) =>
@@ -195,6 +211,9 @@ try {
   assert(updatedConfig.allow.join("\n") === "version\nfile_read", `agent allow rules should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.deny.join("\n") === "bash\nhttp", `agent deny rules should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.autoApprove === false, `agent auto approve should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  assert(updatedConfig.heartbeatEvery === "30m", `agent heartbeat interval should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  assert(updatedConfig.heartbeatActiveHours === "10:00-18:00", `agent heartbeat active hours should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  assert(updatedConfig.heartbeatModel === "smoke-heartbeat-edited", `agent heartbeat model should save after edit, got ${JSON.stringify(updatedConfig)}`);
   await page.getByRole("button", { name: "New agent" }).click();
   const updatedDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
@@ -206,6 +225,9 @@ try {
   assert(editedAllow === "version\nfile_read", `agent allow rules should reload after edit, got ${JSON.stringify(editedAllow)}`);
   assert(editedDeny === "bash\nhttp", `agent deny rules should reload after edit, got ${JSON.stringify(editedDeny)}`);
   assert(!(await agentAutoApprove.isChecked()), "agent auto approve should reload after edit");
+  assert(await agentHeartbeatEvery.inputValue() === "30m", "agent heartbeat interval should reload after edit");
+  assert(await agentHeartbeatActiveHours.inputValue() === "10:00-18:00", "agent heartbeat active hours should reload after edit");
+  assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-edited", "agent heartbeat model should reload after edit");
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
     await dialog.accept();

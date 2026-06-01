@@ -1064,7 +1064,7 @@ func TestHandleCreateAgent(t *testing.T) {
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
-	body := `{"name":"test-agent","prompt":"You are a test agent.","memory":"Remember this.","model":"gpt-test","reasoning_effort":"low","tools_allow":["file_read","grep"],"tools_deny":["bash"],"auto_approve":true}`
+	body := `{"name":"test-agent","prompt":"You are a test agent.","memory":"Remember this.","model":"gpt-test","reasoning_effort":"low","tools_allow":["file_read","grep"],"tools_deny":["bash"],"auto_approve":true,"heartbeat_every":"15m","heartbeat_active_hours":"09:00-17:00","heartbeat_model":"gpt-heartbeat"}`
 	resp, err := http.Post(ts.URL+"/agents", "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST /agents: %v", err)
@@ -1089,6 +1089,9 @@ func TestHandleCreateAgent(t *testing.T) {
 	if created.Config.AutoApprove == nil || !*created.Config.AutoApprove {
 		t.Fatalf("auto_approve not persisted: %+v", created.Config)
 	}
+	if created.Config.Heartbeat == nil || created.Config.Heartbeat.Every != "15m" || created.Config.Heartbeat.ActiveHours != "09:00-17:00" || created.Config.Heartbeat.Model != "gpt-heartbeat" {
+		t.Fatalf("heartbeat config not persisted: %+v", created.Config.Heartbeat)
+	}
 	var list struct {
 		Agents []agents.AgentInfo `json:"agents"`
 	}
@@ -1105,7 +1108,7 @@ func TestHandleUpdateAgent(t *testing.T) {
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
-	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"Updated prompt","model":"gpt-updated","tools_allow":["version","file_read"],"tools_deny":["bash","http"],"auto_approve":false}`))
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"Updated prompt","model":"gpt-updated","tools_allow":["version","file_read"],"tools_deny":["bash","http"],"auto_approve":false,"heartbeat_every":"30m","heartbeat_active_hours":"10:00-18:00","heartbeat_model":"gpt-heartbeat-updated"}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -1130,6 +1133,39 @@ func TestHandleUpdateAgent(t *testing.T) {
 	}
 	if updated.Config.AutoApprove == nil || *updated.Config.AutoApprove {
 		t.Fatalf("auto_approve not updated: %+v", updated.Config)
+	}
+	if updated.Config.Heartbeat == nil || updated.Config.Heartbeat.Every != "30m" || updated.Config.Heartbeat.ActiveHours != "10:00-18:00" || updated.Config.Heartbeat.Model != "gpt-heartbeat-updated" {
+		t.Fatalf("heartbeat config not updated: %+v", updated.Config.Heartbeat)
+	}
+}
+
+func TestHandleUpdateAgentClearsHeartbeat(t *testing.T) {
+	deps := newTestServerDeps(t)
+	writeTestAgent(t, deps.AgentsDir, "test-agent")
+	agentDir := filepath.Join(deps.AgentsDir, "test-agent")
+	if err := os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte("heartbeat:\n  every: 15m\n  active_hours: 09:00-17:00\n"), 0600); err != nil {
+		t.Fatalf("write config.yaml: %v", err)
+	}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"Updated prompt"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT /agents/{name}: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	var updated agents.Agent
+	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode updated agent: %v", err)
+	}
+	if updated.Config != nil && updated.Config.Heartbeat != nil {
+		t.Fatalf("heartbeat config should be cleared: %+v", updated.Config.Heartbeat)
 	}
 }
 

@@ -156,6 +156,21 @@
                   Auto approve
                 </label>
               </fieldset>
+              <fieldset class="form-fieldset">
+                <legend>Heartbeat</legend>
+                <label>
+                  Every
+                  <input id="agent-heartbeat-every" aria-label="Agent heartbeat every" placeholder="15m">
+                </label>
+                <label>
+                  Active hours
+                  <input id="agent-heartbeat-active-hours" aria-label="Agent heartbeat active hours" placeholder="09:00-17:00">
+                </label>
+                <label>
+                  Model
+                  <input id="agent-heartbeat-model" aria-label="Agent heartbeat model" placeholder="optional">
+                </label>
+              </fieldset>
               <div class="form-actions">
                 <span id="agent-form-state">New agent</span>
                 <button type="button" class="danger-button" id="agent-delete-button" hidden>Delete</button>

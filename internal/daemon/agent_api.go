@@ -19,6 +19,9 @@ type agentEditRequest struct {
 	ToolsAllow      []string `json:"tools_allow"`
 	ToolsDeny       []string `json:"tools_deny"`
 	AutoApprove     *bool    `json:"auto_approve"`
+	HeartbeatEvery  string   `json:"heartbeat_every"`
+	HeartbeatHours  string   `json:"heartbeat_active_hours"`
+	HeartbeatModel  string   `json:"heartbeat_model"`
 }
 
 func saveAgentDefinition(agentsDir, name string, req agentEditRequest, create bool) (*agents.Agent, error) {
@@ -97,6 +100,13 @@ func buildAgentConfig(req agentEditRequest) *agents.AgentConfig {
 	}
 	if req.AutoApprove != nil {
 		cfg.AutoApprove = req.AutoApprove
+	}
+	if every := strings.TrimSpace(req.HeartbeatEvery); every != "" {
+		cfg.Heartbeat = &agents.HeartbeatConfig{
+			Every:       every,
+			ActiveHours: strings.TrimSpace(req.HeartbeatHours),
+			Model:       strings.TrimSpace(req.HeartbeatModel),
+		}
 	}
 	return cfg
 }
