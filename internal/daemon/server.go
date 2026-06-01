@@ -460,11 +460,61 @@ func (s *Server) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreateAgent(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "agent creation not yet implemented")
+	dir := s.agentsDir()
+	if dir == "" {
+		writeError(w, http.StatusInternalServerError, "agents directory not configured")
+		return
+	}
+	var req agentEditRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "agent name is required")
+		return
+	}
+	agent, err := saveAgentDefinition(dir, name, req, true)
+	if err != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(err.Error(), "already exists") {
+			status = http.StatusConflict
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, agent)
 }
 
 func (s *Server) handleUpdateAgent(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "agent update not yet implemented")
+	name := r.PathValue("name")
+	if err := agents.ValidateAgentName(name); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	dir := s.agentsDir()
+	if dir == "" {
+		writeError(w, http.StatusInternalServerError, "agents directory not configured")
+		return
+	}
+	var req agentEditRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if strings.TrimSpace(req.Name) != "" && strings.TrimSpace(req.Name) != name {
+		writeError(w, http.StatusBadRequest, "agent name cannot be changed")
+		return
+	}
+	agent, err := saveAgentDefinition(dir, name, req, false)
+	if err != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, agent)
 }
 
 func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {

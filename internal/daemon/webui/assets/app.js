@@ -7,6 +7,7 @@ const state = {
   diagnostics: null,
   config: null,
   permissions: null,
+  editingAgent: "",
   activeRequestID: "",
   activeAbort: null,
   activeSessionID: "",
@@ -446,7 +447,7 @@ async function loadAgents() {
       return `<article class="row-item">
         <div class="row-item-title"><span>${escapeHTML(name)}</span><span class="tag">agent</span></div>
         <p>${escapeHTML(description)}</p>
-        <div class="row-actions"><button data-agent-detail="${escapeHTML(name)}">Inspect</button></div>
+        <div class="row-actions"><button data-agent-detail="${escapeHTML(name)}">Edit</button></div>
       </article>`;
     }).join("");
   } catch (error) {
@@ -468,9 +469,97 @@ function updateAgentSelects() {
 async function inspectAgent(name) {
   try {
     const detail = await api(`/agents/${encodeURIComponent(name)}`);
-    $("agent-detail").textContent = JSON.stringify(detail, null, 2);
+    fillAgentForm(detail);
   } catch (error) {
-    $("agent-detail").textContent = error.message;
+    $("agent-form-state").textContent = error.message;
+  }
+}
+
+function startNewAgent() {
+  state.editingAgent = "";
+  $("agent-name").disabled = false;
+  $("agent-name").value = "";
+  $("agent-prompt").value = "";
+  $("agent-memory").value = "";
+  $("agent-model").value = "";
+  $("agent-reasoning-effort").value = "";
+  $("agent-tools-allow").value = "";
+  $("agent-tools-deny").value = "";
+  $("agent-auto-approve").checked = false;
+  $("agent-delete-button").hidden = true;
+  $("agent-form-state").textContent = "New agent";
+  $("selected-agent-description").textContent = "Create a named agent.";
+}
+
+function fillAgentForm(agent) {
+  const cfg = agent.Config || agent.config || {};
+  const modelCfg = cfg.Agent || cfg.agent || {};
+  const toolsCfg = cfg.Tools || cfg.tools || {};
+  const autoApprove = cfg.AutoApprove ?? cfg.auto_approve;
+  state.editingAgent = agent.Name || agent.name || "";
+  $("agent-name").disabled = true;
+  $("agent-name").value = state.editingAgent;
+  $("agent-prompt").value = agent.Prompt || agent.prompt || "";
+  $("agent-memory").value = agent.Memory || agent.memory || "";
+  $("agent-model").value = modelCfg.Model || modelCfg.model || "";
+  $("agent-reasoning-effort").value = modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "";
+  $("agent-tools-allow").value = (toolsCfg.Allow || toolsCfg.allow || []).join(", ");
+  $("agent-tools-deny").value = (toolsCfg.Deny || toolsCfg.deny || []).join(", ");
+  $("agent-auto-approve").checked = autoApprove === true;
+  $("agent-delete-button").hidden = false;
+  $("agent-form-state").textContent = `Editing ${state.editingAgent}`;
+  $("selected-agent-description").textContent = "Editing named agent.";
+}
+
+function parseCSVList(value) {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function buildAgentPayload() {
+  return {
+    name: $("agent-name").value.trim(),
+    prompt: $("agent-prompt").value,
+    memory: $("agent-memory").value,
+    model: $("agent-model").value.trim(),
+    reasoning_effort: $("agent-reasoning-effort").value.trim(),
+    tools_allow: parseCSVList($("agent-tools-allow").value),
+    tools_deny: parseCSVList($("agent-tools-deny").value),
+    auto_approve: $("agent-auto-approve").checked,
+  };
+}
+
+async function submitAgent(event) {
+  event.preventDefault();
+  const payload = buildAgentPayload();
+  if (!payload.name || !payload.prompt.trim()) {
+    showToast("Agent name and prompt are required.");
+    return;
+  }
+  const path = state.editingAgent ? `/agents/${encodeURIComponent(state.editingAgent)}` : "/agents";
+  const method = state.editingAgent ? "PUT" : "POST";
+  $("agent-form-state").textContent = "Saving";
+  try {
+    const saved = await api(path, { method, body: JSON.stringify(payload) });
+    await loadAgents();
+    fillAgentForm(saved);
+    updateAgentSelects();
+    showToast("Agent saved.");
+  } catch (error) {
+    $("agent-form-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+async function deleteCurrentAgent() {
+  const name = state.editingAgent;
+  if (!name || !globalThis.confirm(`Delete agent "${name}"?`)) return;
+  try {
+    await api(`/agents/${encodeURIComponent(name)}`, { method: "DELETE" });
+    await loadAgents();
+    startNewAgent();
+    showToast("Agent deleted.");
+  } catch (error) {
+    showToast(error.message);
   }
 }
 
@@ -1031,6 +1120,9 @@ $("stop-button").addEventListener("click", cancelActiveRun);
 $("schedule-form").addEventListener("submit", submitSchedule);
 $("config-form").addEventListener("submit", submitConfig);
 $("config-provider").addEventListener("change", updateProviderFields);
+$("agent-form").addEventListener("submit", submitAgent);
+$("new-agent-button").addEventListener("click", startNewAgent);
+$("agent-delete-button").addEventListener("click", deleteCurrentAgent);
 $("chat-agent").addEventListener("change", updateSelectedAgent);
 $("session-search-form").addEventListener("submit", (event) => {
   event.preventDefault();

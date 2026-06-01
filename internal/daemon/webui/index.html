@@ -112,14 +112,53 @@
               <h2 id="agents-heading">Agents</h2>
               <p>Named agent profiles available to the daemon.</p>
             </div>
+            <button class="new-chat-button" id="new-agent-button" type="button">New agent</button>
             <div class="data-list" id="agents-list"></div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Detail</h2>
-              <p id="selected-agent-description">Select an agent.</p>
+              <h2>Editor</h2>
+              <p id="selected-agent-description">Create or edit an agent.</p>
             </div>
-            <pre class="detail-block" id="agent-detail">No agent selected.</pre>
+            <form class="config-form" id="agent-form">
+              <label>
+                Name
+                <input id="agent-name" aria-label="Agent name" placeholder="researcher">
+              </label>
+              <label>
+                Prompt
+                <textarea id="agent-prompt" rows="8" aria-label="Agent prompt" placeholder="You are..."></textarea>
+              </label>
+              <label>
+                Memory
+                <textarea id="agent-memory" rows="4" aria-label="Agent memory" placeholder="Optional persistent memory"></textarea>
+              </label>
+              <label>
+                Model
+                <input id="agent-model" aria-label="Agent model" placeholder="optional">
+              </label>
+              <label>
+                Reasoning effort
+                <input id="agent-reasoning-effort" aria-label="Agent reasoning effort" placeholder="low / medium / high">
+              </label>
+              <label>
+                Tools allow
+                <input id="agent-tools-allow" aria-label="Agent tools allow" placeholder="file_read, grep">
+              </label>
+              <label>
+                Tools deny
+                <input id="agent-tools-deny" aria-label="Agent tools deny" placeholder="bash">
+              </label>
+              <label class="checkbox-label">
+                <input id="agent-auto-approve" type="checkbox">
+                Auto approve
+              </label>
+              <div class="form-actions">
+                <span id="agent-form-state">New agent</span>
+                <button type="button" class="danger-button" id="agent-delete-button" hidden>Delete</button>
+                <button type="submit" class="primary-button">Save agent</button>
+              </div>
+            </form>
           </aside>
         </section>
 

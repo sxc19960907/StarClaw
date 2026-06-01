@@ -142,6 +142,31 @@ try {
   await page.getByText("Allowed directories").waitFor();
   await page.getByText("Network allowlist").waitFor();
 
+  await page.getByRole("button", { name: /Agents/ }).click();
+  await page.locator("#panel-agents").getByRole("heading", { name: "Agents" }).waitFor();
+  await page.getByRole("button", { name: "New agent" }).click();
+  await page.getByLabel("Agent name").fill("smoke-agent");
+  await page.getByLabel("Agent prompt").fill("You are a smoke test agent.");
+  await page.getByLabel("Agent memory").fill("Remember smoke.");
+  await page.getByLabel("Agent model").fill("smoke-model");
+  await page.getByLabel("Agent reasoning effort").fill("low");
+  await page.getByLabel("Agent tools allow").fill("file_read, grep");
+  await page.getByLabel("Agent tools deny").fill("bash");
+  await page.getByLabel("Auto approve").check();
+  await page.getByRole("button", { name: "Save agent" }).click();
+  await page.getByText("Agent saved.").waitFor();
+  await page.locator("#agents-list").getByText("smoke-agent").waitFor();
+  await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
+  await page.getByLabel("Agent prompt").fill("You are an edited smoke agent.");
+  await page.getByRole("button", { name: "Save agent" }).click();
+  await page.getByText("Agent saved.").waitFor();
+  page.once("dialog", async (dialog) => {
+    assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "Delete" }).click();
+  await page.getByText("Agent deleted.").waitFor();
+
   await page.getByRole("button", { name: /Schedules/ }).click();
   await page.getByLabel("Cron expression").fill("* * * * *");
   await page.getByLabel("Schedule prompt").fill("webui smoke schedule");

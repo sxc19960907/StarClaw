@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/permissions"
@@ -1057,40 +1058,90 @@ func TestHandleCancelMissingRequestID(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Not Implemented (501)
-// ---------------------------------------------------------------------------
-
-func TestHandleCreateAgentNotImplemented(t *testing.T) {
-	s := newTestServer(t, newTestServerDeps(t))
+func TestHandleCreateAgent(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
-	body := `{"name":"test","prompt":"You are a test."}`
+	body := `{"name":"test-agent","prompt":"You are a test agent.","memory":"Remember this.","model":"gpt-test","reasoning_effort":"low","tools_allow":["file_read","grep"],"tools_deny":["bash"],"auto_approve":true}`
 	resp, err := http.Post(ts.URL+"/agents", "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST /agents: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotImplemented {
-		t.Errorf("expected 501, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	}
+	var created agents.Agent
+	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
+		t.Fatalf("decode created agent: %v", err)
+	}
+	if created.Name != "test-agent" || !strings.Contains(created.Prompt, "test agent") {
+		t.Fatalf("unexpected created agent: %+v", created)
+	}
+	if created.Config == nil || created.Config.Agent == nil || created.Config.Agent.Model == nil || *created.Config.Agent.Model != "gpt-test" {
+		t.Fatalf("agent model config not persisted: %+v", created.Config)
+	}
+	if created.Config.Tools == nil || len(created.Config.Tools.Allow) != 2 || created.Config.Tools.Deny[0] != "bash" {
+		t.Fatalf("agent tools config not persisted: %+v", created.Config.Tools)
+	}
+	if created.Config.AutoApprove == nil || !*created.Config.AutoApprove {
+		t.Fatalf("auto_approve not persisted: %+v", created.Config)
+	}
+	var list struct {
+		Agents []agents.AgentInfo `json:"agents"`
+	}
+	getJSON(t, ts.URL+"/agents", http.StatusOK, &list)
+	if len(list.Agents) != 1 || list.Agents[0].Name != "test-agent" {
+		t.Fatalf("agent not listed: %+v", list.Agents)
 	}
 }
 
-func TestHandleUpdateAgentNotImplemented(t *testing.T) {
-	s := newTestServer(t, newTestServerDeps(t))
+func TestHandleUpdateAgent(t *testing.T) {
+	deps := newTestServerDeps(t)
+	writeTestAgent(t, deps.AgentsDir, "test-agent")
+	s := newTestServer(t, deps)
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
-	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"updated"}`))
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"Updated prompt","model":"gpt-updated","tools_allow":["version"],"auto_approve":false}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("PUT /agents/{name}: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotImplemented {
-		t.Errorf("expected 501, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	var updated agents.Agent
+	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode updated agent: %v", err)
+	}
+	if updated.Prompt != "Updated prompt\n" {
+		t.Fatalf("prompt = %q", updated.Prompt)
+	}
+	if updated.Config == nil || updated.Config.Agent == nil || updated.Config.Agent.Model == nil || *updated.Config.Agent.Model != "gpt-updated" {
+		t.Fatalf("model config not updated: %+v", updated.Config)
+	}
+	if updated.Config.AutoApprove == nil || *updated.Config.AutoApprove {
+		t.Fatalf("auto_approve not updated: %+v", updated.Config)
+	}
+}
+
+func TestHandleCreateAgentRejectsInvalidName(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/agents", "application/json", strings.NewReader(`{"name":"BadName","prompt":"Prompt"}`))
+	if err != nil {
+		t.Fatalf("POST /agents: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
 }
 
