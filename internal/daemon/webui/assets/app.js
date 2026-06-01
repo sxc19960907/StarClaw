@@ -4,6 +4,7 @@ const state = {
   skills: [],
   sessions: [],
   schedules: [],
+  diagnostics: null,
   activeRequestID: "",
   activeAbort: null,
   activeSessionID: "",
@@ -18,6 +19,7 @@ const views = {
   agents: ["Agents", "Inspect named agents available to the daemon."],
   skills: ["Skills", "Review installed skills exposed to StarClaw."],
   schedules: ["Schedules", "Create and manage cron-based local tasks."],
+  diagnostics: ["Diagnostics", "Inspect daemon readiness and setup checks."],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -73,6 +75,21 @@ function renderEmpty(target, message) {
 
 function renderError(target, message) {
   target.innerHTML = `<div class="error-state">${escapeHTML(message)}</div>`;
+}
+
+function statusLabel(status) {
+  switch (status) {
+    case "ready":
+      return "Ready";
+    case "warning":
+      return "Warning";
+    case "needs_setup":
+      return "Needs setup";
+    case "error":
+      return "Error";
+    default:
+      return "Unknown";
+  }
 }
 
 function scrollConversationToBottom() {
@@ -216,6 +233,48 @@ async function loadStatus() {
     $("metric-active").textContent = "-";
     pill.textContent = "Offline";
     pill.className = "bad";
+  }
+}
+
+async function loadDiagnostics() {
+  const list = $("diagnostics-list");
+  const summary = $("diagnostics-summary");
+  const overview = $("diagnostics-overview");
+  const pill = $("diagnostics-pill");
+  const chip = $("diagnostics-chip");
+  try {
+    const diagnostics = await api("/diagnostics");
+    state.diagnostics = diagnostics;
+    const status = diagnostics.status || "unknown";
+    const label = statusLabel(status);
+    pill.textContent = label;
+    pill.className = status;
+    chip.textContent = label;
+    chip.className = `diagnostics-chip ${status}`;
+    summary.textContent = diagnostics.summary || "Runtime readiness checks.";
+    overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
+    const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
+    if (!checks.length) {
+      renderEmpty(list, "No diagnostics returned.");
+      return;
+    }
+    list.innerHTML = checks.map((check) => `<article class="row-item diagnostic-item ${escapeHTML(check.status || "unknown")}">
+      <div class="row-item-title">
+        <span>${escapeHTML(check.label || check.id || "Check")}</span>
+        <span class="tag diagnostic-tag ${escapeHTML(check.status || "unknown")}">${escapeHTML(statusLabel(check.status))}</span>
+      </div>
+      <p>${escapeHTML(check.detail || "")}</p>
+      ${check.action ? `<div class="diagnostic-action">${escapeHTML(check.action)}</div>` : ""}
+    </article>`).join("");
+  } catch (error) {
+    state.diagnostics = null;
+    pill.textContent = "Offline";
+    pill.className = "error";
+    chip.textContent = "Diagnostics unavailable";
+    chip.className = "diagnostics-chip error";
+    summary.textContent = "Diagnostics unavailable.";
+    overview.innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
+    renderError(list, error.message);
   }
 }
 
@@ -696,6 +755,7 @@ async function deleteSession(id) {
 async function refreshAll() {
   await Promise.allSettled([
     loadStatus(),
+    loadDiagnostics(),
     loadAgents(),
     loadSkills(),
     loadSessions(),

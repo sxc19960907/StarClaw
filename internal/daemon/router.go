@@ -44,6 +44,7 @@ func (r *Router) registerWebRoutes(mux *http.ServeMux) {
 func (r *Router) registerHealthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", r.srv.handleHealth)
 	mux.HandleFunc("GET /status", r.srv.handleStatus)
+	mux.HandleFunc("GET /diagnostics", r.srv.handleDiagnostics)
 }
 
 func (r *Router) registerMessageRoutes(mux *http.ServeMux) {

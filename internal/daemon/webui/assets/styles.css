@@ -180,6 +180,19 @@ textarea:focus {
   color: var(--danger);
 }
 
+.nav-item small.ready {
+  color: var(--accent);
+}
+
+.nav-item small.warning {
+  color: #8a5a12;
+}
+
+.nav-item small.needs_setup,
+.nav-item small.error {
+  color: var(--danger);
+}
+
 .sidebar-section {
   min-height: 0;
   display: flex;
@@ -259,6 +272,33 @@ textarea:focus {
   border-radius: 999px;
   background: var(--surface);
   padding: 1px 9px;
+}
+
+.diagnostics-chip {
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 1px 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.diagnostics-chip.ready {
+  border-color: rgba(22, 125, 104, 0.28);
+  color: var(--accent);
+  background: #f2fbf7;
+}
+
+.diagnostics-chip.warning {
+  border-color: rgba(167, 112, 35, 0.3);
+  color: #8a5a12;
+  background: #fffaf0;
+}
+
+.diagnostics-chip.needs_setup,
+.diagnostics-chip.error {
+  border-color: rgba(164, 61, 58, 0.3);
+  color: var(--danger);
+  background: #fff4f3;
 }
 
 .panel {
@@ -685,6 +725,69 @@ textarea:focus {
   border-radius: 999px;
   color: var(--muted);
   font-weight: 500;
+}
+
+.diagnostics-list {
+  align-content: start;
+}
+
+.diagnostic-item.ready {
+  border-color: rgba(22, 125, 104, 0.22);
+}
+
+.diagnostic-item.warning {
+  border-color: rgba(167, 112, 35, 0.26);
+  background: #fffdf7;
+}
+
+.diagnostic-item.needs_setup,
+.diagnostic-item.error {
+  border-color: rgba(164, 61, 58, 0.26);
+  background: #fffafa;
+}
+
+.diagnostic-tag.ready {
+  color: var(--accent);
+  border-color: rgba(22, 125, 104, 0.26);
+}
+
+.diagnostic-tag.warning {
+  color: #8a5a12;
+  border-color: rgba(167, 112, 35, 0.28);
+}
+
+.diagnostic-tag.needs_setup,
+.diagnostic-tag.error {
+  color: var(--danger);
+  border-color: rgba(164, 61, 58, 0.3);
+}
+
+.diagnostic-action {
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.diagnostics-overview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.diagnostics-overview strong {
+  font-size: 20px;
+}
+
+.diagnostics-overview span {
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .detail-block {

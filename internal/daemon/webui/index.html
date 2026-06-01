@@ -37,6 +37,10 @@
             <span>Schedules</span>
             <small id="schedules-count">0</small>
           </button>
+          <button class="nav-item" data-panel="diagnostics">
+            <span>Diagnostics</span>
+            <small id="diagnostics-pill">Checking</small>
+          </button>
         </nav>
 
         <div class="sidebar-section">
@@ -55,6 +59,7 @@
             <h1 id="view-title">Chat</h1>
           </div>
           <div class="runtime-strip" aria-label="Daemon status">
+            <button class="diagnostics-chip" id="diagnostics-chip" type="button" data-panel="diagnostics">Checking diagnostics</button>
             <span class="status-chip"><strong id="metric-version">-</strong></span>
             <span id="metric-uptime">-</span>
             <span><strong id="metric-active">-</strong> active</span>
@@ -145,6 +150,26 @@
               </label>
               <button type="submit" class="primary-button">Create schedule</button>
             </form>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-diagnostics" aria-labelledby="diagnostics-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="diagnostics-heading">Diagnostics</h2>
+              <p id="diagnostics-summary">Runtime readiness checks.</p>
+            </div>
+            <div class="data-list diagnostics-list" id="diagnostics-list"></div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Runtime</h2>
+              <p>Current daemon readiness.</p>
+            </div>
+            <div class="diagnostics-overview" id="diagnostics-overview">
+              <strong>Checking</strong>
+              <span>Waiting for diagnostics.</span>
+            </div>
           </aside>
         </section>
       </main>

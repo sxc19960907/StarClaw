@@ -85,6 +85,7 @@ wait_for_health
 
 echo "==> checking daemon routes"
 curl -fsS "$BASE_URL/status" >/dev/null
+curl -fsS "$BASE_URL/diagnostics" | grep -F '"checks"' >/dev/null || fail "diagnostics JSON missing checks"
 curl -fsSI "$BASE_URL/" | grep -F "Location: /app/" >/dev/null || fail "root redirect missing"
 curl -fsSI "$BASE_URL/app" | grep -F "Location: /app/" >/dev/null || fail "app redirect missing"
 curl -fsS "$BASE_URL/app/" | grep -F "StarClaw" >/dev/null || fail "app HTML missing StarClaw"
@@ -111,6 +112,11 @@ try {
   await page.getByPlaceholder("Message StarClaw").waitFor();
   await page.getByRole("button", { name: "Send" }).waitFor();
   assert(await page.locator(".sidebar").count() === 1, "sidebar missing");
+  await page.locator("#diagnostics-chip").waitFor();
+  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await page.locator("#panel-diagnostics").getByRole("heading", { name: "Diagnostics" }).waitFor();
+  await page.getByText("Provider", { exact: true }).waitFor();
+  await page.getByText(/Ollama is configured/).waitFor();
 
   await page.getByRole("button", { name: /Schedules/ }).click();
   await page.getByLabel("Cron expression").fill("* * * * *");

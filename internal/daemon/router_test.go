@@ -25,6 +25,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		// Health
 		{"GET", "/health"},
 		{"GET", "/status"},
+		{"GET", "/diagnostics"},
 
 		// Message / cancel / shutdown
 		{"POST", "/message"},
