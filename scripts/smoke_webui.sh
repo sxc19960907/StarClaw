@@ -177,6 +177,7 @@ try {
   const agentCommandName = page.locator("#agent-command-name");
   const agentCommandBody = page.locator("#agent-command-body");
   const saveCommandButton = page.locator("#agent-command-save-button");
+  const clearCommandButton = page.locator("#agent-command-clear-button");
   const deleteCommandButton = page.locator("#agent-command-delete-button");
   const saveAgentButton = page.locator("#agent-form button[type=\"submit\"]");
   await agentToolsAllow.fill("file_read\ngrep");
@@ -205,6 +206,14 @@ try {
   assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-model", "agent heartbeat model should reload after create");
   await page.locator("#agent-command-list [data-agent-command=\"review\"]").click();
   assert((await agentCommandBody.inputValue()).trim() === "Review recent smoke changes.", "agent command should reload after create");
+  await agentCommandName.fill("audit");
+  await agentCommandBody.fill("Audit smoke changes.");
+  await saveCommandButton.click();
+  await page.locator("#agent-command-list").getByText("audit").waitFor();
+  assert(await page.locator("#agent-command-list").getByText("review").count() === 0, "renamed command should remove old name before save");
+  await clearCommandButton.click();
+  assert(await agentCommandName.inputValue() === "", "clear command should reset command name");
+  assert(await agentCommandBody.inputValue() === "", "clear command should reset command body");
   await page.getByLabel("Agent prompt").fill("You are an edited smoke agent.");
   await agentToolsAllow.fill("version, file_read");
   await agentToolsDeny.fill("bash\nhttp");
@@ -212,12 +221,11 @@ try {
   await agentHeartbeatEvery.fill("30m");
   await agentHeartbeatActiveHours.fill("10:00-18:00");
   await agentHeartbeatModel.fill("smoke-heartbeat-edited");
-  await agentCommandBody.fill("Updated smoke review command.");
-  await saveCommandButton.click();
-  await deleteCommandButton.click();
   await agentCommandName.fill("deploy");
   await agentCommandBody.fill("Deploy smoke changes safely.");
   await saveCommandButton.click();
+  await page.locator("#agent-command-list [data-agent-command=\"audit\"]").click();
+  await deleteCommandButton.click();
   const allowBeforeSave = await agentToolsAllow.inputValue();
   assert(allowBeforeSave === "version, file_read", `agent allow input should update before save, got ${JSON.stringify(allowBeforeSave)}`);
   const updateResponsePromise = page.waitForResponse((response) =>
@@ -235,7 +243,8 @@ try {
   assert(updatedConfig.heartbeatEvery === "30m", `agent heartbeat interval should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.heartbeatActiveHours === "10:00-18:00", `agent heartbeat active hours should save after edit, got ${JSON.stringify(updatedConfig)}`);
   assert(updatedConfig.heartbeatModel === "smoke-heartbeat-edited", `agent heartbeat model should save after edit, got ${JSON.stringify(updatedConfig)}`);
-  assert(!updatedCommands.review, `deleted command should not save after edit, got ${JSON.stringify(updatedCommands)}`);
+  assert(!updatedCommands.audit, `deleted renamed command should not save after edit, got ${JSON.stringify(updatedCommands)}`);
+  assert(!updatedCommands.review, `renamed command should not keep old name after edit, got ${JSON.stringify(updatedCommands)}`);
   assert(updatedCommands.deploy === "Deploy smoke changes safely.\n", `agent command should save after edit, got ${JSON.stringify(updatedCommands)}`);
   await page.getByRole("button", { name: "New agent" }).click();
   const updatedDetailPromise = page.waitForResponse((response) =>
@@ -253,6 +262,7 @@ try {
   assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-edited", "agent heartbeat model should reload after edit");
   assert(await page.locator("#agent-command-list").getByText("deploy").count() === 1, "agent command list should reload after edit");
   assert(await page.locator("#agent-command-list").getByText("review").count() === 0, "deleted agent command should stay deleted after reload");
+  assert(await page.locator("#agent-command-list").getByText("audit").count() === 0, "deleted renamed agent command should stay deleted after reload");
   await page.locator("#agent-command-list [data-agent-command=\"deploy\"]").click();
   assert((await agentCommandBody.inputValue()).trim() === "Deploy smoke changes safely.", "agent command body should reload after edit");
   page.once("dialog", async (dialog) => {

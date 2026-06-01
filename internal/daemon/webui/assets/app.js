@@ -580,7 +580,7 @@ function clearAgentCommandEditor() {
 
 function selectAgentCommand(name) {
   state.selectedAgentCommand = name;
-  $("agent-command-name").disabled = true;
+  $("agent-command-name").disabled = false;
   $("agent-command-name").value = name;
   $("agent-command-body").value = state.agentCommands[name] || "";
   $("agent-command-save-button").textContent = "Update command";
@@ -598,6 +598,9 @@ function saveAgentCommand() {
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) {
     showToast("Command name must use letters, numbers, dashes, or underscores.");
     return;
+  }
+  if (state.selectedAgentCommand && state.selectedAgentCommand !== name) {
+    delete state.agentCommands[state.selectedAgentCommand];
   }
   state.agentCommands[name] = body;
   selectAgentCommand(name);
@@ -1212,6 +1215,7 @@ $("agent-form").addEventListener("submit", submitAgent);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
 $("agent-command-save-button").addEventListener("click", saveAgentCommand);
+$("agent-command-clear-button").addEventListener("click", clearAgentCommandEditor);
 $("agent-command-delete-button").addEventListener("click", deleteAgentCommand);
 $("chat-agent").addEventListener("change", updateSelectedAgent);
 $("session-search-form").addEventListener("submit", (event) => {
