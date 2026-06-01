@@ -1646,3 +1646,36 @@ Added daemon agent create/update APIs and a Web UI agent editor for creating, ed
 ### Next Steps
 
 - None - task complete
+
+
+## Session 50: GUI agent permission editor
+
+**Date**: 2026-06-01
+**Task**: GUI agent permission editor
+**Branch**: `main`
+
+### Summary
+
+Polished the daemon Web UI agent permission editor with multiline allow/deny controls, permission round-trip smoke coverage, and backend update assertions.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b858610` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

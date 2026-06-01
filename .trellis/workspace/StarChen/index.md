@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 49
+- **Total Sessions**: 50
 - **Last Active**: 2026-06-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1648 | Active |
+| `journal-1.md` | ~1681 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 50 | 2026-06-01 | GUI agent permission editor | `b858610` | `main` |
 | 49 | 2026-06-01 | GUI agent editor | `f7205b9` | `main` |
 | 48 | 2026-06-01 | GUI usability polish batch | `42034c2` | `main` |
 | 47 | 2026-06-01 | GUI provider config repair | `23b0f70`, `53d5541` | `main` |
