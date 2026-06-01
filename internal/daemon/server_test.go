@@ -1105,7 +1105,7 @@ func TestHandleUpdateAgent(t *testing.T) {
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
-	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"Updated prompt","model":"gpt-updated","tools_allow":["version"],"auto_approve":false}`))
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/agents/test-agent", strings.NewReader(`{"prompt":"Updated prompt","model":"gpt-updated","tools_allow":["version","file_read"],"tools_deny":["bash","http"],"auto_approve":false}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -1124,6 +1124,9 @@ func TestHandleUpdateAgent(t *testing.T) {
 	}
 	if updated.Config == nil || updated.Config.Agent == nil || updated.Config.Agent.Model == nil || *updated.Config.Agent.Model != "gpt-updated" {
 		t.Fatalf("model config not updated: %+v", updated.Config)
+	}
+	if updated.Config.Tools == nil || len(updated.Config.Tools.Allow) != 2 || updated.Config.Tools.Allow[0] != "version" || len(updated.Config.Tools.Deny) != 2 || updated.Config.Tools.Deny[1] != "http" {
+		t.Fatalf("tools config not updated: %+v", updated.Config.Tools)
 	}
 	if updated.Config.AutoApprove == nil || *updated.Config.AutoApprove {
 		t.Fatalf("auto_approve not updated: %+v", updated.Config)

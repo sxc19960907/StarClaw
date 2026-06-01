@@ -85,6 +85,10 @@ for _, tt := range tests {
 - For line-delimited streaming protocols such as SSE, flush any accumulated event after EOF when the scanner ended without error. Producers may legally close the connection without a trailing blank-line delimiter, and dropping that pending event loses the final status/result.
 - Add a regression test for streams that end immediately after the final `data:` line.
 
+### Browser Smoke Tests
+
+- When a UI click hydrates an editor from an API request, wait for the matching response before editing form fields. Otherwise the late response can overwrite test input and make save assertions flaky.
+
 ---
 
 ## Interface Design

@@ -141,18 +141,21 @@
                 Reasoning effort
                 <input id="agent-reasoning-effort" aria-label="Agent reasoning effort" placeholder="low / medium / high">
               </label>
-              <label>
-                Tools allow
-                <input id="agent-tools-allow" aria-label="Agent tools allow" placeholder="file_read, grep">
-              </label>
-              <label>
-                Tools deny
-                <input id="agent-tools-deny" aria-label="Agent tools deny" placeholder="bash">
-              </label>
-              <label class="checkbox-label">
-                <input id="agent-auto-approve" type="checkbox">
-                Auto approve
-              </label>
+              <fieldset class="form-fieldset">
+                <legend>Permissions</legend>
+                <label>
+                  Tools allow
+                  <textarea id="agent-tools-allow" rows="3" aria-label="Agent tools allow" placeholder="file_read&#10;grep"></textarea>
+                </label>
+                <label>
+                  Tools deny
+                  <textarea id="agent-tools-deny" rows="3" aria-label="Agent tools deny" placeholder="bash"></textarea>
+                </label>
+                <label class="checkbox-label">
+                  <input id="agent-auto-approve" type="checkbox">
+                  Auto approve
+                </label>
+              </fieldset>
               <div class="form-actions">
                 <span id="agent-form-state">New agent</span>
                 <button type="button" class="danger-button" id="agent-delete-button" hidden>Delete</button>

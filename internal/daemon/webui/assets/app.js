@@ -503,8 +503,8 @@ function fillAgentForm(agent) {
   $("agent-memory").value = agent.Memory || agent.memory || "";
   $("agent-model").value = modelCfg.Model || modelCfg.model || "";
   $("agent-reasoning-effort").value = modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "";
-  $("agent-tools-allow").value = (toolsCfg.Allow || toolsCfg.allow || []).join(", ");
-  $("agent-tools-deny").value = (toolsCfg.Deny || toolsCfg.deny || []).join(", ");
+  $("agent-tools-allow").value = formatRuleList(toolsCfg.Allow || toolsCfg.allow || []);
+  $("agent-tools-deny").value = formatRuleList(toolsCfg.Deny || toolsCfg.deny || []);
   $("agent-auto-approve").checked = autoApprove === true;
   $("agent-delete-button").hidden = false;
   $("agent-form-state").textContent = `Editing ${state.editingAgent}`;
@@ -512,7 +512,11 @@ function fillAgentForm(agent) {
 }
 
 function parseCSVList(value) {
-  return value.split(",").map((item) => item.trim()).filter(Boolean);
+  return value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function formatRuleList(values) {
+  return values.join("\n");
 }
 
 function buildAgentPayload() {

@@ -116,6 +116,16 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function agentConfig(agent) {
+  const config = agent.Config || agent.config || {};
+  const tools = config.Tools || config.tools || {};
+  return {
+    allow: tools.Allow || tools.allow || [],
+    deny: tools.Deny || tools.deny || [],
+    autoApprove: config.AutoApprove ?? config.auto_approve,
+  };
+}
+
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
 
@@ -150,16 +160,52 @@ try {
   await page.getByLabel("Agent memory").fill("Remember smoke.");
   await page.getByLabel("Agent model").fill("smoke-model");
   await page.getByLabel("Agent reasoning effort").fill("low");
-  await page.getByLabel("Agent tools allow").fill("file_read, grep");
-  await page.getByLabel("Agent tools deny").fill("bash");
-  await page.getByLabel("Auto approve").check();
-  await page.getByRole("button", { name: "Save agent" }).click();
+  const agentToolsAllow = page.locator("#agent-tools-allow");
+  const agentToolsDeny = page.locator("#agent-tools-deny");
+  const agentAutoApprove = page.locator("#agent-auto-approve");
+  const saveAgentButton = page.locator("#agent-form button[type=\"submit\"]");
+  await agentToolsAllow.fill("file_read\ngrep");
+  await agentToolsDeny.fill("bash");
+  await agentAutoApprove.check();
+  await saveAgentButton.click();
   await page.getByText("Agent saved.").waitFor();
   await page.locator("#agents-list").getByText("smoke-agent").waitFor();
+  const createdDetailPromise = page.waitForResponse((response) =>
+    response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
+  );
   await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
+  await createdDetailPromise;
+  assert(await agentToolsAllow.inputValue() === "file_read\ngrep", "agent allow rules should reload after create");
+  assert(await agentToolsDeny.inputValue() === "bash", "agent deny rules should reload after create");
+  assert(await agentAutoApprove.isChecked(), "agent auto approve should reload after create");
   await page.getByLabel("Agent prompt").fill("You are an edited smoke agent.");
-  await page.getByRole("button", { name: "Save agent" }).click();
-  await page.getByText("Agent saved.").waitFor();
+  await agentToolsAllow.fill("version, file_read");
+  await agentToolsDeny.fill("bash\nhttp");
+  await agentAutoApprove.uncheck();
+  const allowBeforeSave = await agentToolsAllow.inputValue();
+  assert(allowBeforeSave === "version, file_read", `agent allow input should update before save, got ${JSON.stringify(allowBeforeSave)}`);
+  const updateResponsePromise = page.waitForResponse((response) =>
+    response.url().endsWith("/agents/smoke-agent") && response.request().method() === "PUT"
+  );
+  await saveAgentButton.click();
+  const updateResponse = await updateResponsePromise;
+  assert(updateResponse.ok(), `agent update failed with ${updateResponse.status()}`);
+  const updatedAgent = await updateResponse.json();
+  const updatedConfig = agentConfig(updatedAgent);
+  assert(updatedConfig.allow.join("\n") === "version\nfile_read", `agent allow rules should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  assert(updatedConfig.deny.join("\n") === "bash\nhttp", `agent deny rules should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  assert(updatedConfig.autoApprove === false, `agent auto approve should save after edit, got ${JSON.stringify(updatedConfig)}`);
+  await page.getByRole("button", { name: "New agent" }).click();
+  const updatedDetailPromise = page.waitForResponse((response) =>
+    response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
+  );
+  await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
+  await updatedDetailPromise;
+  const editedAllow = await agentToolsAllow.inputValue();
+  const editedDeny = await agentToolsDeny.inputValue();
+  assert(editedAllow === "version\nfile_read", `agent allow rules should reload after edit, got ${JSON.stringify(editedAllow)}`);
+  assert(editedDeny === "bash\nhttp", `agent deny rules should reload after edit, got ${JSON.stringify(editedDeny)}`);
+  assert(!(await agentAutoApprove.isChecked()), "agent auto approve should reload after edit");
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
     await dialog.accept();
