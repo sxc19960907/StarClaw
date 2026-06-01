@@ -1479,3 +1479,36 @@ Implemented daemon/Web UI tool approval flow: agent approval requester, daemon b
 ### Next Steps
 
 - None - task complete
+
+
+## Session 45: Daemon Web GUI Smoke
+
+**Date**: 2026-06-01
+**Task**: Daemon Web GUI Smoke
+**Branch**: `main`
+
+### Summary
+
+Added and ran a repeatable daemon Web UI smoke script that builds a temporary binary, starts the real daemon with an isolated HOME, validates /app/ routes and assets, exercises schedule controls and approval UI in Playwright, captures a screenshot, and documents the command.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `07f1623` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
