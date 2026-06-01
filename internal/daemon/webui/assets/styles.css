@@ -383,6 +383,10 @@ textarea:focus {
   color: var(--danger);
 }
 
+.message-system .message-body {
+  color: var(--muted);
+}
+
 .approval-card {
   width: min(520px, 100%);
   margin: 6px 0;
@@ -557,7 +561,7 @@ textarea:focus {
 
 .composer-controls {
   display: grid;
-  grid-template-columns: minmax(150px, 220px) auto 1fr auto;
+  grid-template-columns: minmax(150px, 220px) auto minmax(140px, 1fr) auto auto;
   align-items: center;
   gap: 7px;
   color: var(--muted);
@@ -715,6 +719,12 @@ textarea:focus {
   gap: 8px;
 }
 
+.row-actions button {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 .tag {
   display: inline-flex;
   align-items: center;
@@ -762,12 +772,34 @@ textarea:focus {
   border-color: rgba(164, 61, 58, 0.3);
 }
 
-.diagnostic-action {
+.diagnostic-action,
+.diagnostic-action-button {
   width: fit-content;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-soft);
   padding: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.diagnostic-action-button {
+  min-height: 30px;
+  color: var(--text);
+}
+
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill-list span {
+  min-height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  padding: 2px 8px;
   color: var(--muted);
   font-size: 12px;
 }

@@ -87,6 +87,7 @@ func (r *Router) registerInstructionsRoutes(mux *http.ServeMux) {
 func (r *Router) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sessions", r.srv.handleSessions)
 	mux.HandleFunc("GET /sessions/{id}", r.srv.handleGetSession)
+	mux.HandleFunc("PATCH /sessions/{id}", r.srv.handlePatchSession)
 	mux.HandleFunc("DELETE /sessions/{id}", r.srv.handleDeleteSession)
 	mux.HandleFunc("GET /sessions/search", r.srv.handleSessionSearch)
 }

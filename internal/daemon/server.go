@@ -694,6 +694,61 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sess)
 }
 
+func (s *Server) handlePatchSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "session id required")
+		return
+	}
+	if id != filepath.Base(id) || strings.ContainsAny(id, `/\`) {
+		writeError(w, http.StatusBadRequest, "invalid session id")
+		return
+	}
+	var patch struct {
+		Title    *string `json:"title"`
+		Favorite *bool   `json:"favorite"`
+	}
+	if !decodeBody(w, r, &patch) {
+		return
+	}
+	if patch.Title == nil && patch.Favorite == nil {
+		writeError(w, http.StatusBadRequest, "no session fields supplied")
+		return
+	}
+
+	agentName := r.URL.Query().Get("agent")
+	mgr := s.sessionManagerFor(agentName)
+	if mgr == nil {
+		writeError(w, http.StatusInternalServerError, "daemon deps not configured")
+		return
+	}
+	sess, err := mgr.Resume(id)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			writeError(w, http.StatusNotFound, fmt.Sprintf("session %q not found", id))
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if patch.Title != nil {
+		title := strings.TrimSpace(*patch.Title)
+		if title == "" {
+			writeError(w, http.StatusBadRequest, "title cannot be empty")
+			return
+		}
+		sess.Title = title
+	}
+	if patch.Favorite != nil {
+		sess.Favorite = *patch.Favorite
+	}
+	if err := mgr.Save(); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, sess)
+}
+
 func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -765,8 +820,25 @@ func (s *Server) handleSessionSearch(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------
 
 func (s *Server) handlePermissions(w http.ResponseWriter, r *http.Request) {
+	overview := map[string]interface{}{
+		"configured":         false,
+		"allowed_dirs":       []string{},
+		"allowed_commands":   []string{},
+		"denied_commands":    []string{},
+		"network_allowlist":  []string{},
+		"sensitive_patterns": []string{},
+	}
+	if s.deps != nil && s.deps.Config != nil && s.deps.Config.Permissions != nil {
+		perms := s.deps.Config.Permissions
+		overview["configured"] = true
+		overview["allowed_dirs"] = stringSliceOrEmpty(perms.AllowedDirs)
+		overview["allowed_commands"] = stringSliceOrEmpty(perms.AllowedCommands)
+		overview["denied_commands"] = stringSliceOrEmpty(perms.DeniedCommands)
+		overview["network_allowlist"] = stringSliceOrEmpty(perms.NetworkAllowlist)
+		overview["sensitive_patterns"] = stringSliceOrEmpty(perms.SensitivePatterns)
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"permissions": []interface{}{},
+		"permissions": overview,
 	})
 }
 
@@ -891,6 +963,13 @@ func decodeBody(w http.ResponseWriter, r *http.Request, v interface{}) bool {
 		return false
 	}
 	return true
+}
+
+func stringSliceOrEmpty(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // mustJSON marshals v to JSON, returning "{}" on error.

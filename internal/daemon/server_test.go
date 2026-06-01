@@ -13,6 +13,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/permissions"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/skills"
@@ -835,12 +836,86 @@ func TestHandleSessions(t *testing.T) {
 	}
 }
 
+func TestHandlePatchSession(t *testing.T) {
+	root := t.TempDir()
+	mgr := session.NewManager(filepath.Join(root, "sessions"))
+	sess := mgr.NewSession()
+	sess.Title = "Original title"
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("save session: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = root
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"title":"Renamed session","favorite":true}`
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/sessions/"+sess.ID, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /sessions/{id}: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var updated session.Session
+	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode session: %v", err)
+	}
+	if updated.Title != "Renamed session" || !updated.Favorite {
+		t.Fatalf("unexpected updated session: %+v", updated)
+	}
+	reloaded, err := mgr.Resume(sess.ID)
+	if err != nil {
+		t.Fatalf("resume patched session: %v", err)
+	}
+	if reloaded.Title != "Renamed session" || !reloaded.Favorite {
+		t.Fatalf("session not persisted: %+v", reloaded)
+	}
+}
+
+func TestHandlePatchSessionRejectsEmptyTitle(t *testing.T) {
+	root := t.TempDir()
+	mgr := session.NewManager(filepath.Join(root, "sessions"))
+	sess := mgr.NewSession()
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("save session: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = root
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/sessions/"+sess.ID, strings.NewReader(`{"title":"  "}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /sessions/{id}: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Permissions
 // ---------------------------------------------------------------------------
 
 func TestHandlePermissions(t *testing.T) {
-	s := newTestServer(t, newTestServerDeps(t))
+	deps := newTestServerDeps(t)
+	deps.Config = &config.Config{Permissions: &permissions.Config{
+		AllowedDirs:       []string{"~", "."},
+		AllowedCommands:   []string{"go test"},
+		DeniedCommands:    []string{"shutdown"},
+		NetworkAllowlist:  []string{"api.github.com"},
+		SensitivePatterns: []string{"*.secret"},
+	}}
+	s := newTestServer(t, deps)
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
@@ -852,6 +927,25 @@ func TestHandlePermissions(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+	var body struct {
+		Permissions struct {
+			Configured        bool     `json:"configured"`
+			AllowedDirs       []string `json:"allowed_dirs"`
+			AllowedCommands   []string `json:"allowed_commands"`
+			DeniedCommands    []string `json:"denied_commands"`
+			NetworkAllowlist  []string `json:"network_allowlist"`
+			SensitivePatterns []string `json:"sensitive_patterns"`
+		} `json:"permissions"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode permissions: %v", err)
+	}
+	if !body.Permissions.Configured {
+		t.Fatal("expected configured permissions")
+	}
+	if len(body.Permissions.AllowedDirs) != 2 || body.Permissions.AllowedDirs[0] != "~" {
+		t.Fatalf("unexpected allowed dirs: %+v", body.Permissions.AllowedDirs)
 	}
 }
 

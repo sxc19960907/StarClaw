@@ -65,6 +65,18 @@ provider: ollama
 ollama_endpoint: http://127.0.0.1:1
 ollama_model: smoke-test
 api_key: dummy
+permissions:
+  allowed_dirs:
+    - "~"
+    - "."
+  allowed_commands:
+    - "go test"
+  denied_commands:
+    - "shutdown"
+  network_allowlist:
+    - "api.github.com"
+  sensitive_patterns:
+    - "*.secret"
 audit:
   enabled: false
 YAML
@@ -86,6 +98,7 @@ wait_for_health
 echo "==> checking daemon routes"
 curl -fsS "$BASE_URL/status" >/dev/null
 curl -fsS "$BASE_URL/diagnostics" | grep -F '"checks"' >/dev/null || fail "diagnostics JSON missing checks"
+curl -fsS "$BASE_URL/permissions" | grep -F '"configured":true' >/dev/null || fail "permissions JSON missing configured policy"
 curl -fsSI "$BASE_URL/" | grep -F "Location: /app/" >/dev/null || fail "root redirect missing"
 curl -fsSI "$BASE_URL/app" | grep -F "Location: /app/" >/dev/null || fail "app redirect missing"
 curl -fsS "$BASE_URL/app/" | grep -F "StarClaw" >/dev/null || fail "app HTML missing StarClaw"
@@ -124,6 +137,10 @@ try {
   await page.getByLabel("Ollama model").fill("smoke-gui-model");
   await page.getByRole("button", { name: "Save provider config" }).click();
   await page.getByText("Provider config saved.").waitFor();
+  await page.getByRole("button", { name: /Permissions/ }).click();
+  await page.locator("#panel-permissions").getByRole("heading", { name: "Permissions" }).waitFor();
+  await page.getByText("Allowed directories").waitFor();
+  await page.getByText("Network allowlist").waitFor();
 
   await page.getByRole("button", { name: /Schedules/ }).click();
   await page.getByLabel("Cron expression").fill("* * * * *");
@@ -134,6 +151,34 @@ try {
   await page.getByRole("button", { name: "Enable" }).waitFor();
   await page.getByRole("button", { name: "Delete" }).click();
   await page.getByText("No schedules configured.").waitFor();
+
+  const sessionID = await page.evaluate(async (url) => {
+    const response = await fetch(`${url}/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "webui smoke session", new_session: true })
+    });
+    const data = await response.json();
+    return data.session_id;
+  }, baseURL);
+  assert(sessionID, "session id missing");
+  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
+  page.once("dialog", async (dialog) => {
+    assert(dialog.type() === "prompt", "rename dialog should be a prompt");
+    await dialog.accept("Smoke renamed session");
+  });
+  await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Rename" }).click();
+  await page.getByText("Smoke renamed session").waitFor();
+  await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Favorite" }).click();
+  await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Unfavorite" }).waitFor();
+  page.once("dialog", async (dialog) => {
+    assert(dialog.type() === "confirm", "delete dialog should be a confirm");
+    await dialog.dismiss();
+  });
+  await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Delete" }).click();
+  await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
 
   await page.getByRole("button", { name: /Chat/ }).click();
   const approvalRendered = await page.evaluate(async () => {

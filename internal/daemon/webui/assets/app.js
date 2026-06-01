@@ -6,6 +6,7 @@ const state = {
   schedules: [],
   diagnostics: null,
   config: null,
+  permissions: null,
   activeRequestID: "",
   activeAbort: null,
   activeSessionID: "",
@@ -22,6 +23,7 @@ const views = {
   schedules: ["Schedules", "Create and manage cron-based local tasks."],
   diagnostics: ["Diagnostics", "Inspect daemon readiness and setup checks."],
   config: ["Config", "Repair provider setup for daemon runs."],
+  permissions: ["Permissions", "Review local tool policy."],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -99,6 +101,17 @@ function scrollConversationToBottom() {
   if (scroller) scroller.scrollTop = scroller.scrollHeight;
 }
 
+function updateActiveSessionLabel() {
+  const label = $("active-session-label");
+  if (!label) return;
+  if (!state.activeSessionID) {
+    label.textContent = "No session selected";
+    return;
+  }
+  const session = state.sessions.find((item) => item.id === state.activeSessionID);
+  label.textContent = session ? `Session: ${session.title || session.id}` : `Session: ${state.activeSessionID}`;
+}
+
 function setRunControls(isRunning) {
   if (isRunning) $("chat-state").textContent = "Running";
   $("chat-input").disabled = isRunning;
@@ -130,6 +143,7 @@ async function selectSession(sessionID) {
   if (state.activeSessionID) {
     const session = state.sessions.find((item) => item.id === state.activeSessionID);
     $("chat-state").textContent = "Session selected";
+    updateActiveSessionLabel();
     switchPanel("chat");
     try {
       const detail = await api(`/sessions/${encodeURIComponent(state.activeSessionID)}`);
@@ -172,6 +186,7 @@ function startNewChat() {
   state.activeSessionID = "";
   $("chat-new-session").checked = true;
   $("chat-state").textContent = "Ready";
+  updateActiveSessionLabel();
   document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
   renderEmptyThread();
   switchPanel("chat");
@@ -267,7 +282,7 @@ async function loadDiagnostics() {
         <span class="tag diagnostic-tag ${escapeHTML(check.status || "unknown")}">${escapeHTML(statusLabel(check.status))}</span>
       </div>
       <p>${escapeHTML(check.detail || "")}</p>
-      ${check.action ? `<div class="diagnostic-action">${escapeHTML(check.action)}</div>` : ""}
+      ${diagnosticActionHTML(check)}
     </article>`).join("");
   } catch (error) {
     state.diagnostics = null;
@@ -280,6 +295,17 @@ async function loadDiagnostics() {
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
   }
+}
+
+function diagnosticActionHTML(check) {
+  if (!check.action) return "";
+  if (check.id === "provider") {
+    return `<button class="diagnostic-action-button" type="button" data-panel="config">${escapeHTML(check.action)}</button>`;
+  }
+  if (check.id === "permissions") {
+    return `<button class="diagnostic-action-button" type="button" data-panel="permissions">${escapeHTML(check.action)}</button>`;
+  }
+  return `<div class="diagnostic-action">${escapeHTML(check.action)}</div>`;
 }
 
 async function loadConfig() {
@@ -364,6 +390,43 @@ function renderConfigDiagnosticsOverview(diagnostics) {
   if (!target) return;
   const status = diagnostics?.status || "unknown";
   target.innerHTML = `<strong>${escapeHTML(statusLabel(status))}</strong><span>${escapeHTML(diagnostics?.summary || "Runtime diagnostics unavailable.")}</span>`;
+}
+
+async function loadPermissions() {
+  const list = $("permissions-list");
+  try {
+    const data = await api("/permissions");
+    state.permissions = data.permissions || {};
+    renderPermissions();
+  } catch (error) {
+    state.permissions = null;
+    $("permissions-pill").textContent = "Error";
+    $("permissions-pill").className = "bad";
+    $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
+    renderError(list, error.message);
+  }
+}
+
+function renderPermissions() {
+  const permissions = state.permissions || {};
+  const configured = permissions.configured === true;
+  $("permissions-pill").textContent = configured ? "Configured" : "Defaults";
+  $("permissions-pill").className = configured ? "ready" : "warning";
+  $("permissions-overview").innerHTML = `<strong>${configured ? "Configured" : "Built-in defaults"}</strong><span>${configured ? "Config permissions are present." : "No explicit permissions config is present."}</span>`;
+  const categories = [
+    ["Allowed directories", permissions.allowed_dirs],
+    ["Allowed commands", permissions.allowed_commands],
+    ["Denied commands", permissions.denied_commands],
+    ["Network allowlist", permissions.network_allowlist],
+    ["Sensitive patterns", permissions.sensitive_patterns],
+  ];
+  $("permissions-list").innerHTML = categories.map(([label, values]) => {
+    const items = Array.isArray(values) ? values : [];
+    return `<article class="row-item permission-item">
+      <div class="row-item-title"><span>${escapeHTML(label)}</span><span class="tag">${items.length}</span></div>
+      ${items.length ? `<div class="pill-list">${items.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}</div>` : `<p>No explicit entries.</p>`}
+    </article>`;
+  }).join("");
 }
 
 async function loadAgents() {
@@ -451,12 +514,17 @@ async function loadSessions(query = "") {
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
       <div class="row-item-title">
-        <span>${escapeHTML(session.title || session.id)}</span>
+        <span>${session.favorite ? "★ " : ""}${escapeHTML(session.title || session.id)}</span>
         <button class="icon-danger-button" type="button" title="Delete session" aria-label="Delete session" data-session-delete="${escapeHTML(session.id)}">Delete</button>
       </div>
       <span class="tag">${session.msg_count ?? 0} messages</span>
       <p>${escapeHTML(session.id)}</p>
+      <div class="row-actions">
+        <button type="button" data-session-rename="${escapeHTML(session.id)}">Rename</button>
+        <button type="button" data-session-favorite="${escapeHTML(session.id)}" data-favorite="${session.favorite ? "false" : "true"}">${session.favorite ? "Unfavorite" : "Favorite"}</button>
+      </div>
     </article>`).join("");
+    updateActiveSessionLabel();
   } catch (error) {
     renderError(list, error.message);
   }
@@ -529,6 +597,7 @@ async function submitChat(event) {
     }
     stateLabel.textContent = "Complete";
     await loadSessions();
+    updateActiveSessionLabel();
   } catch (error) {
     if (!assistantMessage.querySelector(".message-body").textContent.trim()) {
       assistantMessage.remove();
@@ -551,9 +620,24 @@ async function submitChat(event) {
 function appendMessage(role, text) {
   const message = document.createElement("div");
   message.className = `message message-${role}`;
-  message.innerHTML = `<span class="message-role">${escapeHTML(role)}</span><div class="message-body">${escapeHTML(text)}</div>`;
+  message.innerHTML = `<span class="message-role">${escapeHTML(messageRoleLabel(role))}</span><div class="message-body">${escapeHTML(text)}</div>`;
   $("chat-output").appendChild(message);
   return message;
+}
+
+function messageRoleLabel(role) {
+  switch (role) {
+    case "user":
+      return "You";
+    case "assistant":
+      return "StarClaw";
+    case "system":
+      return "System";
+    case "error":
+      return "Error";
+    default:
+      return role;
+  }
 }
 
 function appendToolEvent(data, eventType) {
@@ -828,6 +912,9 @@ async function deleteSchedule(id) {
 }
 
 async function deleteSession(id) {
+  const session = state.sessions.find((item) => item.id === id);
+  const label = session?.title || id;
+  if (!globalThis.confirm(`Delete session "${label}"?`)) return;
   try {
     await api(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (state.activeSessionID === id) {
@@ -840,11 +927,45 @@ async function deleteSession(id) {
   }
 }
 
+async function renameSession(id) {
+  const session = state.sessions.find((item) => item.id === id);
+  const nextTitle = globalThis.prompt("Rename session", session?.title || id);
+  if (nextTitle === null) return;
+  const title = nextTitle.trim();
+  if (!title) {
+    showToast("Session title cannot be empty.");
+    return;
+  }
+  try {
+    await api(`/sessions/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    });
+    await loadSessions($("session-search").value.trim());
+    showToast("Session renamed.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function toggleSessionFavorite(id, favorite) {
+  try {
+    await api(`/sessions/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ favorite }),
+    });
+    await loadSessions($("session-search").value.trim());
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
 async function refreshAll() {
   await Promise.allSettled([
     loadStatus(),
     loadDiagnostics(),
     loadConfig(),
+    loadPermissions(),
     loadAgents(),
     loadSkills(),
     loadSessions(),
@@ -863,6 +984,20 @@ document.addEventListener("click", (event) => {
   if (sessionDelete) {
     event.stopPropagation();
     deleteSession(sessionDelete.dataset.sessionDelete);
+    return;
+  }
+
+  const sessionRename = event.target.closest("[data-session-rename]");
+  if (sessionRename) {
+    event.stopPropagation();
+    renameSession(sessionRename.dataset.sessionRename);
+    return;
+  }
+
+  const sessionFavorite = event.target.closest("[data-session-favorite]");
+  if (sessionFavorite) {
+    event.stopPropagation();
+    toggleSessionFavorite(sessionFavorite.dataset.sessionFavorite, sessionFavorite.dataset.favorite === "true");
     return;
   }
 
@@ -888,6 +1023,7 @@ $("chat-new-session").addEventListener("change", () => {
   if ($("chat-new-session").checked) {
     state.activeSessionID = "";
     document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
+    updateActiveSessionLabel();
   }
 });
 $("chat-form").addEventListener("submit", submitChat);

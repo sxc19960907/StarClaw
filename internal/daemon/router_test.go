@@ -57,6 +57,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		// Sessions
 		{"GET", "/sessions"},
 		{"GET", "/sessions/test-id"},
+		{"PATCH", "/sessions/test-id"},
 		{"DELETE", "/sessions/test-id"},
 		{"GET", "/sessions/search?q=test"},
 

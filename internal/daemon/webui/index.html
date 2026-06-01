@@ -45,6 +45,10 @@
             <span>Config</span>
             <small id="config-pill">Provider</small>
           </button>
+          <button class="nav-item" data-panel="permissions">
+            <span>Permissions</span>
+            <small id="permissions-pill">Policy</small>
+          </button>
         </nav>
 
         <div class="sidebar-section">
@@ -94,6 +98,7 @@
                 <input id="chat-new-session" type="checkbox">
                 New session
               </label>
+              <span id="active-session-label">No session selected</span>
               <span id="chat-state">Ready</span>
               <button type="button" id="stop-button" class="danger-button" hidden>Stop</button>
               <button type="submit" id="send-button" class="primary-button">Send</button>
@@ -249,6 +254,26 @@
             <div class="diagnostics-overview" id="config-diagnostics-overview">
               <strong>Checking</strong>
               <span>Waiting for diagnostics.</span>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-permissions" aria-labelledby="permissions-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="permissions-heading">Permissions</h2>
+              <p id="permissions-summary">Read-only tool policy overview.</p>
+            </div>
+            <div class="data-list" id="permissions-list"></div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Policy State</h2>
+              <p>Configured local safety rules.</p>
+            </div>
+            <div class="diagnostics-overview" id="permissions-overview">
+              <strong>Checking</strong>
+              <span>Waiting for permissions.</span>
             </div>
           </aside>
         </section>
