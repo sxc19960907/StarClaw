@@ -110,6 +110,13 @@ starclaw daemon status
 
 The status output includes the Web UI URL when the daemon is reachable.
 
+### Smoke Test the Web UI
+```bash
+scripts/smoke_webui.sh
+```
+
+The smoke script builds a temporary local binary, starts the daemon with an isolated home directory, opens the embedded Web UI in a browser, checks schedule controls and approval UI behavior, and writes a screenshot to `output/playwright/daemon-webui-smoke.png`.
+
 ## Advanced Usage
 
 ### Pipe Input
