@@ -1512,3 +1512,37 @@ Added and ran a repeatable daemon Web UI smoke script that builds a temporary bi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 46: GUI runtime diagnostics
+
+**Date**: 2026-06-01
+**Task**: GUI runtime diagnostics
+**Branch**: `main`
+
+### Summary
+
+Added daemon diagnostics API, surfaced runtime readiness in the Web UI, covered it in smoke tests, and recorded the diagnostics contract in backend specs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `90b2997` | (see git log) |
+| `9bb92b9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
