@@ -53,6 +53,8 @@ internal/
   - `GET /app/` -> serves `internal/daemon/webui/index.html`
   - `GET /app/assets/{file}` -> serves embedded files from `internal/daemon/webui/assets/`
   - `GET /diagnostics` -> returns daemon runtime readiness checks for the Web UI
+  - `GET /config` -> returns redacted provider setup for the Web UI
+  - `PATCH /config` -> updates provider-level YAML config fields
 
 ### 3. Contracts
 
@@ -62,6 +64,9 @@ internal/
   - `summary`: human-readable runtime summary.
   - `checks`: rows with `id`, `label`, `status`, `detail`, and optional `action`.
 - Diagnostics must not make paid remote LLM calls. Static provider checks are enough for Anthropic/OpenAI; Ollama may use a short best-effort local reachability probe such as `GET /api/tags`.
+- `GET /config` for the GUI must return provider-level scalar fields only and must never return plaintext API keys. Use booleans such as `api_key_set` and `openai_api_key_set`.
+- `PATCH /config` must read/write `config.yaml` as YAML, preserve existing API keys when key fields are omitted or blank, and refresh `ServerDeps.Config` after a successful write so diagnostics updates without daemon restart.
+- Provider config patching is intentionally scoped to first-run repair fields: `provider`, `endpoint`, `model_tier`, `api_key`, `openai_endpoint`, `openai_model`, `openai_api_key`, `ollama_endpoint`, and `ollama_model`.
 - Do not add external network assets or a Node/Vite build step for this embedded GUI path unless the project explicitly adopts a frontend build pipeline.
 - UI assets must be included by Go embed patterns so `go test ./internal/daemon` catches missing files.
 
@@ -72,6 +77,10 @@ internal/
 - Diagnostics provider credentials/model incomplete -> `status=needs_setup`, not HTTP 500.
 - Diagnostics local storage/manager unavailable -> `status=error` with actionable check detail.
 - Ollama endpoint unreachable -> `status=warning` so local offline Ollama does not block the whole GUI.
+- Config GET over YAML -> structured JSON view with secret redaction.
+- Config PATCH unsupported provider -> HTTP 400.
+- Config PATCH blank API key -> keep the existing stored key.
+- Config PATCH success -> persisted YAML is parseable and in-memory diagnostics config is refreshed.
 - API failure in browser -> render an error state in the UI, not an uncaught exception.
 
 ### 5. Good/Base/Bad Cases
@@ -84,7 +93,9 @@ internal/
 
 - Route tests for `/`, `/app`, `/app/`, and at least one CSS and JS asset under `/app/assets/`.
 - Route/unit tests for `/diagnostics` covering `ready` and `needs_setup`.
+- Backend tests for `/config` covering YAML parsing, secret redaction, blank-key preservation, provider validation, and in-memory config refresh.
 - Smoke coverage that opens `/app/` and asserts diagnostics render in the browser.
+- Smoke coverage for provider setup form render/save.
 - Targeted validation with `go test ./internal/daemon ./cmd`.
 - Full validation with `go test ./...` and `go vet ./...`.
 
