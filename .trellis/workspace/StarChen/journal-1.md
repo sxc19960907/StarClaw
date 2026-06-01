@@ -1613,3 +1613,36 @@ Polished daemon GUI usability with session metadata actions, delete confirmation
 ### Next Steps
 
 - None - task complete
+
+
+## Session 49: GUI agent editor
+
+**Date**: 2026-06-01
+**Task**: GUI agent editor
+**Branch**: `main`
+
+### Summary
+
+Added daemon agent create/update APIs and a Web UI agent editor for creating, editing, saving, and deleting named agents, with smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f7205b9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
