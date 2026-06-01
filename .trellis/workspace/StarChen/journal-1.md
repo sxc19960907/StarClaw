@@ -1679,3 +1679,36 @@ Polished the daemon Web UI agent permission editor with multiline allow/deny con
 ### Next Steps
 
 - None - task complete
+
+
+## Session 51: GUI agent heartbeat editor
+
+**Date**: 2026-06-01
+**Task**: GUI agent heartbeat editor
+**Branch**: `main`
+
+### Summary
+
+Added daemon API and Web UI support for editing per-agent heartbeat interval, active hours, and model settings, with backend and smoke round-trip coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1a5f080` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
