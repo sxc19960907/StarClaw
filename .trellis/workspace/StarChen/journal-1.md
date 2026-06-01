@@ -1580,3 +1580,36 @@ Added a Web UI provider setup panel, made daemon config GET/PATCH YAML-aware wit
 ### Next Steps
 
 - None - task complete
+
+
+## Session 48: GUI usability polish batch
+
+**Date**: 2026-06-01
+**Task**: GUI usability polish batch
+**Branch**: `main`
+
+### Summary
+
+Polished daemon GUI usability with session metadata actions, delete confirmation, permissions overview, diagnostics action routing, clearer activity labels, and expanded smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `42034c2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

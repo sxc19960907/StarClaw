@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 47
+- **Total Sessions**: 48
 - **Last Active**: 2026-06-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1582 | Active |
+| `journal-1.md` | ~1615 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 48 | 2026-06-01 | GUI usability polish batch | `42034c2` | `main` |
 | 47 | 2026-06-01 | GUI provider config repair | `23b0f70`, `53d5541` | `main` |
 | 46 | 2026-06-01 | GUI runtime diagnostics | `90b2997`, `9bb92b9` | `main` |
 | 45 | 2026-06-01 | Daemon Web GUI Smoke | `07f1623` | `main` |
