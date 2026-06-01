@@ -52,10 +52,16 @@ internal/
   - `GET /app` -> redirects to `/app/`
   - `GET /app/` -> serves `internal/daemon/webui/index.html`
   - `GET /app/assets/{file}` -> serves embedded files from `internal/daemon/webui/assets/`
+  - `GET /diagnostics` -> returns daemon runtime readiness checks for the Web UI
 
 ### 3. Contracts
 
-- The UI must call daemon APIs with same-origin paths such as `/status`, `/message`, `/agents`, `/skills`, `/sessions`, and `/schedules`.
+- The UI must call daemon APIs with same-origin paths such as `/status`, `/diagnostics`, `/message`, `/agents`, `/skills`, `/sessions`, and `/schedules`.
+- `GET /diagnostics` must be read-only and return:
+  - `status`: one of `ready`, `warning`, `needs_setup`, or `error`.
+  - `summary`: human-readable runtime summary.
+  - `checks`: rows with `id`, `label`, `status`, `detail`, and optional `action`.
+- Diagnostics must not make paid remote LLM calls. Static provider checks are enough for Anthropic/OpenAI; Ollama may use a short best-effort local reachability probe such as `GET /api/tags`.
 - Do not add external network assets or a Node/Vite build step for this embedded GUI path unless the project explicitly adopts a frontend build pipeline.
 - UI assets must be included by Go embed patterns so `go test ./internal/daemon` catches missing files.
 
@@ -63,17 +69,22 @@ internal/
 
 - Missing route -> route tests fail with default mux 404.
 - Missing embedded asset -> `/app/assets/...` route test fails or `go test` fails at compile/embed time.
+- Diagnostics provider credentials/model incomplete -> `status=needs_setup`, not HTTP 500.
+- Diagnostics local storage/manager unavailable -> `status=error` with actionable check detail.
+- Ollama endpoint unreachable -> `status=warning` so local offline Ollama does not block the whole GUI.
 - API failure in browser -> render an error state in the UI, not an uncaught exception.
 
 ### 5. Good/Base/Bad Cases
 
-- Good: `/app/` renders a usable console and static assets are served by the daemon binary.
-- Base: daemon API endpoints return empty lists; UI shows empty states.
-- Bad: root path serves marketing content, references external assets, or requires a separate frontend dev server.
+- Good: `/app/` renders a usable console, diagnostics state is visible from the topbar, and static assets are served by the daemon binary.
+- Base: daemon API endpoints return empty lists or `needs_setup`; UI shows empty/action states.
+- Bad: root path serves marketing content, references external assets, requires a separate frontend dev server, or diagnostics probes paid providers.
 
 ### 6. Tests Required
 
 - Route tests for `/`, `/app`, `/app/`, and at least one CSS and JS asset under `/app/assets/`.
+- Route/unit tests for `/diagnostics` covering `ready` and `needs_setup`.
+- Smoke coverage that opens `/app/` and asserts diagnostics render in the browser.
 - Targeted validation with `go test ./internal/daemon ./cmd`.
 - Full validation with `go test ./...` and `go vet ./...`.
 
@@ -90,6 +101,8 @@ mux.HandleFunc("GET /app/", proxyToFrontendDevServer)
 ```go
 mux.HandleFunc("GET /app/", srv.handleWebApp)
 mux.HandleFunc("GET /app/assets/", srv.handleWebAsset)
+// Read-only local readiness API consumed by the embedded GUI.
+mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 ```
 
 ## Package Naming Rules
