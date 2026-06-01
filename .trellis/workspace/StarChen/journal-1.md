@@ -1712,3 +1712,36 @@ Added daemon API and Web UI support for editing per-agent heartbeat interval, ac
 ### Next Steps
 
 - None - task complete
+
+
+## Session 52: GUI agent command editor
+
+**Date**: 2026-06-01
+**Task**: GUI agent command editor
+**Branch**: `main`
+
+### Summary
+
+Added daemon API and Web UI support for managing per-agent custom command files, with safe command-name validation, backend tests, smoke coverage, and recorded command editor contract.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ad67d69` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
