@@ -117,6 +117,13 @@ try {
   await page.locator("#panel-diagnostics").getByRole("heading", { name: "Diagnostics" }).waitFor();
   await page.getByText("Provider", { exact: true }).waitFor();
   await page.getByText(/Ollama is configured/).waitFor();
+  await page.getByRole("button", { name: "Fix provider setup" }).click();
+  await page.locator("#panel-config").getByRole("heading", { name: "Config" }).waitFor();
+  await page.getByLabel("Provider").selectOption("ollama");
+  await page.getByLabel("Ollama endpoint").fill("http://127.0.0.1:1");
+  await page.getByLabel("Ollama model").fill("smoke-gui-model");
+  await page.getByRole("button", { name: "Save provider config" }).click();
+  await page.getByText("Provider config saved.").waitFor();
 
   await page.getByRole("button", { name: /Schedules/ }).click();
   await page.getByLabel("Cron expression").fill("* * * * *");

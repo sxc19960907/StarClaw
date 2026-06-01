@@ -12,9 +12,11 @@ import (
 
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/skills"
+	"gopkg.in/yaml.v3"
 )
 
 // ---------------------------------------------------------------------------
@@ -641,6 +643,119 @@ func TestHandleConfigGetPatch(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandleConfigGetRedactsYAMLSecrets(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+provider: openai
+openai_api_key: sk-secret
+openai_endpoint: https://api.openai.test/v1
+openai_model: gpt-test
+api_key: anthropic-secret
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var body struct {
+		Config daemonConfigView `json:"config"`
+	}
+	getJSON(t, ts.URL+"/config", http.StatusOK, &body)
+	if body.Config.Provider != "openai" {
+		t.Fatalf("provider = %q, want openai", body.Config.Provider)
+	}
+	if !body.Config.OpenAIAPIKeySet || !body.Config.APIKeySet {
+		t.Fatalf("expected key presence booleans, got %+v", body.Config)
+	}
+	raw, err := http.Get(ts.URL + "/config")
+	if err != nil {
+		t.Fatalf("GET /config: %v", err)
+	}
+	defer raw.Body.Close()
+	var rawBody map[string]interface{}
+	if err := json.NewDecoder(raw.Body).Decode(&rawBody); err != nil {
+		t.Fatalf("decode raw: %v", err)
+	}
+	encoded, _ := json.Marshal(rawBody)
+	if strings.Contains(string(encoded), "sk-secret") || strings.Contains(string(encoded), "anthropic-secret") {
+		t.Fatalf("GET /config leaked secret: %s", encoded)
+	}
+}
+
+func TestHandleConfigPatchWritesYAMLAndPreservesBlankSecrets(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+provider: openai
+openai_api_key: existing-secret
+openai_endpoint: https://old.example/v1
+openai_model: old-model
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{Provider: "openai", OpenAIAPIKey: "existing-secret"}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	patchBody := `{"provider":"ollama","ollama_endpoint":"http://127.0.0.1:11434","ollama_model":"llama3.2","openai_api_key":""}`
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/config", strings.NewReader(patchBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	var saved config.Config
+	if err := yaml.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid YAML: %v\n%s", err, data)
+	}
+	if saved.Provider != "ollama" || saved.OllamaModel != "llama3.2" {
+		t.Fatalf("unexpected saved config: %+v", saved)
+	}
+	if saved.OpenAIAPIKey != "existing-secret" {
+		t.Fatalf("blank patch overwrote OpenAI key: %q", saved.OpenAIAPIKey)
+	}
+	if deps.Config.Provider != "ollama" || deps.Config.OllamaModel != "llama3.2" {
+		t.Fatalf("in-memory config not refreshed: %+v", deps.Config)
+	}
+}
+
+func TestHandleConfigPatchRejectsUnsupportedProvider(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/config", strings.NewReader(`{"provider":"bad"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
 }
 

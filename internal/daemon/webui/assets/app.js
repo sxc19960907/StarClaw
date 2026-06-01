@@ -5,6 +5,7 @@ const state = {
   sessions: [],
   schedules: [],
   diagnostics: null,
+  config: null,
   activeRequestID: "",
   activeAbort: null,
   activeSessionID: "",
@@ -20,6 +21,7 @@ const views = {
   skills: ["Skills", "Review installed skills exposed to StarClaw."],
   schedules: ["Schedules", "Create and manage cron-based local tasks."],
   diagnostics: ["Diagnostics", "Inspect daemon readiness and setup checks."],
+  config: ["Config", "Repair provider setup for daemon runs."],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -253,6 +255,7 @@ async function loadDiagnostics() {
     chip.className = `diagnostics-chip ${status}`;
     summary.textContent = diagnostics.summary || "Runtime readiness checks.";
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
+    renderConfigDiagnosticsOverview(diagnostics);
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
     if (!checks.length) {
       renderEmpty(list, "No diagnostics returned.");
@@ -274,8 +277,93 @@ async function loadDiagnostics() {
     chip.className = "diagnostics-chip error";
     summary.textContent = "Diagnostics unavailable.";
     overview.innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
+    renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
   }
+}
+
+async function loadConfig() {
+  try {
+    const data = await api("/config");
+    state.config = data.config || {};
+    renderConfigForm();
+  } catch (error) {
+    state.config = null;
+    $("config-pill").textContent = "Error";
+    $("config-pill").className = "bad";
+    $("config-save-state").textContent = error.message;
+  }
+}
+
+function renderConfigForm() {
+  const cfg = state.config || {};
+  $("config-provider").value = cfg.provider || "anthropic";
+  $("config-endpoint").value = cfg.endpoint || "";
+  $("config-model-tier").value = cfg.model_tier || "";
+  $("config-openai-endpoint").value = cfg.openai_endpoint || "";
+  $("config-openai-model").value = cfg.openai_model || "";
+  $("config-ollama-endpoint").value = cfg.ollama_endpoint || "";
+  $("config-ollama-model").value = cfg.ollama_model || "";
+  $("config-api-key").value = "";
+  $("config-openai-api-key").value = "";
+  $("config-api-key").placeholder = cfg.api_key_set ? "Saved; leave blank to keep" : "Required for Anthropic";
+  $("config-openai-api-key").placeholder = cfg.openai_api_key_set ? "Saved; leave blank to keep" : "Required for OpenAI";
+  $("config-pill").textContent = cfg.provider || "Provider";
+  $("config-pill").className = "";
+  $("config-save-state").textContent = "Loaded";
+  updateProviderFields();
+}
+
+function updateProviderFields() {
+  const provider = $("config-provider").value || "anthropic";
+  document.querySelectorAll("[data-provider-fields]").forEach((group) => {
+    group.hidden = group.dataset.providerFields !== provider;
+  });
+}
+
+function buildConfigPatch() {
+  const provider = $("config-provider").value || "anthropic";
+  const patch = { provider };
+  if (provider === "anthropic") {
+    patch.endpoint = $("config-endpoint").value.trim();
+    patch.model_tier = $("config-model-tier").value.trim();
+    const key = $("config-api-key").value.trim();
+    if (key) patch.api_key = key;
+  } else if (provider === "openai") {
+    patch.openai_endpoint = $("config-openai-endpoint").value.trim();
+    patch.openai_model = $("config-openai-model").value.trim();
+    const key = $("config-openai-api-key").value.trim();
+    if (key) patch.openai_api_key = key;
+  } else if (provider === "ollama") {
+    patch.ollama_endpoint = $("config-ollama-endpoint").value.trim();
+    patch.ollama_model = $("config-ollama-model").value.trim();
+  }
+  return patch;
+}
+
+async function submitConfig(event) {
+  event.preventDefault();
+  $("config-save-state").textContent = "Saving";
+  try {
+    const result = await api("/config", {
+      method: "PATCH",
+      body: JSON.stringify(buildConfigPatch()),
+    });
+    state.config = result.config || state.config;
+    renderConfigForm();
+    await loadDiagnostics();
+    showToast("Provider config saved.");
+  } catch (error) {
+    $("config-save-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+function renderConfigDiagnosticsOverview(diagnostics) {
+  const target = $("config-diagnostics-overview");
+  if (!target) return;
+  const status = diagnostics?.status || "unknown";
+  target.innerHTML = `<strong>${escapeHTML(statusLabel(status))}</strong><span>${escapeHTML(diagnostics?.summary || "Runtime diagnostics unavailable.")}</span>`;
 }
 
 async function loadAgents() {
@@ -756,6 +844,7 @@ async function refreshAll() {
   await Promise.allSettled([
     loadStatus(),
     loadDiagnostics(),
+    loadConfig(),
     loadAgents(),
     loadSkills(),
     loadSessions(),
@@ -804,6 +893,8 @@ $("chat-new-session").addEventListener("change", () => {
 $("chat-form").addEventListener("submit", submitChat);
 $("stop-button").addEventListener("click", cancelActiveRun);
 $("schedule-form").addEventListener("submit", submitSchedule);
+$("config-form").addEventListener("submit", submitConfig);
+$("config-provider").addEventListener("change", updateProviderFields);
 $("chat-agent").addEventListener("change", updateSelectedAgent);
 $("session-search-form").addEventListener("submit", (event) => {
   event.preventDefault();

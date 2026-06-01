@@ -21,6 +21,7 @@ import (
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/skills"
+	"gopkg.in/yaml.v3"
 )
 
 // Server is the daemon HTTP server.
@@ -522,22 +523,12 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{"config": nil})
 		return
 	}
-	data, err := os.ReadFile(s.deps.ConfigPath)
+	cfg, err := readDaemonConfig(s.deps.ConfigPath, s.deps.Config)
 	if err != nil {
-		if os.IsNotExist(err) {
-			writeJSON(w, http.StatusOK, map[string]interface{}{"config": nil})
-			return
-		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	var cfg interface{}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		// If JSON parsing fails, return raw content as a string.
-		writeJSON(w, http.StatusOK, map[string]interface{}{"config": string(data)})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"config": cfg})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"config": newDaemonConfigView(cfg)})
 }
 
 func (s *Server) handlePatchConfig(w http.ResponseWriter, r *http.Request) {
@@ -546,40 +537,34 @@ func (s *Server) handlePatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var patch map[string]interface{}
+	var patch providerConfigPatch
 	if !decodeBody(w, r, &patch) {
 		return
 	}
 
-	// Read existing config.
-	data, err := os.ReadFile(s.deps.ConfigPath)
-	var current map[string]interface{}
-	if err == nil {
-		_ = json.Unmarshal(data, &current)
-	}
-	if current == nil {
-		current = make(map[string]interface{})
-	}
-
-	// Deep merge the patch into current.
-	for k, v := range patch {
-		if v == nil {
-			delete(current, k)
-		} else {
-			current[k] = v
-		}
-	}
-
-	out, err := json.MarshalIndent(current, "", "  ")
+	cfg, err := readDaemonConfig(s.deps.ConfigPath, s.deps.Config)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := patch.apply(cfg); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	out, err := yaml.Marshal(cfg)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("marshal config yaml: %v", err))
 		return
 	}
 	if err := os.WriteFile(s.deps.ConfigPath, out, 0600); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+	s.deps.Config = cfg
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "updated",
+		"config": newDaemonConfigView(cfg),
+	})
 }
 
 // ---------------------------------------------------------------------------

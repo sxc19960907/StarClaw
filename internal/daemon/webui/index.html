@@ -41,6 +41,10 @@
             <span>Diagnostics</span>
             <small id="diagnostics-pill">Checking</small>
           </button>
+          <button class="nav-item" data-panel="config">
+            <span>Config</span>
+            <small id="config-pill">Provider</small>
+          </button>
         </nav>
 
         <div class="sidebar-section">
@@ -167,6 +171,82 @@
               <p>Current daemon readiness.</p>
             </div>
             <div class="diagnostics-overview" id="diagnostics-overview">
+              <strong>Checking</strong>
+              <span>Waiting for diagnostics.</span>
+            </div>
+            <button class="primary-button" type="button" data-panel="config">Fix provider setup</button>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-config" aria-labelledby="config-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="config-heading">Config</h2>
+              <p id="config-summary">Provider setup used by daemon runs.</p>
+            </div>
+            <form class="config-form" id="config-form">
+              <label>
+                Provider
+                <select id="config-provider" aria-label="Provider">
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="ollama">Ollama</option>
+                </select>
+              </label>
+
+              <div class="provider-fields" data-provider-fields="anthropic">
+                <label>
+                  Endpoint
+                  <input id="config-endpoint" placeholder="https://api.anthropic.com" aria-label="Anthropic endpoint">
+                </label>
+                <label>
+                  Model tier
+                  <input id="config-model-tier" placeholder="medium" aria-label="Anthropic model tier">
+                </label>
+                <label>
+                  API key
+                  <input id="config-api-key" type="password" autocomplete="new-password" aria-label="Anthropic API key">
+                </label>
+              </div>
+
+              <div class="provider-fields" data-provider-fields="openai">
+                <label>
+                  Endpoint
+                  <input id="config-openai-endpoint" placeholder="https://api.openai.com/v1" aria-label="OpenAI endpoint">
+                </label>
+                <label>
+                  Model
+                  <input id="config-openai-model" placeholder="gpt-4o" aria-label="OpenAI model">
+                </label>
+                <label>
+                  API key
+                  <input id="config-openai-api-key" type="password" autocomplete="new-password" aria-label="OpenAI API key">
+                </label>
+              </div>
+
+              <div class="provider-fields" data-provider-fields="ollama">
+                <label>
+                  Endpoint
+                  <input id="config-ollama-endpoint" placeholder="http://localhost:11434" aria-label="Ollama endpoint">
+                </label>
+                <label>
+                  Model
+                  <input id="config-ollama-model" placeholder="llama3.1" aria-label="Ollama model">
+                </label>
+              </div>
+
+              <div class="form-actions">
+                <span id="config-save-state">Not loaded</span>
+                <button type="submit" class="primary-button">Save provider config</button>
+              </div>
+            </form>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Setup State</h2>
+              <p>Diagnostics after config changes.</p>
+            </div>
+            <div class="diagnostics-overview" id="config-diagnostics-overview">
               <strong>Checking</strong>
               <span>Waiting for diagnostics.</span>
             </div>
