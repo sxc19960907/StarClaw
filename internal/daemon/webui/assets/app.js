@@ -508,6 +508,7 @@ function fillPermissionsForm() {
   $("permissions-network-allowlist").value = formatRuleList(permissions.network_allowlist || []);
   $("permissions-sensitive-patterns").value = formatRuleList(permissions.sensitive_patterns || []);
   $("permissions-save-state").textContent = "Loaded";
+  renderPermissionsPendingPreview();
 }
 
 function renderPermissions() {
@@ -530,6 +531,7 @@ function renderPermissions() {
       ${items.length ? `<div class="pill-list">${items.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}</div>` : `<p>No explicit entries.</p>`}
     </article>`;
   }).join("");
+  renderPermissionsPendingPreview();
 }
 
 function renderVersion() {
@@ -602,6 +604,48 @@ function buildPermissionsPayload() {
   };
 }
 
+function permissionsRiskHints(permissions) {
+  const hints = [];
+  const allowedDirs = permissions.allowed_dirs || [];
+  const deniedCommands = permissions.denied_commands || [];
+  const networkAllowlist = permissions.network_allowlist || [];
+  const sensitivePatterns = permissions.sensitive_patterns || [];
+  if (allowedDirs.some((dir) => ["/", "~", "."].includes(dir.trim()))) {
+    hints.push("Broad local access is allowed.");
+  }
+  if (!deniedCommands.length) {
+    hints.push("No denied commands are configured.");
+  }
+  if (!sensitivePatterns.length) {
+    hints.push("No sensitive file patterns are configured.");
+  }
+  if (networkAllowlist.some((host) => ["*", "*.*"].includes(host.trim()))) {
+    hints.push("Network allowlist includes a broad wildcard.");
+  }
+  return hints;
+}
+
+function renderPermissionsPendingPreview() {
+  const target = $("permissions-pending-preview");
+  if (!target) return;
+  const permissions = buildPermissionsPayload();
+  const categories = [
+    ["Allowed directories", permissions.allowed_dirs],
+    ["Allowed commands", permissions.allowed_commands],
+    ["Denied commands", permissions.denied_commands],
+    ["Network allowlist", permissions.network_allowlist],
+    ["Sensitive patterns", permissions.sensitive_patterns],
+  ];
+  const hints = permissionsRiskHints(permissions);
+  target.innerHTML = `<article class="row-item permission-preview">
+    <div class="row-item-title"><span>Pending changes</span><span class="tag">${hints.length ? "Review" : "Ready"}</span></div>
+    <div class="run-meta-grid">
+      ${categories.map(([label, values]) => `<span>${escapeHTML(label)}</span><strong>${Array.isArray(values) ? values.length : 0}</strong>`).join("")}
+    </div>
+    ${hints.length ? `<div class="pill-list permission-risk-list">${hints.map((hint) => `<span>${escapeHTML(hint)}</span>`).join("")}</div>` : `<p>No obvious permission risks in pending changes.</p>`}
+  </article>`;
+}
+
 async function submitPermissions(event) {
   event.preventDefault();
   $("permissions-save-state").textContent = "Saving";
@@ -625,6 +669,7 @@ async function clearPermissions() {
   $("permissions-denied-commands").value = "";
   $("permissions-network-allowlist").value = "";
   $("permissions-sensitive-patterns").value = "";
+  renderPermissionsPendingPreview();
   await submitPermissions(new Event("submit"));
 }
 
@@ -801,9 +846,15 @@ function renderAgentPermissionPreview() {
   const payload = buildAgentPayload();
   const allow = payload.tools_allow.length ? payload.tools_allow.join(", ") : "None";
   const deny = payload.tools_deny.length ? payload.tools_deny.join(", ") : "None";
+  const allowSet = new Set(payload.tools_allow);
+  const conflicts = payload.tools_deny.filter((tool) => allowSet.has(tool));
+  const warnings = [];
+  if (payload.auto_approve) warnings.push("Auto approve is enabled for this agent.");
+  if (conflicts.length) warnings.push(`Allow/deny conflict: ${conflicts.join(", ")}`);
   $("agent-permission-preview").innerHTML = `<div class="agent-preview-row"><strong>Allow</strong><span>${escapeHTML(allow)}</span></div>
     <div class="agent-preview-row"><strong>Deny</strong><span>${escapeHTML(deny)}</span></div>
-    <div class="agent-preview-row"><strong>Auto approve</strong><span>${payload.auto_approve ? "Enabled" : "Disabled"}</span></div>`;
+    <div class="agent-preview-row"><strong>Auto approve</strong><span>${payload.auto_approve ? "Enabled" : "Disabled"}</span></div>
+    ${warnings.map((warning) => `<div class="agent-preview-row warning"><strong>Review</strong><span>${escapeHTML(warning)}</span></div>`).join("")}`;
 }
 
 function renderAgentCommands() {
@@ -2118,6 +2169,7 @@ $("schedule-form").addEventListener("submit", submitSchedule);
 $("config-form").addEventListener("submit", submitConfig);
 $("config-provider").addEventListener("change", updateProviderFields);
 $("permissions-form").addEventListener("submit", submitPermissions);
+$("permissions-form").addEventListener("input", renderPermissionsPendingPreview);
 $("permissions-clear-button").addEventListener("click", clearPermissions);
 $("update-check-button").addEventListener("click", checkForUpdates);
 $("agent-form").addEventListener("submit", submitAgent);

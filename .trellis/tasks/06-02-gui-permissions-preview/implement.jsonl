@@ -1,0 +1,3 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"Browser smoke should stay stable and scoped."}
+{"path":".trellis/spec/backend/permissions.md","reason":"Permission UI should align with local permission model terminology."}
+{"path":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Form payload, saved config, and preview must match."}

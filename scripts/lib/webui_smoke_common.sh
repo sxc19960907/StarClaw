@@ -220,6 +220,9 @@ async function runPermissions(page) {
   await page.getByLabel("Denied commands").fill("shutdown\nreboot");
   await page.getByLabel("Network allowlist").fill("api.github.com\nsmoke.example.com");
   await page.getByLabel("Sensitive patterns").fill("*.secret\n.env.smoke");
+  await page.locator("#permissions-pending-preview").getByText("Pending changes").waitFor();
+  await page.locator("#permissions-pending-preview").getByText("Broad local access is allowed.").waitFor();
+  await page.locator("#permissions-pending-preview").getByText("Allowed directories").waitFor();
   await page.getByRole("button", { name: "Save permissions" }).click();
   await page.getByText("Permissions saved.").waitFor();
   await page.locator("#permissions-list").getByText("/tmp/smoke").waitFor();
@@ -229,6 +232,8 @@ async function runPermissions(page) {
   await page.getByRole("button", { name: "Clear rules" }).click();
   await page.getByText("Permissions saved.").waitFor();
   await page.locator("#permissions-overview").getByText("Built-in defaults").waitFor();
+  await page.locator("#permissions-pending-preview").getByText("No denied commands are configured.").waitFor();
+  await page.locator("#permissions-pending-preview").getByText("No sensitive file patterns are configured.").waitFor();
   assert(await page.getByLabel("Allowed directories").inputValue() === "", "clear rules should empty allowed dirs");
   assert(await page.getByLabel("Allowed commands").inputValue() === "", "clear rules should empty allowed commands");
 }
@@ -260,7 +265,11 @@ async function runAgents(page) {
   await agentAutoApprove.check();
   await page.locator("#agent-permission-preview").getByText("file_read, grep").waitFor();
   await page.locator("#agent-permission-preview").getByText("bash").waitFor();
-  await page.locator("#agent-permission-preview").getByText("Enabled").waitFor();
+  await page.locator("#agent-permission-preview").getByText("Enabled", { exact: true }).waitFor();
+  await page.locator("#agent-permission-preview").getByText("Auto approve is enabled for this agent.").waitFor();
+  await agentToolsDeny.fill("bash\ngrep");
+  await page.locator("#agent-permission-preview").getByText("Allow/deny conflict: grep").waitFor();
+  await agentToolsDeny.fill("bash");
   await agentHeartbeatEvery.fill("15m");
   await agentHeartbeatActiveHours.fill("09:00-17:00");
   await agentHeartbeatModel.fill("smoke-heartbeat-model");
