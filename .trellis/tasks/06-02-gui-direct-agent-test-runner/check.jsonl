@@ -1,0 +1,5 @@
+{"kind":"command","value":"node --check internal/daemon/webui/assets/app.js","note":"GUI JS syntax."}
+{"kind":"command","value":"go test ./internal/daemon ./cmd","note":"Focused daemon and CLI tests."}
+{"kind":"command","value":"go test ./...","note":"Full Go suite."}
+{"kind":"command","value":"go vet ./...","note":"Static vet checks."}
+{"kind":"command","value":"scripts/smoke_webui.sh","note":"Browser smoke coverage."}

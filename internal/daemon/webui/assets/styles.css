@@ -434,6 +434,39 @@ textarea:focus {
   background: var(--surface);
 }
 
+.agent-test-runner {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.compact-heading h2 {
+  font-size: 18px;
+}
+
+.agent-test-output {
+  min-width: 0;
+}
+
+.agent-test-result {
+  width: 100%;
+}
+
+.agent-test-result pre {
+  max-height: 220px;
+  margin: 10px 0 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .approval-card {
   width: min(520px, 100%);
   margin: 6px 0;

@@ -1,0 +1,2 @@
+{"kind":"spec","path":".trellis/spec/backend/quality-guidelines.md","note":"Browser smoke and frontend quality guidance."}
+{"kind":"guide","path":".trellis/spec/guides/cross-layer-thinking-guide.md","note":"Message API to GUI result flow."}

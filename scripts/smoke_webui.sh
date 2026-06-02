@@ -328,12 +328,33 @@ try {
   await page.locator("#agent-command-list [data-agent-command=\"deploy\"]").click();
   assert((await agentCommandBody.inputValue()).trim() === "Deploy smoke changes safely.", "agent command body should reload after edit");
   await page.locator("#agent-test-run-button").click();
-  await page.locator("#view-title").getByText("Chat").waitFor();
-  assert(await page.locator("#panel-chat.active").count() === 1, "test run should switch to chat panel");
-  assert(await page.locator("#chat-agent").inputValue() === "smoke-agent", "test run should select edited agent");
-  assert(await page.locator("#chat-new-session").isChecked(), "test run should enable new session");
-  assert((await page.locator("#chat-input").inputValue()).includes("Test smoke-agent"), "test run should prefill prompt");
-  await page.getByRole("button", { name: /Agents/ }).click();
+  assert(await page.locator("#panel-agents.active").count() === 1, "test run should stay on agents panel");
+  assert(await page.locator("#agent-test-agent").inputValue() === "smoke-agent", "test run should select edited agent in runner");
+  assert((await page.locator("#agent-test-prompt").inputValue()).includes("Test smoke-agent"), "test run should prefill agent test prompt");
+  let capturedAgentTest = null;
+  await page.route("**/message", async (route) => {
+    capturedAgentTest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session_id: "sess_agent_test_smoke",
+        messages: ["agent test smoke response"],
+        usage: { prompt_tokens: 5, completion_tokens: 6 },
+      }),
+    });
+  });
+  await page.locator("#agent-test-prompt").fill("agent test direct smoke");
+  await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).click();
+  await page.locator("#agent-test-output").getByText("Agent test result").waitFor();
+  await page.locator("#agent-test-output").getByText("agent test smoke response").waitFor();
+  await page.locator("#agent-test-output").getByText("sess_agent_test_smoke").waitFor();
+  await page.locator("#agent-test-output").getByText("prompt_tokens: 5").waitFor();
+  await page.locator("#agent-test-output").getByRole("button", { name: "Open run" }).waitFor();
+  assert(capturedAgentTest.agent === "smoke-agent", `agent test payload should use smoke-agent, got ${JSON.stringify(capturedAgentTest)}`);
+  assert(capturedAgentTest.text === "agent test direct smoke", `agent test payload should include prompt, got ${JSON.stringify(capturedAgentTest)}`);
+  assert(capturedAgentTest.new_session === true, `agent test payload should create a new session, got ${JSON.stringify(capturedAgentTest)}`);
+  await page.unroute("**/message");
   await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
@@ -368,24 +389,25 @@ try {
     });
   });
   await page.keyboard.press(process.platform === "darwin" ? "Meta+Enter" : "Control+Enter");
-  await page.locator(".run-summary").waitFor();
+  const chatRunSummary = page.locator("#chat-output .run-summary");
+  await chatRunSummary.waitFor();
   assert(await page.locator("#chat-input").evaluate((element) => document.activeElement === element), "chat input should regain focus after run");
-  await page.locator(".run-summary").getByText("Run summary").waitFor();
-  await page.locator(".run-summary").getByText("Agent").waitFor();
-  await page.locator(".run-summary").getByText("default").waitFor();
-  await page.locator(".run-summary").getByText("Usage").waitFor();
-  await page.locator(".run-summary").getByText("prompt_tokens: 3").waitFor();
-  await page.locator(".run-summary").getByText("Request").waitFor();
-  await page.locator(".run-summary").getByRole("button", { name: "Open run" }).waitFor();
-  await page.locator(".run-summary").getByRole("button", { name: "Copy summary" }).click();
+  await chatRunSummary.getByText("Run summary").waitFor();
+  await chatRunSummary.getByText("Agent").waitFor();
+  await chatRunSummary.getByText("default").waitFor();
+  await chatRunSummary.getByText("Usage").waitFor();
+  await chatRunSummary.getByText("prompt_tokens: 3").waitFor();
+  await chatRunSummary.getByText("Request").waitFor();
+  await chatRunSummary.getByRole("button", { name: "Open run" }).waitFor();
+  await chatRunSummary.getByRole("button", { name: "Copy summary" }).click();
   await page.getByText("Run summary copied.").waitFor();
-  await page.locator(".run-summary").getByRole("button", { name: "Copied" }).waitFor();
-  await page.locator(".run-summary").getByRole("button", { name: "Copy summary" }).waitFor();
+  await chatRunSummary.getByRole("button", { name: "Copied" }).waitFor();
+  await chatRunSummary.getByRole("button", { name: "Copy summary" }).waitFor();
   const copiedSummary = await page.evaluate(() => navigator.clipboard.readText());
   assert(copiedSummary.includes("Session: sess_summary_smoke"), "copied summary missing session");
   assert(copiedSummary.includes("Agent: default"), "copied summary missing agent");
   assert(copiedSummary.includes("Usage: prompt_tokens: 3, completion_tokens: 4"), "copied summary missing usage");
-  await page.locator(".run-summary").getByRole("button", { name: "Open session" }).waitFor();
+  await chatRunSummary.getByRole("button", { name: "Open session" }).waitFor();
   await page.unroute("**/message");
   const runID = "run_history_smoke";
   const sessionID = await page.evaluate(async ({ url, runID }) => {

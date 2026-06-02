@@ -15,6 +15,7 @@ const state = {
   agentDirtyBaseline: "",
   activeRequestID: "",
   activeRunID: "",
+  activeAgentTestRequestID: "",
   activeAbort: null,
   activeSessionID: "",
   toolEvents: new Map(),
@@ -555,6 +556,7 @@ function updateAgentSelects() {
   ).join("");
   $("chat-agent").innerHTML = options;
   $("schedule-agent").innerHTML = options;
+  $("agent-test-agent").innerHTML = options;
 }
 
 async function inspectAgent(name) {
@@ -770,15 +772,10 @@ function testCurrentAgent() {
     showToast("Save the agent before testing.");
     return;
   }
-  $("chat-agent").value = name;
-  $("chat-new-session").checked = true;
-  state.activeSessionID = "";
-  document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
-  updateSelectedAgent();
-  updateActiveSessionLabel();
-  $("chat-input").value = `Test ${name}: introduce your role and list one useful next step.`;
-  switchPanel("chat");
-  $("chat-input").focus();
+  $("agent-test-agent").value = name;
+  $("agent-test-prompt").value = `Test ${name}: introduce your role and list one useful next step.`;
+  $("agent-test-prompt").focus();
+  $("agent-test-state").textContent = `Ready to test ${name}`;
   showToast(`Ready to test ${name}.`);
 }
 
@@ -883,6 +880,84 @@ function updateSelectedAgent() {
   $("selected-agent-description").textContent = selected
     ? (normalizeDescription(selected) || "No description.")
     : "Select an agent.";
+}
+
+function setAgentTestRunning(isRunning) {
+  $("agent-test-agent").disabled = isRunning;
+  $("agent-test-prompt").disabled = isRunning;
+  $("agent-test-submit-button").disabled = isRunning;
+  $("agent-test-state").textContent = isRunning ? "Running" : "Ready";
+}
+
+async function submitAgentTest(event) {
+  event.preventDefault();
+  if (state.activeAgentTestRequestID) {
+    showToast("An agent test is already running.");
+    return;
+  }
+  const text = $("agent-test-prompt").value.trim();
+  if (!text) {
+    showToast("Enter a test prompt first.");
+    return;
+  }
+  const agent = $("agent-test-agent").value;
+  const requestID = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `agent-test-${Date.now()}`;
+  const payload = {
+    text,
+    agent,
+    new_session: true,
+    request_id: requestID,
+  };
+  state.activeAgentTestRequestID = requestID;
+  setAgentTestRunning(true);
+  $("agent-test-output").innerHTML = `<div class="empty-state">Running agent test.</div>`;
+  try {
+    const result = await api("/message", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    renderAgentTestResult(result, payload);
+    await Promise.allSettled([loadRuns(), loadSessions()]);
+    $("agent-test-state").textContent = "Complete";
+  } catch (error) {
+    $("agent-test-state").textContent = "Error";
+    renderError($("agent-test-output"), error.message);
+  } finally {
+    state.activeAgentTestRequestID = "";
+    setAgentTestRunning(false);
+  }
+}
+
+function renderAgentTestResult(result, payload) {
+  const usage = result?.usage || {};
+  const usageItems = Object.entries(usage).map(([key, value]) => `${key}: ${value}`);
+  const usageText = usageItems.length ? usageItems.join(", ") : "-";
+  const sessionID = result?.session_id || "";
+  const messages = Array.isArray(result?.messages) && result.messages.length
+    ? result.messages.join("\n")
+    : "No messages returned.";
+  const errorHTML = result?.error ? `<div class="error-state">${escapeHTML(result.error)}</div>` : "";
+  const openRunAction = payload.request_id
+    ? `<button type="button" data-run-summary-run="${escapeHTML(payload.request_id)}">Open run</button>`
+    : "";
+  const openSessionAction = sessionID
+    ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>`
+    : "";
+  $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
+    <div class="run-summary-title">Agent test result</div>
+    <div class="run-summary-grid">
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
+      <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
+      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+    </div>
+    ${errorHTML}
+    <pre>${escapeHTML(messages)}</pre>
+    <div class="run-summary-actions">
+      ${openRunAction}
+      ${openSessionAction}
+    </div>
+  </div>`;
 }
 
 async function loadSkills() {
@@ -1652,6 +1727,7 @@ $("config-provider").addEventListener("change", updateProviderFields);
 $("permissions-form").addEventListener("submit", submitPermissions);
 $("permissions-clear-button").addEventListener("click", clearPermissions);
 $("agent-form").addEventListener("submit", submitAgent);
+$("agent-test-form").addEventListener("submit", submitAgentTest);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
 $("agent-test-run-button").addEventListener("click", testCurrentAgent);

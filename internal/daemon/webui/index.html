@@ -210,6 +210,31 @@
                 <button type="submit" class="primary-button">Save agent</button>
               </div>
             </form>
+            <section class="agent-test-runner" aria-labelledby="agent-test-heading">
+              <div class="panel-heading compact-heading">
+                <h2 id="agent-test-heading">Test Runner</h2>
+                <p>Run one prompt against a selected agent.</p>
+              </div>
+              <form class="config-form" id="agent-test-form">
+                <label>
+                  Agent
+                  <select id="agent-test-agent" aria-label="Test agent">
+                    <option value="">Default agent</option>
+                  </select>
+                </label>
+                <label>
+                  Prompt
+                  <textarea id="agent-test-prompt" rows="4" aria-label="Agent test prompt" placeholder="Ask this agent to perform a focused test run."></textarea>
+                </label>
+                <div class="form-actions">
+                  <span id="agent-test-state">Ready</span>
+                  <button type="submit" class="primary-button" id="agent-test-submit-button">Run test</button>
+                </div>
+              </form>
+              <div class="agent-test-output" id="agent-test-output">
+                <div class="empty-state">No test run yet.</div>
+              </div>
+            </section>
           </aside>
         </section>
 
