@@ -558,7 +558,20 @@ function renderVersion() {
   ];
   if (check?.latest_version) updateRows.push(["Latest", check.latest_version]);
   if (check?.release_url) updateRows.push(["Release URL", check.release_url]);
-  $("version-list").innerHTML = `<article class="row-item version-card">
+  const readinessRows = [
+    ["Build", supported ? "Release build" : "Development build"],
+    ["Updates", supported ? "Update checks available" : "Release build required"],
+    ["Launch", info.launch_command || "starclaw app"],
+    ["Web UI", info.web_url || "-"],
+  ];
+  $("version-list").innerHTML = `<article class="row-item version-readiness-card">
+    <div class="row-item-title"><span>Release readiness</span><span class="tag">${escapeHTML(supported ? "Ready" : "Development")}</span></div>
+    <div class="run-meta-grid">
+      ${readinessRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
+    </div>
+    ${supported ? `<p>Release metadata is available for update checks.</p>` : `<p>Use a semver release build to enable update checks.</p>`}
+  </article>
+  <article class="row-item version-card">
     <div class="run-meta-grid">
       ${updateRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
     </div>

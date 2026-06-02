@@ -165,11 +165,14 @@ async function runCore(page) {
   await page.getByText("Provider config saved.").waitFor();
   await page.getByRole("button", { name: /Version/ }).click();
   await page.locator("#panel-version").getByRole("heading", { name: "Version" }).waitFor();
+  await page.locator("#version-list").getByText("Release readiness").waitFor();
+  await page.locator("#version-list").getByText("Development build").waitFor();
+  await page.locator("#version-list").getByText("Use a semver release build to enable update checks.").waitFor();
   await page.locator("#version-list").getByText("Version").waitFor();
   await page.locator("#version-list").getByText("Platform").waitFor();
-  await page.locator("#version-list").getByText("Web UI").waitFor();
-  await page.locator("#version-list").getByText("Launch").waitFor();
-  await page.locator("#version-list").getByText("starclaw app").waitFor();
+  await page.locator("#version-list").getByText("Web UI", { exact: true }).first().waitFor();
+  await page.locator("#version-list").getByText("Launch", { exact: true }).first().waitFor();
+  await page.locator("#version-list").getByText("starclaw app", { exact: true }).first().waitFor();
   await page.locator("#version-list").getByText("starclaw update --check").waitFor();
   await page.locator("#update-overview").getByText("Development build", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Check updates" }).click();
