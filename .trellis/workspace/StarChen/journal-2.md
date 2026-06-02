@@ -434,3 +434,36 @@ Added app launch readiness and no-open modes, covered them in CLI tests/smoke, a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 73: GUI agent test result UX
+
+**Date**: 2026-06-02
+**Task**: GUI agent test result UX
+**Branch**: `main`
+
+### Summary
+
+Kept agent test completion in the Agents panel, added prompt/request result metadata, copy-summary support, contextual error cards, and updated agents smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `881b25d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
