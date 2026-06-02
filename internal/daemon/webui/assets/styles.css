@@ -442,6 +442,15 @@ textarea:focus {
   border-top: 1px solid var(--line);
 }
 
+.version-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .compact-heading h2 {
   font-size: 18px;
 }

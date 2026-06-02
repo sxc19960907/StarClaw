@@ -28,7 +28,11 @@ var daemonCmd = &cobra.Command{
 
 const daemonPort = 7533
 
-var daemonWebURL = fmt.Sprintf("http://127.0.0.1:%d/app/", daemonPort)
+var daemonWebURL = daemonWebURLForPort(daemonPort)
+
+func daemonWebURLForPort(port int) string {
+	return fmt.Sprintf("http://127.0.0.1:%d/app/", port)
+}
 
 var daemonStartCmd = &cobra.Command{
 	Use:   "start",

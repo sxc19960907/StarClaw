@@ -138,6 +138,15 @@ async function runCore(page) {
   await page.getByLabel("Ollama model").fill("smoke-gui-model");
   await page.getByRole("button", { name: "Save provider config" }).click();
   await page.getByText("Provider config saved.").waitFor();
+  await page.getByRole("button", { name: /Version/ }).click();
+  await page.locator("#panel-version").getByRole("heading", { name: "Version" }).waitFor();
+  await page.locator("#version-list").getByText("Version").waitFor();
+  await page.locator("#version-list").getByText("Platform").waitFor();
+  await page.locator("#version-list").getByText("Web UI").waitFor();
+  await page.locator("#version-list").getByText("starclaw update --check").waitFor();
+  await page.locator("#update-overview").getByText("Development build", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Check updates" }).click();
+  await page.locator("#update-check-state").getByText("Development build").waitFor();
   await page.getByRole("button", { name: /Schedules/ }).click();
   await page.getByLabel("Cron expression").fill("* * * * *");
   await page.getByLabel("Schedule prompt").fill("webui smoke schedule");
@@ -512,6 +521,8 @@ JS
 check_routes() {
   echo "==> checking daemon routes"
   curl -fsS "$BASE_URL/status" >/dev/null
+  curl -fsS "$BASE_URL/version" | grep -F '"update_command":"starclaw update --check"' >/dev/null || fail "version JSON missing update command"
+  curl -fsS "$BASE_URL/update/check" | grep -F '"status":"development"' >/dev/null || fail "update check JSON missing development status"
   curl -fsS "$BASE_URL/diagnostics" | grep -F '"checks"' >/dev/null || fail "diagnostics JSON missing checks"
   curl -fsS "$BASE_URL/permissions" | grep -F '"configured":true' >/dev/null || fail "permissions JSON missing configured policy"
   curl -fsSI "$BASE_URL/" | grep -F "Location: /app/" >/dev/null || fail "root redirect missing"

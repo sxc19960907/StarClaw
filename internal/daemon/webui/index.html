@@ -53,6 +53,10 @@
             <span>Permissions</span>
             <small id="permissions-pill">Policy</small>
           </button>
+          <button class="nav-item" data-panel="version">
+            <span>Version</span>
+            <small id="version-pill">Build</small>
+          </button>
         </nav>
 
         <div class="sidebar-section">
@@ -436,6 +440,32 @@
               <span>Waiting for permissions.</span>
             </div>
             <div class="data-list" id="permissions-list"></div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-version" aria-labelledby="version-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="version-heading">Version</h2>
+              <p id="version-summary">Build and update status.</p>
+            </div>
+            <div class="data-list" id="version-list">
+              <div class="empty-state">Waiting for version metadata.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Update</h2>
+              <p>Manual release check.</p>
+            </div>
+            <div class="diagnostics-overview" id="update-overview">
+              <strong>Not checked</strong>
+              <span>Use a release build to check for updates.</span>
+            </div>
+            <div class="version-actions">
+              <button class="primary-button" type="button" id="update-check-button">Check updates</button>
+              <span id="update-check-state">Idle</span>
+            </div>
           </aside>
         </section>
       </main>

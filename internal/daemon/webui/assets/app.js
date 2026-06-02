@@ -8,6 +8,8 @@ const state = {
   diagnostics: null,
   config: null,
   permissions: null,
+  version: null,
+  updateCheck: null,
   editingAgent: "",
   selectedAgentCommand: "",
   agentCommands: {},
@@ -33,6 +35,7 @@ const views = {
   diagnostics: ["Diagnostics", "Inspect daemon readiness and setup checks."],
   config: ["Config", "Repair provider setup for daemon runs."],
   permissions: ["Permissions", "Review local tool policy."],
+  version: ["Version", "Inspect build and update status."],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -298,6 +301,26 @@ async function loadStatus() {
   }
 }
 
+async function loadVersion() {
+  const list = $("version-list");
+  const pill = $("version-pill");
+  try {
+    const data = await api("/version");
+    state.version = data;
+    state.updateCheck = null;
+    pill.textContent = data.version || "Build";
+    pill.className = data.update_supported ? "ready" : "warning";
+    renderVersion();
+  } catch (error) {
+    state.version = null;
+    pill.textContent = "Error";
+    pill.className = "bad";
+    $("version-summary").textContent = "Version metadata unavailable.";
+    $("update-check-state").textContent = "Error";
+    renderError(list, error.message);
+  }
+}
+
 async function loadDiagnostics() {
   const list = $("diagnostics-list");
   const summary = $("diagnostics-summary");
@@ -484,6 +507,65 @@ function renderPermissions() {
       ${items.length ? `<div class="pill-list">${items.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}</div>` : `<p>No explicit entries.</p>`}
     </article>`;
   }).join("");
+}
+
+function renderVersion() {
+  const info = state.version || {};
+  const check = state.updateCheck;
+  const supported = info.update_supported === true;
+  $("version-summary").textContent = info.message || "Build and update status.";
+  $("update-check-button").disabled = false;
+  if (!check) {
+    $("update-check-state").textContent = supported ? "Ready" : "Unavailable";
+    $("update-overview").innerHTML = `<strong>${escapeHTML(supported ? "Ready" : "Development build")}</strong><span>${escapeHTML(info.message || "")}</span>`;
+  } else {
+    const label = updateStatusLabel(check.status);
+    $("update-check-state").textContent = label;
+    $("update-overview").innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(check.message || "")}</span>`;
+  }
+  const updateRows = [
+    ["Version", info.version || "-"],
+    ["Platform", info.platform || "-"],
+    ["Web UI", info.web_url || "-"],
+    ["Update checks", supported ? "Supported" : "Release build required"],
+    ["Command", info.update_command || "starclaw update --check"],
+  ];
+  if (check?.latest_version) updateRows.push(["Latest", check.latest_version]);
+  if (check?.release_url) updateRows.push(["Release URL", check.release_url]);
+  $("version-list").innerHTML = `<article class="row-item version-card">
+    <div class="run-meta-grid">
+      ${updateRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
+    </div>
+  </article>`;
+}
+
+function updateStatusLabel(status) {
+  switch (status) {
+    case "available":
+      return "Update available";
+    case "current":
+      return "Up to date";
+    case "development":
+      return "Development build";
+    default:
+      return "Unknown";
+  }
+}
+
+async function checkForUpdates() {
+  $("update-check-button").disabled = true;
+  $("update-check-state").textContent = "Checking";
+  try {
+    state.updateCheck = await api("/update/check");
+    renderVersion();
+    showToast(state.updateCheck.message || "Update check complete.");
+  } catch (error) {
+    $("update-check-state").textContent = "Error";
+    $("update-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
+    showToast(error.message);
+  } finally {
+    $("update-check-button").disabled = false;
+  }
 }
 
 function buildPermissionsPayload() {
@@ -1612,6 +1694,7 @@ async function copySessionID(button) {
 async function refreshAll() {
   await Promise.allSettled([
     loadStatus(),
+    loadVersion(),
     loadDiagnostics(),
     loadConfig(),
     loadPermissions(),
@@ -1726,6 +1809,7 @@ $("config-form").addEventListener("submit", submitConfig);
 $("config-provider").addEventListener("change", updateProviderFields);
 $("permissions-form").addEventListener("submit", submitPermissions);
 $("permissions-clear-button").addEventListener("click", clearPermissions);
+$("update-check-button").addEventListener("click", checkForUpdates);
 $("agent-form").addEventListener("submit", submitAgent);
 $("agent-test-form").addEventListener("submit", submitAgentTest);
 $("new-agent-button").addEventListener("click", startNewAgent);
