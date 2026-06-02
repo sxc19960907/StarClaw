@@ -401,3 +401,36 @@ Preserved Web UI smoke screenshots, daemon logs, and metadata in an artifact dir
 ### Next Steps
 
 - None - task complete
+
+
+## Session 72: App launch install readiness
+
+**Date**: 2026-06-02
+**Task**: App launch install readiness
+**Branch**: `main`
+
+### Summary
+
+Added app launch readiness and no-open modes, covered them in CLI tests/smoke, and documented installation verification plus headless GUI launch.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1b3469d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
