@@ -159,8 +159,24 @@ try {
   await page.getByText("Provider config saved.").waitFor();
   await page.getByRole("button", { name: /Permissions/ }).click();
   await page.locator("#panel-permissions").getByRole("heading", { name: "Permissions" }).waitFor();
-  await page.getByText("Allowed directories").waitFor();
-  await page.getByText("Network allowlist").waitFor();
+  await page.locator("#permissions-form").getByText("Allowed directories").waitFor();
+  await page.locator("#permissions-form").getByText("Network allowlist").waitFor();
+  await page.getByLabel("Allowed directories").fill("~\n.\n/tmp/smoke");
+  await page.getByLabel("Allowed commands").fill("go test\nstarclaw version");
+  await page.getByLabel("Denied commands").fill("shutdown\nreboot");
+  await page.getByLabel("Network allowlist").fill("api.github.com\nsmoke.example.com");
+  await page.getByLabel("Sensitive patterns").fill("*.secret\n.env.smoke");
+  await page.getByRole("button", { name: "Save permissions" }).click();
+  await page.getByText("Permissions saved.").waitFor();
+  await page.locator("#permissions-list").getByText("/tmp/smoke").waitFor();
+  await page.locator("#permissions-list").getByText("starclaw version").waitFor();
+  await page.locator("#permissions-list").getByText("smoke.example.com").waitFor();
+  assert((await page.getByLabel("Allowed directories").inputValue()).includes("/tmp/smoke"), "permissions editor should retain saved allowed dirs");
+  await page.getByRole("button", { name: "Clear rules" }).click();
+  await page.getByText("Permissions saved.").waitFor();
+  await page.locator("#permissions-overview").getByText("Built-in defaults").waitFor();
+  assert(await page.getByLabel("Allowed directories").inputValue() === "", "clear rules should empty allowed dirs");
+  assert(await page.getByLabel("Allowed commands").inputValue() === "", "clear rules should empty allowed commands");
 
   await page.getByRole("button", { name: /Agents/ }).click();
   await page.locator("#panel-agents").getByRole("heading", { name: "Agents" }).waitFor();

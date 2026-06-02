@@ -1,0 +1,3 @@
+{"kind":"spec","path":".trellis/spec/backend/quality-guidelines.md","note":"Backend quality conventions."}
+{"kind":"spec","path":".trellis/spec/backend/permissions.md","note":"Permission model and config contract."}
+{"kind":"guide","path":".trellis/spec/guides/cross-layer-thinking-guide.md","note":"API-to-GUI data flow."}

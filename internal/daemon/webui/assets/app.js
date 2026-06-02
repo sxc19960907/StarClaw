@@ -441,14 +441,26 @@ async function loadPermissions() {
   try {
     const data = await api("/permissions");
     state.permissions = data.permissions || {};
+    fillPermissionsForm();
     renderPermissions();
   } catch (error) {
     state.permissions = null;
     $("permissions-pill").textContent = "Error";
     $("permissions-pill").className = "bad";
+    $("permissions-save-state").textContent = "Error";
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
   }
+}
+
+function fillPermissionsForm() {
+  const permissions = state.permissions || {};
+  $("permissions-allowed-dirs").value = formatRuleList(permissions.allowed_dirs || []);
+  $("permissions-allowed-commands").value = formatRuleList(permissions.allowed_commands || []);
+  $("permissions-denied-commands").value = formatRuleList(permissions.denied_commands || []);
+  $("permissions-network-allowlist").value = formatRuleList(permissions.network_allowlist || []);
+  $("permissions-sensitive-patterns").value = formatRuleList(permissions.sensitive_patterns || []);
+  $("permissions-save-state").textContent = "Loaded";
 }
 
 function renderPermissions() {
@@ -471,6 +483,42 @@ function renderPermissions() {
       ${items.length ? `<div class="pill-list">${items.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}</div>` : `<p>No explicit entries.</p>`}
     </article>`;
   }).join("");
+}
+
+function buildPermissionsPayload() {
+  return {
+    allowed_dirs: parseCSVList($("permissions-allowed-dirs").value),
+    allowed_commands: parseCSVList($("permissions-allowed-commands").value),
+    denied_commands: parseCSVList($("permissions-denied-commands").value),
+    network_allowlist: parseCSVList($("permissions-network-allowlist").value),
+    sensitive_patterns: parseCSVList($("permissions-sensitive-patterns").value),
+  };
+}
+
+async function submitPermissions(event) {
+  event.preventDefault();
+  $("permissions-save-state").textContent = "Saving";
+  try {
+    await api("/config", {
+      method: "PATCH",
+      body: JSON.stringify({ permissions: buildPermissionsPayload() }),
+    });
+    await Promise.allSettled([loadPermissions(), loadDiagnostics()]);
+    $("permissions-save-state").textContent = "Saved";
+    showToast("Permissions saved.");
+  } catch (error) {
+    $("permissions-save-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+async function clearPermissions() {
+  $("permissions-allowed-dirs").value = "";
+  $("permissions-allowed-commands").value = "";
+  $("permissions-denied-commands").value = "";
+  $("permissions-network-allowlist").value = "";
+  $("permissions-sensitive-patterns").value = "";
+  await submitPermissions(new Event("submit"));
 }
 
 async function loadAgents() {
@@ -1601,6 +1649,8 @@ $("stop-button").addEventListener("click", cancelActiveRun);
 $("schedule-form").addEventListener("submit", submitSchedule);
 $("config-form").addEventListener("submit", submitConfig);
 $("config-provider").addEventListener("change", updateProviderFields);
+$("permissions-form").addEventListener("submit", submitPermissions);
+$("permissions-clear-button").addEventListener("click", clearPermissions);
 $("agent-form").addEventListener("submit", submitAgent);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);

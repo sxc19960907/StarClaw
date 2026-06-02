@@ -371,19 +371,46 @@
           <div class="panel-list">
             <div class="panel-heading">
               <h2 id="permissions-heading">Permissions</h2>
-              <p id="permissions-summary">Read-only tool policy overview.</p>
+              <p id="permissions-summary">Global tool policy used by daemon runs.</p>
             </div>
-            <div class="data-list" id="permissions-list"></div>
+            <form class="config-form" id="permissions-form">
+              <label>
+                Allowed directories
+                <textarea id="permissions-allowed-dirs" rows="4" aria-label="Allowed directories" placeholder="~&#10;."></textarea>
+              </label>
+              <label>
+                Allowed commands
+                <textarea id="permissions-allowed-commands" rows="4" aria-label="Allowed commands" placeholder="go test&#10;git status"></textarea>
+              </label>
+              <label>
+                Denied commands
+                <textarea id="permissions-denied-commands" rows="4" aria-label="Denied commands" placeholder="shutdown&#10;reboot"></textarea>
+              </label>
+              <label>
+                Network allowlist
+                <textarea id="permissions-network-allowlist" rows="4" aria-label="Network allowlist" placeholder="api.github.com&#10;*.example.com"></textarea>
+              </label>
+              <label>
+                Sensitive patterns
+                <textarea id="permissions-sensitive-patterns" rows="4" aria-label="Sensitive patterns" placeholder="*.secret&#10;.env"></textarea>
+              </label>
+              <div class="form-actions">
+                <span id="permissions-save-state">Not loaded</span>
+                <button type="button" id="permissions-clear-button">Clear rules</button>
+                <button type="submit" class="primary-button">Save permissions</button>
+              </div>
+            </form>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Policy State</h2>
-              <p>Configured local safety rules.</p>
+              <h2>Policy Preview</h2>
+              <p>Currently loaded local safety rules.</p>
             </div>
             <div class="diagnostics-overview" id="permissions-overview">
               <strong>Checking</strong>
               <span>Waiting for permissions.</span>
             </div>
+            <div class="data-list" id="permissions-list"></div>
           </aside>
         </section>
       </main>

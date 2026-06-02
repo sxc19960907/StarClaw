@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/permissions"
 	"gopkg.in/yaml.v3"
 )
 
@@ -59,17 +60,18 @@ func readDaemonConfig(path string, fallback *config.Config) (*config.Config, err
 }
 
 type providerConfigPatch struct {
-	Provider        *string `json:"provider"`
-	Endpoint        *string `json:"endpoint"`
-	APIKey          *string `json:"api_key"`
-	ModelTier       *string `json:"model_tier"`
-	OpenAIEndpoint  *string `json:"openai_endpoint"`
-	OpenAIAPIKey    *string `json:"openai_api_key"`
-	OpenAIModel     *string `json:"openai_model"`
-	OllamaEndpoint  *string `json:"ollama_endpoint"`
-	OllamaModel     *string `json:"ollama_model"`
-	OpenAIKeySet    *bool   `json:"openai_api_key_set"`
-	AnthropicKeySet *bool   `json:"api_key_set"`
+	Provider        *string             `json:"provider"`
+	Endpoint        *string             `json:"endpoint"`
+	APIKey          *string             `json:"api_key"`
+	ModelTier       *string             `json:"model_tier"`
+	OpenAIEndpoint  *string             `json:"openai_endpoint"`
+	OpenAIAPIKey    *string             `json:"openai_api_key"`
+	OpenAIModel     *string             `json:"openai_model"`
+	OllamaEndpoint  *string             `json:"ollama_endpoint"`
+	OllamaModel     *string             `json:"ollama_model"`
+	OpenAIKeySet    *bool               `json:"openai_api_key_set"`
+	AnthropicKeySet *bool               `json:"api_key_set"`
+	Permissions     *permissions.Config `json:"permissions"`
 }
 
 func (p providerConfigPatch) apply(cfg *config.Config) error {
@@ -106,8 +108,45 @@ func (p providerConfigPatch) apply(cfg *config.Config) error {
 	if p.OpenAIAPIKey != nil && strings.TrimSpace(*p.OpenAIAPIKey) != "" {
 		cfg.OpenAIAPIKey = strings.TrimSpace(*p.OpenAIAPIKey)
 	}
+	if p.Permissions != nil {
+		cfg.Permissions = cleanPermissions(p.Permissions)
+	}
 	applyProviderDefaults(cfg)
 	return nil
+}
+
+func cleanPermissions(perms *permissions.Config) *permissions.Config {
+	if perms == nil {
+		return nil
+	}
+	cleaned := &permissions.Config{
+		AllowedDirs:       cleanStringList(perms.AllowedDirs),
+		AllowedCommands:   cleanStringList(perms.AllowedCommands),
+		DeniedCommands:    cleanStringList(perms.DeniedCommands),
+		SensitivePatterns: cleanStringList(perms.SensitivePatterns),
+		NetworkAllowlist:  cleanStringList(perms.NetworkAllowlist),
+	}
+	if len(cleaned.AllowedDirs) == 0 &&
+		len(cleaned.AllowedCommands) == 0 &&
+		len(cleaned.DeniedCommands) == 0 &&
+		len(cleaned.SensitivePatterns) == 0 &&
+		len(cleaned.NetworkAllowlist) == 0 {
+		return nil
+	}
+	return cleaned
+}
+
+func cleanStringList(values []string) []string {
+	cleaned := make([]string, 0, len(values))
+	for _, value := range values {
+		if item := strings.TrimSpace(value); item != "" {
+			cleaned = append(cleaned, item)
+		}
+	}
+	if len(cleaned) == 0 {
+		return nil
+	}
+	return cleaned
 }
 
 func applyProviderDefaults(cfg *config.Config) {

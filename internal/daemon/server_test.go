@@ -1002,6 +1002,133 @@ func TestHandlePermissions(t *testing.T) {
 	}
 }
 
+func TestHandleConfigPatchUpdatesPermissions(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+provider: ollama
+ollama_model: smoke
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{Provider: "ollama"}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	patchBody := `{"permissions":{"allowed_dirs":[" ~ ","."],"allowed_commands":["go test",""],"denied_commands":["shutdown"],"network_allowlist":["api.github.com"],"sensitive_patterns":["*.secret"]}}`
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/config", strings.NewReader(patchBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	var saved config.Config
+	if err := yaml.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid YAML: %v\n%s", err, data)
+	}
+	if saved.Permissions == nil {
+		t.Fatal("expected saved permissions")
+	}
+	if strings.Join(saved.Permissions.AllowedDirs, ",") != "~,." {
+		t.Fatalf("allowed dirs = %+v", saved.Permissions.AllowedDirs)
+	}
+	if strings.Join(saved.Permissions.AllowedCommands, ",") != "go test" {
+		t.Fatalf("allowed commands = %+v", saved.Permissions.AllowedCommands)
+	}
+	if deps.Config.Permissions == nil || strings.Join(deps.Config.Permissions.NetworkAllowlist, ",") != "api.github.com" {
+		t.Fatalf("in-memory permissions not refreshed: %+v", deps.Config.Permissions)
+	}
+
+	var body struct {
+		Permissions struct {
+			Configured        bool     `json:"configured"`
+			AllowedDirs       []string `json:"allowed_dirs"`
+			AllowedCommands   []string `json:"allowed_commands"`
+			DeniedCommands    []string `json:"denied_commands"`
+			NetworkAllowlist  []string `json:"network_allowlist"`
+			SensitivePatterns []string `json:"sensitive_patterns"`
+		} `json:"permissions"`
+	}
+	getJSON(t, ts.URL+"/permissions", http.StatusOK, &body)
+	if !body.Permissions.Configured {
+		t.Fatal("expected configured permissions after patch")
+	}
+	if strings.Join(body.Permissions.AllowedCommands, ",") != "go test" {
+		t.Fatalf("GET permissions allowed commands = %+v", body.Permissions.AllowedCommands)
+	}
+}
+
+func TestHandleConfigPatchClearsPermissions(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+provider: ollama
+permissions:
+  allowed_dirs:
+    - "~"
+  denied_commands:
+    - shutdown
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{Provider: "ollama", Permissions: &permissions.Config{AllowedDirs: []string{"~"}}}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/config", strings.NewReader(`{"permissions":{}}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	var saved config.Config
+	if err := yaml.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid YAML: %v\n%s", err, data)
+	}
+	if saved.Permissions != nil {
+		t.Fatalf("expected permissions to be cleared, got %+v", saved.Permissions)
+	}
+	if deps.Config.Permissions != nil {
+		t.Fatalf("expected in-memory permissions to be cleared, got %+v", deps.Config.Permissions)
+	}
+
+	var body struct {
+		Permissions struct {
+			Configured bool `json:"configured"`
+		} `json:"permissions"`
+	}
+	getJSON(t, ts.URL+"/permissions", http.StatusOK, &body)
+	if body.Permissions.Configured {
+		t.Fatal("expected permissions to be unconfigured after clear")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Approval
 // ---------------------------------------------------------------------------
