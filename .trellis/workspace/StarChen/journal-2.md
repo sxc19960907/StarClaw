@@ -203,3 +203,36 @@ Split Web UI smoke into focused layers and added core smoke coverage to CI.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 66: GUI version and update status
+
+**Date**: 2026-06-02
+**Task**: GUI version and update status
+**Branch**: `main`
+
+### Summary
+
+Added daemon version/update-check metadata APIs, a Web UI Version panel with manual update status, backend route tests, and core Web UI smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fed0b76` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
