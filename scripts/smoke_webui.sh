@@ -307,8 +307,9 @@ try {
       }),
     });
   });
-  await page.locator("#chat-form button[type=\"submit\"]").click();
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+Enter" : "Control+Enter");
   await page.locator(".run-summary").waitFor();
+  assert(await page.locator("#chat-input").evaluate((element) => document.activeElement === element), "chat input should regain focus after run");
   await page.locator(".run-summary").getByText("Run summary").waitFor();
   await page.locator(".run-summary").getByText("Agent").waitFor();
   await page.locator(".run-summary").getByText("default").waitFor();

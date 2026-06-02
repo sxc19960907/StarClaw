@@ -140,6 +140,18 @@ function setRunControls(isRunning) {
   $("stop-button").hidden = !isRunning;
 }
 
+function handleChatInputKeydown(event) {
+  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+    event.preventDefault();
+    if (!state.activeRequestID) $("chat-form").requestSubmit();
+    return;
+  }
+  if (event.key === "Escape" && state.activeRequestID) {
+    event.preventDefault();
+    cancelActiveRun();
+  }
+}
+
 function renderEmptyThread() {
   state.toolEvents.clear();
   state.toolDetails.clear();
@@ -827,6 +839,7 @@ async function submitChat(event) {
     state.activeRequestID = "";
     state.activeAbort = null;
     setRunControls(false);
+    $("chat-input").focus();
     scrollConversationToBottom();
   }
 }
@@ -1295,6 +1308,7 @@ $("chat-new-session").addEventListener("change", () => {
   }
 });
 $("chat-form").addEventListener("submit", submitChat);
+$("chat-input").addEventListener("keydown", handleChatInputKeydown);
 $("stop-button").addEventListener("click", cancelActiveRun);
 $("schedule-form").addEventListener("submit", submitSchedule);
 $("config-form").addEventListener("submit", submitConfig);
