@@ -496,6 +496,7 @@ function startNewAgent() {
   clearAgentCommandEditor();
   renderAgentCommands();
   $("agent-delete-button").hidden = true;
+  $("agent-test-run-button").hidden = true;
   $("agent-form-state").textContent = "New agent";
   $("selected-agent-description").textContent = "Create a named agent.";
 }
@@ -524,6 +525,7 @@ function fillAgentForm(agent) {
   clearAgentCommandEditor();
   renderAgentCommands();
   $("agent-delete-button").hidden = false;
+  $("agent-test-run-button").hidden = false;
   $("agent-form-state").textContent = `Editing ${state.editingAgent}`;
   $("selected-agent-description").textContent = "Editing named agent.";
 }
@@ -614,6 +616,24 @@ function deleteAgentCommand() {
   clearAgentCommandEditor();
   renderAgentCommands();
   showToast("Command removed.");
+}
+
+function testCurrentAgent() {
+  const name = state.editingAgent;
+  if (!name) {
+    showToast("Save the agent before testing.");
+    return;
+  }
+  $("chat-agent").value = name;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
+  updateSelectedAgent();
+  updateActiveSessionLabel();
+  $("chat-input").value = `Test ${name}: introduce your role and list one useful next step.`;
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast(`Ready to test ${name}.`);
 }
 
 async function submitAgent(event) {
@@ -1214,6 +1234,7 @@ $("config-provider").addEventListener("change", updateProviderFields);
 $("agent-form").addEventListener("submit", submitAgent);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
+$("agent-test-run-button").addEventListener("click", testCurrentAgent);
 $("agent-command-save-button").addEventListener("click", saveAgentCommand);
 $("agent-command-clear-button").addEventListener("click", clearAgentCommandEditor);
 $("agent-command-delete-button").addEventListener("click", deleteAgentCommand);

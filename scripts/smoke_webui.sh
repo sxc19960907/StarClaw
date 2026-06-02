@@ -265,6 +265,14 @@ try {
   assert(await page.locator("#agent-command-list").getByText("audit").count() === 0, "deleted renamed agent command should stay deleted after reload");
   await page.locator("#agent-command-list [data-agent-command=\"deploy\"]").click();
   assert((await agentCommandBody.inputValue()).trim() === "Deploy smoke changes safely.", "agent command body should reload after edit");
+  await page.locator("#agent-test-run-button").click();
+  await page.locator("#view-title").getByText("Chat").waitFor();
+  assert(await page.locator("#panel-chat.active").count() === 1, "test run should switch to chat panel");
+  assert(await page.locator("#chat-agent").inputValue() === "smoke-agent", "test run should select edited agent");
+  assert(await page.locator("#chat-new-session").isChecked(), "test run should enable new session");
+  assert((await page.locator("#chat-input").inputValue()).includes("Test smoke-agent"), "test run should prefill prompt");
+  await page.getByRole("button", { name: /Agents/ }).click();
+  await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
     await dialog.accept();
