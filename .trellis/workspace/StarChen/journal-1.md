@@ -1910,3 +1910,36 @@ Added Copy summary to chat run summaries, copying session, agent, usage, and req
 ### Next Steps
 
 - None - task complete
+
+
+## Session 58: GUI copy summary button feedback
+
+**Date**: 2026-06-02
+**Task**: GUI copy summary button feedback
+**Branch**: `main`
+
+### Summary
+
+Added transient Copied feedback to the run summary copy button after successful clipboard writes, kept toast feedback, and extended Web UI smoke to verify label transition and restore behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d1d487e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
