@@ -1,0 +1,2 @@
+{"kind":"spec","path":".trellis/spec/backend/quality-guidelines.md","note":"Browser smoke testing guidance."}
+{"kind":"guide","path":".trellis/spec/guides/code-reuse-thinking-guide.md","note":"Avoid duplicated shell setup across smoke layers."}

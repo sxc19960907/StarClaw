@@ -15,7 +15,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,3 +51,6 @@ jobs:
 
       - name: Test
         run: go test -count=1 -timeout=5m ./...
+
+      - name: Web UI core smoke
+        run: scripts/smoke_webui_core.sh

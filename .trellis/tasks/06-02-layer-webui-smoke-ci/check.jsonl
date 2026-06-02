@@ -1,0 +1,5 @@
+{"kind":"command","value":"scripts/smoke_webui_core.sh","note":"CI-targeted core smoke."}
+{"kind":"command","value":"scripts/smoke_webui_permissions.sh","note":"Permissions layer smoke."}
+{"kind":"command","value":"scripts/smoke_webui_agents.sh","note":"Agents layer smoke."}
+{"kind":"command","value":"scripts/smoke_webui_runs.sh","note":"Runs/sessions/approval layer smoke."}
+{"kind":"command","value":"scripts/smoke_webui.sh","note":"Full local smoke."}
