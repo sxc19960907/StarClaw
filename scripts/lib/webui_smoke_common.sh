@@ -511,11 +511,65 @@ async function runRuns(page) {
   await page.getByRole("button", { name: /Runs/ }).click();
   await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
+  await page.route(`**/runs/${runID}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: runID,
+        status: "completed",
+        agent: "",
+        channel: "http",
+        prompt: "webui smoke session",
+        session_id: sessionID,
+        started_at: new Date().toISOString(),
+        ended_at: new Date().toISOString(),
+        usage: { input_tokens: 7, output_tokens: 8 },
+        request: { text: "webui smoke session", new_session: true, request_id: runID },
+        response: {
+          session_id: sessionID,
+          messages: ["summary smoke response"],
+          usage: { input_tokens: 7, output_tokens: 8 },
+        },
+        events: [
+          { type: "preamble", at: new Date().toISOString(), data: { preamble: "planning smoke run" } },
+          { type: "tool_call", at: new Date().toISOString(), data: { tool: "grep", args: JSON.stringify({ pattern: "smoke" }), status: "running" } },
+          { type: "tool_result", at: new Date().toISOString(), data: { tool: "grep", content: "smoke result", status: "completed", is_error: false } },
+          { type: "usage", at: new Date().toISOString(), data: { input_tokens: 7, output_tokens: 8 } },
+          { type: "text", at: new Date().toISOString(), data: { text: "summary smoke response" } },
+        ],
+      }),
+    });
+  });
   await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
   await page.locator("#run-detail").getByText(runID).waitFor();
   await page.locator("#run-detail").getByText("Status").waitFor();
   await page.locator("#run-detail").getByText("webui smoke session").waitFor();
   assert(await page.locator("#run-detail").getByText(sessionID).count() >= 1, "run detail missing session id");
+  assert(await page.locator("#run-detail .run-tool-event").count() === 1, "run detail should group tool call/result into one tool card");
+  await page.locator("#run-detail .run-tool-event").getByText("grep").waitFor();
+  await page.locator("#run-detail .run-tool-event").getByText("smoke result").waitFor();
+  await page.locator("#run-detail").getByText("planning smoke run").waitFor();
+  assert(await page.locator("#run-detail").getByText("input_tokens").count() >= 1, "run detail missing usage event");
+  await page.locator("#run-detail").getByRole("button", { name: "Copy prompt" }).click();
+  await page.getByText("Prompt copied.").waitFor();
+  assert(await page.evaluate(() => navigator.clipboard.readText()) === "webui smoke session", "copy prompt should copy run prompt");
+  await page.locator("#run-detail").getByRole("button", { name: "Copy summary" }).click();
+  await page.getByText("Run summary copied.").waitFor();
+  const copiedRunSummary = await page.evaluate(() => navigator.clipboard.readText());
+  assert(copiedRunSummary.includes(`Run: ${runID}`), "copied run detail summary missing run id");
+  assert(copiedRunSummary.includes("Prompt: webui smoke session"), "copied run detail summary missing prompt");
+  await page.locator("#run-detail").getByRole("button", { name: "Re-run" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator("#chat-input").inputValue() === "webui smoke session", "rerun should prefill chat prompt");
+  assert(await page.locator("#chat-new-session").isChecked(), "rerun should use a new session");
+  assert(await page.locator("#chat-agent").inputValue() === "", "rerun should select default agent");
+  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
+  await page.locator("#run-detail").getByRole("button", { name: "Open session" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "open session should select run session");
+  await page.unroute(`**/runs/${runID}`);
   await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Copy ID" }).click();
   await page.getByText("Session ID copied.").waitFor();
@@ -527,7 +581,7 @@ async function runRuns(page) {
     await dialog.accept("Smoke renamed session");
   });
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Rename" }).click();
-  await page.getByText("Smoke renamed session").waitFor();
+  await page.locator(`[data-session-id="${sessionID}"]`).getByText("Smoke renamed session", { exact: true }).waitFor();
   await page.locator("#session-search").fill("Smoke renamed");
   await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
   await page.locator("#session-search-clear").click();

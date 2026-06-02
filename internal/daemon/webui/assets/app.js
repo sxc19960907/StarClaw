@@ -5,6 +5,7 @@ const state = {
   sessions: [],
   schedules: [],
   runs: [],
+  currentRunDetail: null,
   diagnostics: null,
   config: null,
   permissions: null,
@@ -1234,15 +1235,16 @@ async function selectRun(runID) {
 
 function renderRunDetail(run) {
   const target = $("run-detail");
+  state.currentRunDetail = run || null;
   if (!run) {
     $("run-detail-summary").textContent = "Select a run to inspect request, result, and events.";
     renderEmpty(target, "No run selected.");
     return;
   }
   const usage = run.usage || run.response?.usage || {};
-  const usageText = Object.keys(usage).length
-    ? Object.entries(usage).map(([key, value]) => `${key}: ${value}`).join(", ")
-    : "-";
+  const usageText = formatUsage(usage);
+  const sessionID = runSessionID(run);
+  const prompt = runPrompt(run);
   $("run-detail-summary").textContent = `${run.status || "unknown"} · ${formatTimestamp(run.started_at)}`;
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
@@ -1251,16 +1253,22 @@ function renderRunDetail(run) {
         <span>Status</span><strong>${escapeHTML(run.status || "-")}</strong>
         <span>Agent</span><strong>${escapeHTML(run.agent || "default")}</strong>
         <span>Channel</span><strong>${escapeHTML(run.channel || "-")}</strong>
-        <span>Session</span><strong>${escapeHTML(run.session_id || run.response?.session_id || "-")}</strong>
+        <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
         <span>Started</span><strong>${escapeHTML(formatTimestamp(run.started_at))}</strong>
         <span>Ended</span><strong>${escapeHTML(formatTimestamp(run.ended_at))}</strong>
         <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
+      </div>
+      <div class="run-detail-actions">
+        <button type="button" data-run-detail-copy-summary>Copy summary</button>
+        <button type="button" data-run-detail-copy-prompt>Copy prompt</button>
+        ${sessionID ? `<button type="button" data-run-detail-open-session="${escapeHTML(sessionID)}">Open session</button>` : ""}
+        ${prompt ? `<button type="button" data-run-detail-rerun>Re-run</button>` : ""}
       </div>
       ${run.error ? `<div class="error-state">${escapeHTML(run.error)}</div>` : ""}
     </section>
     <section class="run-detail-section">
       <h3>Prompt</h3>
-      <pre>${escapeHTML(run.prompt || run.request?.text || "")}</pre>
+      <pre>${escapeHTML(prompt)}</pre>
     </section>
     <section class="run-detail-section">
       <h3>Result</h3>
@@ -1275,13 +1283,146 @@ function renderRunDetail(run) {
 
 function renderRunEvents(events) {
   if (!events.length) return `<div class="empty-state">No events captured for this run.</div>`;
-  return `<div class="run-timeline">${events.map((event) => `<article class="run-event">
+  const entries = groupRunTimelineEvents(events);
+  return `<div class="run-timeline">${entries.map(renderRunTimelineEntry).join("")}</div>`;
+}
+
+function groupRunTimelineEvents(events) {
+  const entries = [];
+  const openTools = new Map();
+  for (const event of events) {
+    const data = event.data || {};
+    const tool = data.tool || "tool";
+    if (event.type === "tool_call") {
+      const entry = {
+        kind: "tool",
+        at: event.at,
+        tool,
+        status: data.status || "running",
+        args: data.args || "",
+        result: "",
+        isError: false,
+        errorCategory: "",
+      };
+      entries.push(entry);
+      openTools.set(tool, entry);
+      continue;
+    }
+    if (event.type === "tool_result") {
+      const entry = openTools.get(tool) || {
+        kind: "tool",
+        at: event.at,
+        tool,
+        status: "",
+        args: "",
+        result: "",
+        isError: false,
+        errorCategory: "",
+      };
+      if (!openTools.has(tool)) entries.push(entry);
+      entry.status = data.status || (data.is_error ? "error" : "completed");
+      entry.result = data.content || "";
+      entry.isError = data.is_error === true;
+      entry.errorCategory = data.error_category || "";
+      openTools.delete(tool);
+      continue;
+    }
+    entries.push({ kind: event.type || "event", at: event.at, data });
+  }
+  return entries;
+}
+
+function renderRunTimelineEntry(entry) {
+  if (entry.kind === "tool") {
+    const status = entry.status || (entry.isError ? "error" : "completed");
+    return `<article class="run-event run-tool-event ${entry.isError ? "bad" : ""}">
+      <div class="run-event-header">
+        <strong>${escapeHTML(entry.tool)}</strong>
+        <span>${escapeHTML(status)} · ${escapeHTML(formatTimestamp(entry.at))}</span>
+      </div>
+      <div class="run-tool-grid">
+        ${entry.args ? `<div><span>Args</span><pre>${escapeHTML(formatToolPayload(entry.args))}</pre></div>` : ""}
+        ${entry.result ? `<div><span>Result</span><pre>${escapeHTML(formatToolPayload(entry.result))}</pre></div>` : ""}
+        ${entry.errorCategory ? `<div class="tool-meta">category: ${escapeHTML(entry.errorCategory)}</div>` : ""}
+      </div>
+    </article>`;
+  }
+  const label = runEventLabel(entry.kind);
+  return `<article class="run-event">
     <div class="run-event-header">
-      <strong>${escapeHTML(event.type || "event")}</strong>
-      <span>${escapeHTML(formatTimestamp(event.at))}</span>
+      <strong>${escapeHTML(label)}</strong>
+      <span>${escapeHTML(formatTimestamp(entry.at))}</span>
     </div>
-    <pre>${escapeHTML(formatToolPayload(event.data || {}))}</pre>
-  </article>`).join("")}</div>`;
+    <pre>${escapeHTML(formatToolPayload(entry.data || {}))}</pre>
+  </article>`;
+}
+
+function runEventLabel(type) {
+  switch (type) {
+    case "text":
+      return "Text";
+    case "preamble":
+      return "Preamble";
+    case "usage":
+      return "Usage";
+    case "approval_needed":
+      return "Approval needed";
+    case "approval_resolved":
+      return "Approval resolved";
+    default:
+      return type || "Event";
+  }
+}
+
+function runSessionID(run) {
+  return run?.session_id || run?.response?.session_id || "";
+}
+
+function runPrompt(run) {
+  return run?.prompt || run?.request?.text || "";
+}
+
+function formatUsage(usage) {
+  return usage && Object.keys(usage).length
+    ? Object.entries(usage).map(([key, value]) => `${key}: ${value}`).join(", ")
+    : "-";
+}
+
+function runSummaryText(run) {
+  const usage = run?.usage || run?.response?.usage || {};
+  return [
+    `Run: ${run?.id || "-"}`,
+    `Status: ${run?.status || "-"}`,
+    `Agent: ${run?.agent || "default"}`,
+    `Session: ${runSessionID(run) || "-"}`,
+    `Usage: ${formatUsage(usage)}`,
+    `Prompt: ${runPrompt(run) || "-"}`,
+  ].join("\n");
+}
+
+function rerunCurrentRun() {
+  const run = state.currentRunDetail;
+  if (!run) return;
+  const prompt = runPrompt(run);
+  if (!prompt) {
+    showToast("Run prompt is empty.");
+    return;
+  }
+  state.activeSessionID = "";
+  $("chat-new-session").checked = true;
+  $("chat-input").value = prompt;
+  const agent = run.agent || "";
+  if (agent && agent !== "default" && [...$("chat-agent").options].some((option) => option.value === agent)) {
+    $("chat-agent").value = agent;
+  } else {
+    $("chat-agent").value = "";
+  }
+  updateActiveSessionLabel();
+  document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
+  renderEmptyThread();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Run copied to chat.");
 }
 
 function formatRunResponse(response) {
@@ -1839,6 +1980,34 @@ document.addEventListener("click", (event) => {
     copyText(runSummaryCopy.dataset.runSummaryCopy, "Run summary copied.")
       .then(() => markButtonCopied(runSummaryCopy))
       .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const runDetailCopySummary = event.target.closest("[data-run-detail-copy-summary]");
+  if (runDetailCopySummary) {
+    copyText(runSummaryText(state.currentRunDetail), "Run summary copied.")
+      .then(() => markButtonCopied(runDetailCopySummary))
+      .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const runDetailCopyPrompt = event.target.closest("[data-run-detail-copy-prompt]");
+  if (runDetailCopyPrompt) {
+    copyText(runPrompt(state.currentRunDetail), "Prompt copied.")
+      .then(() => markButtonCopied(runDetailCopyPrompt))
+      .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const runDetailOpenSession = event.target.closest("[data-run-detail-open-session]");
+  if (runDetailOpenSession) {
+    selectSession(runDetailOpenSession.dataset.runDetailOpenSession);
+    return;
+  }
+
+  const runDetailRerun = event.target.closest("[data-run-detail-rerun]");
+  if (runDetailRerun) {
+    rerunCurrentRun();
     return;
   }
 
