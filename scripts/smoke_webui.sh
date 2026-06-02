@@ -317,6 +317,8 @@ try {
   await page.locator(".run-summary").getByText("Request").waitFor();
   await page.locator(".run-summary").getByRole("button", { name: "Copy summary" }).click();
   await page.getByText("Run summary copied.").waitFor();
+  await page.locator(".run-summary").getByRole("button", { name: "Copied" }).waitFor();
+  await page.locator(".run-summary").getByRole("button", { name: "Copy summary" }).waitFor();
   const copiedSummary = await page.evaluate(() => navigator.clipboard.readText());
   assert(copiedSummary.includes("Session: sess_summary_smoke"), "copied summary missing session");
   assert(copiedSummary.includes("Agent: default"), "copied summary missing agent");

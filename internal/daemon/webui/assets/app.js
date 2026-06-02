@@ -44,6 +44,17 @@ async function copyText(text, successMessage = "Copied.") {
   showToast(successMessage);
 }
 
+function markButtonCopied(button) {
+  const label = button.textContent;
+  button.textContent = "Copied";
+  button.disabled = true;
+  clearTimeout(button.copyFeedbackTimer);
+  button.copyFeedbackTimer = setTimeout(() => {
+    button.textContent = label;
+    button.disabled = false;
+  }, 1400);
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -1255,7 +1266,9 @@ document.addEventListener("click", (event) => {
 
   const runSummaryCopy = event.target.closest("[data-run-summary-copy]");
   if (runSummaryCopy) {
-    copyText(runSummaryCopy.dataset.runSummaryCopy, "Run summary copied.").catch((error) => showToast(error.message));
+    copyText(runSummaryCopy.dataset.runSummaryCopy, "Run summary copied.")
+      .then(() => markButtonCopied(runSummaryCopy))
+      .catch((error) => showToast(error.message));
     return;
   }
 
