@@ -98,6 +98,18 @@ http://127.0.0.1:7533/app/
 
 The Web UI supports chat, streaming output, cancellable runs, expandable tool-call details, named agents, skills, session history, and schedule management.
 
+Check launch readiness without starting the daemon or opening a browser:
+
+```bash
+starclaw app --check
+```
+
+Start or reuse the daemon without opening a browser:
+
+```bash
+starclaw app --no-open
+```
+
 ### Manual Daemon Lifecycle
 ```bash
 starclaw daemon start

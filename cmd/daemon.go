@@ -108,6 +108,10 @@ func ensureDaemonRunning(ctx context.Context) (bool, error) {
 }
 
 func openDaemonWebUI(cmd *cobra.Command, ensure bool) error {
+	return launchDaemonWebUI(cmd, ensure, true)
+}
+
+func launchDaemonWebUI(cmd *cobra.Command, ensure bool, openBrowser bool) error {
 	started := false
 	if ensure {
 		ctx, cancel := context.WithTimeout(context.Background(), daemonEnsureTimeout+time.Second)
@@ -118,17 +122,40 @@ func openDaemonWebUI(cmd *cobra.Command, ensure bool) error {
 			return fmt.Errorf("daemon: %w; run `starclaw daemon status` and inspect %s", err, daemonDiagnosticsURL)
 		}
 	}
-	if err := openURLInBrowser(daemonWebURL); err != nil {
-		return fmt.Errorf("daemon: open web UI: %w", err)
+	if openBrowser {
+		if err := openURLInBrowser(daemonWebURL); err != nil {
+			return fmt.Errorf("daemon: open web UI: %w", err)
+		}
 	}
 	switch {
-	case ensure && started:
+	case ensure && started && openBrowser:
 		fmt.Fprintf(cmd.OutOrStdout(), "Started daemon and opened %s\n", daemonWebURL)
-	case ensure:
+	case ensure && openBrowser:
 		fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Opened %s\n", daemonWebURL)
+	case ensure && started:
+		fmt.Fprintf(cmd.OutOrStdout(), "Started daemon. Web UI: %s\n", daemonWebURL)
+	case ensure:
+		fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Web UI: %s\n", daemonWebURL)
 	default:
 		fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
 	}
+	return nil
+}
+
+func printAppLaunchReadiness(cmd *cobra.Command) error {
+	status := "not running"
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if isDaemonHealthy(ctx) {
+		status = "running"
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "StarClaw app launch readiness\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "Version:       %s\n", Version)
+	fmt.Fprintf(cmd.OutOrStdout(), "Launch:        starclaw app\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "Daemon:        %s\n", status)
+	fmt.Fprintf(cmd.OutOrStdout(), "Web UI:        %s\n", daemonWebURL)
+	fmt.Fprintf(cmd.OutOrStdout(), "Diagnostics:   %s\n", daemonDiagnosticsURL)
+	fmt.Fprintf(cmd.OutOrStdout(), "Data:          %s\n", config.StarclawDir())
 	return nil
 }
 
@@ -285,13 +312,21 @@ func newDaemonOpenCmd() *cobra.Command {
 var daemonOpenCmd = newDaemonOpenCmd()
 
 func newAppCmd() *cobra.Command {
-	return &cobra.Command{
+	var check bool
+	var noOpen bool
+	cmd := &cobra.Command{
 		Use:   "app",
 		Short: "Start the daemon if needed and open the Web UI",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return openDaemonWebUI(cmd, true)
+			if check {
+				return printAppLaunchReadiness(cmd)
+			}
+			return launchDaemonWebUI(cmd, true, !noOpen)
 		},
 	}
+	cmd.Flags().BoolVar(&check, "check", false, "Print app launch readiness without starting the daemon or opening a browser")
+	cmd.Flags().BoolVar(&noOpen, "no-open", false, "Start or reuse the daemon and print the Web UI URL without opening a browser")
+	return cmd
 }
 
 var appCmd = newAppCmd()

@@ -60,7 +60,10 @@ go install .
 
 ```bash
 starclaw version
+starclaw app --check
 ```
+
+`starclaw app --check` prints the GUI launch command, Web UI URL, diagnostics URL, data directory, and whether the daemon is already running.
 
 ## Configuration
 
@@ -74,6 +77,22 @@ You'll be prompted for:
 - API Endpoint (default: https://api.anthropic.com)
 - API Key (from your LLM provider)
 - Model preferences
+
+## Launch the GUI
+
+Start the daemon if needed and open the embedded Web UI:
+
+```bash
+starclaw app
+```
+
+If you are on a remote or headless machine, start/reuse the daemon without opening a browser:
+
+```bash
+starclaw app --no-open
+```
+
+Then open the printed Web UI URL from a browser that can reach the machine.
 
 ## Uninstallation
 

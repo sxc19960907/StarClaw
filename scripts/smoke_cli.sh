@@ -76,6 +76,16 @@ echo "==> checking app command help"
 run_capture app_help env HOME="$EMPTY_HOME" "$BIN" app --help
 expect_status app_help 0
 expect_contains app_help "Start the daemon if needed and open the Web UI"
+expect_contains app_help "--check"
+expect_contains app_help "--no-open"
+
+echo "==> checking app launch readiness"
+run_capture app_check env HOME="$EMPTY_HOME" "$BIN" app --check
+expect_status app_check 0
+expect_contains app_check "StarClaw app launch readiness"
+expect_contains app_check "Launch:        starclaw app"
+expect_contains app_check "Web UI:        http://127.0.0.1:7533/app/"
+expect_contains app_check "Diagnostics:   http://127.0.0.1:7533/diagnostics"
 
 echo "==> checking daemon open start flag help"
 run_capture daemon_open_help env HOME="$EMPTY_HOME" "$BIN" daemon open --help

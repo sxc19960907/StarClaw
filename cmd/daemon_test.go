@@ -98,6 +98,68 @@ func TestAppCmdStartsDaemonBeforeOpen(t *testing.T) {
 	}
 }
 
+func TestAppCmdCheckPrintsLaunchReadiness(t *testing.T) {
+	restore := stubDaemonLaunch(t)
+
+	restore.isHealthy = func(ctx context.Context) bool {
+		return true
+	}
+	restore.openURL = func(url string) error {
+		t.Fatalf("app --check should not open browser, got %s", url)
+		return nil
+	}
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(newAppCmd())
+
+	output, err := executeCommand(root, "app", "--check")
+	if err != nil {
+		t.Fatalf("app --check failed: %v", err)
+	}
+	if restore.started {
+		t.Fatal("app --check should not start daemon")
+	}
+	for _, want := range []string{
+		"StarClaw app launch readiness",
+		"Launch:        starclaw app",
+		"Daemon:        running",
+		"Web UI:        " + daemonWebURL,
+		"Diagnostics:   " + daemonDiagnosticsURL,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output %q should contain %q", output, want)
+		}
+	}
+}
+
+func TestAppCmdNoOpenStartsDaemonWithoutBrowser(t *testing.T) {
+	restore := stubDaemonLaunch(t)
+
+	healthChecks := 0
+	restore.isHealthy = func(ctx context.Context) bool {
+		healthChecks++
+		return restore.started && healthChecks >= 2
+	}
+	restore.openURL = func(url string) error {
+		t.Fatalf("app --no-open should not open browser, got %s", url)
+		return nil
+	}
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(newAppCmd())
+
+	output, err := executeCommand(root, "app", "--no-open")
+	if err != nil {
+		t.Fatalf("app --no-open failed: %v", err)
+	}
+	if !restore.started {
+		t.Fatal("app --no-open should start daemon when health check fails")
+	}
+	if !strings.Contains(output, "Started daemon. Web UI: "+daemonWebURL) {
+		t.Fatalf("output %q should report daemon startup without browser", output)
+	}
+}
+
 func TestDaemonOpenStartFlagStartsDaemonBeforeOpen(t *testing.T) {
 	restore := stubDaemonLaunch(t)
 

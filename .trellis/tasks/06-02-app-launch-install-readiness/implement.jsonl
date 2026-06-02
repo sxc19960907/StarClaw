@@ -1,0 +1,3 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"CLI tests and command behavior should follow project testing conventions."}
+{"path":".trellis/spec/backend/error-handling.md","reason":"New launch paths should preserve contextual error wrapping."}
+{"path":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Reuse existing daemon URL and launch helpers instead of duplicating constants."}
