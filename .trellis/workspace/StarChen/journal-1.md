@@ -1778,3 +1778,36 @@ Polished the Web UI command editor with command rename support, a clear action, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 54: GUI agent test run entry
+
+**Date**: 2026-06-02
+**Task**: GUI agent test run entry
+**Branch**: `main`
+
+### Summary
+
+Added a Web UI Test run action from the agent editor that switches to Chat with the edited agent selected, New session enabled, and a prefilled test prompt, with smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `07b11e9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
