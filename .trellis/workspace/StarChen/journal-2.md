@@ -137,3 +137,36 @@ Added editable global permissions in the Web UI, backed by config PATCH persiste
 ### Next Steps
 
 - None - task complete
+
+
+## Session 64: GUI direct agent test runner
+
+**Date**: 2026-06-02
+**Task**: GUI direct agent test runner
+**Branch**: `main`
+
+### Summary
+
+Added an Agents panel test runner for selecting an agent, running a one-off prompt, showing result metadata, and opening run/session detail, with Web UI smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ebb8784` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
