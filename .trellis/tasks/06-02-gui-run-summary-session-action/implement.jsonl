@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Project quality and browser smoke test expectations for Web UI changes."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Confirms session id data flow from message response to UI action and existing session API."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Use existing session selection flow instead of adding duplicate rendering logic."}

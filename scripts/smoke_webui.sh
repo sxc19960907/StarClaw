@@ -313,6 +313,7 @@ try {
   await page.locator(".run-summary").getByText("Usage").waitFor();
   await page.locator(".run-summary").getByText("prompt_tokens: 3").waitFor();
   await page.locator(".run-summary").getByText("Request").waitFor();
+  await page.locator(".run-summary").getByRole("button", { name: "Open session" }).waitFor();
   await page.unroute("**/message");
   const sessionID = await page.evaluate(async (url) => {
     const response = await fetch(`${url}/message`, {

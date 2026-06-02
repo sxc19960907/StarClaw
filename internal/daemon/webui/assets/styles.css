@@ -423,6 +423,17 @@ textarea:focus {
   font-weight: 600;
 }
 
+.run-summary-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.run-summary-actions button {
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
 .approval-card {
   width: min(520px, 100%);
   margin: 6px 0;

@@ -969,18 +969,25 @@ function renderDoneResult(result, assistantMessage) {
 function renderRunSummary(result, payload) {
   if (!result || result.error) return;
   const usage = result.usage || {};
+  const sessionID = result.session_id || "";
   const usageItems = Object.entries(usage)
     .filter(([, value]) => Number.isFinite(value))
     .map(([key, value]) => `${key}: ${value}`);
   const card = document.createElement("div");
   card.className = "run-summary";
+  const action = sessionID
+    ? `<div class="run-summary-actions">
+        <button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>
+      </div>`
+    : "";
   card.innerHTML = `<div class="run-summary-title">Run summary</div>
     <div class="run-summary-grid">
-      <span>Session</span><strong>${escapeHTML(result.session_id || "-")}</strong>
+      <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
       <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
       <span>Usage</span><strong>${escapeHTML(usageItems.length ? usageItems.join(", ") : "-")}</strong>
       <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
-    </div>`;
+    </div>
+    ${action}`;
   $("chat-output").appendChild(card);
 }
 
@@ -1222,6 +1229,9 @@ document.addEventListener("click", (event) => {
 
   const sessionItem = event.target.closest("[data-session-id]");
   if (sessionItem) selectSession(sessionItem.dataset.sessionId);
+
+  const runSummarySession = event.target.closest("[data-run-summary-session]");
+  if (runSummarySession) selectSession(runSummarySession.dataset.runSummarySession);
 
   const agentButton = event.target.closest("[data-agent-detail]");
   if (agentButton) inspectAgent(agentButton.dataset.agentDetail);

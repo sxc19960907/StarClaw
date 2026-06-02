@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify code quality, smoke coverage, and no unrelated dependency changes."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify the UI action uses the existing session boundary and handles missing session ids."}
