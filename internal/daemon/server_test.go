@@ -390,6 +390,58 @@ func TestHandleMessage(t *testing.T) {
 	}
 }
 
+func TestRunHistoryAPI(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"text":"hello","request_id":"run-smoke"}`
+	resp, err := http.Post(ts.URL+"/message", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /message: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /message status = %d", resp.StatusCode)
+	}
+
+	var list struct {
+		Runs []RunSummary `json:"runs"`
+	}
+	getJSON(t, ts.URL+"/runs", http.StatusOK, &list)
+	if len(list.Runs) != 1 {
+		t.Fatalf("expected 1 run, got %d", len(list.Runs))
+	}
+	if list.Runs[0].ID != "run-smoke" {
+		t.Fatalf("run id = %q, want run-smoke", list.Runs[0].ID)
+	}
+	if list.Runs[0].Status != "completed" {
+		t.Fatalf("run status = %q, want completed", list.Runs[0].Status)
+	}
+	if list.Runs[0].Prompt != "hello" {
+		t.Fatalf("run prompt = %q, want hello", list.Runs[0].Prompt)
+	}
+
+	var detail RunRecord
+	getJSON(t, ts.URL+"/runs/run-smoke", http.StatusOK, &detail)
+	if detail.ID != "run-smoke" {
+		t.Fatalf("detail id = %q, want run-smoke", detail.ID)
+	}
+	if detail.Status != "completed" {
+		t.Fatalf("detail status = %q, want completed", detail.Status)
+	}
+	if detail.Channel != ChannelHTTP {
+		t.Fatalf("detail channel = %q, want %q", detail.Channel, ChannelHTTP)
+	}
+	if detail.Request.Text != "hello" {
+		t.Fatalf("detail request text = %q, want hello", detail.Request.Text)
+	}
+	if detail.Response == nil || detail.Response.SessionID == "" {
+		t.Fatalf("detail response missing session id: %#v", detail.Response)
+	}
+	getJSON(t, ts.URL+"/runs/missing-run", http.StatusNotFound, &map[string]string{})
+}
+
 func TestSSEEventHandlerToolPayloads(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h := &sseEventHandler{w: rec, flusher: rec}

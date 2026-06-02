@@ -52,6 +52,8 @@ func (r *Router) registerMessageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /cancel", r.srv.handleCancel)
 	mux.HandleFunc("POST /shutdown", r.srv.handleShutdown)
 	mux.HandleFunc("GET /events", r.srv.handleEvents)
+	mux.HandleFunc("GET /runs", r.srv.handleRuns)
+	mux.HandleFunc("GET /runs/{id}", r.srv.handleGetRun)
 }
 
 func (r *Router) registerScheduleRoutes(mux *http.ServeMux) {

@@ -37,6 +37,10 @@
             <span>Schedules</span>
             <small id="schedules-count">0</small>
           </button>
+          <button class="nav-item" data-panel="runs">
+            <span>Runs</span>
+            <small id="runs-count">0</small>
+          </button>
           <button class="nav-item" data-panel="diagnostics">
             <span>Diagnostics</span>
             <small id="diagnostics-pill">Checking</small>
@@ -245,6 +249,25 @@
               </label>
               <button type="submit" class="primary-button">Create schedule</button>
             </form>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-runs" aria-labelledby="runs-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="runs-heading">Runs</h2>
+              <p>Recent daemon executions and their timeline.</p>
+            </div>
+            <div class="data-list" id="runs-list"></div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Run Detail</h2>
+              <p id="run-detail-summary">Select a run to inspect request, result, and events.</p>
+            </div>
+            <div id="run-detail" class="run-detail">
+              <div class="empty-state">No run selected.</div>
+            </div>
           </aside>
         </section>
 

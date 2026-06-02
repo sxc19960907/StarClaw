@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend route, tests, and Web UI smoke expectations."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Run records flow from daemon execution to API to GUI detail."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing event handler and run summary patterns."}

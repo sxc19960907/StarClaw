@@ -4,6 +4,7 @@ const state = {
   skills: [],
   sessions: [],
   schedules: [],
+  runs: [],
   diagnostics: null,
   config: null,
   permissions: null,
@@ -13,6 +14,7 @@ const state = {
   agentDirty: false,
   agentDirtyBaseline: "",
   activeRequestID: "",
+  activeRunID: "",
   activeAbort: null,
   activeSessionID: "",
   toolEvents: new Map(),
@@ -26,6 +28,7 @@ const views = {
   agents: ["Agents", "Inspect named agents available to the daemon."],
   skills: ["Skills", "Review installed skills exposed to StarClaw."],
   schedules: ["Schedules", "Create and manage cron-based local tasks."],
+  runs: ["Runs", "Inspect recent daemon executions."],
   diagnostics: ["Diagnostics", "Inspect daemon readiness and setup checks."],
   config: ["Config", "Repair provider setup for daemon runs."],
   permissions: ["Permissions", "Review local tool policy."],
@@ -909,6 +912,130 @@ async function loadSchedules() {
   }
 }
 
+async function loadRuns() {
+  const list = $("runs-list");
+  try {
+    const data = await api("/runs");
+    state.runs = data.runs || [];
+    $("runs-count").textContent = state.runs.length;
+    renderRunsList();
+    if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
+      state.activeRunID = "";
+      renderRunDetail(null);
+    }
+  } catch (error) {
+    state.runs = [];
+    $("runs-count").textContent = "0";
+    renderError(list, error.message);
+  }
+}
+
+function renderRunsList() {
+  const list = $("runs-list");
+  if (!state.runs.length) {
+    renderEmpty(list, "No runs recorded yet.");
+    return;
+  }
+  list.innerHTML = state.runs.map((run) => {
+    const active = run.id === state.activeRunID ? " active" : "";
+    const agent = run.agent || "default";
+    const session = run.session_id || "no session";
+    return `<article class="row-item run-row${active}" data-run-id="${escapeHTML(run.id)}">
+      <div class="row-item-title">
+        <span>${escapeHTML(run.prompt || run.id)}</span>
+        <span class="tag run-status ${escapeHTML(run.status || "unknown")}">${escapeHTML(run.status || "unknown")}</span>
+      </div>
+      <p>${escapeHTML(agent)} · ${escapeHTML(session)} · ${escapeHTML(formatTimestamp(run.started_at))}</p>
+      <div class="row-actions">
+        <button type="button" data-run-open="${escapeHTML(run.id)}">Open run</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+async function selectRun(runID) {
+  if (!runID) return;
+  state.activeRunID = runID;
+  renderRunsList();
+  switchPanel("runs");
+  try {
+    const run = await api(`/runs/${encodeURIComponent(runID)}`);
+    state.activeRunID = run.id || runID;
+    renderRunsList();
+    renderRunDetail(run);
+  } catch (error) {
+    $("run-detail-summary").textContent = "Run detail unavailable.";
+    renderError($("run-detail"), error.message);
+  }
+}
+
+function renderRunDetail(run) {
+  const target = $("run-detail");
+  if (!run) {
+    $("run-detail-summary").textContent = "Select a run to inspect request, result, and events.";
+    renderEmpty(target, "No run selected.");
+    return;
+  }
+  const usage = run.usage || run.response?.usage || {};
+  const usageText = Object.keys(usage).length
+    ? Object.entries(usage).map(([key, value]) => `${key}: ${value}`).join(", ")
+    : "-";
+  $("run-detail-summary").textContent = `${run.status || "unknown"} · ${formatTimestamp(run.started_at)}`;
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <div class="run-meta-grid">
+        <span>ID</span><strong>${escapeHTML(run.id || "-")}</strong>
+        <span>Status</span><strong>${escapeHTML(run.status || "-")}</strong>
+        <span>Agent</span><strong>${escapeHTML(run.agent || "default")}</strong>
+        <span>Channel</span><strong>${escapeHTML(run.channel || "-")}</strong>
+        <span>Session</span><strong>${escapeHTML(run.session_id || run.response?.session_id || "-")}</strong>
+        <span>Started</span><strong>${escapeHTML(formatTimestamp(run.started_at))}</strong>
+        <span>Ended</span><strong>${escapeHTML(formatTimestamp(run.ended_at))}</strong>
+        <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
+      </div>
+      ${run.error ? `<div class="error-state">${escapeHTML(run.error)}</div>` : ""}
+    </section>
+    <section class="run-detail-section">
+      <h3>Prompt</h3>
+      <pre>${escapeHTML(run.prompt || run.request?.text || "")}</pre>
+    </section>
+    <section class="run-detail-section">
+      <h3>Result</h3>
+      <pre>${escapeHTML(formatRunResponse(run.response))}</pre>
+    </section>
+    <section class="run-detail-section">
+      <h3>Timeline</h3>
+      ${renderRunEvents(run.events || [])}
+    </section>
+  </div>`;
+}
+
+function renderRunEvents(events) {
+  if (!events.length) return `<div class="empty-state">No events captured for this run.</div>`;
+  return `<div class="run-timeline">${events.map((event) => `<article class="run-event">
+    <div class="run-event-header">
+      <strong>${escapeHTML(event.type || "event")}</strong>
+      <span>${escapeHTML(formatTimestamp(event.at))}</span>
+    </div>
+    <pre>${escapeHTML(formatToolPayload(event.data || {}))}</pre>
+  </article>`).join("")}</div>`;
+}
+
+function formatRunResponse(response) {
+  if (!response) return "No response recorded.";
+  if (Array.isArray(response.messages) && response.messages.length) {
+    return response.messages.join("\n");
+  }
+  return JSON.stringify(response, null, 2);
+}
+
+function formatTimestamp(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
+}
+
 async function submitChat(event) {
   event.preventDefault();
   if (state.activeRequestID) {
@@ -950,7 +1077,7 @@ async function submitChat(event) {
       $("chat-new-session").checked = false;
     }
     stateLabel.textContent = "Complete";
-    await loadSessions();
+    await Promise.allSettled([loadSessions(), loadRuns()]);
     updateActiveSessionLabel();
   } catch (error) {
     if (!assistantMessage.querySelector(".message-body").textContent.trim()) {
@@ -1141,10 +1268,11 @@ function renderRunSummary(result, payload) {
   ].join("\n");
   const card = document.createElement("div");
   card.className = "run-summary";
-  const openAction = sessionID
-    ? `
-        <button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>
-      `
+  const openSessionAction = sessionID
+    ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>`
+    : "";
+  const openRunAction = requestID && requestID !== "-"
+    ? `<button type="button" data-run-summary-run="${escapeHTML(requestID)}">Open run</button>`
     : "";
   card.innerHTML = `<div class="run-summary-title">Run summary</div>
     <div class="run-summary-grid">
@@ -1155,7 +1283,8 @@ function renderRunSummary(result, payload) {
     </div>
     <div class="run-summary-actions">
       <button type="button" data-run-summary-copy="${escapeHTML(summaryText)}">Copy summary</button>
-      ${openAction}
+      ${openRunAction}
+      ${openSessionAction}
     </div>`;
   $("chat-output").appendChild(card);
 }
@@ -1367,6 +1496,7 @@ async function refreshAll() {
     loadSkills(),
     loadSessions(),
     loadSchedules(),
+    loadRuns(),
   ]);
 }
 
@@ -1417,6 +1547,12 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const runSummaryRun = event.target.closest("[data-run-summary-run]");
+  if (runSummaryRun) {
+    selectRun(runSummaryRun.dataset.runSummaryRun);
+    return;
+  }
+
   const runSummaryCopy = event.target.closest("[data-run-summary-copy]");
   if (runSummaryCopy) {
     copyText(runSummaryCopy.dataset.runSummaryCopy, "Run summary copied.")
@@ -1430,6 +1566,18 @@ document.addEventListener("click", (event) => {
 
   const agentCommand = event.target.closest("[data-agent-command]");
   if (agentCommand) selectAgentCommand(agentCommand.dataset.agentCommand);
+
+  const runOpen = event.target.closest("[data-run-open]");
+  if (runOpen) {
+    selectRun(runOpen.dataset.runOpen);
+    return;
+  }
+
+  const runRow = event.target.closest("[data-run-id]");
+  if (runRow) {
+    selectRun(runRow.dataset.runId);
+    return;
+  }
 
   const toggle = event.target.closest("[data-schedule-toggle]");
   if (toggle) toggleSchedule(toggle.dataset.scheduleToggle, toggle.dataset.enabled === "true");

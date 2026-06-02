@@ -36,6 +36,7 @@ type Server struct {
 	cancel         context.CancelFunc
 	startedAt      time.Time
 	running        sync.Map // requestID -> context.CancelFunc
+	runStore       *RunStore
 }
 
 // NewServer creates a new Server.
@@ -46,6 +47,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		version:        version,
 		eventBus:       NewEventBus(),
 		approvalBroker: NewApprovalBroker(),
+		runStore:       NewRunStore(defaultRunStoreLimit),
 	}
 }
 
@@ -141,6 +143,7 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 	if req.RequestID == "" {
 		req.RequestID = generateRequestID()
 	}
+	s.runStore.Start(req)
 
 	// Create cancellable context for this request.
 	ctx, cancel := context.WithCancel(r.Context())
@@ -154,8 +157,9 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Synchronous JSON response.
-	handler := &httpEventHandler{}
+	handler := s.recordingHandler(req.RequestID, &httpEventHandler{})
 	result, err := s.runAgent(ctx, req, handler)
+	s.runStore.Complete(req.RequestID, result, err)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -175,8 +179,9 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 	w.Header().Set("Connection", "keep-alive")
 	flusher.Flush()
 
-	handler := &sseEventHandler{w: w, flusher: flusher}
+	handler := s.recordingHandler(req.RequestID, &sseEventHandler{w: w, flusher: flusher})
 	result, err := s.runAgent(ctx, req, handler)
+	s.runStore.Complete(req.RequestID, result, err)
 	if err != nil {
 		fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]string{"error": err.Error()}))
 		flusher.Flush()
@@ -189,6 +194,28 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 func (s *Server) runAgent(ctx context.Context, req RunAgentRequest, handler agent.EventHandler) (RunAgentResponse, error) {
 	approver := NewDaemonApprovalRequester(s.approvalBroker, s.eventBus, req.Channel, req.RequestID, req.Agent)
 	return RunAgentWithApproval(ctx, s.deps, req, handler, approver)
+}
+
+func (s *Server) recordingHandler(requestID string, handler agent.EventHandler) agent.EventHandler {
+	recorder := &runRecorderHandler{store: s.runStore, id: requestID}
+	if handler == nil {
+		return recorder
+	}
+	return NewMultiHandler(handler, recorder)
+}
+
+func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"runs": s.runStore.List()})
+}
+
+func (s *Server) handleGetRun(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	record, ok := s.runStore.Get(id)
+	if !ok {
+		writeError(w, http.StatusNotFound, "run not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, record)
 }
 
 // ---------------------------------------------------------------------------

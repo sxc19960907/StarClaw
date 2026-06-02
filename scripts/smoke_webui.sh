@@ -360,6 +360,7 @@ try {
   await page.locator(".run-summary").getByText("Usage").waitFor();
   await page.locator(".run-summary").getByText("prompt_tokens: 3").waitFor();
   await page.locator(".run-summary").getByText("Request").waitFor();
+  await page.locator(".run-summary").getByRole("button", { name: "Open run" }).waitFor();
   await page.locator(".run-summary").getByRole("button", { name: "Copy summary" }).click();
   await page.getByText("Run summary copied.").waitFor();
   await page.locator(".run-summary").getByRole("button", { name: "Copied" }).waitFor();
@@ -370,17 +371,26 @@ try {
   assert(copiedSummary.includes("Usage: prompt_tokens: 3, completion_tokens: 4"), "copied summary missing usage");
   await page.locator(".run-summary").getByRole("button", { name: "Open session" }).waitFor();
   await page.unroute("**/message");
-  const sessionID = await page.evaluate(async (url) => {
+  const runID = "run_history_smoke";
+  const sessionID = await page.evaluate(async ({ url, runID }) => {
     const response = await fetch(`${url}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "webui smoke session", new_session: true })
+      body: JSON.stringify({ text: "webui smoke session", new_session: true, request_id: runID })
     });
     const data = await response.json();
     return data.session_id;
-  }, baseURL);
+  }, { url: baseURL, runID });
   assert(sessionID, "session id missing");
   await page.getByRole("button", { name: "Refresh data" }).click();
+  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
+  await page.locator(`[data-run-id="${runID}"]`).waitFor();
+  await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
+  await page.locator("#run-detail").getByText(runID).waitFor();
+  await page.locator("#run-detail").getByText("Status").waitFor();
+  await page.locator("#run-detail").getByText("webui smoke session").waitFor();
+  assert(await page.locator("#run-detail").getByText(sessionID).count() >= 1, "run detail missing session id");
   await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Copy ID" }).click();
   await page.getByText("Session ID copied.").waitFor();

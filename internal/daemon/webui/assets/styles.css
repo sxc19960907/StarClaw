@@ -742,7 +742,8 @@ textarea:focus {
   border-color: var(--line);
 }
 
-.session-list .row-item.active {
+.session-list .row-item.active,
+.run-row.active {
   background: var(--surface);
   border-color: var(--line-strong);
 }
@@ -807,6 +808,95 @@ textarea:focus {
   border-radius: 999px;
   color: var(--muted);
   font-weight: 500;
+}
+
+.run-status.completed {
+  color: var(--ok);
+  border-color: rgba(22, 125, 104, 0.28);
+}
+
+.run-status.error {
+  color: var(--danger);
+  border-color: rgba(164, 61, 58, 0.35);
+}
+
+.run-status.running {
+  color: #8a5a12;
+  border-color: rgba(167, 112, 35, 0.32);
+}
+
+.run-detail {
+  min-width: 0;
+}
+
+.run-detail-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.run-detail-section {
+  display: grid;
+  gap: 8px;
+}
+
+.run-detail-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.run-detail-section pre,
+.run-event pre {
+  max-height: 240px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 10px;
+  color: var(--text);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.run-meta-grid {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 7px 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.run-meta-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.run-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.run-event {
+  display: grid;
+  gap: 7px;
+}
+
+.run-event-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-event-header strong {
+  color: var(--text);
 }
 
 .diagnostics-list {
