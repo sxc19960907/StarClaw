@@ -467,3 +467,36 @@ Kept agent test completion in the Agents panel, added prompt/request result meta
 ### Next Steps
 
 - None - task complete
+
+
+## Session 74: GUI permissions preview UX
+
+**Date**: 2026-06-02
+**Task**: GUI permissions preview UX
+**Branch**: `main`
+
+### Summary
+
+Added live pending permissions preview, client-side risk hints, agent auto-approve/conflict warnings, and targeted permissions/agents smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `06cf6fb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
