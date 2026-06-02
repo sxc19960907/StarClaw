@@ -500,3 +500,36 @@ Added live pending permissions preview, client-side risk hints, agent auto-appro
 ### Next Steps
 
 - None - task complete
+
+
+## Session 75: GUI version release readiness
+
+**Date**: 2026-06-02
+**Task**: GUI version release readiness
+**Branch**: `main`
+
+### Summary
+
+Added a Version page release readiness card using existing version metadata and extended core Web UI smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2a97abe` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
