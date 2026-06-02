@@ -85,23 +85,30 @@ starclaw interactive
 
 ## Daemon Web UI
 
-### Start the Daemon
+### Open the Web UI
 ```bash
-starclaw daemon start
+starclaw app
 ```
 
-The daemon serves the embedded Web UI at:
+This starts the daemon when needed and opens the embedded Web UI at:
 
 ```text
 http://127.0.0.1:7533/app/
 ```
 
-### Open the Web UI
+The Web UI supports chat, streaming output, cancellable runs, expandable tool-call details, named agents, skills, session history, and schedule management.
+
+### Manual Daemon Lifecycle
 ```bash
+starclaw daemon start
 starclaw daemon open
 ```
 
-The Web UI supports chat, streaming output, cancellable runs, expandable tool-call details, named agents, skills, session history, and schedule management.
+You can also start the daemon on demand while opening the UI:
+
+```bash
+starclaw daemon open --start
+```
 
 ### Check Daemon Status
 ```bash

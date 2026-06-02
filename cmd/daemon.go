@@ -29,9 +29,106 @@ var daemonCmd = &cobra.Command{
 const daemonPort = 7533
 
 var daemonWebURL = daemonWebURLForPort(daemonPort)
+var daemonHealthURL = fmt.Sprintf("http://127.0.0.1:%d/health", daemonPort)
+var daemonEnsureTimeout = 5 * time.Second
+var daemonHealthPollInterval = 120 * time.Millisecond
 
 func daemonWebURLForPort(port int) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/app/", port)
+}
+
+var isDaemonHealthy = func(ctx context.Context) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, daemonHealthURL, nil)
+	if err != nil {
+		return false
+	}
+	resp, err := (&http.Client{Timeout: 500 * time.Millisecond}).Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+var startDaemonBackground = func() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve executable: %w", err)
+	}
+	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("open dev null: %w", err)
+	}
+	cmd := exec.Command(exe, "daemon", "start")
+	cmd.Stdout = devNull
+	cmd.Stderr = devNull
+	if err := cmd.Start(); err != nil {
+		_ = devNull.Close()
+		return fmt.Errorf("start process: %w", err)
+	}
+	go func() {
+		_ = cmd.Wait()
+		_ = devNull.Close()
+	}()
+	return nil
+}
+
+func waitForDaemonHealth(ctx context.Context) error {
+	timer := time.NewTimer(daemonEnsureTimeout)
+	defer timer.Stop()
+	ticker := time.NewTicker(daemonHealthPollInterval)
+	defer ticker.Stop()
+
+	for {
+		if isDaemonHealthy(ctx) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for daemon health: %w", ctx.Err())
+		case <-timer.C:
+			return fmt.Errorf("daemon did not become healthy within %s", daemonEnsureTimeout)
+		case <-ticker.C:
+		}
+	}
+}
+
+func ensureDaemonRunning(ctx context.Context) (bool, error) {
+	if isDaemonHealthy(ctx) {
+		return false, nil
+	}
+	if err := startDaemonBackground(); err != nil {
+		return false, fmt.Errorf("start background daemon: %w", err)
+	}
+	if err := waitForDaemonHealth(ctx); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
+func openDaemonWebUI(cmd *cobra.Command, ensure bool) error {
+	started := false
+	if ensure {
+		ctx, cancel := context.WithTimeout(context.Background(), daemonEnsureTimeout+time.Second)
+		defer cancel()
+		var err error
+		started, err = ensureDaemonRunning(ctx)
+		if err != nil {
+			return fmt.Errorf("daemon: %w", err)
+		}
+	}
+	if err := openURLInBrowser(daemonWebURL); err != nil {
+		return fmt.Errorf("daemon: open web UI: %w", err)
+	}
+	switch {
+	case ensure && started:
+		fmt.Fprintf(cmd.OutOrStdout(), "Started daemon and opened %s\n", daemonWebURL)
+	case ensure:
+		fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Opened %s\n", daemonWebURL)
+	default:
+		fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
+	}
+	return nil
 }
 
 var daemonStartCmd = &cobra.Command{
@@ -172,20 +269,31 @@ var openURLInBrowser = func(url string) error {
 }
 
 func newDaemonOpenCmd() *cobra.Command {
-	return &cobra.Command{
+	var start bool
+	cmd := &cobra.Command{
 		Use:   "open",
 		Short: "Open the daemon Web UI in the default browser",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := openURLInBrowser(daemonWebURL); err != nil {
-				return fmt.Errorf("daemon: open web UI: %w", err)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
-			return nil
+			return openDaemonWebUI(cmd, start)
+		},
+	}
+	cmd.Flags().BoolVar(&start, "start", false, "Start the daemon first if it is not running")
+	return cmd
+}
+
+var daemonOpenCmd = newDaemonOpenCmd()
+
+func newAppCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "app",
+		Short: "Start the daemon if needed and open the Web UI",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return openDaemonWebUI(cmd, true)
 		},
 	}
 }
 
-var daemonOpenCmd = newDaemonOpenCmd()
+var appCmd = newAppCmd()
 
 func init() {
 	daemonCmd.AddCommand(daemonStartCmd)
@@ -193,4 +301,5 @@ func init() {
 	daemonCmd.AddCommand(daemonStatusCmd)
 	daemonCmd.AddCommand(daemonOpenCmd)
 	rootCmd.AddCommand(daemonCmd)
+	rootCmd.AddCommand(appCmd)
 }

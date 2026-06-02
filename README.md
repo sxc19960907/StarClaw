@@ -86,12 +86,10 @@ starclaw interactive
 
 **Daemon Web UI:**
 ```bash
-starclaw daemon start
-# In another terminal:
-starclaw daemon open
+starclaw app
 ```
 
-The daemon serves the local Web UI at `http://127.0.0.1:7533/app/`. It provides a Codex-style workspace for chat, streaming runs, tool-call details, named agents, skills, sessions, and schedules.
+This starts the daemon when needed and opens the local Web UI at `http://127.0.0.1:7533/app/`. It provides a Codex-style workspace for chat, streaming runs, tool-call details, named agents, skills, sessions, and schedules.
 
 **Pipe input:**
 ```bash

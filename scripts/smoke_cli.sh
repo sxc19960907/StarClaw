@@ -45,7 +45,7 @@ expect_status() {
 expect_contains() {
   local name="$1"
   local needle="$2"
-  if ! grep -Fq "$needle" "$TMP_DIR/$name.out"; then
+  if ! grep -Fq -- "$needle" "$TMP_DIR/$name.out"; then
     echo "---- $name output ----" >&2
     cat "$TMP_DIR/$name.out" >&2
     fail "$name output did not contain: $needle"
@@ -68,8 +68,19 @@ echo "==> checking help"
 run_capture help env HOME="$EMPTY_HOME" "$BIN" --help
 expect_status help 0
 expect_contains help "Available Commands:"
+expect_contains help "app"
 expect_contains help "chat"
 expect_contains help "sessions"
+
+echo "==> checking app command help"
+run_capture app_help env HOME="$EMPTY_HOME" "$BIN" app --help
+expect_status app_help 0
+expect_contains app_help "Start the daemon if needed and open the Web UI"
+
+echo "==> checking daemon open start flag help"
+run_capture daemon_open_help env HOME="$EMPTY_HOME" "$BIN" daemon open --help
+expect_status daemon_open_help 0
+expect_contains daemon_open_help "--start"
 
 echo "==> checking missing-config chat failure"
 run_capture chat_missing env HOME="$EMPTY_HOME" "$BIN" chat "hello"
