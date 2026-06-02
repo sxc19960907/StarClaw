@@ -269,3 +269,36 @@ Added starclaw app and daemon open --start to start the daemon when needed and o
 ### Next Steps
 
 - None - task complete
+
+
+## Session 68: GUI agent test streaming
+
+**Date**: 2026-06-02
+**Task**: GUI agent test streaming
+**Branch**: `main`
+
+### Summary
+
+Made the GUI Agent Test Runner use the existing /message SSE stream, added stop/cancel controls, auto-opened matching Run detail after completion, and extended Web UI smoke coverage for streaming, cancellation, and run linkage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `126606a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

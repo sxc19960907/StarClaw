@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 67
+- **Total Sessions**: 68
 - **Last Active**: 2026-06-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~271 | Active |
+| `journal-2.md` | ~304 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 68 | 2026-06-02 | GUI agent test streaming | `126606a` | `main` |
 | 67 | 2026-06-02 | One-command GUI launch | `8115aab` | `main` |
 | 66 | 2026-06-02 | GUI version and update status | `fed0b76` | `main` |
 | 65 | 2026-06-02 | Layer Web UI smoke and CI coverage | `5deafcc` | `main` |
