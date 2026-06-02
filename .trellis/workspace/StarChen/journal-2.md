@@ -236,3 +236,36 @@ Added daemon version/update-check metadata APIs, a Web UI Version panel with man
 ### Next Steps
 
 - None - task complete
+
+
+## Session 67: One-command GUI launch
+
+**Date**: 2026-06-02
+**Task**: One-command GUI launch
+**Branch**: `main`
+
+### Summary
+
+Added starclaw app and daemon open --start to start the daemon when needed and open the Web UI, with CLI tests, docs, and smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8115aab` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
