@@ -125,6 +125,29 @@ func TestDaemonOpenStartFlagStartsDaemonBeforeOpen(t *testing.T) {
 	}
 }
 
+func TestAppCmdStartupFailureIncludesDiagnosticsHint(t *testing.T) {
+	restore := stubDaemonLaunch(t)
+
+	restore.isHealthy = func(ctx context.Context) bool {
+		return false
+	}
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(newAppCmd())
+
+	_, err := executeCommand(root, "app")
+	if err == nil {
+		t.Fatal("app should fail when daemon never becomes healthy")
+	}
+	message := err.Error()
+	if !strings.Contains(message, "starclaw daemon status") {
+		t.Fatalf("error %q should include daemon status hint", message)
+	}
+	if !strings.Contains(message, daemonDiagnosticsURL) {
+		t.Fatalf("error %q should include diagnostics URL %q", message, daemonDiagnosticsURL)
+	}
+}
+
 type daemonLaunchStub struct {
 	started   bool
 	openURL   func(string) error

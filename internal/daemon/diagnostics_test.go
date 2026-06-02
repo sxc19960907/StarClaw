@@ -73,6 +73,7 @@ func TestHandleDiagnosticsReady(t *testing.T) {
 	deps := &ServerDeps{
 		StarclawDir: dir,
 		ConfigPath:  configPath,
+		AgentsDir:   filepath.Join(dir, "agents"),
 		Config: &config.Config{
 			Provider:    "anthropic",
 			Endpoint:    "https://api.anthropic.com",
@@ -92,6 +93,27 @@ func TestHandleDiagnosticsReady(t *testing.T) {
 	getJSON(t, ts.URL+"/diagnostics", http.StatusOK, &body)
 	if body.Status != DiagnosticReady {
 		t.Fatalf("status = %q, want %q; checks = %+v", body.Status, DiagnosticReady, body.Checks)
+	}
+	if body.WebURL != "http://127.0.0.1:0/app/" {
+		t.Fatalf("web_url = %q, want port-specific URL", body.WebURL)
+	}
+	if body.LaunchCommand != "starclaw app" {
+		t.Fatalf("launch_command = %q, want starclaw app", body.LaunchCommand)
+	}
+	if body.StarclawDir != dir {
+		t.Fatalf("starclaw_dir = %q, want %q", body.StarclawDir, dir)
+	}
+	if body.ConfigPath != configPath {
+		t.Fatalf("config_path = %q, want %q", body.ConfigPath, configPath)
+	}
+	if body.AgentsDir != filepath.Join(dir, "agents") {
+		t.Fatalf("agents_dir = %q, want %q", body.AgentsDir, filepath.Join(dir, "agents"))
+	}
+	if body.SessionsDir != filepath.Join(dir, "sessions") {
+		t.Fatalf("sessions_dir = %q, want %q", body.SessionsDir, filepath.Join(dir, "sessions"))
+	}
+	if body.ExecutablePath == "" {
+		t.Fatal("executable_path should be present when executable resolution succeeds")
 	}
 	if len(body.Checks) < 7 {
 		t.Fatalf("expected at least 7 checks, got %d", len(body.Checks))
@@ -132,6 +154,12 @@ func TestHandleDiagnosticsRouteReturnsStructuredChecks(t *testing.T) {
 	}
 	if findDiagnosticCheck(body.Checks, "tools") == nil {
 		t.Fatal("tools check missing")
+	}
+	if body.LaunchCommand != "starclaw app" {
+		t.Fatalf("launch_command = %q, want starclaw app", body.LaunchCommand)
+	}
+	if body.WebURL == "" {
+		t.Fatal("web_url should be present")
 	}
 }
 

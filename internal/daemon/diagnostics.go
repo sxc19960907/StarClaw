@@ -22,9 +22,16 @@ const (
 )
 
 type DiagnosticsResponse struct {
-	Status  DiagnosticStatus  `json:"status"`
-	Summary string            `json:"summary"`
-	Checks  []DiagnosticCheck `json:"checks"`
+	Status         DiagnosticStatus  `json:"status"`
+	Summary        string            `json:"summary"`
+	WebURL         string            `json:"web_url"`
+	LaunchCommand  string            `json:"launch_command"`
+	ExecutablePath string            `json:"executable_path,omitempty"`
+	StarclawDir    string            `json:"starclaw_dir,omitempty"`
+	ConfigPath     string            `json:"config_path,omitempty"`
+	AgentsDir      string            `json:"agents_dir,omitempty"`
+	SessionsDir    string            `json:"sessions_dir,omitempty"`
+	Checks         []DiagnosticCheck `json:"checks"`
 }
 
 type DiagnosticCheck struct {
@@ -40,21 +47,35 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) buildDiagnostics(ctx context.Context) DiagnosticsResponse {
+	starclawDir := s.depsPath(func(deps *ServerDeps) string { return deps.StarclawDir })
+	configPath := s.depsPath(func(deps *ServerDeps) string { return deps.ConfigPath })
+	agentsDir := s.depsPath(func(deps *ServerDeps) string { return deps.AgentsDir })
+	sessionsDir := filepath.Join(starclawDir, "sessions")
 	checks := []DiagnosticCheck{
 		s.checkConfigFile(),
 		s.checkProvider(ctx),
-		s.checkDirectoryWritable("storage", "StarClaw directory", s.depsPath(func(deps *ServerDeps) string { return deps.StarclawDir })),
-		s.checkDirectoryWritable("sessions", "Sessions directory", filepath.Join(s.depsPath(func(deps *ServerDeps) string { return deps.StarclawDir }), "sessions")),
+		s.checkDirectoryWritable("storage", "StarClaw directory", starclawDir),
+		s.checkDirectoryWritable("sessions", "Sessions directory", sessionsDir),
 		s.checkScheduleManager(),
 		s.checkToolRegistry(),
 		s.checkPermissions(),
 	}
 	status := highestDiagnosticStatus(checks)
-	return DiagnosticsResponse{
-		Status:  status,
-		Summary: diagnosticSummary(status),
-		Checks:  checks,
+	resp := DiagnosticsResponse{
+		Status:        status,
+		Summary:       diagnosticSummary(status),
+		WebURL:        daemonWebURLForPort(s.port),
+		LaunchCommand: daemonLaunchCommand,
+		StarclawDir:   starclawDir,
+		ConfigPath:    configPath,
+		AgentsDir:     agentsDir,
+		SessionsDir:   sessionsDir,
+		Checks:        checks,
 	}
+	if executablePath, err := os.Executable(); err == nil {
+		resp.ExecutablePath = executablePath
+	}
+	return resp
 }
 
 func (s *Server) depsPath(get func(*ServerDeps) string) string {

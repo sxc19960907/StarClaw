@@ -129,6 +129,12 @@ async function boot(page) {
 async function runCore(page) {
   await page.getByRole("button", { name: /Diagnostics/ }).click();
   await page.locator("#panel-diagnostics").getByRole("heading", { name: "Diagnostics" }).waitFor();
+  await page.locator("#panel-diagnostics").getByText("Launch readiness").waitFor();
+  await page.locator("#panel-diagnostics").getByText("starclaw app").waitFor();
+  await page.locator("#panel-diagnostics").getByText(`${baseURL}/app/`).waitFor();
+  await page.locator("#panel-diagnostics").getByText("Config", { exact: true }).waitFor();
+  await page.locator("#panel-diagnostics").getByText("Agents", { exact: true }).waitFor();
+  await page.locator("#panel-diagnostics").getByText("Sessions", { exact: true }).waitFor();
   await page.getByText("Provider", { exact: true }).waitFor();
   await page.getByText(/Ollama is configured/).waitFor();
   await page.getByRole("button", { name: "Fix provider setup" }).click();
@@ -143,6 +149,8 @@ async function runCore(page) {
   await page.locator("#version-list").getByText("Version").waitFor();
   await page.locator("#version-list").getByText("Platform").waitFor();
   await page.locator("#version-list").getByText("Web UI").waitFor();
+  await page.locator("#version-list").getByText("Launch").waitFor();
+  await page.locator("#version-list").getByText("starclaw app").waitFor();
   await page.locator("#version-list").getByText("starclaw update --check").waitFor();
   await page.locator("#update-overview").getByText("Development build", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Check updates" }).click();
@@ -642,8 +650,12 @@ check_routes() {
   echo "==> checking daemon routes"
   curl -fsS "$BASE_URL/status" >/dev/null
   curl -fsS "$BASE_URL/version" | grep -F '"update_command":"starclaw update --check"' >/dev/null || fail "version JSON missing update command"
+  curl -fsS "$BASE_URL/version" | grep -F '"launch_command":"starclaw app"' >/dev/null || fail "version JSON missing launch command"
   curl -fsS "$BASE_URL/update/check" | grep -F '"status":"development"' >/dev/null || fail "update check JSON missing development status"
   curl -fsS "$BASE_URL/diagnostics" | grep -F '"checks"' >/dev/null || fail "diagnostics JSON missing checks"
+  curl -fsS "$BASE_URL/diagnostics" | grep -F '"launch_command":"starclaw app"' >/dev/null || fail "diagnostics JSON missing launch command"
+  curl -fsS "$BASE_URL/diagnostics" | grep -F '"web_url":"'"$BASE_URL"'/app/"' >/dev/null || fail "diagnostics JSON missing web URL"
+  curl -fsS "$BASE_URL/diagnostics" | grep -F '"config_path":"'"$SMOKE_HOME"'/.starclaw/config.yaml"' >/dev/null || fail "diagnostics JSON missing config path"
   curl -fsS "$BASE_URL/permissions" | grep -F '"configured":true' >/dev/null || fail "permissions JSON missing configured policy"
   curl -fsSI "$BASE_URL/" | grep -F "Location: /app/" >/dev/null || fail "root redirect missing"
   curl -fsSI "$BASE_URL/app" | grep -F "Location: /app/" >/dev/null || fail "app redirect missing"
@@ -677,7 +689,7 @@ check_routes
 write_browser_smoke
 
 echo "==> running browser smoke ($SMOKE_MODE)"
-env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" NODE_DIR="$NODE_DIR" WEBUI_SMOKE_MODE="$SMOKE_MODE" node "$NODE_SCRIPT"
+env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" NODE_DIR="$NODE_DIR" WEBUI_SMOKE_MODE="$SMOKE_MODE" SMOKE_HOME="$SMOKE_HOME" node "$NODE_SCRIPT"
 
 echo "smoke_webui_${SMOKE_MODE}: ok"
 echo "screenshot: $SCREENSHOT"

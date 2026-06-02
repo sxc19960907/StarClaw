@@ -342,11 +342,18 @@ async function loadDiagnostics() {
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
+    const launchRows = diagnosticsLaunchRows(diagnostics);
+    const launchCard = `<article class="row-item diagnostic-launch-card">
+      <div class="row-item-title"><span>Launch readiness</span><span class="tag">${escapeHTML(label)}</span></div>
+      <div class="run-meta-grid">
+        ${launchRows.map(([rowLabel, value]) => `<span>${escapeHTML(rowLabel)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
+      </div>
+    </article>`;
     if (!checks.length) {
-      renderEmpty(list, "No diagnostics returned.");
+      list.innerHTML = `${launchCard}<article class="row-item empty-state"><p>No diagnostics returned.</p></article>`;
       return;
     }
-    list.innerHTML = checks.map((check) => `<article class="row-item diagnostic-item ${escapeHTML(check.status || "unknown")}">
+    const checkCards = checks.map((check) => `<article class="row-item diagnostic-item ${escapeHTML(check.status || "unknown")}">
       <div class="row-item-title">
         <span>${escapeHTML(check.label || check.id || "Check")}</span>
         <span class="tag diagnostic-tag ${escapeHTML(check.status || "unknown")}">${escapeHTML(statusLabel(check.status))}</span>
@@ -354,6 +361,7 @@ async function loadDiagnostics() {
       <p>${escapeHTML(check.detail || "")}</p>
       ${diagnosticActionHTML(check)}
     </article>`).join("");
+    list.innerHTML = `${launchCard}${checkCards}`;
   } catch (error) {
     state.diagnostics = null;
     pill.textContent = "Offline";
@@ -365,6 +373,19 @@ async function loadDiagnostics() {
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
   }
+}
+
+function diagnosticsLaunchRows(diagnostics) {
+  const rows = [
+    ["Launch", diagnostics.launch_command || "starclaw app"],
+    ["Web UI", diagnostics.web_url || "-"],
+    ["Data", diagnostics.starclaw_dir || "-"],
+    ["Config", diagnostics.config_path || "-"],
+    ["Agents", diagnostics.agents_dir || "-"],
+    ["Sessions", diagnostics.sessions_dir || "-"],
+  ];
+  if (diagnostics.executable_path) rows.push(["Executable", diagnostics.executable_path]);
+  return rows;
 }
 
 function diagnosticActionHTML(check) {
@@ -529,6 +550,7 @@ function renderVersion() {
     ["Version", info.version || "-"],
     ["Platform", info.platform || "-"],
     ["Web UI", info.web_url || "-"],
+    ["Launch", info.launch_command || "starclaw app"],
     ["Update checks", supported ? "Supported" : "Release build required"],
     ["Command", info.update_command || "starclaw update --check"],
   ];

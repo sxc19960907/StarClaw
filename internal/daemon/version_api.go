@@ -7,10 +7,13 @@ import (
 	"github.com/starclaw/starclaw/internal/update"
 )
 
+const daemonLaunchCommand = "starclaw app"
+
 type versionResponse struct {
 	Version         string `json:"version"`
 	Platform        string `json:"platform"`
 	WebURL          string `json:"web_url"`
+	LaunchCommand   string `json:"launch_command"`
 	UpdateSupported bool   `json:"update_supported"`
 	UpdateCommand   string `json:"update_command"`
 	Status          string `json:"status"`
@@ -34,6 +37,7 @@ func (s *Server) versionInfo(status, message string) versionResponse {
 		Version:         s.version,
 		Platform:        update.PlatformInfo(),
 		WebURL:          daemonWebURLForPort(s.port),
+		LaunchCommand:   daemonLaunchCommand,
 		UpdateSupported: update.IsSemver(s.version),
 		UpdateCommand:   "starclaw update --check",
 		Status:          status,

@@ -30,6 +30,7 @@ const daemonPort = 7533
 
 var daemonWebURL = daemonWebURLForPort(daemonPort)
 var daemonHealthURL = fmt.Sprintf("http://127.0.0.1:%d/health", daemonPort)
+var daemonDiagnosticsURL = fmt.Sprintf("http://127.0.0.1:%d/diagnostics", daemonPort)
 var daemonEnsureTimeout = 5 * time.Second
 var daemonHealthPollInterval = 120 * time.Millisecond
 
@@ -114,7 +115,7 @@ func openDaemonWebUI(cmd *cobra.Command, ensure bool) error {
 		var err error
 		started, err = ensureDaemonRunning(ctx)
 		if err != nil {
-			return fmt.Errorf("daemon: %w", err)
+			return fmt.Errorf("daemon: %w; run `starclaw daemon status` and inspect %s", err, daemonDiagnosticsURL)
 		}
 	}
 	if err := openURLInBrowser(daemonWebURL); err != nil {

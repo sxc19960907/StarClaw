@@ -40,6 +40,9 @@ func TestHandleVersionDevelopmentBuild(t *testing.T) {
 	if body.WebURL != "http://127.0.0.1:0/app/" {
 		t.Fatalf("web_url = %q, want port-specific URL", body.WebURL)
 	}
+	if body.LaunchCommand != "starclaw app" {
+		t.Fatalf("launch_command = %q, want starclaw app", body.LaunchCommand)
+	}
 }
 
 func TestHandleUpdateCheckDevelopmentBuildSkipsNetwork(t *testing.T) {
