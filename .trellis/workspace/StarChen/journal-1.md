@@ -1811,3 +1811,36 @@ Added a Web UI Test run action from the agent editor that switches to Chat with 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 55: GUI chat run summary
+
+**Date**: 2026-06-02
+**Task**: GUI chat run summary
+**Branch**: `main`
+
+### Summary
+
+Added a Web UI run summary card after successful chat completion showing session id, selected agent, usage, and request id, with smoke coverage for the rendering path.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7a5ec9c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
