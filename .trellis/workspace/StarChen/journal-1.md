@@ -1844,3 +1844,36 @@ Added a Web UI run summary card after successful chat completion showing session
 ### Next Steps
 
 - None - task complete
+
+
+## Session 56: GUI run summary session action
+
+**Date**: 2026-06-02
+**Task**: GUI run summary session action
+**Branch**: `main`
+
+### Summary
+
+Added an Open session action to chat run summaries, wired it to the existing session selection flow, covered the action in Web UI smoke, and verified syntax, Go tests, vet, smoke, and diff checks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6d1da94` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
