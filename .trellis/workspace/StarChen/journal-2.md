@@ -170,3 +170,36 @@ Added an Agents panel test runner for selecting an agent, running a one-off prom
 ### Next Steps
 
 - None - task complete
+
+
+## Session 65: Layer Web UI smoke and CI coverage
+
+**Date**: 2026-06-02
+**Task**: Layer Web UI smoke and CI coverage
+**Branch**: `main`
+
+### Summary
+
+Split Web UI smoke into focused layers and added core smoke coverage to CI.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5deafcc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
