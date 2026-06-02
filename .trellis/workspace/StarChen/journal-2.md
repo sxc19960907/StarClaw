@@ -533,3 +533,36 @@ Added a Version page release readiness card using existing version metadata and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 76: GUI full smoke readiness
+
+**Date**: 2026-06-02
+**Task**: GUI full smoke readiness
+**Branch**: `main`
+
+### Summary
+
+Ran full Web UI smoke, isolated full-mode smoke layers by page, guarded route fulfillment, and verified full smoke passes.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `74b16ae` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
