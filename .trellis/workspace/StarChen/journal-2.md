@@ -71,3 +71,36 @@ Completed the Agent editor workflow batch: command New/Cancel behavior, dirty-st
 ### Next Steps
 
 - None - task complete
+
+
+## Session 62: GUI run history detail
+
+**Date**: 2026-06-02
+**Task**: GUI run history detail
+**Branch**: `main`
+
+### Summary
+
+Added daemon run history storage, /runs APIs, GUI Runs detail panel, chat Open run navigation, and smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `82d091b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
