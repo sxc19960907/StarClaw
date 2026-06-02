@@ -1877,3 +1877,36 @@ Added an Open session action to chat run summaries, wired it to the existing ses
 ### Next Steps
 
 - None - task complete
+
+
+## Session 57: GUI copy run summary action
+
+**Date**: 2026-06-02
+**Task**: GUI copy run summary action
+**Branch**: `main`
+
+### Summary
+
+Added Copy summary to chat run summaries, copying session, agent, usage, and request metadata through the browser clipboard with toast feedback, and extended Web UI smoke with clipboard permission and content assertions.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `00d1b80` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
