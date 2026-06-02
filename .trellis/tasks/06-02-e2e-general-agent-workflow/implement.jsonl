@@ -1,0 +1,1 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"Browser smoke tests are the validation harness for this E2E test."}
