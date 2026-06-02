@@ -1943,3 +1943,36 @@ Added transient Copied feedback to the run summary copy button after successful 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 59: GUI chat composer polish batch
+
+**Date**: 2026-06-02
+**Task**: GUI chat composer polish batch
+**Branch**: `main`
+
+### Summary
+
+Batched Chat composer usability polish: Cmd/Ctrl+Enter keyboard submit, Escape cancellation through the existing stop path, post-run input refocus, and smoke coverage for keyboard submit and focus restoration.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ae6ec1c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
