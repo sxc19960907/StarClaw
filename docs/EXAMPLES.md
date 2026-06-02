@@ -122,7 +122,19 @@ The status output includes the Web UI URL when the daemon is reachable.
 scripts/smoke_webui.sh
 ```
 
-The smoke script builds a temporary local binary, starts the daemon with an isolated home directory, opens the embedded Web UI in a browser, checks schedule controls and approval UI behavior, and writes a screenshot to `output/playwright/daemon-webui-smoke.png`.
+The smoke scripts build a temporary local binary, start the daemon with an isolated home directory, open the embedded Web UI in a browser, and write artifacts to `output/playwright/`.
+
+Use the smallest layer that covers the change:
+
+```bash
+scripts/smoke_webui_core.sh         # CI default: diagnostics, config, version, schedules, approvals
+scripts/smoke_webui_permissions.sh  # permissions editor
+scripts/smoke_webui_agents.sh       # agent editor and agent test run UX
+scripts/smoke_webui_runs.sh         # run history/detail and session actions
+scripts/smoke_webui.sh              # full local suite
+```
+
+CI runs only `scripts/smoke_webui_core.sh` to keep PR checks bounded. On failure it uploads the screenshot, daemon log, and smoke metadata from `output/playwright/`.
 
 ## Advanced Usage
 

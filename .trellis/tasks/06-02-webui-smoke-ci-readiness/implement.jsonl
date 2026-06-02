@@ -1,0 +1,2 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"Shell smoke and CI changes should follow project quality/testing expectations."}
+{"path":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Smoke wrappers share one implementation; avoid duplicating runner logic."}

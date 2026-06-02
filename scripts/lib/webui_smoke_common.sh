@@ -11,11 +11,29 @@ DAEMON_LOG="$TMP_DIR/daemon.log"
 NODE_DIR="$TMP_DIR/node"
 NODE_SCRIPT="$NODE_DIR/webui-smoke.mjs"
 BASE_URL="${WEBUI_SMOKE_BASE_URL:-http://127.0.0.1:7533}"
-SCREENSHOT_DIR="$ROOT_DIR/output/playwright"
+ARTIFACT_DIR="${WEBUI_SMOKE_ARTIFACT_DIR:-$ROOT_DIR/output/playwright}"
+SCREENSHOT_DIR="$ARTIFACT_DIR"
 SCREENSHOT="$SCREENSHOT_DIR/daemon-webui-${SMOKE_MODE}-smoke.png"
+DAEMON_LOG_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.log"
+METADATA_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.metadata"
 DAEMON_PID=""
 
+persist_artifacts() {
+  mkdir -p "$ARTIFACT_DIR"
+  if [[ -f "$DAEMON_LOG" ]]; then
+    cp "$DAEMON_LOG" "$DAEMON_LOG_ARTIFACT"
+  fi
+  {
+    printf 'mode=%s\n' "$SMOKE_MODE"
+    printf 'base_url=%s\n' "$BASE_URL"
+    printf 'screenshot=%s\n' "$SCREENSHOT"
+    printf 'daemon_log=%s\n' "$DAEMON_LOG_ARTIFACT"
+    printf 'created_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  } > "$METADATA_ARTIFACT"
+}
+
 cleanup() {
+  persist_artifacts
   if [[ -n "$DAEMON_PID" ]] && kill -0 "$DAEMON_PID" >/dev/null 2>&1; then
     curl -fsS -X POST "$BASE_URL/shutdown" >/dev/null 2>&1 || true
     for _ in {1..20}; do
@@ -34,6 +52,7 @@ trap cleanup EXIT
 
 fail() {
   echo "smoke_webui_${SMOKE_MODE}: $*" >&2
+  persist_artifacts
   if [[ -f "$DAEMON_LOG" ]]; then
     echo "---- daemon log ----" >&2
     cat "$DAEMON_LOG" >&2
@@ -693,3 +712,5 @@ env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" NODE_DIR="$NODE_DIR" WEBUI_SMO
 
 echo "smoke_webui_${SMOKE_MODE}: ok"
 echo "screenshot: $SCREENSHOT"
+echo "daemon log: $DAEMON_LOG_ARTIFACT"
+echo "metadata: $METADATA_ARTIFACT"
