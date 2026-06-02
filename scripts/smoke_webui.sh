@@ -338,12 +338,22 @@ try {
   assert(sessionID, "session id missing");
   await page.getByRole("button", { name: "Refresh data" }).click();
   await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
+  await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Copy ID" }).click();
+  await page.getByText("Session ID copied.").waitFor();
+  await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Copied" }).waitFor();
+  const copiedSessionID = await page.evaluate(() => navigator.clipboard.readText());
+  assert(copiedSessionID === sessionID, "copied session id should match row id");
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "prompt", "rename dialog should be a prompt");
     await dialog.accept("Smoke renamed session");
   });
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Rename" }).click();
   await page.getByText("Smoke renamed session").waitFor();
+  await page.locator("#session-search").fill("Smoke renamed");
+  await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
+  await page.locator("#session-search-clear").click();
+  assert(await page.locator("#session-search").inputValue() === "", "session search should clear");
+  await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Favorite" }).click();
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Unfavorite" }).waitFor();
   page.once("dialog", async (dialog) => {

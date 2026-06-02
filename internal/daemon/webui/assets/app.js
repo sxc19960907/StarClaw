@@ -55,6 +55,14 @@ function markButtonCopied(button) {
   }, 1400);
 }
 
+function debounce(fn, delay = 200) {
+  let timer = 0;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -745,6 +753,7 @@ async function loadSessions(query = "") {
       <span class="tag">${session.msg_count ?? 0} messages</span>
       <p>${escapeHTML(session.id)}</p>
       <div class="row-actions">
+        <button type="button" data-session-copy="${escapeHTML(session.id)}">Copy ID</button>
         <button type="button" data-session-rename="${escapeHTML(session.id)}">Rename</button>
         <button type="button" data-session-favorite="${escapeHTML(session.id)}" data-favorite="${session.favorite ? "false" : "true"}">${session.favorite ? "Unfavorite" : "Favorite"}</button>
       </div>
@@ -1224,6 +1233,11 @@ async function toggleSessionFavorite(id, favorite) {
   }
 }
 
+async function copySessionID(button) {
+  await copyText(button.dataset.sessionCopy, "Session ID copied.");
+  markButtonCopied(button);
+}
+
 async function refreshAll() {
   await Promise.allSettled([
     loadStatus(),
@@ -1262,6 +1276,13 @@ document.addEventListener("click", (event) => {
   if (sessionFavorite) {
     event.stopPropagation();
     toggleSessionFavorite(sessionFavorite.dataset.sessionFavorite, sessionFavorite.dataset.favorite === "true");
+    return;
+  }
+
+  const sessionCopy = event.target.closest("[data-session-copy]");
+  if (sessionCopy) {
+    event.stopPropagation();
+    copySessionID(sessionCopy).catch((error) => showToast(error.message));
     return;
   }
 
@@ -1324,6 +1345,13 @@ $("chat-agent").addEventListener("change", updateSelectedAgent);
 $("session-search-form").addEventListener("submit", (event) => {
   event.preventDefault();
   loadSessions($("session-search").value.trim());
+});
+const debouncedSessionSearch = debounce(() => loadSessions($("session-search").value.trim()));
+$("session-search").addEventListener("input", debouncedSessionSearch);
+$("session-search-clear").addEventListener("click", () => {
+  $("session-search").value = "";
+  loadSessions();
+  $("session-search").focus();
 });
 
 connectEventStream();

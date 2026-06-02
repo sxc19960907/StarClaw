@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify smoke coverage and no unrelated changes."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify session sidebar actions reuse existing patterns."}
