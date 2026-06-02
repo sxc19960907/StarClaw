@@ -566,3 +566,36 @@ Ran full Web UI smoke, isolated full-mode smoke layers by page, guarded route fu
 ### Next Steps
 
 - None - task complete
+
+
+## Session 77: General agent E2E validation
+
+**Date**: 2026-06-02
+**Task**: General agent E2E validation
+**Branch**: `main`
+
+### Summary
+
+Validated the GUI general agent workflow with agents, runs, and full Web UI smoke; agent create/edit/commands/import/export/test result/run detail/session flows passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `133be38` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
