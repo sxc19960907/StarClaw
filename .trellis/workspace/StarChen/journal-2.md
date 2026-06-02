@@ -302,3 +302,36 @@ Made the GUI Agent Test Runner use the existing /message SSE stream, added stop/
 ### Next Steps
 
 - None - task complete
+
+
+## Session 69: GUI run detail timeline
+
+**Date**: 2026-06-02
+**Task**: GUI run detail timeline
+**Branch**: `main`
+
+### Summary
+
+Improved the Web UI Run detail surface with action buttons, grouped tool timeline cards, copy/open-session/rerun actions, and smoke coverage for the new run review workflow.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bc1909e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
