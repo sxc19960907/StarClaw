@@ -361,28 +361,94 @@ async function runAgents(page) {
   assert(await page.locator("#agent-test-agent").inputValue() === "smoke-agent", "test run should select edited agent in runner");
   assert((await page.locator("#agent-test-prompt").inputValue()).includes("Test smoke-agent"), "test run should prefill agent test prompt");
   let capturedAgentTest = null;
+  let capturedAgentTestRequestID = "";
   await page.route("**/message", async (route) => {
     capturedAgentTest = route.request().postDataJSON();
+    capturedAgentTestRequestID = capturedAgentTest.request_id;
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: [
+        `event: text\ndata: ${JSON.stringify({ text: "agent test streamed response" })}`,
+        `event: usage\ndata: ${JSON.stringify({ input_tokens: 5, output_tokens: 6 })}`,
+        `event: done\ndata: ${JSON.stringify({
+          session_id: "sess_agent_test_smoke",
+          messages: ["agent test streamed response", "agent test smoke response"],
+          usage: { prompt_tokens: 5, completion_tokens: 6 },
+        })}`,
+        "",
+      ].join("\n\n"),
+    });
+  });
+  await page.route("**/runs", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
+        runs: capturedAgentTestRequestID ? [{
+          id: capturedAgentTestRequestID,
+          status: "completed",
+          agent: "smoke-agent",
+          prompt: "agent test direct smoke",
+          session_id: "sess_agent_test_smoke",
+          started_at: new Date().toISOString(),
+          ended_at: new Date().toISOString(),
+        }] : [],
+      }),
+    });
+  });
+  await page.route("**/runs/*", async (route) => {
+    const runID = route.request().url().split("/").pop();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: runID,
+        status: "completed",
+        agent: "smoke-agent",
+        channel: "http",
+        prompt: "agent test direct smoke",
         session_id: "sess_agent_test_smoke",
-        messages: ["agent test smoke response"],
+        started_at: new Date().toISOString(),
+        ended_at: new Date().toISOString(),
         usage: { prompt_tokens: 5, completion_tokens: 6 },
+        response: {
+          session_id: "sess_agent_test_smoke",
+          messages: ["agent test streamed response", "agent test smoke response"],
+          usage: { prompt_tokens: 5, completion_tokens: 6 },
+        },
+        events: [{ type: "text", at: new Date().toISOString(), data: { text: "agent test streamed response" } }],
       }),
     });
   });
   await page.locator("#agent-test-prompt").fill("agent test direct smoke");
   await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).click();
-  await page.locator("#agent-test-output").getByText("Agent test result").waitFor();
-  await page.locator("#agent-test-output").getByText("agent test smoke response").waitFor();
-  await page.locator("#agent-test-output").getByText("sess_agent_test_smoke").waitFor();
-  await page.locator("#agent-test-output").getByText("prompt_tokens: 5").waitFor();
-  await page.locator("#agent-test-output").getByRole("button", { name: "Open run" }).waitFor();
+  await page.locator("#agent-test-stop-button").waitFor();
+  await page.locator("#panel-runs.active").waitFor();
+  await page.locator("#run-detail").getByText(capturedAgentTestRequestID).waitFor();
+  assert(await page.locator("#run-detail").getByText("agent test streamed response").count() >= 1, "run detail missing streamed response");
+  await page.locator("#run-detail").getByText("agent test smoke response").waitFor();
   assert(capturedAgentTest.agent === "smoke-agent", `agent test payload should use smoke-agent, got ${JSON.stringify(capturedAgentTest)}`);
   assert(capturedAgentTest.text === "agent test direct smoke", `agent test payload should include prompt, got ${JSON.stringify(capturedAgentTest)}`);
   assert(capturedAgentTest.new_session === true, `agent test payload should create a new session, got ${JSON.stringify(capturedAgentTest)}`);
+  await page.unroute("**/message");
+  await page.unroute("**/runs");
+  await page.unroute("**/runs/*");
+  await page.getByRole("button", { name: /Agents/ }).click();
+  await page.route("**/message", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: `event: text\ndata: ${JSON.stringify({ text: "late cancelled response" })}\n\n`,
+    });
+  });
+  await page.locator("#agent-test-prompt").fill("agent test cancellation smoke");
+  await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).click();
+  await page.locator("#agent-test-stop-button").waitFor();
+  await page.locator("#agent-test-stop-button").click();
+  await page.locator("#agent-test-output").getByText("Agent test cancelled").waitFor();
+  await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).waitFor();
   await page.unroute("**/message");
   await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
   page.once("dialog", async (dialog) => {

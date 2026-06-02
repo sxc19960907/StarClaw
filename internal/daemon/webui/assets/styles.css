@@ -463,7 +463,8 @@ textarea:focus {
   width: 100%;
 }
 
-.agent-test-result pre {
+.agent-test-result pre,
+.agent-test-stream pre {
   max-height: 220px;
   margin: 10px 0 0;
   overflow: auto;

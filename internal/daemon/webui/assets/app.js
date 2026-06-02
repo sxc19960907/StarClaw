@@ -18,6 +18,7 @@ const state = {
   activeRequestID: "",
   activeRunID: "",
   activeAgentTestRequestID: "",
+  activeAgentTestAbort: null,
   activeAbort: null,
   activeSessionID: "",
   toolEvents: new Map(),
@@ -967,8 +968,9 @@ function updateSelectedAgent() {
 function setAgentTestRunning(isRunning) {
   $("agent-test-agent").disabled = isRunning;
   $("agent-test-prompt").disabled = isRunning;
-  $("agent-test-submit-button").disabled = isRunning;
-  $("agent-test-state").textContent = isRunning ? "Running" : "Ready";
+  $("agent-test-submit-button").hidden = isRunning;
+  $("agent-test-stop-button").hidden = !isRunning;
+  if (isRunning) $("agent-test-state").textContent = "Running";
 }
 
 async function submitAgentTest(event) {
@@ -990,23 +992,79 @@ async function submitAgentTest(event) {
     new_session: true,
     request_id: requestID,
   };
+  const abort = new AbortController();
   state.activeAgentTestRequestID = requestID;
+  state.activeAgentTestAbort = abort;
   setAgentTestRunning(true);
-  $("agent-test-output").innerHTML = `<div class="empty-state">Running agent test.</div>`;
+  const renderer = beginAgentTestStream();
   try {
-    const result = await api("/message", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    const result = await streamMessage(payload, renderer, abort.signal);
     renderAgentTestResult(result, payload);
     await Promise.allSettled([loadRuns(), loadSessions()]);
+    await selectRun(payload.request_id);
     $("agent-test-state").textContent = "Complete";
   } catch (error) {
-    $("agent-test-state").textContent = "Error";
-    renderError($("agent-test-output"), error.message);
+    if (error.name === "AbortError") {
+      $("agent-test-state").textContent = "Cancelled";
+      renderAgentTestCancelled(payload);
+    } else {
+      $("agent-test-state").textContent = "Error";
+      renderError($("agent-test-output"), error.message);
+    }
   } finally {
     state.activeAgentTestRequestID = "";
+    state.activeAgentTestAbort = null;
     setAgentTestRunning(false);
+  }
+}
+
+function beginAgentTestStream() {
+  $("agent-test-output").innerHTML = `<div class="run-summary agent-test-stream">
+    <div class="run-summary-title">Streaming agent test</div>
+    <pre data-agent-test-stream-text></pre>
+    <div class="run-timeline" data-agent-test-stream-events></div>
+  </div>`;
+  const textTarget = $("agent-test-output").querySelector("[data-agent-test-stream-text]");
+  const eventsTarget = $("agent-test-output").querySelector("[data-agent-test-stream-events]");
+  return {
+    appendText(text) {
+      textTarget.textContent += text;
+    },
+    appendEvent(eventType, data) {
+      eventsTarget.insertAdjacentHTML("beforeend", `<article class="run-event">
+        <div class="run-event-header">
+          <strong>${escapeHTML(eventType || "event")}</strong>
+          <span>${escapeHTML(data.status || "")}</span>
+        </div>
+        <pre>${escapeHTML(formatToolPayload(data || {}))}</pre>
+      </article>`);
+    },
+  };
+}
+
+function renderAgentTestCancelled(payload) {
+  $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
+    <div class="run-summary-title">Agent test cancelled</div>
+    <div class="run-summary-grid">
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+    </div>
+  </div>`;
+}
+
+async function cancelAgentTestRun() {
+  const requestID = state.activeAgentTestRequestID;
+  if (!requestID) return;
+  try {
+    await fetch("/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestID }),
+    });
+  } catch {
+    // Closing the stream also cancels the request context on the daemon.
+  } finally {
+    state.activeAgentTestAbort?.abort();
   }
 }
 
@@ -1274,7 +1332,7 @@ async function submitChat(event) {
   setRunControls(true);
   $("chat-input").value = "";
   try {
-    const result = await streamMessage(payload, assistantMessage, abort.signal);
+    const result = await streamMessage(payload, chatStreamRenderer(assistantMessage), abort.signal);
     renderDoneResult(result, assistantMessage);
     renderRunSummary(result, payload);
     if (result?.session_id) {
@@ -1494,7 +1552,23 @@ function renderRunSummary(result, payload) {
   $("chat-output").appendChild(card);
 }
 
-async function streamMessage(payload, assistantMessage, signal) {
+function chatStreamRenderer(assistantMessage) {
+  return {
+    appendText(text) {
+      appendAssistantText(assistantMessage, text);
+    },
+    appendEvent(eventType, data) {
+      if (eventType === "tool_call" || eventType === "tool_result") {
+        appendToolEvent(data, eventType);
+      }
+    },
+    scroll() {
+      scrollConversationToBottom();
+    },
+  };
+}
+
+async function streamMessage(payload, renderer, signal) {
   const response = await fetch("/message", {
     method: "POST",
     headers: {
@@ -1523,29 +1597,30 @@ async function streamMessage(payload, assistantMessage, signal) {
     const events = buffer.split("\n\n");
     buffer = events.pop() || "";
     for (const rawEvent of events) {
-      doneResult = handleSSEEvent(rawEvent, assistantMessage, doneResult);
+      doneResult = handleSSEEvent(rawEvent, renderer, doneResult);
     }
   }
   if (buffer.trim()) {
-    doneResult = handleSSEEvent(buffer, assistantMessage, doneResult);
+    doneResult = handleSSEEvent(buffer, renderer, doneResult);
   }
   return doneResult;
 }
 
-function handleSSEEvent(rawEvent, assistantMessage, doneResult) {
+function handleSSEEvent(rawEvent, renderer, doneResult) {
   const parsed = parseSSE(rawEvent);
   if (!parsed) return doneResult;
   const data = parseEventData(parsed.data);
   switch (parsed.event) {
     case "text":
-      appendAssistantText(assistantMessage, data.text || "");
+      renderer.appendText?.(data.text || "");
       break;
     case "preamble":
-      appendAssistantText(assistantMessage, data.preamble || "");
+      renderer.appendText?.(data.preamble || "");
       break;
+    case "usage":
     case "tool_call":
     case "tool_result":
-      appendToolEvent(data, parsed.event);
+      renderer.appendEvent?.(parsed.event, data);
       break;
     case "done":
       doneResult = data;
@@ -1553,7 +1628,7 @@ function handleSSEEvent(rawEvent, assistantMessage, doneResult) {
     case "error":
       throw new Error(data.error || "stream failed");
   }
-  scrollConversationToBottom();
+  renderer.scroll?.();
   return doneResult;
 }
 
@@ -1812,6 +1887,7 @@ $("permissions-clear-button").addEventListener("click", clearPermissions);
 $("update-check-button").addEventListener("click", checkForUpdates);
 $("agent-form").addEventListener("submit", submitAgent);
 $("agent-test-form").addEventListener("submit", submitAgentTest);
+$("agent-test-stop-button").addEventListener("click", cancelAgentTestRun);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
 $("agent-test-run-button").addEventListener("click", testCurrentAgent);
