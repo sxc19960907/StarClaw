@@ -1024,7 +1024,6 @@ async function submitAgentTest(event) {
     const result = await streamMessage(payload, renderer, abort.signal);
     renderAgentTestResult(result, payload);
     await Promise.allSettled([loadRuns(), loadSessions()]);
-    await selectRun(payload.request_id);
     $("agent-test-state").textContent = "Complete";
   } catch (error) {
     if (error.name === "AbortError") {
@@ -1032,7 +1031,7 @@ async function submitAgentTest(event) {
       renderAgentTestCancelled(payload);
     } else {
       $("agent-test-state").textContent = "Error";
-      renderError($("agent-test-output"), error.message);
+      renderAgentTestError(error, payload);
     }
   } finally {
     state.activeAgentTestRequestID = "";
@@ -1106,10 +1105,12 @@ function renderAgentTestResult(result, payload) {
   const openSessionAction = sessionID
     ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>`
     : "";
+  const summaryText = agentTestSummaryText(result, payload);
   $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
     <div class="run-summary-title">Agent test result</div>
     <div class="run-summary-grid">
       <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Prompt</span><strong>${escapeHTML(payload.text || "-")}</strong>
       <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
       <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
       <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
@@ -1119,8 +1120,43 @@ function renderAgentTestResult(result, payload) {
     <div class="run-summary-actions">
       ${openRunAction}
       ${openSessionAction}
+      <button type="button" data-agent-test-copy-summary="${escapeHTML(summaryText)}">Copy summary</button>
     </div>
   </div>`;
+}
+
+function renderAgentTestError(error, payload) {
+  const summaryText = agentTestSummaryText({ error: error.message || String(error) }, payload);
+  $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
+    <div class="run-summary-title">Agent test error</div>
+    <div class="run-summary-grid">
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Prompt</span><strong>${escapeHTML(payload.text || "-")}</strong>
+      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+    </div>
+    <div class="error-state">${escapeHTML(error.message || String(error))}</div>
+    <div class="run-summary-actions">
+      <button type="button" data-agent-test-copy-summary="${escapeHTML(summaryText)}">Copy summary</button>
+    </div>
+  </div>`;
+}
+
+function agentTestSummaryText(result, payload) {
+  const usage = result?.usage || {};
+  const usageItems = Object.entries(usage).map(([key, value]) => `${key}: ${value}`);
+  const messages = Array.isArray(result?.messages) && result.messages.length
+    ? result.messages.join("\n")
+    : "";
+  return [
+    "Agent test",
+    `Agent: ${payload.agent || "default"}`,
+    `Prompt: ${payload.text || ""}`,
+    `Request: ${payload.request_id || ""}`,
+    `Session: ${result?.session_id || ""}`,
+    `Usage: ${usageItems.length ? usageItems.join(", ") : "-"}`,
+    result?.error ? `Error: ${result.error}` : "",
+    messages ? `Messages:\n${messages}` : "",
+  ].filter(Boolean).join("\n");
 }
 
 async function loadSkills() {
@@ -2001,6 +2037,14 @@ document.addEventListener("click", (event) => {
   if (runSummaryCopy) {
     copyText(runSummaryCopy.dataset.runSummaryCopy, "Run summary copied.")
       .then(() => markButtonCopied(runSummaryCopy))
+      .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const agentTestCopySummary = event.target.closest("[data-agent-test-copy-summary]");
+  if (agentTestCopySummary) {
+    copyText(agentTestCopySummary.dataset.agentTestCopySummary, "Agent test summary copied.")
+      .then(() => markButtonCopied(agentTestCopySummary))
       .catch((error) => showToast(error.message));
     return;
   }

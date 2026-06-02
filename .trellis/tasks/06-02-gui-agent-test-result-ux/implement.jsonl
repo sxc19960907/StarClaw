@@ -1,0 +1,2 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"Browser smoke change should follow Web UI smoke stability guidelines."}
+{"path":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Agent test result crosses daemon response, UI render, and smoke assertions."}
