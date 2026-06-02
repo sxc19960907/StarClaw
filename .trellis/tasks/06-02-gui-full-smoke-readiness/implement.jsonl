@@ -1,0 +1,1 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"Browser smoke tests should avoid flaky selectors and stale editor hydration."}

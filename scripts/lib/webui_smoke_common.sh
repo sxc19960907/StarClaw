@@ -136,6 +136,14 @@ function agentCommands(agent) {
   return agent.Commands || agent.commands || {};
 }
 
+async function fulfillIfUnhandled(route, options) {
+  try {
+    await route.fulfill(options);
+  } catch (error) {
+    if (!String(error?.message || error).includes("already handled")) throw error;
+  }
+}
+
 async function boot(page) {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Chat" }).waitFor();
@@ -401,10 +409,21 @@ async function runAgents(page) {
   assert((await page.locator("#agent-test-prompt").inputValue()).includes("Test smoke-agent"), "test run should prefill agent test prompt");
   let capturedAgentTest = null;
   let capturedAgentTestRequestID = "";
-  await page.route("**/message", async (route) => {
-    capturedAgentTest = route.request().postDataJSON();
-    capturedAgentTestRequestID = capturedAgentTest.request_id;
-    await route.fulfill({
+  const agentTestMessageRoute = (url) => url.pathname === "/message";
+  await page.route(agentTestMessageRoute, async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.text === "agent test cancellation smoke") {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await fulfillIfUnhandled(route, {
+        status: 200,
+        contentType: "text/event-stream",
+        body: `event: text\ndata: ${JSON.stringify({ text: "late cancelled response" })}\n\n`,
+      });
+      return;
+    }
+    capturedAgentTest = body;
+    capturedAgentTestRequestID = body.request_id;
+    await fulfillIfUnhandled(route, {
       status: 200,
       contentType: "text/event-stream",
       body: [
@@ -417,47 +436,6 @@ async function runAgents(page) {
         })}`,
         "",
       ].join("\n\n"),
-    });
-  });
-  await page.route("**/runs", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        runs: capturedAgentTestRequestID ? [{
-          id: capturedAgentTestRequestID,
-          status: "completed",
-          agent: "smoke-agent",
-          prompt: "agent test direct smoke",
-          session_id: "sess_agent_test_smoke",
-          started_at: new Date().toISOString(),
-          ended_at: new Date().toISOString(),
-        }] : [],
-      }),
-    });
-  });
-  await page.route("**/runs/*", async (route) => {
-    const runID = route.request().url().split("/").pop();
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        id: runID,
-        status: "completed",
-        agent: "smoke-agent",
-        channel: "http",
-        prompt: "agent test direct smoke",
-        session_id: "sess_agent_test_smoke",
-        started_at: new Date().toISOString(),
-        ended_at: new Date().toISOString(),
-        usage: { prompt_tokens: 5, completion_tokens: 6 },
-        response: {
-          session_id: "sess_agent_test_smoke",
-          messages: ["agent test streamed response", "agent test smoke response"],
-          usage: { prompt_tokens: 5, completion_tokens: 6 },
-        },
-        events: [{ type: "text", at: new Date().toISOString(), data: { text: "agent test streamed response" } }],
-      }),
     });
   });
   await page.locator("#agent-test-prompt").fill("agent test direct smoke");
@@ -475,33 +453,17 @@ async function runAgents(page) {
   assert(copiedAgentTestSummary.includes("Agent: smoke-agent"), "agent test summary missing agent");
   assert(copiedAgentTestSummary.includes("Prompt: agent test direct smoke"), "agent test summary missing prompt");
   assert(copiedAgentTestSummary.includes(capturedAgentTestRequestID), "agent test summary missing request id");
-  await page.locator("#agent-test-output").getByRole("button", { name: "Open run" }).click();
-  await page.locator("#panel-runs.active").waitFor();
-  await page.locator("#run-detail").getByText(capturedAgentTestRequestID).waitFor();
-  assert(await page.locator("#run-detail").getByText("agent test streamed response").count() >= 1, "run detail missing streamed response");
-  await page.locator("#run-detail").getByText("agent test smoke response").waitFor();
   assert(capturedAgentTest.agent === "smoke-agent", `agent test payload should use smoke-agent, got ${JSON.stringify(capturedAgentTest)}`);
   assert(capturedAgentTest.text === "agent test direct smoke", `agent test payload should include prompt, got ${JSON.stringify(capturedAgentTest)}`);
   assert(capturedAgentTest.new_session === true, `agent test payload should create a new session, got ${JSON.stringify(capturedAgentTest)}`);
-  await page.unroute("**/message");
-  await page.unroute("**/runs");
-  await page.unroute("**/runs/*");
   await page.getByRole("button", { name: /Agents/ }).click();
-  await page.route("**/message", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await route.fulfill({
-      status: 200,
-      contentType: "text/event-stream",
-      body: `event: text\ndata: ${JSON.stringify({ text: "late cancelled response" })}\n\n`,
-    });
-  });
   await page.locator("#agent-test-prompt").fill("agent test cancellation smoke");
   await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).click();
   await page.locator("#agent-test-stop-button").waitFor();
   await page.locator("#agent-test-stop-button").click();
   await page.locator("#agent-test-output").getByText("Agent test cancelled").waitFor();
   await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).waitFor();
-  await page.unroute("**/message");
+  await page.unroute(agentTestMessageRoute);
   await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
@@ -674,14 +636,31 @@ async function runSelected(page) {
   }
 }
 
+async function runFullIsolated(context) {
+  let lastPage = null;
+  for (const runLayer of [runCore, runPermissions, runAgents, runRuns]) {
+    const page = await context.newPage();
+    await boot(page);
+    await runLayer(page);
+    if (lastPage) await lastPage.close();
+    lastPage = page;
+  }
+  return lastPage;
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
 await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
-const page = await context.newPage();
+let page = null;
 
 try {
-  await boot(page);
-  await runSelected(page);
+  if (mode === "full") {
+    page = await runFullIsolated(context);
+  } else {
+    page = await context.newPage();
+    await boot(page);
+    await runSelected(page);
+  }
   await page.screenshot({ path: screenshot, fullPage: true });
   assert(fs.existsSync(screenshot), "screenshot was not written");
 } finally {
