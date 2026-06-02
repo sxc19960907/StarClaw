@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Project quality and browser smoke expectations for Web UI changes."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing run summary and toast patterns instead of adding parallel UI mechanisms."}

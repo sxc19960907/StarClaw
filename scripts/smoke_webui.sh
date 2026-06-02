@@ -135,7 +135,9 @@ function agentCommands(agent) {
 }
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
+const page = await context.newPage();
 
 try {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
@@ -313,6 +315,12 @@ try {
   await page.locator(".run-summary").getByText("Usage").waitFor();
   await page.locator(".run-summary").getByText("prompt_tokens: 3").waitFor();
   await page.locator(".run-summary").getByText("Request").waitFor();
+  await page.locator(".run-summary").getByRole("button", { name: "Copy summary" }).click();
+  await page.getByText("Run summary copied.").waitFor();
+  const copiedSummary = await page.evaluate(() => navigator.clipboard.readText());
+  assert(copiedSummary.includes("Session: sess_summary_smoke"), "copied summary missing session");
+  assert(copiedSummary.includes("Agent: default"), "copied summary missing agent");
+  assert(copiedSummary.includes("Usage: prompt_tokens: 3, completion_tokens: 4"), "copied summary missing usage");
   await page.locator(".run-summary").getByRole("button", { name: "Open session" }).waitFor();
   await page.unroute("**/message");
   const sessionID = await page.evaluate(async (url) => {

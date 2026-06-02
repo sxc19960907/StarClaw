@@ -39,6 +39,11 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2600);
 }
 
+async function copyText(text, successMessage = "Copied.") {
+  await navigator.clipboard.writeText(text);
+  showToast(successMessage);
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -970,24 +975,36 @@ function renderRunSummary(result, payload) {
   if (!result || result.error) return;
   const usage = result.usage || {};
   const sessionID = result.session_id || "";
+  const agent = payload.agent || "default";
   const usageItems = Object.entries(usage)
     .filter(([, value]) => Number.isFinite(value))
     .map(([key, value]) => `${key}: ${value}`);
+  const usageText = usageItems.length ? usageItems.join(", ") : "-";
+  const requestID = payload.request_id || "-";
+  const summaryText = [
+    `Session: ${sessionID || "-"}`,
+    `Agent: ${agent}`,
+    `Usage: ${usageText}`,
+    `Request: ${requestID}`,
+  ].join("\n");
   const card = document.createElement("div");
   card.className = "run-summary";
-  const action = sessionID
-    ? `<div class="run-summary-actions">
+  const openAction = sessionID
+    ? `
         <button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>
-      </div>`
+      `
     : "";
   card.innerHTML = `<div class="run-summary-title">Run summary</div>
     <div class="run-summary-grid">
       <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
-      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
-      <span>Usage</span><strong>${escapeHTML(usageItems.length ? usageItems.join(", ") : "-")}</strong>
-      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+      <span>Agent</span><strong>${escapeHTML(agent)}</strong>
+      <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
+      <span>Request</span><strong>${escapeHTML(requestID)}</strong>
     </div>
-    ${action}`;
+    <div class="run-summary-actions">
+      <button type="button" data-run-summary-copy="${escapeHTML(summaryText)}">Copy summary</button>
+      ${openAction}
+    </div>`;
   $("chat-output").appendChild(card);
 }
 
@@ -1231,7 +1248,16 @@ document.addEventListener("click", (event) => {
   if (sessionItem) selectSession(sessionItem.dataset.sessionId);
 
   const runSummarySession = event.target.closest("[data-run-summary-session]");
-  if (runSummarySession) selectSession(runSummarySession.dataset.runSummarySession);
+  if (runSummarySession) {
+    selectSession(runSummarySession.dataset.runSummarySession);
+    return;
+  }
+
+  const runSummaryCopy = event.target.closest("[data-run-summary-copy]");
+  if (runSummaryCopy) {
+    copyText(runSummaryCopy.dataset.runSummaryCopy, "Run summary copied.").catch((error) => showToast(error.message));
+    return;
+  }
 
   const agentButton = event.target.closest("[data-agent-detail]");
   if (agentButton) inspectAgent(agentButton.dataset.agentDetail);
