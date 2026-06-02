@@ -335,3 +335,36 @@ Improved the Web UI Run detail surface with action buttons, grouped tool timelin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 70: App diagnostics launch readiness
+
+**Date**: 2026-06-02
+**Task**: App diagnostics launch readiness
+**Branch**: `main`
+
+### Summary
+
+Added launch readiness metadata to diagnostics/version APIs, rendered startup paths and launch command in the Web UI, and extended core smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b3ecc43` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
