@@ -368,3 +368,36 @@ Added launch readiness metadata to diagnostics/version APIs, rendered startup pa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 71: Web UI smoke CI readiness
+
+**Date**: 2026-06-02
+**Task**: Web UI smoke CI readiness
+**Branch**: `main`
+
+### Summary
+
+Preserved Web UI smoke screenshots, daemon logs, and metadata in an artifact directory; configured CI to upload artifacts on core smoke failure; documented smoke layers.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `81f276f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
