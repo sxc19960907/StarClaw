@@ -290,6 +290,30 @@ try {
   await page.getByRole("button", { name: "Delete" }).click();
   await page.getByText("No schedules configured.").waitFor();
 
+  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.locator("#chat-agent").selectOption("");
+  await page.locator("#chat-new-session").check();
+  await page.locator("#chat-input").fill("webui smoke session");
+  await page.route("**/message", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session_id: "sess_summary_smoke",
+        messages: ["summary smoke response"],
+        usage: { prompt_tokens: 3, completion_tokens: 4 },
+      }),
+    });
+  });
+  await page.locator("#chat-form button[type=\"submit\"]").click();
+  await page.locator(".run-summary").waitFor();
+  await page.locator(".run-summary").getByText("Run summary").waitFor();
+  await page.locator(".run-summary").getByText("Agent").waitFor();
+  await page.locator(".run-summary").getByText("default").waitFor();
+  await page.locator(".run-summary").getByText("Usage").waitFor();
+  await page.locator(".run-summary").getByText("prompt_tokens: 3").waitFor();
+  await page.locator(".run-summary").getByText("Request").waitFor();
+  await page.unroute("**/message");
   const sessionID = await page.evaluate(async (url) => {
     const response = await fetch(`${url}/message`, {
       method: "POST",
@@ -300,7 +324,6 @@ try {
     return data.session_id;
   }, baseURL);
   assert(sessionID, "session id missing");
-  await page.getByRole("button", { name: /Chat/ }).click();
   await page.getByRole("button", { name: "Refresh data" }).click();
   await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
   page.once("dialog", async (dialog) => {

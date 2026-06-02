@@ -391,6 +391,38 @@ textarea:focus {
   color: var(--muted);
 }
 
+.run-summary {
+  width: min(520px, 100%);
+  margin: 6px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 10px 12px;
+}
+
+.run-summary-title {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.run-summary-grid {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 6px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-summary-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-weight: 600;
+}
+
 .approval-card {
   width: min(520px, 100%);
   margin: 6px 0;

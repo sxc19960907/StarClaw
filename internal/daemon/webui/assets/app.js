@@ -788,6 +788,7 @@ async function submitChat(event) {
   try {
     const result = await streamMessage(payload, assistantMessage, abort.signal);
     renderDoneResult(result, assistantMessage);
+    renderRunSummary(result, payload);
     if (result?.session_id) {
       state.activeSessionID = result.session_id;
       $("chat-new-session").checked = false;
@@ -963,6 +964,24 @@ function renderDoneResult(result, assistantMessage) {
   if (result.error) {
     appendMessage("error", result.error);
   }
+}
+
+function renderRunSummary(result, payload) {
+  if (!result || result.error) return;
+  const usage = result.usage || {};
+  const usageItems = Object.entries(usage)
+    .filter(([, value]) => Number.isFinite(value))
+    .map(([key, value]) => `${key}: ${value}`);
+  const card = document.createElement("div");
+  card.className = "run-summary";
+  card.innerHTML = `<div class="run-summary-title">Run summary</div>
+    <div class="run-summary-grid">
+      <span>Session</span><strong>${escapeHTML(result.session_id || "-")}</strong>
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Usage</span><strong>${escapeHTML(usageItems.length ? usageItems.join(", ") : "-")}</strong>
+      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+    </div>`;
+  $("chat-output").appendChild(card);
 }
 
 async function streamMessage(payload, assistantMessage, signal) {
