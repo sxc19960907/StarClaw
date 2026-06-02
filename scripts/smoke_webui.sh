@@ -135,7 +135,7 @@ function agentCommands(agent) {
 }
 
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
 await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
 const page = await context.newPage();
 
@@ -178,13 +178,17 @@ try {
   const agentHeartbeatModel = page.locator("#agent-heartbeat-model");
   const agentCommandName = page.locator("#agent-command-name");
   const agentCommandBody = page.locator("#agent-command-body");
+  const newCommandButton = page.locator("#agent-command-new-button");
   const saveCommandButton = page.locator("#agent-command-save-button");
-  const clearCommandButton = page.locator("#agent-command-clear-button");
+  const cancelCommandButton = page.locator("#agent-command-cancel-button");
   const deleteCommandButton = page.locator("#agent-command-delete-button");
   const saveAgentButton = page.locator("#agent-form button[type=\"submit\"]");
   await agentToolsAllow.fill("file_read\ngrep");
   await agentToolsDeny.fill("bash");
   await agentAutoApprove.check();
+  await page.locator("#agent-permission-preview").getByText("file_read, grep").waitFor();
+  await page.locator("#agent-permission-preview").getByText("bash").waitFor();
+  await page.locator("#agent-permission-preview").getByText("Enabled").waitFor();
   await agentHeartbeatEvery.fill("15m");
   await agentHeartbeatActiveHours.fill("09:00-17:00");
   await agentHeartbeatModel.fill("smoke-heartbeat-model");
@@ -213,9 +217,14 @@ try {
   await saveCommandButton.click();
   await page.locator("#agent-command-list").getByText("audit").waitFor();
   assert(await page.locator("#agent-command-list").getByText("review").count() === 0, "renamed command should remove old name before save");
-  await clearCommandButton.click();
-  assert(await agentCommandName.inputValue() === "", "clear command should reset command name");
-  assert(await agentCommandBody.inputValue() === "", "clear command should reset command body");
+  await newCommandButton.click();
+  assert(await agentCommandName.inputValue() === "", "new command should reset command name");
+  assert(await agentCommandBody.inputValue() === "", "new command should reset command body");
+  await agentCommandName.fill("scratch");
+  await agentCommandBody.fill("Scratch command.");
+  await cancelCommandButton.click();
+  assert(await agentCommandName.inputValue() === "", "cancel command should reset command name");
+  assert(await agentCommandBody.inputValue() === "", "cancel command should reset command body");
   await page.getByLabel("Agent prompt").fill("You are an edited smoke agent.");
   await agentToolsAllow.fill("version, file_read");
   await agentToolsDeny.fill("bash\nhttp");
@@ -248,6 +257,39 @@ try {
   assert(!updatedCommands.audit, `deleted renamed command should not save after edit, got ${JSON.stringify(updatedCommands)}`);
   assert(!updatedCommands.review, `renamed command should not keep old name after edit, got ${JSON.stringify(updatedCommands)}`);
   assert(updatedCommands.deploy === "Deploy smoke changes safely.\n", `agent command should save after edit, got ${JSON.stringify(updatedCommands)}`);
+  await page.getByLabel("Agent memory").fill("Unsaved smoke memory.");
+  await page.getByText("Unsaved changes").waitFor();
+  page.once("dialog", async (dialog) => {
+    assert(dialog.type() === "confirm", "unsaved new-agent dialog should be a confirm");
+    await dialog.dismiss();
+  });
+  await page.getByRole("button", { name: "New agent" }).click();
+  assert(await page.getByLabel("Agent memory").inputValue() === "Unsaved smoke memory.", "dismissed dirty dialog should keep editor values");
+  await page.getByLabel("Agent memory").fill("Remember smoke.");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export config" }).click();
+  const download = await downloadPromise;
+  const exportedPath = await download.path();
+  const exportedAgent = JSON.parse(fs.readFileSync(exportedPath, "utf8"));
+  assert(exportedAgent.name === "smoke-agent", "exported config should include agent name");
+  assert(exportedAgent.commands.deploy.trim() === "Deploy smoke changes safely.", "exported config should include staged command body");
+  exportedAgent.memory = "Imported smoke memory.";
+  exportedAgent.tools_allow = ["version", "file_read", "grep"];
+  exportedAgent.commands.imported = "Imported command.";
+  const importPath = `${process.env.NODE_DIR}/imported-agent.json`;
+  fs.writeFileSync(importPath, JSON.stringify(exportedAgent));
+  await page.locator("#agent-import-file").setInputFiles(importPath);
+  await page.getByText("Agent config imported. Save agent to apply.").waitFor();
+  assert(await page.getByLabel("Agent memory").inputValue() === "Imported smoke memory.", "import should update memory field");
+  assert(await agentToolsAllow.inputValue() === "version\nfile_read\ngrep", "import should update allow rules");
+  await page.locator("#agent-command-list").getByText("imported").waitFor();
+  await page.getByText("Unsaved changes").waitFor();
+  const importSavePromise = page.waitForResponse((response) =>
+    response.url().endsWith("/agents/smoke-agent") && response.request().method() === "PUT"
+  );
+  await saveAgentButton.click();
+  const importSaveResponse = await importSavePromise;
+  assert(importSaveResponse.ok(), `agent import save failed with ${importSaveResponse.status()}`);
   await page.getByRole("button", { name: "New agent" }).click();
   const updatedDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
@@ -256,13 +298,15 @@ try {
   await updatedDetailPromise;
   const editedAllow = await agentToolsAllow.inputValue();
   const editedDeny = await agentToolsDeny.inputValue();
-  assert(editedAllow === "version\nfile_read", `agent allow rules should reload after edit, got ${JSON.stringify(editedAllow)}`);
+  assert(editedAllow === "version\nfile_read\ngrep", `agent allow rules should reload after import save, got ${JSON.stringify(editedAllow)}`);
   assert(editedDeny === "bash\nhttp", `agent deny rules should reload after edit, got ${JSON.stringify(editedDeny)}`);
+  assert((await page.getByLabel("Agent memory").inputValue()).trim() === "Imported smoke memory.", "agent memory should reload after import save");
   assert(!(await agentAutoApprove.isChecked()), "agent auto approve should reload after edit");
   assert(await agentHeartbeatEvery.inputValue() === "30m", "agent heartbeat interval should reload after edit");
   assert(await agentHeartbeatActiveHours.inputValue() === "10:00-18:00", "agent heartbeat active hours should reload after edit");
   assert(await agentHeartbeatModel.inputValue() === "smoke-heartbeat-edited", "agent heartbeat model should reload after edit");
   assert(await page.locator("#agent-command-list").getByText("deploy").count() === 1, "agent command list should reload after edit");
+  assert(await page.locator("#agent-command-list").getByText("imported").count() === 1, "imported agent command should reload after import save");
   assert(await page.locator("#agent-command-list").getByText("review").count() === 0, "deleted agent command should stay deleted after reload");
   assert(await page.locator("#agent-command-list").getByText("audit").count() === 0, "deleted renamed agent command should stay deleted after reload");
   await page.locator("#agent-command-list [data-agent-command=\"deploy\"]").click();
@@ -398,7 +442,7 @@ try {
 JS
 
 echo "==> running browser smoke"
-env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" node "$NODE_SCRIPT"
+env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" NODE_DIR="$NODE_DIR" node "$NODE_SCRIPT"
 
 echo "smoke_webui: ok"
 echo "screenshot: $SCREENSHOT"

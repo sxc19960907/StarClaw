@@ -156,6 +156,7 @@
                   <input id="agent-auto-approve" type="checkbox">
                   Auto approve
                 </label>
+                <div class="agent-preview" id="agent-permission-preview" aria-live="polite"></div>
               </fieldset>
               <fieldset class="form-fieldset">
                 <legend>Heartbeat</legend>
@@ -184,9 +185,18 @@
                   <textarea id="agent-command-body" rows="5" aria-label="Agent command body" placeholder="Review recent changes for regressions."></textarea>
                 </label>
                 <div class="inline-actions">
+                  <button type="button" id="agent-command-new-button">New command</button>
                   <button type="button" id="agent-command-save-button">Add command</button>
-                  <button type="button" id="agent-command-clear-button">Clear</button>
+                  <button type="button" id="agent-command-cancel-button">Cancel edit</button>
                   <button type="button" class="danger-button" id="agent-command-delete-button" hidden>Delete command</button>
+                </div>
+              </fieldset>
+              <fieldset class="form-fieldset">
+                <legend>Import / export</legend>
+                <input id="agent-import-file" type="file" accept="application/json,.json" hidden>
+                <div class="inline-actions">
+                  <button type="button" id="agent-export-button">Export config</button>
+                  <button type="button" id="agent-import-button">Import config</button>
                 </div>
               </fieldset>
               <div class="form-actions">

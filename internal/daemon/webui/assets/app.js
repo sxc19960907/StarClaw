@@ -10,6 +10,8 @@ const state = {
   editingAgent: "",
   selectedAgentCommand: "",
   agentCommands: {},
+  agentDirty: false,
+  agentDirtyBaseline: "",
   activeRequestID: "",
   activeAbort: null,
   activeSessionID: "",
@@ -505,6 +507,7 @@ function updateAgentSelects() {
 }
 
 async function inspectAgent(name) {
+  if (!confirmDiscardAgentChanges()) return;
   try {
     const detail = await api(`/agents/${encodeURIComponent(name)}`);
     fillAgentForm(detail);
@@ -514,56 +517,25 @@ async function inspectAgent(name) {
 }
 
 function startNewAgent() {
-  state.editingAgent = "";
-  $("agent-name").disabled = false;
-  $("agent-name").value = "";
-  $("agent-prompt").value = "";
-  $("agent-memory").value = "";
-  $("agent-model").value = "";
-  $("agent-reasoning-effort").value = "";
-  $("agent-tools-allow").value = "";
-  $("agent-tools-deny").value = "";
-  $("agent-auto-approve").checked = false;
-  $("agent-heartbeat-every").value = "";
-  $("agent-heartbeat-active-hours").value = "";
-  $("agent-heartbeat-model").value = "";
-  state.selectedAgentCommand = "";
-  state.agentCommands = {};
-  clearAgentCommandEditor();
-  renderAgentCommands();
-  $("agent-delete-button").hidden = true;
-  $("agent-test-run-button").hidden = true;
-  $("agent-form-state").textContent = "New agent";
-  $("selected-agent-description").textContent = "Create a named agent.";
+  if (!confirmDiscardAgentChanges()) return;
+  applyAgentPayload({
+    name: "",
+    prompt: "",
+    memory: "",
+    model: "",
+    reasoning_effort: "",
+    tools_allow: [],
+    tools_deny: [],
+    auto_approve: false,
+    heartbeat_every: "",
+    heartbeat_active_hours: "",
+    heartbeat_model: "",
+    commands: {},
+  }, { dirty: false });
 }
 
 function fillAgentForm(agent) {
-  const cfg = agent.Config || agent.config || {};
-  const modelCfg = cfg.Agent || cfg.agent || {};
-  const toolsCfg = cfg.Tools || cfg.tools || {};
-  const heartbeatCfg = cfg.Heartbeat || cfg.heartbeat || {};
-  const autoApprove = cfg.AutoApprove ?? cfg.auto_approve;
-  state.selectedAgentCommand = "";
-  state.agentCommands = { ...(agent.Commands || agent.commands || {}) };
-  state.editingAgent = agent.Name || agent.name || "";
-  $("agent-name").disabled = true;
-  $("agent-name").value = state.editingAgent;
-  $("agent-prompt").value = agent.Prompt || agent.prompt || "";
-  $("agent-memory").value = agent.Memory || agent.memory || "";
-  $("agent-model").value = modelCfg.Model || modelCfg.model || "";
-  $("agent-reasoning-effort").value = modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "";
-  $("agent-tools-allow").value = formatRuleList(toolsCfg.Allow || toolsCfg.allow || []);
-  $("agent-tools-deny").value = formatRuleList(toolsCfg.Deny || toolsCfg.deny || []);
-  $("agent-auto-approve").checked = autoApprove === true;
-  $("agent-heartbeat-every").value = heartbeatCfg.Every || heartbeatCfg.every || "";
-  $("agent-heartbeat-active-hours").value = heartbeatCfg.ActiveHours || heartbeatCfg.active_hours || "";
-  $("agent-heartbeat-model").value = heartbeatCfg.Model || heartbeatCfg.model || "";
-  clearAgentCommandEditor();
-  renderAgentCommands();
-  $("agent-delete-button").hidden = false;
-  $("agent-test-run-button").hidden = false;
-  $("agent-form-state").textContent = `Editing ${state.editingAgent}`;
-  $("selected-agent-description").textContent = "Editing named agent.";
+  applyAgentPayload(agentPayloadFromDetail(agent), { dirty: false });
 }
 
 function parseCSVList(value) {
@@ -572,6 +544,31 @@ function parseCSVList(value) {
 
 function formatRuleList(values) {
   return values.join("\n");
+}
+
+function stableAgentSnapshot(payload = buildAgentPayload()) {
+  const commands = {};
+  Object.keys(payload.commands || {}).sort((a, b) => a.localeCompare(b)).forEach((name) => {
+    commands[name] = payload.commands[name];
+  });
+  return JSON.stringify({ ...payload, commands });
+}
+
+function setAgentDirtyBaseline() {
+  state.agentDirtyBaseline = stableAgentSnapshot();
+  updateAgentDirtyState();
+}
+
+function updateAgentDirtyState() {
+  const snapshot = stableAgentSnapshot();
+  state.agentDirty = snapshot !== state.agentDirtyBaseline;
+  const base = state.editingAgent ? `Editing ${state.editingAgent}` : "New agent";
+  $("agent-form-state").textContent = state.agentDirty ? `${base} · Unsaved changes` : base;
+  renderAgentPermissionPreview();
+}
+
+function confirmDiscardAgentChanges() {
+  return !state.agentDirty || globalThis.confirm("Discard unsaved agent changes?");
 }
 
 function buildAgentPayload() {
@@ -589,6 +586,65 @@ function buildAgentPayload() {
     heartbeat_model: $("agent-heartbeat-model").value.trim(),
     commands: { ...state.agentCommands },
   };
+}
+
+function applyAgentPayload(payload, { dirty = true } = {}) {
+  state.editingAgent = payload.name || "";
+  $("agent-name").disabled = Boolean(state.editingAgent);
+  $("agent-name").value = payload.name || "";
+  $("agent-prompt").value = payload.prompt || "";
+  $("agent-memory").value = payload.memory || "";
+  $("agent-model").value = payload.model || "";
+  $("agent-reasoning-effort").value = payload.reasoning_effort || "";
+  $("agent-tools-allow").value = formatRuleList(payload.tools_allow || []);
+  $("agent-tools-deny").value = formatRuleList(payload.tools_deny || []);
+  $("agent-auto-approve").checked = payload.auto_approve === true;
+  $("agent-heartbeat-every").value = payload.heartbeat_every || "";
+  $("agent-heartbeat-active-hours").value = payload.heartbeat_active_hours || "";
+  $("agent-heartbeat-model").value = payload.heartbeat_model || "";
+  state.agentCommands = { ...(payload.commands || {}) };
+  clearAgentCommandEditor();
+  renderAgentCommands();
+  $("agent-delete-button").hidden = !state.editingAgent;
+  $("agent-test-run-button").hidden = !state.editingAgent;
+  $("selected-agent-description").textContent = state.editingAgent ? "Editing named agent." : "Create a named agent.";
+  if (dirty) {
+    state.agentDirtyBaseline = "";
+    updateAgentDirtyState();
+  } else {
+    setAgentDirtyBaseline();
+  }
+}
+
+function agentPayloadFromDetail(agent) {
+  const cfg = agent.Config || agent.config || {};
+  const modelCfg = cfg.Agent || cfg.agent || {};
+  const toolsCfg = cfg.Tools || cfg.tools || {};
+  const heartbeatCfg = cfg.Heartbeat || cfg.heartbeat || {};
+  const autoApprove = cfg.AutoApprove ?? cfg.auto_approve;
+  return {
+    name: agent.Name || agent.name || "",
+    prompt: agent.Prompt || agent.prompt || "",
+    memory: agent.Memory || agent.memory || "",
+    model: modelCfg.Model || modelCfg.model || "",
+    reasoning_effort: modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "",
+    tools_allow: toolsCfg.Allow || toolsCfg.allow || [],
+    tools_deny: toolsCfg.Deny || toolsCfg.deny || [],
+    auto_approve: autoApprove === true,
+    heartbeat_every: heartbeatCfg.Every || heartbeatCfg.every || "",
+    heartbeat_active_hours: heartbeatCfg.ActiveHours || heartbeatCfg.active_hours || "",
+    heartbeat_model: heartbeatCfg.Model || heartbeatCfg.model || "",
+    commands: { ...(agent.Commands || agent.commands || {}) },
+  };
+}
+
+function renderAgentPermissionPreview() {
+  const payload = buildAgentPayload();
+  const allow = payload.tools_allow.length ? payload.tools_allow.join(", ") : "None";
+  const deny = payload.tools_deny.length ? payload.tools_deny.join(", ") : "None";
+  $("agent-permission-preview").innerHTML = `<div class="agent-preview-row"><strong>Allow</strong><span>${escapeHTML(allow)}</span></div>
+    <div class="agent-preview-row"><strong>Deny</strong><span>${escapeHTML(deny)}</span></div>
+    <div class="agent-preview-row"><strong>Auto approve</strong><span>${payload.auto_approve ? "Enabled" : "Disabled"}</span></div>`;
 }
 
 function renderAgentCommands() {
@@ -642,6 +698,7 @@ function saveAgentCommand() {
   }
   state.agentCommands[name] = body;
   selectAgentCommand(name);
+  updateAgentDirtyState();
   showToast("Command staged.");
 }
 
@@ -651,10 +708,12 @@ function deleteAgentCommand() {
   delete state.agentCommands[name];
   clearAgentCommandEditor();
   renderAgentCommands();
+  updateAgentDirtyState();
   showToast("Command removed.");
 }
 
 function testCurrentAgent() {
+  if (!confirmDiscardAgentChanges()) return;
   const name = state.editingAgent;
   if (!name) {
     showToast("Save the agent before testing.");
@@ -695,15 +754,75 @@ async function submitAgent(event) {
 }
 
 async function deleteCurrentAgent() {
+  if (!confirmDiscardAgentChanges()) return;
   const name = state.editingAgent;
   if (!name || !globalThis.confirm(`Delete agent "${name}"?`)) return;
   try {
     await api(`/agents/${encodeURIComponent(name)}`, { method: "DELETE" });
     await loadAgents();
-    startNewAgent();
+    applyAgentPayload({
+      name: "",
+      prompt: "",
+      memory: "",
+      model: "",
+      reasoning_effort: "",
+      tools_allow: [],
+      tools_deny: [],
+      auto_approve: false,
+      heartbeat_every: "",
+      heartbeat_active_hours: "",
+      heartbeat_model: "",
+      commands: {},
+    }, { dirty: false });
     showToast("Agent deleted.");
   } catch (error) {
     showToast(error.message);
+  }
+}
+
+function exportAgentConfig() {
+  const payload = buildAgentPayload();
+  const name = payload.name || "agent";
+  const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${name}-config.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("Agent config exported.");
+}
+
+function normalizeImportedAgentPayload(data) {
+  return {
+    name: data.name || data.Name || "",
+    prompt: data.prompt || data.Prompt || "",
+    memory: data.memory || data.Memory || "",
+    model: data.model || "",
+    reasoning_effort: data.reasoning_effort || "",
+    tools_allow: Array.isArray(data.tools_allow) ? data.tools_allow : [],
+    tools_deny: Array.isArray(data.tools_deny) ? data.tools_deny : [],
+    auto_approve: data.auto_approve === true,
+    heartbeat_every: data.heartbeat_every || "",
+    heartbeat_active_hours: data.heartbeat_active_hours || "",
+    heartbeat_model: data.heartbeat_model || "",
+    commands: data.commands && typeof data.commands === "object" ? data.commands : {},
+  };
+}
+
+async function importAgentConfig(file) {
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    applyAgentPayload(normalizeImportedAgentPayload(data), { dirty: true });
+    showToast("Agent config imported. Save agent to apply.");
+  } catch (error) {
+    showToast(`Import failed: ${error.message}`);
+  } finally {
+    $("agent-import-file").value = "";
   }
 }
 
@@ -1338,8 +1457,13 @@ $("agent-form").addEventListener("submit", submitAgent);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
 $("agent-test-run-button").addEventListener("click", testCurrentAgent);
+$("agent-export-button").addEventListener("click", exportAgentConfig);
+$("agent-import-button").addEventListener("click", () => $("agent-import-file").click());
+$("agent-import-file").addEventListener("change", (event) => importAgentConfig(event.target.files?.[0]));
+$("agent-form").addEventListener("input", updateAgentDirtyState);
 $("agent-command-save-button").addEventListener("click", saveAgentCommand);
-$("agent-command-clear-button").addEventListener("click", clearAgentCommandEditor);
+$("agent-command-new-button").addEventListener("click", clearAgentCommandEditor);
+$("agent-command-cancel-button").addEventListener("click", clearAgentCommandEditor);
 $("agent-command-delete-button").addEventListener("click", deleteAgentCommand);
 $("chat-agent").addEventListener("change", updateSelectedAgent);
 $("session-search-form").addEventListener("submit", (event) => {

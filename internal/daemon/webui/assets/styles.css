@@ -589,6 +589,31 @@ textarea:focus {
   font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.agent-preview {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.agent-preview strong {
+  color: var(--text);
+}
+
+.agent-preview-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.agent-preview-row span:last-child {
+  overflow-wrap: anywhere;
+}
+
 .composer {
   margin-bottom: 16px;
   border: 1px solid var(--line);
