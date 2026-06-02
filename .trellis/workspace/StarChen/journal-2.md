@@ -104,3 +104,36 @@ Added daemon run history storage, /runs APIs, GUI Runs detail panel, chat Open r
 ### Next Steps
 
 - None - task complete
+
+
+## Session 63: GUI global permissions editor
+
+**Date**: 2026-06-02
+**Task**: GUI global permissions editor
+**Branch**: `main`
+
+### Summary
+
+Added editable global permissions in the Web UI, backed by config PATCH persistence, daemon permission refresh, backend tests, and Web UI smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f283ee6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
