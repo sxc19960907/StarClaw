@@ -38,3 +38,36 @@ Batched session sidebar improvements: live debounced search, clear search action
 ### Next Steps
 
 - None - task complete
+
+
+## Session 61: GUI agent editor completion batch
+
+**Date**: 2026-06-02
+**Task**: GUI agent editor completion batch
+**Branch**: `main`
+
+### Summary
+
+Completed the Agent editor workflow batch: command New/Cancel behavior, dirty-state warnings, JSON config export/import, live permission preview, and smoke coverage for dirty guard, import/export, permission preview, and command staging.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c2ebf41` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
