@@ -55,6 +55,9 @@ jobs:
       - name: App launch smoke
         run: scripts/smoke_app_launch.sh
 
+      - name: Local release install smoke
+        run: scripts/smoke_release_local.sh
+
       - name: Web UI core smoke
         run: scripts/smoke_webui_core.sh
 
