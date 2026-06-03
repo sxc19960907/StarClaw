@@ -153,8 +153,20 @@ async function boot(page) {
   await page.locator("#diagnostics-chip").waitFor();
 }
 
+async function openManagePanel(page, name) {
+  await page.getByRole("button", { name: /^Manage/ }).click();
+  await page.locator("#panel-manage").getByRole("heading", { name: "Manage" }).waitFor();
+  await page.locator("#panel-manage").getByRole("button", { name: new RegExp(`^${name}`) }).click();
+}
+
+async function openSettingsPanel(page, name) {
+  await page.getByRole("button", { name: /^Settings/ }).click();
+  await page.locator("#panel-settings").getByRole("heading", { name: "Settings" }).waitFor();
+  await page.locator("#panel-settings").getByRole("button", { name: new RegExp(`^${name}`) }).click();
+}
+
 async function runCore(page) {
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await page.locator("#diagnostics-chip").click();
   await page.locator("#panel-diagnostics").getByRole("heading", { name: "Diagnostics" }).waitFor();
   await page.locator("#panel-diagnostics").getByText("Launch readiness").waitFor();
   await page.locator("#panel-diagnostics").getByText("starclaw app").waitFor();
@@ -171,7 +183,7 @@ async function runCore(page) {
   await page.getByLabel("Ollama model").fill("smoke-gui-model");
   await page.getByRole("button", { name: "Save provider config" }).click();
   await page.getByText("Provider config saved.").waitFor();
-  await page.getByRole("button", { name: /Version/ }).click();
+  await openSettingsPanel(page, "Version");
   await page.locator("#panel-version").getByRole("heading", { name: "Version" }).waitFor();
   await page.locator("#version-list").getByText("Release readiness").waitFor();
   await page.locator("#version-list").getByText("Development build").waitFor();
@@ -183,9 +195,9 @@ async function runCore(page) {
   await page.locator("#version-list").getByText("starclaw app", { exact: true }).first().waitFor();
   await page.locator("#version-list").getByText("starclaw update --check").waitFor();
   await page.locator("#update-overview").getByText("Development build", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Check updates" }).click();
-  await page.locator("#update-check-state").getByText("Development build").waitFor();
-  await page.getByRole("button", { name: /Schedules/ }).click();
+  assert(await page.getByRole("button", { name: "Check updates" }).isDisabled(), "development build should disable update check button");
+  await page.locator("#update-check-state").getByText("Unavailable").waitFor();
+  await openManagePanel(page, "Schedules");
   await page.getByLabel("Cron expression").fill("* * * * *");
   await page.getByLabel("Schedule prompt").fill("webui smoke schedule");
   await page.getByRole("button", { name: "Create schedule" }).click();
@@ -222,7 +234,7 @@ async function runCore(page) {
 }
 
 async function runPermissions(page) {
-  await page.getByRole("button", { name: /Permissions/ }).click();
+  await openSettingsPanel(page, "Permissions");
   await page.locator("#panel-permissions").getByRole("heading", { name: "Permissions" }).waitFor();
   await page.locator("#permissions-form").getByText("Allowed directories").waitFor();
   await page.locator("#permissions-form").getByText("Network allowlist").waitFor();
@@ -250,7 +262,7 @@ async function runPermissions(page) {
 }
 
 async function runAgents(page) {
-  await page.getByRole("button", { name: /Agents/ }).click();
+  await openManagePanel(page, "Agents");
   await page.locator("#panel-agents").getByRole("heading", { name: "Agents" }).waitFor();
   await page.getByRole("button", { name: "New agent" }).click();
   await page.getByLabel("Agent name").fill("smoke-agent");
@@ -456,7 +468,7 @@ async function runAgents(page) {
   assert(capturedAgentTest.agent === "smoke-agent", `agent test payload should use smoke-agent, got ${JSON.stringify(capturedAgentTest)}`);
   assert(capturedAgentTest.text === "agent test direct smoke", `agent test payload should include prompt, got ${JSON.stringify(capturedAgentTest)}`);
   assert(capturedAgentTest.new_session === true, `agent test payload should create a new session, got ${JSON.stringify(capturedAgentTest)}`);
-  await page.getByRole("button", { name: /Agents/ }).click();
+  await openManagePanel(page, "Agents");
   await page.locator("#agent-test-prompt").fill("agent test cancellation smoke");
   await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).click();
   await page.locator("#agent-test-stop-button").waitFor();

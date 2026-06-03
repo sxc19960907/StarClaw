@@ -21,42 +21,16 @@
         <button class="new-chat-button" id="new-chat-button" type="button">New chat</button>
 
         <nav class="nav-list" aria-label="Primary">
-          <button class="nav-item active" data-panel="chat">
-            <span>Chat</span>
-            <small id="daemon-pill">Checking</small>
-          </button>
-          <button class="nav-item" data-panel="agents">
-            <span>Agents</span>
-            <small id="agents-count">0</small>
-          </button>
-          <button class="nav-item" data-panel="skills">
-            <span>Skills</span>
-            <small id="skills-count">0</small>
-          </button>
-          <button class="nav-item" data-panel="schedules">
-            <span>Schedules</span>
-            <small id="schedules-count">0</small>
-          </button>
-          <button class="nav-item" data-panel="runs">
-            <span>Runs</span>
-            <small id="runs-count">0</small>
-          </button>
-          <button class="nav-item" data-panel="diagnostics">
-            <span>Diagnostics</span>
-            <small id="diagnostics-pill">Checking</small>
-          </button>
-          <button class="nav-item" data-panel="config">
-            <span>Config</span>
-            <small id="config-pill">Provider</small>
-          </button>
-          <button class="nav-item" data-panel="permissions">
-            <span>Permissions</span>
-            <small id="permissions-pill">Policy</small>
-          </button>
-          <button class="nav-item" data-panel="version">
-            <span>Version</span>
-            <small id="version-pill">Build</small>
-          </button>
+          <div class="nav-group">
+            <button class="nav-item active" data-panel="chat">
+              <span>Chat</span>
+              <small id="daemon-pill">Checking</small>
+            </button>
+            <button class="nav-item" data-panel="runs">
+              <span>Runs</span>
+              <small id="runs-count">0</small>
+            </button>
+          </div>
         </nav>
 
         <div class="sidebar-section">
@@ -67,6 +41,17 @@
           </form>
           <div class="session-list" id="sessions-list"></div>
         </div>
+
+        <nav class="sidebar-footer" aria-label="Workspace tools">
+          <button class="nav-item" data-panel="manage">
+            <span>Manage</span>
+            <small id="manage-count">0</small>
+          </button>
+          <button class="nav-item" data-panel="settings">
+            <span>Settings</span>
+            <small id="settings-state">Setup</small>
+          </button>
+        </nav>
       </aside>
 
       <main class="workspace">
@@ -113,6 +98,63 @@
               <button type="submit" id="send-button" class="primary-button">Send</button>
             </div>
           </form>
+        </section>
+
+        <section class="panel hub-panel" id="panel-manage" aria-labelledby="manage-heading">
+          <div class="hub-content">
+            <div class="panel-heading">
+              <h2 id="manage-heading">Manage</h2>
+              <p>Configure agent resources and local automation.</p>
+            </div>
+            <div class="hub-grid">
+              <button class="hub-card" type="button" data-panel="agents">
+                <span>Agents</span>
+                <strong id="manage-agents-count">0 profiles</strong>
+                <small>Create profiles, commands, permissions, and test runs.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="skills">
+                <span>Skills</span>
+                <strong id="manage-skills-count">0 installed</strong>
+                <small>Review reusable workflows exposed to StarClaw.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="schedules">
+                <span>Schedules</span>
+                <strong id="manage-schedules-count">0 active</strong>
+                <small>Create and manage cron-based local agent runs.</small>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel hub-panel" id="panel-settings" aria-labelledby="settings-heading">
+          <div class="hub-content">
+            <div class="panel-heading">
+              <h2 id="settings-heading">Settings</h2>
+              <p>Inspect daemon readiness, provider setup, permissions, and build state.</p>
+            </div>
+            <div class="hub-grid">
+              <button class="hub-card" type="button" data-panel="diagnostics">
+                <span>Diagnostics</span>
+                <strong id="settings-diagnostics-state">Checking</strong>
+                <small>Inspect runtime readiness and setup checks.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="config">
+                <span>Config</span>
+                <strong id="settings-config-state">Provider</strong>
+                <small>Repair provider setup used by daemon runs.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="permissions">
+                <span>Permissions</span>
+                <strong id="settings-permissions-state">Policy</strong>
+                <small>Review global tool policy and safety rules.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="version">
+                <span>Version</span>
+                <strong id="settings-version-state">Build</strong>
+                <small>Inspect release metadata and update availability.</small>
+              </button>
+            </div>
+          </div>
         </section>
 
         <section class="panel split-panel" id="panel-agents" aria-labelledby="agents-heading">
@@ -181,6 +223,32 @@
                   <input id="agent-heartbeat-model" aria-label="Agent heartbeat model" placeholder="optional">
                 </label>
               </fieldset>
+              <section class="agent-test-runner" aria-labelledby="agent-test-heading">
+                <div class="panel-heading compact-heading">
+                  <h2 id="agent-test-heading">Test Runner</h2>
+                  <p>Run one prompt against a selected agent.</p>
+                </div>
+                <div class="config-form" id="agent-test-form">
+                  <label>
+                    Agent
+                    <select id="agent-test-agent" aria-label="Test agent">
+                      <option value="">Default agent</option>
+                    </select>
+                  </label>
+                  <label>
+                    Prompt
+                    <textarea id="agent-test-prompt" rows="4" aria-label="Agent test prompt" placeholder="Ask this agent to perform a focused test run."></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <span id="agent-test-state">Ready</span>
+                    <button type="button" class="danger-button" id="agent-test-stop-button" hidden>Stop</button>
+                    <button type="button" class="primary-button" id="agent-test-submit-button">Run test</button>
+                  </div>
+                </div>
+                <div class="agent-test-output" id="agent-test-output">
+                  <div class="empty-state">No test run yet.</div>
+                </div>
+              </section>
               <fieldset class="form-fieldset">
                 <legend>Commands</legend>
                 <div class="data-list compact-list" id="agent-command-list"></div>
@@ -214,32 +282,6 @@
                 <button type="submit" class="primary-button">Save agent</button>
               </div>
             </form>
-            <section class="agent-test-runner" aria-labelledby="agent-test-heading">
-              <div class="panel-heading compact-heading">
-                <h2 id="agent-test-heading">Test Runner</h2>
-                <p>Run one prompt against a selected agent.</p>
-              </div>
-              <form class="config-form" id="agent-test-form">
-                <label>
-                  Agent
-                  <select id="agent-test-agent" aria-label="Test agent">
-                    <option value="">Default agent</option>
-                  </select>
-                </label>
-                <label>
-                  Prompt
-                  <textarea id="agent-test-prompt" rows="4" aria-label="Agent test prompt" placeholder="Ask this agent to perform a focused test run."></textarea>
-                </label>
-                <div class="form-actions">
-                  <span id="agent-test-state">Ready</span>
-                  <button type="button" class="danger-button" id="agent-test-stop-button" hidden>Stop</button>
-                  <button type="submit" class="primary-button" id="agent-test-submit-button">Run test</button>
-                </div>
-              </form>
-              <div class="agent-test-output" id="agent-test-output">
-                <div class="empty-state">No test run yet.</div>
-              </div>
-            </section>
           </aside>
         </section>
 

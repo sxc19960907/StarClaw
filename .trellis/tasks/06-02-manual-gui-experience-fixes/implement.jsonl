@@ -1,0 +1,2 @@
+{"path":".trellis/spec/backend/quality-guidelines.md","reason":"Browser smoke selectors should remain stable after UI layout changes."}
+{"path":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Diagnostics and version API state affects GUI copy and control state."}

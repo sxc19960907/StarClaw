@@ -30,6 +30,8 @@ const state = {
 
 const views = {
   chat: ["Chat", "Work with StarClaw from the local daemon."],
+  manage: ["Manage", "Configure agent resources and local automation."],
+  settings: ["Settings", "Inspect daemon setup, permissions, and build state."],
   agents: ["Agents", "Inspect named agents available to the daemon."],
   skills: ["Skills", "Review installed skills exposed to StarClaw."],
   schedules: ["Schedules", "Create and manage cron-based local tasks."],
@@ -42,12 +44,27 @@ const views = {
 
 const $ = (id) => document.getElementById(id);
 
+function setText(id, value) {
+  const target = $(id);
+  if (target) target.textContent = value;
+}
+
+function setClass(id, value = "") {
+  const target = $(id);
+  if (target) target.className = value;
+}
+
 function showToast(message) {
   const toast = $("toast");
   toast.textContent = message;
   toast.classList.add("visible");
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2600);
+}
+
+function hideToast() {
+  clearTimeout(showToast.timer);
+  $("toast").classList.remove("visible");
 }
 
 async function copyText(text, successMessage = "Copied.") {
@@ -175,11 +192,17 @@ function renderEmptyThread() {
   state.toolEvents.clear();
   state.toolDetails.clear();
   state.approvals.clear();
+  const diagnostics = state.diagnostics || {};
+  const needsSetup = diagnostics.status && diagnostics.status !== "ready";
+  const title = needsSetup ? "StarClaw needs setup." : "StarClaw is ready.";
+  const subtitle = needsSetup
+    ? (diagnostics.summary || "Open Diagnostics or Config to finish setup.")
+    : "Start a local task or choose an agent from the composer.";
   $("chat-output").innerHTML = `<div class="empty-thread">
     <div class="assistant-mark" aria-hidden="true">S</div>
     <div>
-      <strong id="chat-heading">StarClaw is ready.</strong>
-      <span>Start a local task or choose an agent from the composer.</span>
+      <strong id="chat-heading">${escapeHTML(title)}</strong>
+      <span>${escapeHTML(subtitle)}</span>
     </div>
   </div>`;
 }
@@ -275,6 +298,7 @@ function formatUptime(seconds) {
 
 function switchPanel(panel) {
   if (!views[panel]) return;
+  hideToast();
   state.panel = panel;
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.panel === panel);
@@ -305,18 +329,17 @@ async function loadStatus() {
 
 async function loadVersion() {
   const list = $("version-list");
-  const pill = $("version-pill");
   try {
     const data = await api("/version");
     state.version = data;
     state.updateCheck = null;
-    pill.textContent = data.version || "Build";
-    pill.className = data.update_supported ? "ready" : "warning";
+    setText("settings-version-state", data.version || "Build");
+    setClass("settings-version-state", data.update_supported ? "ready" : "warning");
     renderVersion();
   } catch (error) {
     state.version = null;
-    pill.textContent = "Error";
-    pill.className = "bad";
+    setText("settings-version-state", "Error");
+    setClass("settings-version-state", "bad");
     $("version-summary").textContent = "Version metadata unavailable.";
     $("update-check-state").textContent = "Error";
     renderError(list, error.message);
@@ -327,20 +350,22 @@ async function loadDiagnostics() {
   const list = $("diagnostics-list");
   const summary = $("diagnostics-summary");
   const overview = $("diagnostics-overview");
-  const pill = $("diagnostics-pill");
   const chip = $("diagnostics-chip");
   try {
     const diagnostics = await api("/diagnostics");
     state.diagnostics = diagnostics;
     const status = diagnostics.status || "unknown";
     const label = statusLabel(status);
-    pill.textContent = label;
-    pill.className = status;
+    setText("settings-state", label);
+    setClass("settings-state", status);
+    setText("settings-diagnostics-state", label);
+    setClass("settings-diagnostics-state", status);
     chip.textContent = label;
     chip.className = `diagnostics-chip ${status}`;
     summary.textContent = diagnostics.summary || "Runtime readiness checks.";
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
+    if ($("chat-output").querySelector(".empty-thread")) renderEmptyThread();
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
     const launchRows = diagnosticsLaunchRows(diagnostics);
     const launchCard = `<article class="row-item diagnostic-launch-card">
@@ -364,8 +389,10 @@ async function loadDiagnostics() {
     list.innerHTML = `${launchCard}${checkCards}`;
   } catch (error) {
     state.diagnostics = null;
-    pill.textContent = "Offline";
-    pill.className = "error";
+    setText("settings-state", "Offline");
+    setClass("settings-state", "error");
+    setText("settings-diagnostics-state", "Offline");
+    setClass("settings-diagnostics-state", "error");
     chip.textContent = "Diagnostics unavailable";
     chip.className = "diagnostics-chip error";
     summary.textContent = "Diagnostics unavailable.";
@@ -406,8 +433,8 @@ async function loadConfig() {
     renderConfigForm();
   } catch (error) {
     state.config = null;
-    $("config-pill").textContent = "Error";
-    $("config-pill").className = "bad";
+    setText("settings-config-state", "Error");
+    setClass("settings-config-state", "bad");
     $("config-save-state").textContent = error.message;
   }
 }
@@ -425,8 +452,8 @@ function renderConfigForm() {
   $("config-openai-api-key").value = "";
   $("config-api-key").placeholder = cfg.api_key_set ? "Saved; leave blank to keep" : "Required for Anthropic";
   $("config-openai-api-key").placeholder = cfg.openai_api_key_set ? "Saved; leave blank to keep" : "Required for OpenAI";
-  $("config-pill").textContent = cfg.provider || "Provider";
-  $("config-pill").className = "";
+  setText("settings-config-state", cfg.provider || "Provider");
+  setClass("settings-config-state");
   $("config-save-state").textContent = "Loaded";
   updateProviderFields();
 }
@@ -492,8 +519,8 @@ async function loadPermissions() {
     renderPermissions();
   } catch (error) {
     state.permissions = null;
-    $("permissions-pill").textContent = "Error";
-    $("permissions-pill").className = "bad";
+    setText("settings-permissions-state", "Error");
+    setClass("settings-permissions-state", "bad");
     $("permissions-save-state").textContent = "Error";
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
@@ -514,8 +541,8 @@ function fillPermissionsForm() {
 function renderPermissions() {
   const permissions = state.permissions || {};
   const configured = permissions.configured === true;
-  $("permissions-pill").textContent = configured ? "Configured" : "Defaults";
-  $("permissions-pill").className = configured ? "ready" : "warning";
+  setText("settings-permissions-state", configured ? "Configured" : "Defaults");
+  setClass("settings-permissions-state", configured ? "ready" : "warning");
   $("permissions-overview").innerHTML = `<strong>${configured ? "Configured" : "Built-in defaults"}</strong><span>${configured ? "Config permissions are present." : "No explicit permissions config is present."}</span>`;
   const categories = [
     ["Allowed directories", permissions.allowed_dirs],
@@ -539,7 +566,7 @@ function renderVersion() {
   const check = state.updateCheck;
   const supported = info.update_supported === true;
   $("version-summary").textContent = info.message || "Build and update status.";
-  $("update-check-button").disabled = false;
+  $("update-check-button").disabled = !supported;
   if (!check) {
     $("update-check-state").textContent = supported ? "Ready" : "Unavailable";
     $("update-overview").innerHTML = `<strong>${escapeHTML(supported ? "Ready" : "Development build")}</strong><span>${escapeHTML(info.message || "")}</span>`;
@@ -592,6 +619,10 @@ function updateStatusLabel(status) {
 }
 
 async function checkForUpdates() {
+  if (state.version && state.version.update_supported !== true) {
+    showToast("Update checks require a release build.");
+    return;
+  }
   $("update-check-button").disabled = true;
   $("update-check-state").textContent = "Checking";
   try {
@@ -603,7 +634,7 @@ async function checkForUpdates() {
     $("update-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     showToast(error.message);
   } finally {
-    $("update-check-button").disabled = false;
+    $("update-check-button").disabled = state.version?.update_supported !== true;
   }
 }
 
@@ -652,8 +683,8 @@ function renderPermissionsPendingPreview() {
   const hints = permissionsRiskHints(permissions);
   target.innerHTML = `<article class="row-item permission-preview">
     <div class="row-item-title"><span>Pending changes</span><span class="tag">${hints.length ? "Review" : "Ready"}</span></div>
-    <div class="run-meta-grid">
-      ${categories.map(([label, values]) => `<span>${escapeHTML(label)}</span><strong>${Array.isArray(values) ? values.length : 0}</strong>`).join("")}
+    <div class="permission-preview-grid">
+      ${categories.map(([label, values]) => `<div class="permission-preview-count"><strong>${Array.isArray(values) ? values.length : 0}</strong><span>${escapeHTML(label)}</span></div>`).join("")}
     </div>
     ${hints.length ? `<div class="pill-list permission-risk-list">${hints.map((hint) => `<span>${escapeHTML(hint)}</span>`).join("")}</div>` : `<p>No obvious permission risks in pending changes.</p>`}
   </article>`;
@@ -691,7 +722,8 @@ async function loadAgents() {
   try {
     const data = await api("/agents");
     state.agents = data.agents || [];
-    $("agents-count").textContent = state.agents.length;
+    setText("manage-agents-count", `${state.agents.length} ${state.agents.length === 1 ? "profile" : "profiles"}`);
+    setText("manage-count", state.agents.length + state.skills.length + state.schedules.length);
     updateAgentSelects();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
@@ -1061,7 +1093,7 @@ function setAgentTestRunning(isRunning) {
 }
 
 async function submitAgentTest(event) {
-  event.preventDefault();
+  event?.preventDefault();
   if (state.activeAgentTestRequestID) {
     showToast("An agent test is already running.");
     return;
@@ -1228,7 +1260,8 @@ async function loadSkills() {
   try {
     const data = await api("/skills");
     state.skills = data.skills || [];
-    $("skills-count").textContent = state.skills.length;
+    setText("manage-skills-count", `${state.skills.length} installed`);
+    setText("manage-count", state.agents.length + state.skills.length + state.schedules.length);
     if (!state.skills.length) {
       renderEmpty(list, "No skills installed.");
       return;
@@ -1277,7 +1310,8 @@ async function loadSchedules() {
   try {
     const data = await api("/schedules");
     state.schedules = data.schedules || [];
-    $("schedules-count").textContent = state.schedules.length;
+    setText("manage-schedules-count", `${state.schedules.length} configured`);
+    setText("manage-count", state.agents.length + state.skills.length + state.schedules.length);
     if (!state.schedules.length) {
       renderEmpty(list, "No schedules configured.");
       return;
@@ -2186,7 +2220,12 @@ $("permissions-form").addEventListener("input", renderPermissionsPendingPreview)
 $("permissions-clear-button").addEventListener("click", clearPermissions);
 $("update-check-button").addEventListener("click", checkForUpdates);
 $("agent-form").addEventListener("submit", submitAgent);
-$("agent-test-form").addEventListener("submit", submitAgentTest);
+$("agent-test-submit-button").addEventListener("click", submitAgentTest);
+$("agent-test-prompt").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    submitAgentTest(event);
+  }
+});
 $("agent-test-stop-button").addEventListener("click", cancelAgentTestRun);
 $("new-agent-button").addEventListener("click", startNewAgent);
 $("agent-delete-button").addEventListener("click", deleteCurrentAgent);
