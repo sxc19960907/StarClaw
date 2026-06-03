@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 88
+- **Total Sessions**: 89
 - **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~966 | Active |
+| `journal-2.md` | ~1000 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 89 | 2026-06-03 | Add structured doctor diagnostics | `79704f7`,  `9b91bfb` | `main` |
 | 88 | 2026-06-03 | Add release readiness doctor command | `a0de949`,  `e35f613` | `main` |
 | 87 | 2026-06-03 | Ignore local generated artifacts | `d522853`,  `a5afb03` | `main` |
 | 86 | 2026-06-03 | Release install smoke | `02d698d` | `main` |

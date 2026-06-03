@@ -964,3 +964,37 @@ Added top-level starclaw doctor command that reports local checks, launch URLs, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 89: Add structured doctor diagnostics
+
+**Date**: 2026-06-03
+**Task**: Add structured doctor diagnostics
+**Branch**: `main`
+
+### Summary
+
+Added starclaw doctor --json with a reusable report model, preserved plain-text doctor output, extended command tests, and wired structured doctor checks into CLI/app/release smoke scripts. Validated targeted tests, full tests, go vet, smoke_cli, smoke_app_launch, and release smoke shell syntax.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `79704f7` | (see git log) |
+| `9b91bfb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
