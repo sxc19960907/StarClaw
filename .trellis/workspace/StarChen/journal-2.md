@@ -632,3 +632,36 @@ Fixed manual GUI experience issues, refined the Web UI into a chat-first Codex-l
 ### Next Steps
 
 - None - task complete
+
+
+## Session 79: App launch diagnostics
+
+**Date**: 2026-06-03
+**Task**: App launch diagnostics
+**Branch**: `main`
+
+### Summary
+
+Improved starclaw app launch diagnostics for daemon startup failures, port conflicts, and browser-open failures, with regression tests and Web UI smoke validation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4b15836` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
