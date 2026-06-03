@@ -52,6 +52,9 @@ jobs:
       - name: Test
         run: go test -count=1 -timeout=5m ./...
 
+      - name: App launch smoke
+        run: scripts/smoke_app_launch.sh
+
       - name: Web UI core smoke
         run: scripts/smoke_webui_core.sh
 
