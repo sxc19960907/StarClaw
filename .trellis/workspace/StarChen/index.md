@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 80
+- **Total Sessions**: 81
 - **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~700 | Active |
+| `journal-2.md` | ~733 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 81 | 2026-06-03 | App launch docs | `6c63dc2` | `main` |
 | 80 | 2026-06-03 | Version runtime context | `c1256ac` | `main` |
 | 79 | 2026-06-03 | App launch diagnostics | `4b15836` | `main` |
 | 78 | 2026-06-03 | Manual GUI navigation polish | `fba8836` | `main` |

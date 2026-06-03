@@ -698,3 +698,36 @@ Extended the daemon version API and Web UI Version page with runtime support con
 ### Next Steps
 
 - None - task complete
+
+
+## Session 81: App launch docs
+
+**Date**: 2026-06-03
+**Task**: App launch docs
+**Branch**: `main`
+
+### Summary
+
+Aligned README, install guide, and examples with the current starclaw app launch workflow, readiness checks, daemon reuse, no-browser mode, and GUI runtime context.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6c63dc2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
