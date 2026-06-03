@@ -685,7 +685,7 @@ Extended the daemon version API and Web UI Version page with runtime support con
 
 | Hash | Message |
 |------|---------|
-| `ab771c4` | (see git log) |
+| `c1256ac` | (see git log) |
 
 ### Testing
 
