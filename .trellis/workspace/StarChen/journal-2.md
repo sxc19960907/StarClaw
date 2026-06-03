@@ -930,3 +930,37 @@ Ignored generated output artifacts and the local obsidian-cli agent skill direct
 ### Next Steps
 
 - None - task complete
+
+
+## Session 88: Add release readiness doctor command
+
+**Date**: 2026-06-03
+**Task**: Add release readiness doctor command
+**Branch**: `main`
+
+### Summary
+
+Added top-level starclaw doctor command that reports local checks, launch URLs, config/data paths, and daemon readiness when available. Updated CLI smoke and install/support docs; validated with targeted tests, full tests, go vet, and smoke_cli.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a0de949` | (see git log) |
+| `e35f613` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
