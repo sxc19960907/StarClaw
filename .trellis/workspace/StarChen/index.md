@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 90
+- **Total Sessions**: 91
 - **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1034 | Active |
+| `journal-2.md` | ~1068 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 91 | 2026-06-03 | Run local release smoke in CI | `5cc7dde`,  `dda976f` | `main` |
 | 90 | 2026-06-03 | Add local release install smoke | `91c3ec5`,  `98a26e3` | `main` |
 | 89 | 2026-06-03 | Add structured doctor diagnostics | `79704f7`,  `9b91bfb` | `main` |
 | 88 | 2026-06-03 | Add release readiness doctor command | `a0de949`,  `e35f613` | `main` |

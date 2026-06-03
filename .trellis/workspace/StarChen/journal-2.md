@@ -1032,3 +1032,37 @@ Added scripts/smoke_release_local.sh to build a current-platform release-style a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 91: Run local release smoke in CI
+
+**Date**: 2026-06-03
+**Task**: Run local release smoke in CI
+**Branch**: `main`
+
+### Summary
+
+Added the local release install smoke to GitHub Actions CI after app launch smoke and before Web UI core smoke. Validated shell syntax, local release smoke, go test, go vet, and diff checks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5cc7dde` | (see git log) |
+| `dda976f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
