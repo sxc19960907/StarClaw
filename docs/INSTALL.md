@@ -9,19 +9,30 @@
 
 ## Installation Methods
 
-### Method 1: Pre-built Binary (Recommended)
+### Method 1: GitHub Release Binary (Recommended)
 
-#### Linux/macOS
+Download the archive for your platform from [GitHub Releases](https://github.com/starclaw/starclaw/releases).
+
+#### macOS/Linux archive example
 
 ```bash
-curl -sSL https://get.starclaw.dev | sh
+# Pick the archive that matches your OS and CPU.
+# Examples:
+#   starclaw_Darwin_arm64.tar.gz
+#   starclaw_Darwin_x86_64.tar.gz
+#   starclaw_Linux_arm64.tar.gz
+#   starclaw_Linux_x86_64.tar.gz
+curl -LO https://github.com/starclaw/starclaw/releases/latest/download/starclaw_Darwin_arm64.tar.gz
+tar -xzf starclaw_Darwin_arm64.tar.gz
+chmod +x starclaw
+sudo mv starclaw /usr/local/bin/
 ```
 
-#### Windows (PowerShell)
+#### Windows archive example
 
-```powershell
-iwr -useb https://get.starclaw.dev/windows | iex
-```
+Download `starclaw_Windows_x86_64.zip` or `starclaw_Windows_arm64.zip` from GitHub Releases, unzip it, and add the extracted directory to `PATH`.
+
+Linux package artifacts are also published as `.deb`, `.rpm`, and `.apk`.
 
 ### Method 2: Package Managers
 
@@ -31,9 +42,7 @@ Homebrew distribution is not available yet. Use the pre-built release binaries, 
 
 #### npm (Cross-platform)
 
-```bash
-npm install -g @starclaw/cli
-```
+npm distribution is not published yet. The repository contains npm packaging scaffolding, but its installer is not a supported release path yet.
 
 ### Method 3: Build from Source
 
@@ -126,9 +135,7 @@ No Homebrew formula is published yet, so there is nothing to uninstall through H
 
 ### npm
 
-```bash
-npm uninstall -g @starclaw/cli
-```
+npm distribution is not published yet. If you installed from local npm packaging during development, uninstall that package from the same npm environment.
 
 ## Troubleshooting
 

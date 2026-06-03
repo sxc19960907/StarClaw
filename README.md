@@ -41,21 +41,21 @@ Homebrew distribution is not available yet. Use the pre-built release binaries, 
 
 ### Using npm
 
-```bash
-npm install -g @starclaw/cli
-```
+npm distribution is not published yet. Use Go, source builds, or GitHub Release assets for now.
 
 ### Pre-built Binaries
 
-Download from [Releases](https://github.com/starclaw/starclaw/releases):
+Download an archive from [Releases](https://github.com/starclaw/starclaw/releases) for your platform:
 
 ```bash
-# Linux/macOS
-curl -sSL https://get.starclaw.dev | sh
-
-# Windows (PowerShell)
-iwr -useb https://get.starclaw.dev/windows | iex
+# Example: macOS arm64
+curl -LO https://github.com/starclaw/starclaw/releases/latest/download/starclaw_Darwin_arm64.tar.gz
+tar -xzf starclaw_Darwin_arm64.tar.gz
+chmod +x starclaw
+sudo mv starclaw /usr/local/bin/
 ```
+
+Release archives are built for Linux, macOS, and Windows on `amd64` and `arm64`. Linux package artifacts are also produced as `.deb`, `.rpm`, and `.apk`.
 
 ## Quick Start
 

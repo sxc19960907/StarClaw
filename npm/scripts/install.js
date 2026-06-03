@@ -1,11 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-
-const binDir = path.join(__dirname, '..', 'bin');
-if (!fs.existsSync(binDir)) {
-  fs.mkdirSync(binDir, { recursive: true });
-}
-
-console.log('StarClaw binary would be downloaded here');
-console.log('For development, build from source: go build .');
+console.error('StarClaw npm distribution is not published yet.');
+console.error('Install from GitHub Releases or build from source instead:');
+console.error('  https://github.com/starclaw/starclaw/releases');
+console.error('  go install github.com/starclaw/starclaw@latest');
+process.exit(1);
