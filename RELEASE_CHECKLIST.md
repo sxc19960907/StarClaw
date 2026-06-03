@@ -66,6 +66,10 @@
      RELEASE_ARCHIVE=dist/starclaw_Darwin_arm64.tar.gz scripts/smoke_release_install.sh
      ```
      Use the archive that matches the release runner's OS/architecture.
+   - For a fast local preflight that builds a current-platform archive first:
+     ```bash
+     scripts/smoke_release_local.sh
+     ```
 
 4. **Update Homebrew tap**
    - Skipped until a real tap repository exists and `.goreleaser.yaml` is re-enabled for Homebrew publishing
