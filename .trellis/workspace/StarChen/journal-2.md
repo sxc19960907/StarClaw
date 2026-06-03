@@ -665,3 +665,36 @@ Improved starclaw app launch diagnostics for daemon startup failures, port confl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 80: Version runtime context
+
+**Date**: 2026-06-03
+**Task**: Version runtime context
+**Branch**: `main`
+
+### Summary
+
+Extended the daemon version API and Web UI Version page with runtime support context, including health/status/diagnostics URLs and local data/config paths, with daemon tests and Web UI smoke coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ab771c4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
