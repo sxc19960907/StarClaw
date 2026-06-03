@@ -11,6 +11,7 @@
 
 # Output
 /out/
+/output/
 /dist/
 /build/
 
@@ -24,6 +25,9 @@ vendor/
 *.swp
 *.swo
 *~
+
+# Local agent skills
+/.agents/skills/obsidian-cli/
 
 # OS
 .DS_Store
