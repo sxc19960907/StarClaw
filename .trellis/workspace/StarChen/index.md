@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 86
+- **Total Sessions**: 87
 - **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~898 | Active |
+| `journal-2.md` | ~932 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 87 | 2026-06-03 | Ignore local generated artifacts | `d522853`,  `a5afb03` | `main` |
 | 86 | 2026-06-03 | Release install smoke | `02d698d` | `main` |
 | 85 | 2026-06-03 | Release artifact validation | `dcdcee4` | `main` |
 | 84 | 2026-06-03 | GUI support info copy | `f162f64` | `main` |

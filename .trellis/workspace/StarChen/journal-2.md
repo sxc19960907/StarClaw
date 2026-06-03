@@ -896,3 +896,37 @@ Added a clean install smoke script that extracts a release archive, runs StarCla
 ### Next Steps
 
 - None - task complete
+
+
+## Session 87: Ignore local generated artifacts
+
+**Date**: 2026-06-03
+**Task**: Ignore local generated artifacts
+**Branch**: `main`
+
+### Summary
+
+Ignored generated output artifacts and the local obsidian-cli agent skill directory so git status stays focused. Verified git status is clean after task archive.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d522853` | (see git log) |
+| `a5afb03` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
