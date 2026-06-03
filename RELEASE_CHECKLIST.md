@@ -55,6 +55,12 @@
    - Check GitHub releases page
    - Download and test binaries
    - Verify checksums
+   - For a local preflight before tagging:
+     ```bash
+     goreleaser release --snapshot --clean --skip=publish
+     scripts/validate_release_artifacts.sh
+     ```
+   - The validation script checks the documented macOS/Linux/Windows archive names, executable contents, and Linux `.deb`/`.rpm`/`.apk` package artifacts.
 
 4. **Update Homebrew tap**
    - Skipped until a real tap repository exists and `.goreleaser.yaml` is re-enabled for Homebrew publishing
