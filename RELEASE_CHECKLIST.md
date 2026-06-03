@@ -61,6 +61,11 @@
      scripts/validate_release_artifacts.sh
      ```
    - The validation script checks the documented macOS/Linux/Windows archive names, executable contents, and Linux `.deb`/`.rpm`/`.apk` package artifacts.
+   - Run a clean install smoke against at least one archive for the current machine:
+     ```bash
+     RELEASE_ARCHIVE=dist/starclaw_Darwin_arm64.tar.gz scripts/smoke_release_install.sh
+     ```
+     Use the archive that matches the release runner's OS/architecture.
 
 4. **Update Homebrew tap**
    - Skipped until a real tap repository exists and `.goreleaser.yaml` is re-enabled for Homebrew publishing
