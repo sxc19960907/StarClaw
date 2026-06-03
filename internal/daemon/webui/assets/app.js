@@ -632,6 +632,33 @@ function updateStatusLabel(status) {
   }
 }
 
+function supportInfoText() {
+  const info = state.version || {};
+  const diagnostics = state.diagnostics || {};
+  const rows = [
+    ["StarClaw support info", ""],
+    ["Version", info.version || "-"],
+    ["Platform", info.platform || "-"],
+    ["Build status", info.status || "-"],
+    ["Update supported", info.update_supported === true ? "yes" : "no"],
+    ["Update command", info.update_command || "starclaw update --check"],
+    ["Launch command", info.launch_command || "starclaw app"],
+    ["Web UI", info.web_url || "-"],
+    ["Health URL", info.health_url || "-"],
+    ["Status URL", info.status_url || "-"],
+    ["Diagnostics URL", info.diagnostics_url || "-"],
+    ["Data dir", info.starclaw_dir || "-"],
+    ["Config path", info.config_path || "-"],
+    ["Diagnostics status", diagnostics.status || "-"],
+    ["Diagnostics summary", diagnostics.summary || "-"],
+  ];
+  return rows.map(([label, value]) => (value ? `${label}: ${value}` : label)).join("\n");
+}
+
+async function copySupportInfo() {
+  await copyText(supportInfoText(), "Support info copied.");
+}
+
 async function checkForUpdates() {
   if (state.version && state.version.update_supported !== true) {
     showToast("Update checks require a release build.");
@@ -2233,6 +2260,7 @@ $("permissions-form").addEventListener("submit", submitPermissions);
 $("permissions-form").addEventListener("input", renderPermissionsPendingPreview);
 $("permissions-clear-button").addEventListener("click", clearPermissions);
 $("update-check-button").addEventListener("click", checkForUpdates);
+$("copy-support-info-button").addEventListener("click", copySupportInfo);
 $("agent-form").addEventListener("submit", submitAgent);
 $("agent-test-submit-button").addEventListener("click", submitAgentTest);
 $("agent-test-prompt").addEventListener("keydown", (event) => {

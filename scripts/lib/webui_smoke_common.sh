@@ -202,6 +202,16 @@ async function runCore(page) {
   await page.locator("#update-overview").getByText("Development build", { exact: true }).waitFor();
   assert(await page.getByRole("button", { name: "Check updates" }).isDisabled(), "development build should disable update check button");
   await page.locator("#update-check-state").getByText("Unavailable").waitFor();
+  await page.getByRole("button", { name: "Copy support info" }).click();
+  await page.getByText("Support info copied.").waitFor();
+  const supportInfo = await page.evaluate(() => navigator.clipboard.readText());
+  assert(supportInfo.includes("StarClaw support info"), "support info missing heading");
+  assert(supportInfo.includes("Version: dev"), "support info missing version");
+  assert(supportInfo.includes(`Web UI: ${baseURL}/app/`), "support info missing web URL");
+  assert(supportInfo.includes(`Diagnostics URL: ${baseURL}/diagnostics`), "support info missing diagnostics URL");
+  assert(supportInfo.includes(`Data dir: ${process.env.SMOKE_HOME}/.starclaw`), "support info missing data dir");
+  assert(supportInfo.includes("Diagnostics status:"), "support info missing diagnostics status");
+  assert(!supportInfo.toLowerCase().includes("api_key"), "support info should not include API key fields");
   await openManagePanel(page, "Schedules");
   await page.getByLabel("Cron expression").fill("* * * * *");
   await page.getByLabel("Schedule prompt").fill("webui smoke schedule");
