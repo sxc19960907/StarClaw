@@ -1066,3 +1066,37 @@ Added the local release install smoke to GitHub Actions CI after app launch smok
 ### Next Steps
 
 - None - task complete
+
+
+## Session 92: Record release candidate validation
+
+**Date**: 2026-06-03
+**Task**: Record release candidate validation
+**Branch**: `main`
+
+### Summary
+
+Ran release candidate validation: full tests, vet, race tests, builds, CLI smoke, app launch smoke, local release install smoke, and Web UI core smoke. Recorded the pass in RELEASE_CHECKLIST.md and noted remote CI is pending until commits are pushed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6f730c0` | (see git log) |
+| `50f9479` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
