@@ -863,3 +863,36 @@ Added a reusable release artifact validation script for documented archives and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 86: Release install smoke
+
+**Date**: 2026-06-03
+**Task**: Release install smoke
+**Branch**: `main`
+
+### Summary
+
+Added a clean install smoke script that extracts a release archive, runs StarClaw from an isolated home, verifies app launch routes, and documented it in the release checklist.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `02d698d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
