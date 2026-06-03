@@ -998,3 +998,37 @@ Added starclaw doctor --json with a reusable report model, preserved plain-text 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 90: Add local release install smoke
+
+**Date**: 2026-06-03
+**Task**: Add local release install smoke
+**Branch**: `main`
+
+### Summary
+
+Added scripts/smoke_release_local.sh to build a current-platform release-style archive and run the existing release install smoke. Documented it in the release checklist and validated with the new local smoke, full tests, go vet, and diff checks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `91c3ec5` | (see git log) |
+| `98a26e3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
