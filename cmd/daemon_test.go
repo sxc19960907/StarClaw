@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -208,12 +209,72 @@ func TestAppCmdStartupFailureIncludesDiagnosticsHint(t *testing.T) {
 	if !strings.Contains(message, daemonDiagnosticsURL) {
 		t.Fatalf("error %q should include diagnostics URL %q", message, daemonDiagnosticsURL)
 	}
+	if !strings.Contains(message, "port 7533") {
+		t.Fatalf("error %q should include port hint", message)
+	}
+}
+
+func TestAppCmdStartProcessFailureIncludesActionableHint(t *testing.T) {
+	restore := stubDaemonLaunch(t)
+
+	restore.startDaemon = func() error {
+		return errors.New("listen tcp 127.0.0.1:7533: bind: address already in use")
+	}
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(newAppCmd())
+
+	_, err := executeCommand(root, "app")
+	if err == nil {
+		t.Fatal("app should fail when daemon process cannot start")
+	}
+	message := err.Error()
+	for _, want := range []string{
+		"address already in use",
+		"port 7533 appears to be in use",
+		"starclaw daemon status",
+		daemonDiagnosticsURL,
+	} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("error %q should contain %q", message, want)
+		}
+	}
+}
+
+func TestAppCmdBrowserOpenFailureKeepsManualURL(t *testing.T) {
+	restore := stubDaemonLaunch(t)
+
+	restore.isHealthy = func(ctx context.Context) bool {
+		return true
+	}
+	restore.openURL = func(url string) error {
+		return errors.New("browser unavailable")
+	}
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(newAppCmd())
+
+	_, err := executeCommand(root, "app")
+	if err == nil {
+		t.Fatal("app should report browser open failure")
+	}
+	message := err.Error()
+	for _, want := range []string{
+		"browser unavailable",
+		"daemon is reachable",
+		"open " + daemonWebURL + " manually",
+	} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("error %q should contain %q", message, want)
+		}
+	}
 }
 
 type daemonLaunchStub struct {
-	started   bool
-	openURL   func(string) error
-	isHealthy func(context.Context) bool
+	started     bool
+	openURL     func(string) error
+	isHealthy   func(context.Context) bool
+	startDaemon func() error
 }
 
 func stubDaemonLaunch(t *testing.T) *daemonLaunchStub {
@@ -240,6 +301,9 @@ func stubDaemonLaunch(t *testing.T) *daemonLaunchStub {
 	}
 	startDaemonBackground = func() error {
 		stub.started = true
+		if stub.startDaemon != nil {
+			return stub.startDaemon()
+		}
 		return nil
 	}
 	daemonEnsureTimeout = 250 * time.Millisecond

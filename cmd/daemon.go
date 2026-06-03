@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -107,6 +109,21 @@ func ensureDaemonRunning(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+func formatDaemonLaunchError(err error) error {
+	if err == nil {
+		return nil
+	}
+	message := fmt.Sprintf("daemon: %v", err)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		message += fmt.Sprintf("; timed out waiting for %s", daemonHealthURL)
+	case strings.Contains(err.Error(), "address already in use"):
+		message += fmt.Sprintf("; port %d appears to be in use", daemonPort)
+	}
+	message += fmt.Sprintf("; run `starclaw daemon status`, check whether port %d is free, or inspect %s", daemonPort, daemonDiagnosticsURL)
+	return errors.New(message)
+}
+
 func openDaemonWebUI(cmd *cobra.Command, ensure bool) error {
 	return launchDaemonWebUI(cmd, ensure, true)
 }
@@ -119,12 +136,12 @@ func launchDaemonWebUI(cmd *cobra.Command, ensure bool, openBrowser bool) error 
 		var err error
 		started, err = ensureDaemonRunning(ctx)
 		if err != nil {
-			return fmt.Errorf("daemon: %w; run `starclaw daemon status` and inspect %s", err, daemonDiagnosticsURL)
+			return formatDaemonLaunchError(err)
 		}
 	}
 	if openBrowser {
 		if err := openURLInBrowser(daemonWebURL); err != nil {
-			return fmt.Errorf("daemon: open web UI: %w", err)
+			return fmt.Errorf("daemon: open web UI: %w; daemon is reachable, open %s manually", err, daemonWebURL)
 		}
 	}
 	switch {
