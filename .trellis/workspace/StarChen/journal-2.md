@@ -731,3 +731,36 @@ Aligned README, install guide, and examples with the current starclaw app launch
 ### Next Steps
 
 - None - task complete
+
+
+## Session 82: Release install loop audit
+
+**Date**: 2026-06-03
+**Task**: Release install loop audit
+**Branch**: `main`
+
+### Summary
+
+Audited release install paths, removed unsupported get.starclaw.dev bootstrap instructions, clarified npm/Homebrew availability, and made the npm placeholder installer fail with accurate guidance.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ebb408a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
