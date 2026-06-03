@@ -9,6 +9,17 @@
 - Update checks are supported, but automatic binary replacement is not implemented yet and is documented as a follow-up.
 - Homebrew distribution is disabled until a real tap repository exists.
 - Current product-code changes should be committed separately from the pre-existing Trellis/agent infrastructure migration.
+- Local release-candidate validation on 2026-06-03 passed:
+  - `go test ./...`
+  - `go vet ./...`
+  - `go test -race ./internal/client ./internal/agent ./internal/context ./internal/daemon ./internal/tools ./internal/heartbeat`
+  - `make build`
+  - `make build-all`
+  - `scripts/smoke_cli.sh`
+  - `scripts/smoke_app_launch.sh`
+  - `scripts/smoke_release_local.sh`
+  - `scripts/smoke_webui_core.sh`
+- Remote CI status for this validation is pending until local commits are pushed. Current `main` is ahead of `origin/main`.
 - Latest verification on 2026-05-29 passed:
   - `go test ./...`
   - `go test -race ./internal/client ./internal/agent ./internal/context ./internal/daemon ./internal/tools ./internal/heartbeat`
