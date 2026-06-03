@@ -116,6 +116,7 @@ For support/debugging, open **Settings -> Version** in the Web UI or run:
 
 ```bash
 starclaw doctor
+starclaw doctor --json
 starclaw app --check
 starclaw daemon status
 ```

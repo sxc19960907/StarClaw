@@ -13,6 +13,30 @@ import (
 	"github.com/starclaw/starclaw/internal/tui"
 )
 
+type doctorReport struct {
+	Version        string             `json:"version"`
+	LaunchCommand  string             `json:"launch_command"`
+	WebURL         string             `json:"web_url"`
+	DiagnosticsURL string             `json:"diagnostics_url"`
+	StarclawDir    string             `json:"starclaw_dir"`
+	ConfigPath     string             `json:"config_path"`
+	LocalChecks    []doctorLocalCheck `json:"local_checks"`
+	Daemon         doctorDaemonReport `json:"daemon"`
+}
+
+type doctorLocalCheck struct {
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+type doctorDaemonReport struct {
+	Running     bool                     `json:"running"`
+	Status      *doctorDaemonStatus      `json:"status,omitempty"`
+	Diagnostics *doctorDaemonDiagnostics `json:"diagnostics,omitempty"`
+	Errors      []string                 `json:"errors,omitempty"`
+}
+
 type doctorDaemonStatus struct {
 	Uptime       int    `json:"uptime"`
 	Version      string `json:"version"`
@@ -32,6 +56,8 @@ type doctorDaemonDiagnostics struct {
 
 var doctorHTTPClient = &http.Client{Timeout: 700 * time.Millisecond}
 
+var doctorOutputJSON bool
+
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Check local StarClaw readiness and support context",
@@ -40,52 +66,98 @@ var doctorCmd = &cobra.Command{
 	},
 }
 
+func init() {
+	doctorCmd.Flags().BoolVar(&doctorOutputJSON, "json", false, "Print diagnostics as JSON")
+}
+
 func runDoctor(cmd *cobra.Command) error {
-	out := cmd.OutOrStdout()
-	starclawDir := config.StarclawDir()
-	configPath := filepath.Join(starclawDir, "config.yaml")
-
-	fmt.Fprintln(out, "StarClaw doctor")
-	fmt.Fprintf(out, "Version:       %s\n", Version)
-	fmt.Fprintf(out, "Launch:        starclaw app\n")
-	fmt.Fprintf(out, "Web UI:        %s\n", daemonWebURL)
-	fmt.Fprintf(out, "Diagnostics:   %s\n", daemonDiagnosticsURL)
-	fmt.Fprintf(out, "Data:          %s\n", starclawDir)
-	fmt.Fprintf(out, "Config:        %s\n", configPath)
-	fmt.Fprintln(out)
-
-	printLocalDoctorChecks(out, tui.NewDoctor().RunChecks())
-	fmt.Fprintln(out)
-
-	printDaemonDoctorStatus(out)
+	report := buildDoctorReport()
+	if doctorOutputJSON {
+		return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
+	}
+	printDoctorReport(cmd.OutOrStdout(), report)
 	return nil
+}
+
+func buildDoctorReport() doctorReport {
+	starclawDir := config.StarclawDir()
+	report := doctorReport{
+		Version:        Version,
+		LaunchCommand:  "starclaw app",
+		WebURL:         daemonWebURL,
+		DiagnosticsURL: daemonDiagnosticsURL,
+		StarclawDir:    starclawDir,
+		ConfigPath:     filepath.Join(starclawDir, "config.yaml"),
+		LocalChecks:    doctorLocalChecks(tui.NewDoctor().RunChecks()),
+		Daemon:         buildDoctorDaemonReport(),
+	}
+	return report
+}
+
+func printDoctorReport(out interface {
+	Write([]byte) (int, error)
+}, report doctorReport) {
+	fmt.Fprintln(out, "StarClaw doctor")
+	fmt.Fprintf(out, "Version:       %s\n", report.Version)
+	fmt.Fprintf(out, "Launch:        %s\n", report.LaunchCommand)
+	fmt.Fprintf(out, "Web UI:        %s\n", report.WebURL)
+	fmt.Fprintf(out, "Diagnostics:   %s\n", report.DiagnosticsURL)
+	fmt.Fprintf(out, "Data:          %s\n", report.StarclawDir)
+	fmt.Fprintf(out, "Config:        %s\n", report.ConfigPath)
+	fmt.Fprintln(out)
+
+	printLocalDoctorChecks(out, report.LocalChecks)
+	fmt.Fprintln(out)
+
+	printDaemonDoctorStatus(out, report.Daemon)
 }
 
 func printLocalDoctorChecks(out interface {
 	Write([]byte) (int, error)
-}, checks []tui.CheckResult) {
+}, checks []doctorLocalCheck) {
 	fmt.Fprintln(out, "Local checks:")
 	for _, check := range checks {
-		fmt.Fprintf(out, "  [%s] %s: %s\n", doctorLocalStatusLabel(check.Status), check.Name, check.Message)
+		fmt.Fprintf(out, "  [%s] %s: %s\n", check.Status, check.Name, check.Message)
 	}
 }
 
-func printDaemonDoctorStatus(out interface {
-	Write([]byte) (int, error)
-}) {
+func buildDoctorDaemonReport() doctorDaemonReport {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	if !isDaemonHealthy(ctx) {
+		return doctorDaemonReport{Running: false}
+	}
+
+	report := doctorDaemonReport{Running: true}
+	status, err := doctorFetchJSON[doctorDaemonStatus](ctx, daemonStatusURL)
+	if err != nil {
+		report.Errors = append(report.Errors, fmt.Sprintf("status API: %v", err))
+	} else {
+		report.Status = &status
+	}
+
+	diagnostics, err := doctorFetchJSON[doctorDaemonDiagnostics](ctx, daemonDiagnosticsURL)
+	if err != nil {
+		report.Errors = append(report.Errors, fmt.Sprintf("diagnostics API: %v", err))
+	} else {
+		report.Diagnostics = &diagnostics
+	}
+	return report
+}
+
+func printDaemonDoctorStatus(out interface {
+	Write([]byte) (int, error)
+}, daemon doctorDaemonReport) {
+	if !daemon.Running {
 		fmt.Fprintln(out, "Daemon:        not running")
 		fmt.Fprintln(out, "Next steps:    run `starclaw app` to start the GUI, or `starclaw daemon start` for daemon-only mode")
 		return
 	}
 
 	fmt.Fprintln(out, "Daemon:        running")
-	if status, err := doctorFetchJSON[doctorDaemonStatus](ctx, daemonStatusURL); err != nil {
-		fmt.Fprintf(out, "Status API:    warning: %v\n", err)
-	} else {
+	if daemon.Status != nil {
+		status := *daemon.Status
 		if status.Version != "" {
 			fmt.Fprintf(out, "Daemon version:%s\n", doctorPaddedValue(status.Version))
 		}
@@ -93,11 +165,13 @@ func printDaemonDoctorStatus(out interface {
 		fmt.Fprintf(out, "Uptime:        %s\n", (time.Duration(status.Uptime) * time.Second).String())
 	}
 
-	diagnostics, err := doctorFetchJSON[doctorDaemonDiagnostics](ctx, daemonDiagnosticsURL)
-	if err != nil {
-		fmt.Fprintf(out, "Diagnostics:   warning: %v\n", err)
+	for _, err := range daemon.Errors {
+		fmt.Fprintf(out, "Warning:       %s\n", err)
+	}
+	if daemon.Diagnostics == nil {
 		return
 	}
+	diagnostics := *daemon.Diagnostics
 	fmt.Fprintf(out, "Runtime:       %s\n", diagnostics.Status)
 	if diagnostics.Summary != "" {
 		fmt.Fprintf(out, "Summary:       %s\n", diagnostics.Summary)
@@ -132,6 +206,18 @@ func doctorFetchJSON[T any](ctx context.Context, url string) (T, error) {
 		return value, fmt.Errorf("decode %s: %w", url, err)
 	}
 	return value, nil
+}
+
+func doctorLocalChecks(results []tui.CheckResult) []doctorLocalCheck {
+	checks := make([]doctorLocalCheck, 0, len(results))
+	for _, result := range results {
+		checks = append(checks, doctorLocalCheck{
+			Name:    result.Name,
+			Status:  doctorLocalStatusLabel(result.Status),
+			Message: result.Message,
+		})
+	}
+	return checks
 }
 
 func doctorLocalStatusLabel(status tui.CheckStatus) string {

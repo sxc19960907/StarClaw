@@ -115,6 +115,16 @@ expect_json_contains "$BASE_URL/version" '"starclaw_dir":"'"$SMOKE_HOME"'/.starc
 expect_json_contains "$BASE_URL/diagnostics" '"launch_command":"starclaw app"'
 expect_json_contains "$BASE_URL/diagnostics" '"config_path":"'"$SMOKE_HOME"'/.starclaw/config.yaml"'
 
+echo "==> checking doctor JSON"
+env HOME="$SMOKE_HOME" "$BIN" doctor --json > "$TMP_DIR/doctor-json.out"
+expect_contains doctor-json '"launch_command":"starclaw app"'
+expect_contains doctor-json '"web_url":"'"$BASE_URL"'/app/"'
+expect_contains doctor-json '"diagnostics_url":"'"$BASE_URL"'/diagnostics"'
+expect_contains doctor-json '"starclaw_dir":"'"$SMOKE_HOME"'/.starclaw"'
+expect_contains doctor-json '"config_path":"'"$SMOKE_HOME"'/.starclaw/config.yaml"'
+expect_contains doctor-json '"daemon":{"running":true'
+expect_contains doctor-json '"diagnostics":{"status":'
+
 echo "==> stopping daemon"
 env HOME="$SMOKE_HOME" "$BIN" daemon stop > "$TMP_DIR/daemon-stop.out"
 expect_contains daemon-stop "Daemon: shutting_down"

@@ -70,10 +70,11 @@ go install .
 ```bash
 starclaw version
 starclaw doctor
+starclaw doctor --json
 starclaw app --check
 ```
 
-`starclaw doctor` prints local readiness checks, the GUI launch command, Web UI URL, diagnostics URL, data directory, config path, and daemon readiness. `starclaw app --check` is a shorter launch-readiness check.
+`starclaw doctor` prints local readiness checks, the GUI launch command, Web UI URL, diagnostics URL, data directory, config path, and daemon readiness. Use `starclaw doctor --json` for support bundles or scripted checks. `starclaw app --check` is a shorter launch-readiness check.
 
 ## Configuration
 

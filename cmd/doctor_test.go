@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,6 +45,51 @@ func TestDoctorCmdPrintsUnavailableDaemonReadiness(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output %q should contain %q", output, want)
 		}
+	}
+}
+
+func TestDoctorCmdPrintsUnavailableDaemonJSON(t *testing.T) {
+	restore := stubDoctorDaemon(t)
+	restore.isHealthy = func(ctx context.Context) bool {
+		return false
+	}
+
+	home := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", home)
+	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(doctorCmd)
+
+	output, err := executeCommand(root, "doctor", "--json")
+	if err != nil {
+		t.Fatalf("doctor --json failed: %v", err)
+	}
+	var report doctorReport
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("doctor --json output is not JSON: %v\n%s", err, output)
+	}
+	if report.LaunchCommand != "starclaw app" {
+		t.Fatalf("launch_command = %q, want starclaw app", report.LaunchCommand)
+	}
+	if report.WebURL != daemonWebURL {
+		t.Fatalf("web_url = %q, want %q", report.WebURL, daemonWebURL)
+	}
+	if report.DiagnosticsURL != daemonDiagnosticsURL {
+		t.Fatalf("diagnostics_url = %q, want %q", report.DiagnosticsURL, daemonDiagnosticsURL)
+	}
+	if report.StarclawDir != home+"/.starclaw" {
+		t.Fatalf("starclaw_dir = %q, want HOME .starclaw", report.StarclawDir)
+	}
+	if report.ConfigPath != home+"/.starclaw/config.yaml" {
+		t.Fatalf("config_path = %q, want HOME config.yaml", report.ConfigPath)
+	}
+	if len(report.LocalChecks) == 0 {
+		t.Fatal("local_checks should not be empty")
+	}
+	if report.Daemon.Running {
+		t.Fatal("daemon.running should be false when daemon is unavailable")
 	}
 }
 
@@ -93,6 +139,60 @@ func TestDoctorCmdPrintsReachableDaemonReadiness(t *testing.T) {
 	}
 }
 
+func TestDoctorCmdPrintsReachableDaemonJSON(t *testing.T) {
+	restore := stubDoctorDaemon(t)
+	restore.isHealthy = func(ctx context.Context) bool {
+		return true
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/status":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"uptime":30,"version":"json-version","active_agents":3}`))
+		case "/diagnostics":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"warning","summary":"Needs attention.","checks":[{"label":"Provider","status":"warning","detail":"Ollama unavailable.","action":"Start Ollama."}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	restore.statusURL = server.URL + "/status"
+	restore.diagnosticsURL = server.URL + "/diagnostics"
+	restore.applyURLs()
+
+	root := &cobra.Command{Use: "starclaw"}
+	root.AddCommand(doctorCmd)
+
+	output, err := executeCommand(root, "doctor", "--json")
+	if err != nil {
+		t.Fatalf("doctor --json failed: %v", err)
+	}
+	var report doctorReport
+	if err := json.Unmarshal([]byte(output), &report); err != nil {
+		t.Fatalf("doctor --json output is not JSON: %v\n%s", err, output)
+	}
+	if !report.Daemon.Running {
+		t.Fatal("daemon.running should be true")
+	}
+	if report.Daemon.Status == nil || report.Daemon.Status.Version != "json-version" {
+		t.Fatalf("daemon status missing version: %#v", report.Daemon.Status)
+	}
+	if report.Daemon.Status.ActiveAgents != 3 {
+		t.Fatalf("active_agents = %d, want 3", report.Daemon.Status.ActiveAgents)
+	}
+	if report.Daemon.Diagnostics == nil || report.Daemon.Diagnostics.Status != "warning" {
+		t.Fatalf("daemon diagnostics missing warning status: %#v", report.Daemon.Diagnostics)
+	}
+	if len(report.Daemon.Diagnostics.Checks) != 1 {
+		t.Fatalf("diagnostic checks len = %d, want 1", len(report.Daemon.Diagnostics.Checks))
+	}
+	if strings.Contains(strings.ToLower(output), "api_key") {
+		t.Fatalf("doctor JSON should not include API key fields: %s", output)
+	}
+}
+
 type doctorDaemonStub struct {
 	isHealthy      func(context.Context) bool
 	statusURL      string
@@ -110,6 +210,7 @@ func stubDoctorDaemon(t *testing.T) *doctorDaemonStub {
 	origStatusURL := daemonStatusURL
 	origDiagnosticsURL := daemonDiagnosticsURL
 	origHTTPClient := doctorHTTPClient
+	origOutputJSON := doctorOutputJSON
 
 	isDaemonHealthy = func(ctx context.Context) bool {
 		if stub.isHealthy != nil {
@@ -124,6 +225,7 @@ func stubDoctorDaemon(t *testing.T) *doctorDaemonStub {
 		daemonStatusURL = origStatusURL
 		daemonDiagnosticsURL = origDiagnosticsURL
 		doctorHTTPClient = origHTTPClient
+		doctorOutputJSON = origOutputJSON
 	})
 
 	return stub
