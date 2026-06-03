@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 77
-- **Last Active**: 2026-06-02
+- **Total Sessions**: 78
+- **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~601 | Active |
+| `journal-2.md` | ~634 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 78 | 2026-06-03 | Manual GUI navigation polish | `fba8836` | `main` |
 | 77 | 2026-06-02 | General agent E2E validation | `1575a1b` | `main` |
 | 76 | 2026-06-02 | GUI full smoke readiness | `74b16ae` | `main` |
 | 75 | 2026-06-02 | GUI version release readiness | `2a97abe` | `main` |

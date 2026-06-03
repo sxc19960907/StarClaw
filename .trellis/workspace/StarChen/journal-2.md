@@ -599,3 +599,36 @@ Validated the GUI general agent workflow with agents, runs, and full Web UI smok
 ### Next Steps
 
 - None - task complete
+
+
+## Session 78: Manual GUI navigation polish
+
+**Date**: 2026-06-03
+**Task**: Manual GUI navigation polish
+**Branch**: `main`
+
+### Summary
+
+Fixed manual GUI experience issues, refined the Web UI into a chat-first Codex-like layout, moved lower-frequency tools into Manage and Settings hubs, and updated browser smoke coverage for the new navigation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fba8836` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
