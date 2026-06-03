@@ -32,6 +32,7 @@ const daemonPort = 7533
 
 var daemonWebURL = daemonWebURLForPort(daemonPort)
 var daemonHealthURL = fmt.Sprintf("http://127.0.0.1:%d/health", daemonPort)
+var daemonStatusURL = fmt.Sprintf("http://127.0.0.1:%d/status", daemonPort)
 var daemonDiagnosticsURL = fmt.Sprintf("http://127.0.0.1:%d/diagnostics", daemonPort)
 var daemonEnsureTimeout = 5 * time.Second
 var daemonHealthPollInterval = 120 * time.Millisecond

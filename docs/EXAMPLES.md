@@ -115,6 +115,7 @@ If `starclaw app` reports that the browser could not be opened, copy the printed
 For support/debugging, open **Settings -> Version** in the Web UI or run:
 
 ```bash
+starclaw doctor
 starclaw app --check
 starclaw daemon status
 ```

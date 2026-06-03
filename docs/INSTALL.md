@@ -69,10 +69,11 @@ go install .
 
 ```bash
 starclaw version
+starclaw doctor
 starclaw app --check
 ```
 
-`starclaw app --check` prints the GUI launch command, Web UI URL, diagnostics URL, data directory, and whether the daemon is already running.
+`starclaw doctor` prints local readiness checks, the GUI launch command, Web UI URL, diagnostics URL, data directory, config path, and daemon readiness. `starclaw app --check` is a shorter launch-readiness check.
 
 ## Configuration
 
@@ -117,6 +118,7 @@ If the daemon starts but the browser cannot open, use the printed Web UI URL man
 
 ```bash
 starclaw daemon status
+starclaw doctor
 starclaw app --check
 ```
 

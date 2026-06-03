@@ -70,6 +70,7 @@ expect_status help 0
 expect_contains help "Available Commands:"
 expect_contains help "app"
 expect_contains help "chat"
+expect_contains help "doctor"
 expect_contains help "sessions"
 
 echo "==> checking app command help"
@@ -86,6 +87,16 @@ expect_contains app_check "StarClaw app launch readiness"
 expect_contains app_check "Launch:        starclaw app"
 expect_contains app_check "Web UI:        http://127.0.0.1:7533/app/"
 expect_contains app_check "Diagnostics:   http://127.0.0.1:7533/diagnostics"
+
+echo "==> checking doctor"
+run_capture doctor env HOME="$EMPTY_HOME" "$BIN" doctor
+expect_status doctor 0
+expect_contains doctor "StarClaw doctor"
+expect_contains doctor "Launch:        starclaw app"
+expect_contains doctor "Web UI:        http://127.0.0.1:7533/app/"
+expect_contains doctor "Diagnostics:   http://127.0.0.1:7533/diagnostics"
+expect_contains doctor "Local checks:"
+expect_contains doctor "Daemon:        not running"
 
 echo "==> checking daemon open start flag help"
 run_capture daemon_open_help env HOME="$EMPTY_HOME" "$BIN" daemon open --help

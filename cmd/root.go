@@ -76,6 +76,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(interactiveCmd)
