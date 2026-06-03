@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 84
+- **Total Sessions**: 85
 - **Last Active**: 2026-06-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~832 | Active |
+| `journal-2.md` | ~865 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 85 | 2026-06-03 | Release artifact validation | `dcdcee4` | `main` |
 | 84 | 2026-06-03 | GUI support info copy | `f162f64` | `main` |
 | 83 | 2026-06-03 | App launch smoke | `5c73a1a` | `main` |
 | 82 | 2026-06-03 | Release install loop audit | `ebb408a` | `main` |

@@ -830,3 +830,36 @@ Added a Version page Copy support info action that copies safe runtime and diagn
 ### Next Steps
 
 - None - task complete
+
+
+## Session 85: Release artifact validation
+
+**Date**: 2026-06-03
+**Task**: Release artifact validation
+**Branch**: `main`
+
+### Summary
+
+Added a reusable release artifact validation script for documented archives and Linux packages, documented the GoReleaser snapshot preflight, and recorded the local Go proxy blocker for running GoReleaser directly.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dcdcee4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
