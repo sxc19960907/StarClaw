@@ -764,3 +764,36 @@ Audited release install paths, removed unsupported get.starclaw.dev bootstrap in
 ### Next Steps
 
 - None - task complete
+
+
+## Session 83: App launch smoke
+
+**Date**: 2026-06-03
+**Task**: App launch smoke
+**Branch**: `main`
+
+### Summary
+
+Added a fast CLI-level app launch smoke covering app --check, app --no-open, daemon reuse, /version, /diagnostics, and CI execution before browser Web UI smoke.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5c73a1a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
