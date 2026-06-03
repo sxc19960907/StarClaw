@@ -110,6 +110,15 @@ Start or reuse the daemon without opening a browser:
 starclaw app --no-open
 ```
 
+If `starclaw app` reports that the browser could not be opened, copy the printed Web UI URL and open it manually. The command still leaves the daemon usable when startup succeeds.
+
+For support/debugging, open **Settings -> Version** in the Web UI or run:
+
+```bash
+starclaw app --check
+starclaw daemon status
+```
+
 ### Manual Daemon Lifecycle
 ```bash
 starclaw daemon start

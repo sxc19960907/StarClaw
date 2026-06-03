@@ -91,6 +91,18 @@ starclaw app
 
 This starts the daemon when needed and opens the local Web UI at `http://127.0.0.1:7533/app/`. It provides a Codex-style workspace for chat, streaming runs, tool-call details, named agents, skills, sessions, and schedules.
 
+For headless or remote shells:
+```bash
+starclaw app --no-open
+```
+
+To inspect launch readiness without starting anything:
+```bash
+starclaw app --check
+```
+
+`starclaw app` reuses an already-running daemon. If the browser cannot be opened automatically, copy the printed Web UI URL manually. The GUI Version page also shows local runtime context such as health, status, diagnostics, data, and config paths.
+
 **Pipe input:**
 ```bash
 cat main.go | starclaw chat "Explain this code"

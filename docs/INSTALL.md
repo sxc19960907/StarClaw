@@ -86,6 +86,8 @@ Start the daemon if needed and open the embedded Web UI:
 starclaw app
 ```
 
+If a daemon is already running on the default local port, `starclaw app` reuses it and prints the same Web UI URL instead of starting another daemon.
+
 If you are on a remote or headless machine, start/reuse the daemon without opening a browser:
 
 ```bash
@@ -93,6 +95,21 @@ starclaw app --no-open
 ```
 
 Then open the printed Web UI URL from a browser that can reach the machine.
+
+Check launch readiness without starting the daemon or opening a browser:
+
+```bash
+starclaw app --check
+```
+
+This prints the launch command, daemon running state, Web UI URL, diagnostics URL, and local data directory. In the Web UI, open **Settings -> Version** to see the same runtime context plus health, status, diagnostics, data, and config paths.
+
+If the daemon starts but the browser cannot open, use the printed Web UI URL manually. If startup fails, check whether port `7533` is already in use and run:
+
+```bash
+starclaw daemon status
+starclaw app --check
+```
 
 ## Uninstallation
 
@@ -127,6 +144,21 @@ export PATH=$PATH:~/go/bin
 
 ```bash
 chmod +x $(which starclaw)
+```
+
+### GUI does not open
+
+Use the no-browser launch mode and open the URL manually:
+
+```bash
+starclaw app --no-open
+```
+
+If the command reports a port conflict, stop the existing daemon or free port `7533`:
+
+```bash
+starclaw daemon stop
+starclaw app
 ```
 
 ### Windows Defender Warning
