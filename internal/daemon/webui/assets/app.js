@@ -585,6 +585,14 @@ function renderVersion() {
   ];
   if (check?.latest_version) updateRows.push(["Latest", check.latest_version]);
   if (check?.release_url) updateRows.push(["Release URL", check.release_url]);
+  const runtimeRows = [
+    ["Web UI", info.web_url || "-"],
+    ["Health", info.health_url || "-"],
+    ["Status API", info.status_url || "-"],
+    ["Diagnostics", info.diagnostics_url || "-"],
+    ["Data", info.starclaw_dir || "-"],
+    ["Config", info.config_path || "-"],
+  ];
   const readinessRows = [
     ["Build", supported ? "Release build" : "Development build"],
     ["Updates", supported ? "Update checks available" : "Release build required"],
@@ -597,6 +605,12 @@ function renderVersion() {
       ${readinessRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
     </div>
     ${supported ? `<p>Release metadata is available for update checks.</p>` : `<p>Use a semver release build to enable update checks.</p>`}
+  </article>
+  <article class="row-item version-card">
+    <div class="row-item-title"><span>Runtime context</span><span class="tag">local</span></div>
+    <div class="run-meta-grid">
+      ${runtimeRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
+    </div>
   </article>
   <article class="row-item version-card">
     <div class="run-meta-grid">

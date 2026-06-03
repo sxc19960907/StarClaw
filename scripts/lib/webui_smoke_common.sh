@@ -194,6 +194,11 @@ async function runCore(page) {
   await page.locator("#version-list").getByText("Launch", { exact: true }).first().waitFor();
   await page.locator("#version-list").getByText("starclaw app", { exact: true }).first().waitFor();
   await page.locator("#version-list").getByText("starclaw update --check").waitFor();
+  await page.locator("#version-list").getByText("Runtime context").waitFor();
+  await page.locator("#version-list").getByText(`${baseURL}/health`).waitFor();
+  await page.locator("#version-list").getByText(`${baseURL}/status`).waitFor();
+  await page.locator("#version-list").getByText(`${baseURL}/diagnostics`).waitFor();
+  await page.locator("#version-list").getByText(`${process.env.SMOKE_HOME}/.starclaw/config.yaml`).waitFor();
   await page.locator("#update-overview").getByText("Development build", { exact: true }).waitFor();
   assert(await page.getByRole("button", { name: "Check updates" }).isDisabled(), "development build should disable update check button");
   await page.locator("#update-check-state").getByText("Unavailable").waitFor();

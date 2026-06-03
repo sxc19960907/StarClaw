@@ -13,7 +13,12 @@ type versionResponse struct {
 	Version         string `json:"version"`
 	Platform        string `json:"platform"`
 	WebURL          string `json:"web_url"`
+	HealthURL       string `json:"health_url"`
+	StatusURL       string `json:"status_url"`
+	DiagnosticsURL  string `json:"diagnostics_url"`
 	LaunchCommand   string `json:"launch_command"`
+	StarclawDir     string `json:"starclaw_dir,omitempty"`
+	ConfigPath      string `json:"config_path,omitempty"`
 	UpdateSupported bool   `json:"update_supported"`
 	UpdateCommand   string `json:"update_command"`
 	Status          string `json:"status"`
@@ -37,7 +42,12 @@ func (s *Server) versionInfo(status, message string) versionResponse {
 		Version:         s.version,
 		Platform:        update.PlatformInfo(),
 		WebURL:          daemonWebURLForPort(s.port),
+		HealthURL:       daemonHealthURLForPort(s.port),
+		StatusURL:       daemonStatusURLForPort(s.port),
+		DiagnosticsURL:  daemonDiagnosticsURLForPort(s.port),
 		LaunchCommand:   daemonLaunchCommand,
+		StarclawDir:     s.depsPath(func(deps *ServerDeps) string { return deps.StarclawDir }),
+		ConfigPath:      s.depsPath(func(deps *ServerDeps) string { return deps.ConfigPath }),
 		UpdateSupported: update.IsSemver(s.version),
 		UpdateCommand:   "starclaw update --check",
 		Status:          status,
@@ -47,6 +57,18 @@ func (s *Server) versionInfo(status, message string) versionResponse {
 
 func daemonWebURLForPort(port int) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/app/", port)
+}
+
+func daemonHealthURLForPort(port int) string {
+	return fmt.Sprintf("http://127.0.0.1:%d/health", port)
+}
+
+func daemonStatusURLForPort(port int) string {
+	return fmt.Sprintf("http://127.0.0.1:%d/status", port)
+}
+
+func daemonDiagnosticsURLForPort(port int) string {
+	return fmt.Sprintf("http://127.0.0.1:%d/diagnostics", port)
 }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
