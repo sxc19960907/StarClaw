@@ -797,3 +797,36 @@ Added a fast CLI-level app launch smoke covering app --check, app --no-open, dae
 ### Next Steps
 
 - None - task complete
+
+
+## Session 84: GUI support info copy
+
+**Date**: 2026-06-03
+**Task**: GUI support info copy
+**Branch**: `main`
+
+### Summary
+
+Added a Version page Copy support info action that copies safe runtime and diagnostics context, with Web UI smoke coverage for clipboard output and secret omission.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f162f64` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
