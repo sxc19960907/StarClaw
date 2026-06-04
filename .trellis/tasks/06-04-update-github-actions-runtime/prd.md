@@ -9,6 +9,7 @@ Remove the GitHub Actions Node.js 20 deprecation warning by upgrading workflow a
 - Update `actions/checkout` from `v4` to `v6.0.3` in CI and release workflows.
 - Update `actions/setup-go` from `v5` to `v6.4.0` in CI and release workflows.
 - Update `golangci/golangci-lint-action` from `v6` to `v9.2.1` in CI.
+- Update the pinned `golangci-lint` binary from `v1.64.8` to `v2.12.2` so it is compatible with the v9 action installer.
 - Preserve existing workflow behavior and step ordering.
 - Push the change and confirm CI passes.
 
