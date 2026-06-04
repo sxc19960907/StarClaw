@@ -1134,3 +1134,38 @@ Pushed main to origin and confirmed GitHub Actions CI run 26927745119 passed for
 ### Next Steps
 
 - None - task complete
+
+
+## Session 94: Update GitHub Actions runtime
+
+**Date**: 2026-06-04
+**Task**: Update GitHub Actions runtime
+**Branch**: `main`
+
+### Summary
+
+Updated GitHub Actions checkout/setup-go runtime pins, preserved golangci-lint action v6 for v1.64.8 compatibility, confirmed CI run 26933356798 passed, and archived the Trellis task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8a70f67` | (see git log) |
+| `4f0b10c` | (see git log) |
+| `199fc2a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
