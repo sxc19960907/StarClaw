@@ -45,7 +45,7 @@ var scheduleListCmd = &cobra.Command{
 			if agent == "" {
 				agent = "(default)"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\t%s\n", s.ID, agent, s.Cron, s.Enabled, s.SyncStatus, prompt)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\t%s\n", s.ID, agent, s.Cron, s.Enabled, s.SyncStatus, prompt)
 		}
 		return w.Flush()
 	},

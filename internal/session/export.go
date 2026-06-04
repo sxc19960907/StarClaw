@@ -34,7 +34,7 @@ func ExportMarkdown(s *Session) string {
 	// Messages
 	b.WriteString("## Messages\n\n")
 	for _, msg := range s.Messages {
-		b.WriteString(fmt.Sprintf("**%s**: %s\n\n", msg.Role, msg.Content))
+		_, _ = fmt.Fprintf(&b, "**%s**: %s\n\n", msg.Role, msg.Content)
 	}
 
 	return b.String()
@@ -46,7 +46,7 @@ func ExportHTML(s *Session) string {
 
 	b.WriteString("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
 	b.WriteString("<meta charset=\"UTF-8\">\n")
-	b.WriteString(fmt.Sprintf("<title>%s</title>\n", html.EscapeString(s.Title)))
+	_, _ = fmt.Fprintf(&b, "<title>%s</title>\n", html.EscapeString(s.Title))
 	b.WriteString("<style>\n")
 	b.WriteString("body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2em; background: #fafafa; color: #333; }\n")
 	b.WriteString("h1 { border-bottom: 2px solid #eee; padding-bottom: 0.3em; }\n")

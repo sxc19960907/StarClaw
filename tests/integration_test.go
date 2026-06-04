@@ -920,7 +920,7 @@ func TestAuditLoggingIntegration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Close logger to ensure all data is flushed
-	logger.Close()
+	require.NoError(t, logger.Close())
 
 	// Read audit log
 	content, err := os.ReadFile(filepath.Join(tempDir, "audit.log"))
@@ -954,7 +954,9 @@ func TestAuditLoggingWithSecretRedaction(t *testing.T) {
 
 	logger, err := audit.NewAuditLogger(tempDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		_ = logger.Close()
+	}()
 
 	// Log an entry with a secret
 	logger.Log(audit.AuditEntry{
@@ -967,7 +969,7 @@ func TestAuditLoggingWithSecretRedaction(t *testing.T) {
 		DurationMs:    100,
 	})
 
-	logger.Close()
+	require.NoError(t, logger.Close())
 
 	// Read audit log
 	content, err := os.ReadFile(filepath.Join(tempDir, "audit.log"))
