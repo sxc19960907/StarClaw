@@ -89,7 +89,9 @@ func TestHandleStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /status: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -139,7 +141,7 @@ func TestScheduleCRUD(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
 		t.Fatalf("decode created: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if created.ID == "" {
 		t.Error("expected non-empty schedule ID")
@@ -158,7 +160,9 @@ func TestScheduleCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /schedules: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)

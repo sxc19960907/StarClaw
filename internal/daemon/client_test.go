@@ -378,7 +378,7 @@ func TestClient_ErrorResponseNotFound(t *testing.T) {
 func TestClient_ErrorResponseInternalServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, `internal error`)
+		_, _ = fmt.Fprint(w, `internal error`)
 	}))
 	defer server.Close()
 

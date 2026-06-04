@@ -871,7 +871,9 @@ func TestAuditLoggingIntegration(t *testing.T) {
 	// Create audit logger
 	logger, err := audit.NewAuditLogger(tempDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		_ = logger.Close()
+	}()
 
 	// Create temp directory with test file
 	testDir := t.TempDir()

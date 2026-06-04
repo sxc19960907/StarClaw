@@ -291,7 +291,9 @@ func TestAuditLogging(t *testing.T) {
 	tempDir := t.TempDir()
 	logger, err := audit.NewAuditLogger(tempDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		_ = logger.Close()
+	}()
 
 	llmClient := client.NewAnthropicClient(apiKey, endpoint, model)
 	registry := tools.RegisterLocalTools()
@@ -307,7 +309,7 @@ func TestAuditLogging(t *testing.T) {
 	require.NotNil(t, resp)
 
 	// Close logger to ensure flush
-	logger.Close()
+	require.NoError(t, logger.Close())
 
 	// Give a moment for file write
 	time.Sleep(100 * time.Millisecond)

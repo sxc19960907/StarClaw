@@ -19,12 +19,12 @@ func ExportMarkdown(s *Session) string {
 
 	// Metadata section
 	b.WriteString("## Metadata\n\n")
-	b.WriteString(fmt.Sprintf("- **ID**: %s\n", s.ID))
-	b.WriteString(fmt.Sprintf("- **Created**: %s\n", s.CreatedAt.Format(time.RFC3339)))
-	b.WriteString(fmt.Sprintf("- **Updated**: %s\n", s.UpdatedAt.Format(time.RFC3339)))
-	b.WriteString(fmt.Sprintf("- **Messages**: %d\n", len(s.Messages)))
+	_, _ = fmt.Fprintf(&b, "- **ID**: %s\n", s.ID)
+	_, _ = fmt.Fprintf(&b, "- **Created**: %s\n", s.CreatedAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(&b, "- **Updated**: %s\n", s.UpdatedAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(&b, "- **Messages**: %d\n", len(s.Messages))
 	if len(s.Tags) > 0 {
-		b.WriteString(fmt.Sprintf("- **Tags**: %s\n", strings.Join(s.Tags, ", ")))
+		_, _ = fmt.Fprintf(&b, "- **Tags**: %s\n", strings.Join(s.Tags, ", "))
 	}
 	if s.Favorite {
 		b.WriteString("- **Favorite**: true\n")

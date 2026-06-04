@@ -157,7 +157,7 @@ func launchDaemonWebUI(cmd *cobra.Command, ensure bool, openBrowser bool) error 
 	case ensure:
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Web UI: %s\n", daemonWebURL)
 	default:
-		fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
 	}
 	return nil
 }
@@ -169,13 +169,13 @@ func printAppLaunchReadiness(cmd *cobra.Command) error {
 	if isDaemonHealthy(ctx) {
 		status = "running"
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "StarClaw app launch readiness\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "Version:       %s\n", Version)
-	fmt.Fprintf(cmd.OutOrStdout(), "Launch:        starclaw app\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "Daemon:        %s\n", status)
-	fmt.Fprintf(cmd.OutOrStdout(), "Web UI:        %s\n", daemonWebURL)
-	fmt.Fprintf(cmd.OutOrStdout(), "Diagnostics:   %s\n", daemonDiagnosticsURL)
-	fmt.Fprintf(cmd.OutOrStdout(), "Data:          %s\n", config.StarclawDir())
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "StarClaw app launch readiness\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Version:       %s\n", Version)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Launch:        starclaw app\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Daemon:        %s\n", status)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Web UI:        %s\n", daemonWebURL)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Diagnostics:   %s\n", daemonDiagnosticsURL)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Data:          %s\n", config.StarclawDir())
 	return nil
 }
 
