@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -71,9 +71,9 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt string, messages [
 
 	// Build request body
 	reqBody := map[string]any{
-		"model":       model,
-		"max_tokens":  maxTokens,
-		"messages":    openAIMessages,
+		"model":      model,
+		"max_tokens": maxTokens,
+		"messages":   openAIMessages,
 	}
 
 	// Convert tools to OpenAI function calling format
@@ -117,7 +117,9 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt string, messages [
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -319,11 +321,13 @@ func (c *OpenAIClient) StreamChat(ctx context.Context, systemPrompt string, mess
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("OpenAI API error (%d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("openAI API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	return ParseOpenAIStream(resp.Body, onDelta)

@@ -42,7 +42,7 @@ func TestClientStatus_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"running_agents":2,"uptime":"5m3s","version":"0.1.0"}`)
+		_, _ = fmt.Fprint(w, `{"running_agents":2,"uptime":"5m3s","version":"0.1.0"}`)
 	}))
 	defer server.Close()
 
@@ -66,7 +66,7 @@ func TestClientStatus_Minimal(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"running_agents":0,"uptime":"0s"}`)
+		_, _ = fmt.Fprint(w, `{"running_agents":0,"uptime":"0s"}`)
 	}))
 	defer server.Close()
 
@@ -110,7 +110,7 @@ func TestClientMessage_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"session_id":"sess_001","messages":["response text"],"usage":{"prompt_tokens":10}}`)
+		_, _ = fmt.Fprint(w, `{"session_id":"sess_001","messages":["response text"],"usage":{"prompt_tokens":10}}`)
 	}))
 	defer server.Close()
 

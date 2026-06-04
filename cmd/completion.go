@@ -110,10 +110,13 @@ func installBashCompletion(cmd *cobra.Command, homeDir string) error {
 	if err != nil {
 		return fmt.Errorf("could not create completion file: %w", err)
 	}
-	defer f.Close()
 
 	if err := cmd.Root().GenBashCompletionV2(f, true); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("could not generate bash completion: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("could not close completion file: %w", err)
 	}
 
 	fmt.Printf("Bash completion installed to: %s\n", scriptPath)
@@ -134,10 +137,13 @@ func installZshCompletion(cmd *cobra.Command, homeDir string) error {
 	if err != nil {
 		return fmt.Errorf("could not create completion file: %w", err)
 	}
-	defer f.Close()
 
 	if err := cmd.Root().GenZshCompletion(f); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("could not generate zsh completion: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("could not close completion file: %w", err)
 	}
 
 	fmt.Printf("Zsh completion installed to: %s\n", scriptPath)
@@ -159,10 +165,13 @@ func installFishCompletion(cmd *cobra.Command, homeDir string) error {
 	if err != nil {
 		return fmt.Errorf("could not create completion file: %w", err)
 	}
-	defer f.Close()
 
 	if err := cmd.Root().GenFishCompletion(f, true); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("could not generate fish completion: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("could not close completion file: %w", err)
 	}
 
 	fmt.Printf("Fish completion installed to: %s\n", scriptPath)

@@ -183,11 +183,11 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 	result, err := s.runAgent(ctx, req, handler)
 	s.runStore.Complete(req.RequestID, result, err)
 	if err != nil {
-		fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]string{"error": err.Error()}))
+		_, _ = fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]string{"error": err.Error()}))
 		flusher.Flush()
 		return
 	}
-	fmt.Fprintf(w, "event: done\ndata: %s\n\n", mustJSON(result))
+	_, _ = fmt.Fprintf(w, "event: done\ndata: %s\n\n", mustJSON(result))
 	flusher.Flush()
 }
 

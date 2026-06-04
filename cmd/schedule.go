@@ -35,7 +35,7 @@ var scheduleListCmd = &cobra.Command{
 			return nil
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tAGENT\tCRON\tENABLED\tSYNC\tPROMPT")
+		_, _ = fmt.Fprintln(w, "ID\tAGENT\tCRON\tENABLED\tSYNC\tPROMPT")
 		for _, s := range list {
 			prompt := s.Prompt
 			if len([]rune(prompt)) > 50 {
