@@ -1242,3 +1242,36 @@ Strengthened Web UI smoke coverage by adding a deterministic provider-unavailabl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 97: Add GUI streaming provider smoke
+
+**Date**: 2026-06-04
+**Task**: Add GUI streaming provider smoke
+**Branch**: `main`
+
+### Summary
+
+Added a Web UI streaming smoke mode with a local fake OpenAI-compatible provider. The smoke runs the daemon with provider: openai, sends a GUI chat prompt through the real /message route, verifies final response text, run summary usage, session persistence, and run detail content. Validation passed with scripts/smoke_webui_streaming.sh, scripts/smoke_webui_core.sh, go test ./..., go vet ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `aadca59` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
