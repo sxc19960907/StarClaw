@@ -174,18 +174,18 @@ func (t *SkillTool) listSkills(_ context.Context) (agent.ToolResult, error) {
 	})
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Available skills (%d total):\n\n", len(sorted)))
+	_, _ = fmt.Fprintf(&sb, "Available skills (%d total):\n\n", len(sorted))
 	for _, s := range sorted {
 		loaded := t.loaded[s.Name] != nil
 		status := "available"
 		if loaded {
 			status = "loaded"
 		}
-		sb.WriteString(fmt.Sprintf("  %s [%s]\n", s.Name, status))
+		_, _ = fmt.Fprintf(&sb, "  %s [%s]\n", s.Name, status)
 		if s.Description != "" {
-			sb.WriteString(fmt.Sprintf("    %s\n", s.Description))
+			_, _ = fmt.Fprintf(&sb, "    %s\n", s.Description)
 		}
-		sb.WriteString(fmt.Sprintf("    source: %s\n", s.Source))
+		_, _ = fmt.Fprintf(&sb, "    source: %s\n", s.Source)
 	}
 
 	sb.WriteString("\nUse 'load' to activate a skill, 'unload' to deactivate.")

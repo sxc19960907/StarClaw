@@ -18,7 +18,9 @@ func TestHandleVersionDevelopmentBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /version: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}
@@ -74,7 +76,9 @@ func TestHandleUpdateCheckDevelopmentBuildSkipsNetwork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /update/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}

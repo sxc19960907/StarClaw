@@ -77,7 +77,9 @@ func TestWebUIRoutes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GET %s: %v", tt.path, err)
 			}
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			if resp.StatusCode != tt.wantStatus {
 				t.Fatalf("expected status %d, got %d", tt.wantStatus, resp.StatusCode)

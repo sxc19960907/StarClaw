@@ -102,7 +102,7 @@ func (t *FilePreviewTool) Run(ctx context.Context, argsJSON string) (agent.ToolR
 	}
 
 	if moreLines {
-		sb.WriteString(fmt.Sprintf("... (file truncated, showing first %d lines)\n", lines))
+		_, _ = fmt.Fprintf(&sb, "... (file truncated, showing first %d lines)\n", lines)
 	}
 
 	return agent.ToolResult{Content: sb.String()}, nil

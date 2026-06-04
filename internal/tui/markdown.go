@@ -85,7 +85,7 @@ func renderSourcesCompact(entries []sourceEntry, width int) string {
 			title = string(runes[:maxTitleRunes]) + "…"
 		}
 		link := "\033]8;;" + e.url + "\033\\" + title + "\033]8;;\033\\"
-		sb.WriteString(fmt.Sprintf(dim+"  [%d]"+reset+" %s\n", e.idx, link))
+		_, _ = fmt.Fprintf(&sb, dim+"  [%d]"+reset+" %s\n", e.idx, link)
 	}
 	return sb.String()
 }
