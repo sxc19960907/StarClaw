@@ -115,9 +115,9 @@ func printDoctorReport(out interface {
 func printLocalDoctorChecks(out interface {
 	Write([]byte) (int, error)
 }, checks []doctorLocalCheck) {
-	fmt.Fprintln(out, "Local checks:")
+	_, _ = fmt.Fprintln(out, "Local checks:")
 	for _, check := range checks {
-		fmt.Fprintf(out, "  [%s] %s: %s\n", check.Status, check.Name, check.Message)
+		_, _ = fmt.Fprintf(out, "  [%s] %s: %s\n", check.Status, check.Name, check.Message)
 	}
 }
 
@@ -150,40 +150,40 @@ func printDaemonDoctorStatus(out interface {
 	Write([]byte) (int, error)
 }, daemon doctorDaemonReport) {
 	if !daemon.Running {
-		fmt.Fprintln(out, "Daemon:        not running")
-		fmt.Fprintln(out, "Next steps:    run `starclaw app` to start the GUI, or `starclaw daemon start` for daemon-only mode")
+		_, _ = fmt.Fprintln(out, "Daemon:        not running")
+		_, _ = fmt.Fprintln(out, "Next steps:    run `starclaw app` to start the GUI, or `starclaw daemon start` for daemon-only mode")
 		return
 	}
 
-	fmt.Fprintln(out, "Daemon:        running")
+	_, _ = fmt.Fprintln(out, "Daemon:        running")
 	if daemon.Status != nil {
 		status := *daemon.Status
 		if status.Version != "" {
-			fmt.Fprintf(out, "Daemon version:%s\n", doctorPaddedValue(status.Version))
+			_, _ = fmt.Fprintf(out, "Daemon version:%s\n", doctorPaddedValue(status.Version))
 		}
-		fmt.Fprintf(out, "Active agents: %d\n", status.ActiveAgents)
-		fmt.Fprintf(out, "Uptime:        %s\n", (time.Duration(status.Uptime) * time.Second).String())
+		_, _ = fmt.Fprintf(out, "Active agents: %d\n", status.ActiveAgents)
+		_, _ = fmt.Fprintf(out, "Uptime:        %s\n", (time.Duration(status.Uptime) * time.Second).String())
 	}
 
 	for _, err := range daemon.Errors {
-		fmt.Fprintf(out, "Warning:       %s\n", err)
+		_, _ = fmt.Fprintf(out, "Warning:       %s\n", err)
 	}
 	if daemon.Diagnostics == nil {
 		return
 	}
 	diagnostics := *daemon.Diagnostics
-	fmt.Fprintf(out, "Runtime:       %s\n", diagnostics.Status)
+	_, _ = fmt.Fprintf(out, "Runtime:       %s\n", diagnostics.Status)
 	if diagnostics.Summary != "" {
-		fmt.Fprintf(out, "Summary:       %s\n", diagnostics.Summary)
+		_, _ = fmt.Fprintf(out, "Summary:       %s\n", diagnostics.Summary)
 	}
 	if len(diagnostics.Checks) == 0 {
 		return
 	}
-	fmt.Fprintln(out, "Daemon checks:")
+	_, _ = fmt.Fprintln(out, "Daemon checks:")
 	for _, check := range diagnostics.Checks {
-		fmt.Fprintf(out, "  [%s] %s: %s\n", check.Status, check.Label, check.Detail)
+		_, _ = fmt.Fprintf(out, "  [%s] %s: %s\n", check.Status, check.Label, check.Detail)
 		if check.Action != "" {
-			fmt.Fprintf(out, "       Action: %s\n", check.Action)
+			_, _ = fmt.Fprintf(out, "       Action: %s\n", check.Action)
 		}
 	}
 }
@@ -198,7 +198,9 @@ func doctorFetchJSON[T any](ctx context.Context, url string) (T, error) {
 	if err != nil {
 		return value, fmt.Errorf("request %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return value, fmt.Errorf("request %s returned %s", url, resp.Status)
 	}

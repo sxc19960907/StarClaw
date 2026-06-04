@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -19,9 +18,7 @@ func TestDoctorCmdPrintsUnavailableDaemonReadiness(t *testing.T) {
 	}
 
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", home)
-	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+	t.Setenv("HOME", home)
 
 	root := &cobra.Command{Use: "starclaw"}
 	root.AddCommand(doctorCmd)
@@ -55,9 +52,7 @@ func TestDoctorCmdPrintsUnavailableDaemonJSON(t *testing.T) {
 	}
 
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", home)
-	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+	t.Setenv("HOME", home)
 
 	root := &cobra.Command{Use: "starclaw"}
 	root.AddCommand(doctorCmd)

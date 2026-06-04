@@ -111,7 +111,9 @@ func (c *OllamaClient) Chat(ctx context.Context, systemPrompt string, messages [
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -243,11 +245,13 @@ func (c *OllamaClient) StreamChat(ctx context.Context, systemPrompt string, mess
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	return ParseOpenAIStream(resp.Body, onDelta)

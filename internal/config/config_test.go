@@ -85,9 +85,7 @@ func TestSave(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Override home directory
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	cfg := &Config{
 		Endpoint:  "https://test.example.com",
@@ -273,9 +271,7 @@ update:
 func TestConfig_UpdateDefaults(t *testing.T) {
 	// Create a temp directory for config
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	// Load config (should create defaults)
 	cfg, err := Load()

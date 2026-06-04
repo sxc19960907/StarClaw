@@ -61,7 +61,7 @@ func TestCloudClient_Delegate_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "data: {\"type\":\"error\",\"data\":\"out of credits\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"error\",\"data\":\"out of credits\"}\n\n")
 	}))
 	defer server.Close()
 
@@ -79,7 +79,7 @@ func TestCloudClient_Delegate_Error(t *testing.T) {
 func TestCloudClient_Delegate_HTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "internal server error")
+		_, _ = fmt.Fprint(w, "internal server error")
 	}))
 	defer server.Close()
 
@@ -113,8 +113,8 @@ func TestCloudClient_Delegate_DoneWithData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"partial\"}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"done\",\"data\":\"final result\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"partial\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"done\",\"data\":\"final result\"}\n\n")
 	}))
 	defer server.Close()
 
@@ -134,8 +134,8 @@ func TestCloudClient_Delegate_StreamDone(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"result text\"}\n\n")
-		fmt.Fprint(w, "data: [DONE]\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"result text\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	}))
 	defer server.Close()
 

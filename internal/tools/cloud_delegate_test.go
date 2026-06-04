@@ -51,8 +51,8 @@ func TestCloudDelegateTool_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"done result\"}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"done\",\"data\":\"\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"done result\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"done\",\"data\":\"\"}\n\n")
 	}))
 	defer server.Close()
 
@@ -74,7 +74,7 @@ func TestCloudDelegateTool_Success(t *testing.T) {
 func TestCloudDelegateTool_ServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprint(w, "service unavailable")
+		_, _ = fmt.Fprint(w, "service unavailable")
 	}))
 	defer server.Close()
 

@@ -198,9 +198,11 @@ func BoundedAppend(memoryDir, content string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = f.WriteString(writeContent)
-	return err
+	if _, err := f.WriteString(writeContent); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func writeDetailFile(memoryDir, content string) (string, error) {
@@ -331,12 +333,12 @@ func ConsolidateMemory(ctx context.Context, c Completer, memoryDir string) error
 		return fmt.Errorf("consolidate: write temp: %w", err)
 	}
 	if err := os.Rename(tmpPath, memoryPath); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("consolidate: rename: %w", err)
 	}
 
 	for _, f := range consumedFiles {
-		os.Remove(f)
+		_ = os.Remove(f)
 	}
 
 	if err := os.WriteFile(markerPath, []byte(time.Now().Format(time.RFC3339)), 0644); err != nil {

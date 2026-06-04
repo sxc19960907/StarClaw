@@ -91,12 +91,10 @@ func TestRootCmd_NoArgs_Unconfigured(t *testing.T) {
 	configPath := filepath.Join(tempDir, ".starclaw.yaml")
 
 	// Save and restore original config path
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tempDir)
 
 	// Ensure no config file exists
-	os.Remove(configPath)
+	_ = os.Remove(configPath)
 
 	// For this test, we just verify the command structure works
 	// The actual setup flow requires user interaction

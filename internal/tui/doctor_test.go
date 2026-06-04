@@ -1,9 +1,6 @@
 package tui
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func TestNewDoctor(t *testing.T) {
 	d := NewDoctor()
@@ -48,9 +45,7 @@ func TestDoctor_RunChecks_HasExpectedChecks(t *testing.T) {
 func TestDoctor_RunChecks_WithStarclawDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	d := NewDoctor()
 	results := d.RunChecks()
@@ -93,9 +88,7 @@ func TestDoctor_CompareGoVersion(t *testing.T) {
 
 func TestDoctor_ConfigCheckReflectsNeedsSetup(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	d := NewDoctor()
 	results := d.RunChecks()

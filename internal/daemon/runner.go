@@ -33,10 +33,10 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 		return RunAgentResponse{}, fmt.Errorf("deps is required")
 	}
 	if deps.LLMClient == nil {
-		return RunAgentResponse{}, fmt.Errorf("LLMClient not configured in deps")
+		return RunAgentResponse{}, fmt.Errorf("LLM client not configured in deps")
 	}
 	if deps.Registry == nil {
-		return RunAgentResponse{}, fmt.Errorf("Registry not configured in deps")
+		return RunAgentResponse{}, fmt.Errorf("registry not configured in deps")
 	}
 
 	// --- Agent resolution ---

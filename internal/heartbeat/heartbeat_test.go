@@ -32,7 +32,7 @@ func writeHeartbeatConfig(t *testing.T, agentsDir, name, interval, activeHours s
 	buf.WriteString("heartbeat:\n")
 	_, _ = fmt.Fprintf(&buf, "  every: %s\n", interval)
 	if activeHours != "" {
-		buf.WriteString(fmt.Sprintf("  active_hours: %s\n", activeHours))
+		_, _ = fmt.Fprintf(&buf, "  active_hours: %s\n", activeHours)
 	}
 	path := filepath.Join(agentsDir, name, "config.yaml")
 	if err := os.WriteFile(path, []byte(buf.String()), 0o644); err != nil {

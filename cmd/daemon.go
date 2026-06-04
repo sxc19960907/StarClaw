@@ -50,7 +50,9 @@ var isDaemonHealthy = func(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -250,7 +252,9 @@ var daemonStopCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("daemon: not reachable: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("daemon: unexpected response: %s", resp.Status)
@@ -274,7 +278,9 @@ var daemonStatusCmd = &cobra.Command{
 			fmt.Println("Daemon is not running.")
 			return nil
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		var status struct {
 			Uptime       int    `json:"uptime"`

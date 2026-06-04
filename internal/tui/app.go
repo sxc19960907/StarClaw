@@ -315,10 +315,11 @@ func (m *Model) View() string {
 	}
 
 	// Status line
-	if m.state == StateThinking {
+	switch m.state {
+	case StateThinking:
 		b.WriteString(m.systemStyle.Render("🤔 Thinking..."))
 		b.WriteString("\n")
-	} else if m.state == StateStreaming {
+	case StateStreaming:
 		b.WriteString(m.systemStyle.Render("✨ Receiving..."))
 		b.WriteString("\n")
 	}

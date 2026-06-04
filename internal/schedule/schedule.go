@@ -91,7 +91,9 @@ func (m *Manager) load() ([]Schedule, error) {
 		}
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	if err := filelock.Shared(f); err != nil {
 		return nil, err
 	}

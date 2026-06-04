@@ -84,7 +84,7 @@ func buildSystem(opts Options) string {
 		sb.WriteString("You can activate a skill by calling `use_skill` with the skill name.\n")
 		sb.WriteString("Only activate a skill when relevant to the user's request.\n\n")
 		for _, name := range opts.SkillNames {
-			sb.WriteString(fmt.Sprintf("- %s\n", name))
+			_, _ = fmt.Fprintf(&sb, "- %s\n", name)
 		}
 	}
 
@@ -113,7 +113,7 @@ func buildVolatile(opts Options) string {
 		sb.WriteString("\nModel: " + opts.ModelName)
 	}
 	if opts.ContextWindow > 0 {
-		sb.WriteString(fmt.Sprintf("\nContext window: %d tokens", opts.ContextWindow))
+		_, _ = fmt.Fprintf(&sb, "\nContext window: %d tokens", opts.ContextWindow)
 	}
 
 	// Output format

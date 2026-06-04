@@ -8,9 +8,7 @@ import (
 
 func TestSettings_SaveAndLoad(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	s := &Settings{
 		Spinner:          "moon",
@@ -49,9 +47,7 @@ func TestSettings_SaveAndLoad(t *testing.T) {
 
 func TestSettings_DefaultWhenNotExist(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	s, err := LoadSettings()
 	if err != nil {
@@ -70,9 +66,7 @@ func TestSettings_DefaultWhenNotExist(t *testing.T) {
 
 func TestSettings_ZeroValuesGetDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	s := &Settings{
 		Spinner:          "",
@@ -97,9 +91,7 @@ func TestSettings_ZeroValuesGetDefaults(t *testing.T) {
 
 func TestSettings_LoadSettings_CorruptedFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	// Write invalid JSON
 	settingsPath := filepath.Join(tmpDir, ".starclaw", "settings.json")
@@ -122,9 +114,7 @@ func TestSettings_LoadSettings_CorruptedFile(t *testing.T) {
 
 func TestSettings_Roundtrip(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	original := &Settings{
 		Spinner:          "circle",

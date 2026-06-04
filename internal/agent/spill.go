@@ -46,9 +46,9 @@ func cleanupSpills(configDir, sessionID string) {
 	pattern := filepath.Join(dir, fmt.Sprintf("tool_result_%s_*.txt", sanitizeSpillID(sessionID)))
 	matches, _ := filepath.Glob(pattern)
 	for _, m := range matches {
-		os.Remove(m)
+		_ = os.Remove(m)
 	}
-	os.Remove(dir) // best-effort: remove tmp dir if empty
+	_ = os.Remove(dir) // best-effort: remove tmp dir if empty
 }
 
 // sanitizeSpillID strips path separators and traversal sequences from an ID

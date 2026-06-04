@@ -124,8 +124,8 @@ func TestSSEClientHeartbeats(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 
 		// Heartbeat comment
-		fmt.Fprintf(w, ": keepalive\n\n")
-		fmt.Fprintf(w, "event: data\ndata: payload\n\n")
+		_, _ = fmt.Fprintf(w, ": keepalive\n\n")
+		_, _ = fmt.Fprintf(w, "event: data\ndata: payload\n\n")
 	}))
 	defer srv.Close()
 
@@ -155,7 +155,7 @@ func TestSSEClientEventWithID(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "id: abc123\nevent: status\ndata: running\n\n")
+		_, _ = fmt.Fprintf(w, "id: abc123\nevent: status\ndata: running\n\n")
 	}))
 	defer srv.Close()
 
@@ -184,7 +184,7 @@ func TestSSEClientFlushesFinalEventWithoutBlankLine(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "event: done\ndata: ok")
+		_, _ = fmt.Fprintf(w, "event: done\ndata: ok")
 	}))
 	defer srv.Close()
 
@@ -217,7 +217,7 @@ func TestSSEClientRelativeURL(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "event: test\ndata: ok\n\n")
+		_, _ = fmt.Fprintf(w, "event: test\ndata: ok\n\n")
 	}))
 	defer srv.Close()
 

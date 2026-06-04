@@ -90,7 +90,9 @@ func (c *CloudClient) DelegateStream(ctx context.Context, req CloudDelegateReque
 	if err != nil {
 		return nil, fmt.Errorf("cloud delegate request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)

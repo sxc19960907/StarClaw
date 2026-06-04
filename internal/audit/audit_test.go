@@ -183,7 +183,9 @@ func TestAuditLogger_Log_Truncation(t *testing.T) {
 	tmpDir := t.TempDir()
 	logger, err := NewAuditLogger(tmpDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		require.NoError(t, logger.Close())
+	}()
 
 	// Create a long input that should be truncated
 	longInput := strings.Repeat("a", 1000)
@@ -217,7 +219,9 @@ func TestAuditLogger_Log_Redaction(t *testing.T) {
 	tmpDir := t.TempDir()
 	logger, err := NewAuditLogger(tmpDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		require.NoError(t, logger.Close())
+	}()
 
 	entry := AuditEntry{
 		Timestamp:     time.Now(),
@@ -244,7 +248,9 @@ func TestAuditLogger_ThreadSafe(t *testing.T) {
 	tmpDir := t.TempDir()
 	logger, err := NewAuditLogger(tmpDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		require.NoError(t, logger.Close())
+	}()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {

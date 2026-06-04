@@ -234,5 +234,5 @@ func TestPublishToWebTool_Run_WithoutPurpose(t *testing.T) {
 
 	// Cleanup
 	starclawDir := config.StarclawDir()
-	os.RemoveAll(filepath.Join(starclawDir, "web"))
+	require.NoError(t, os.RemoveAll(filepath.Join(starclawDir, "web")))
 }
