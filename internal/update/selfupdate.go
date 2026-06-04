@@ -167,7 +167,9 @@ func fetchLatestRelease() (*Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
@@ -377,7 +379,9 @@ func DownloadRelease(ctx context.Context, asset *Asset, targetPath string) error
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
@@ -391,11 +395,15 @@ func DownloadRelease(ctx context.Context, asset *Asset, targetPath string) error
 	}
 
 	_, err = io.Copy(f, resp.Body)
-	f.Close()
+	closeErr := f.Close()
 
 	if err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return err
+	}
+	if closeErr != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close download: %w", closeErr)
 	}
 
 	// Atomic rename
@@ -407,7 +415,9 @@ func installReleaseAsset(ctx context.Context, asset, checksums *Asset, exePath s
 	if err != nil {
 		return fmt.Errorf("create update temp dir: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	archivePath := filepath.Join(tempDir, asset.Name)
 	if err := DownloadRelease(ctx, asset, archivePath); err != nil {
@@ -515,13 +525,17 @@ func extractTarGz(archivePath, destDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("open archive: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return "", fmt.Errorf("open gzip: %w", err)
 	}
-	defer gz.Close()
+	defer func() {
+		_ = gz.Close()
+	}()
 
 	tr := tar.NewReader(gz)
 	for {
@@ -550,7 +564,9 @@ func extractZip(archivePath, destDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("open zip: %w", err)
 	}
-	defer zr.Close()
+	defer func() {
+		_ = zr.Close()
+	}()
 
 	for _, file := range zr.File {
 		if file.FileInfo().IsDir() || filepath.Base(file.Name) != "starclaw.exe" {
@@ -562,9 +578,12 @@ func extractZip(archivePath, destDir string) (string, error) {
 		}
 		target := filepath.Join(destDir, "starclaw-new.exe")
 		err = writeExecutable(target, rc, 0755)
-		rc.Close()
+		closeErr := rc.Close()
 		if err != nil {
 			return "", err
+		}
+		if closeErr != nil {
+			return "", fmt.Errorf("close zip entry: %w", closeErr)
 		}
 		return target, nil
 	}
@@ -578,7 +597,7 @@ func writeExecutable(path string, r io.Reader, mode os.FileMode) error {
 		return fmt.Errorf("create executable: %w", err)
 	}
 	if _, err := io.Copy(f, r); err != nil {
-		f.Close()
+		_ = f.Close()
 		return fmt.Errorf("write executable: %w", err)
 	}
 	if err := f.Close(); err != nil {
@@ -629,7 +648,7 @@ func copyFile(src, dst string, mode os.FileMode) error {
 		return fmt.Errorf("create destination: %w", err)
 	}
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
+		_ = out.Close()
 		return fmt.Errorf("copy file: %w", err)
 	}
 	if err := out.Close(); err != nil {

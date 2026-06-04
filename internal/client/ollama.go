@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"sync"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -125,11 +125,11 @@ func (c *OllamaClient) Chat(ctx context.Context, systemPrompt string, messages [
 		if err := json.Unmarshal(body, &errorResult); err == nil {
 			if errObj, ok := errorResult["error"].(map[string]any); ok {
 				if msg, ok := errObj["message"].(string); ok {
-					return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, msg)
+					return nil, fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, msg)
 				}
 			}
 		}
-		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	// Parse successful response

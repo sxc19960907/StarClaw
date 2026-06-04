@@ -190,8 +190,7 @@ func TestExpandPath(t *testing.T) {
 	}
 
 	// Env var expansion
-	os.Setenv("STAR_TEST_DIR", "/tmp/startest")
-	defer os.Unsetenv("STAR_TEST_DIR")
+	t.Setenv("STAR_TEST_DIR", "/tmp/startest")
 	got = ExpandPath("$STAR_TEST_DIR/sub")
 	if got != "/tmp/startest/sub" {
 		t.Errorf("ExpandPath($STAR_TEST_DIR/sub) = %q, want /tmp/startest/sub", got)

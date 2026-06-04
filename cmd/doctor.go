@@ -97,17 +97,17 @@ func buildDoctorReport() doctorReport {
 func printDoctorReport(out interface {
 	Write([]byte) (int, error)
 }, report doctorReport) {
-	fmt.Fprintln(out, "StarClaw doctor")
-	fmt.Fprintf(out, "Version:       %s\n", report.Version)
-	fmt.Fprintf(out, "Launch:        %s\n", report.LaunchCommand)
-	fmt.Fprintf(out, "Web UI:        %s\n", report.WebURL)
-	fmt.Fprintf(out, "Diagnostics:   %s\n", report.DiagnosticsURL)
-	fmt.Fprintf(out, "Data:          %s\n", report.StarclawDir)
-	fmt.Fprintf(out, "Config:        %s\n", report.ConfigPath)
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "StarClaw doctor")
+	_, _ = fmt.Fprintf(out, "Version:       %s\n", report.Version)
+	_, _ = fmt.Fprintf(out, "Launch:        %s\n", report.LaunchCommand)
+	_, _ = fmt.Fprintf(out, "Web UI:        %s\n", report.WebURL)
+	_, _ = fmt.Fprintf(out, "Diagnostics:   %s\n", report.DiagnosticsURL)
+	_, _ = fmt.Fprintf(out, "Data:          %s\n", report.StarclawDir)
+	_, _ = fmt.Fprintf(out, "Config:        %s\n", report.ConfigPath)
+	_, _ = fmt.Fprintln(out)
 
 	printLocalDoctorChecks(out, report.LocalChecks)
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 
 	printDaemonDoctorStatus(out, report.Daemon)
 }

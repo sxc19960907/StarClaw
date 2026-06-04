@@ -43,7 +43,9 @@ func SaveAttachment(starclawDir, sessionID string, r *http.Request) (string, err
 	if err != nil {
 		return "", fmt.Errorf("get form file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	filename := header.Filename
 	if filename == "" {
@@ -67,10 +69,14 @@ func SaveAttachment(starclawDir, sessionID string, r *http.Request) (string, err
 	if err != nil {
 		return "", fmt.Errorf("create destination file: %w", err)
 	}
-	defer out.Close()
 
 	if _, err := io.Copy(out, file); err != nil {
+		_ = out.Close()
 		return "", fmt.Errorf("copy file content: %w", err)
+	}
+
+	if err := out.Close(); err != nil {
+		return "", fmt.Errorf("close destination file: %w", err)
 	}
 
 	return dest, nil

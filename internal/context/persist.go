@@ -124,9 +124,11 @@ func PersistLearnings(ctx context.Context, c Completer, messages []client.Messag
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = f.WriteString(entry)
-	return err
+	if _, err := f.WriteString(entry); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 // ──────────────────────────────────────────────
@@ -164,7 +166,9 @@ func BoundedAppend(memoryDir, content string) error {
 	if err != nil {
 		return fmt.Errorf("open lock: %w", err)
 	}
-	defer lockFile.Close()
+	defer func() {
+		_ = lockFile.Close()
+	}()
 
 	if err := filelock.Exclusive(lockFile); err != nil {
 		return err
@@ -259,7 +263,9 @@ func ConsolidateMemory(ctx context.Context, c Completer, memoryDir string) error
 	if err != nil {
 		return fmt.Errorf("consolidate: open lock: %w", err)
 	}
-	defer lockFile.Close()
+	defer func() {
+		_ = lockFile.Close()
+	}()
 	if err := filelock.Exclusive(lockFile); err != nil {
 		return fmt.Errorf("consolidate: %w", err)
 	}

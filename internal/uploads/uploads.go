@@ -40,12 +40,17 @@ func (m *UploadManager) Save(reader io.Reader, filename string) (string, error) 
 	if err != nil {
 		return "", fmt.Errorf("create file: %w", err)
 	}
-	defer f.Close()
 
 	if _, err := io.Copy(f, reader); err != nil {
 		// Clean up partial write on error.
-		os.Remove(destPath)
+		_ = f.Close()
+		_ = os.Remove(destPath)
 		return "", fmt.Errorf("write file: %w", err)
+	}
+
+	if err := f.Close(); err != nil {
+		_ = os.Remove(destPath)
+		return "", fmt.Errorf("close file: %w", err)
 	}
 
 	return id, nil

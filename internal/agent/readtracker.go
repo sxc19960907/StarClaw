@@ -54,7 +54,7 @@ func CheckReadBeforeWrite(ctx context.Context, path string) error {
 		return nil
 	}
 	if !rt.HasRead(path) {
-		return fmt.Errorf("You must read this file with file_read before editing it. Path: %s", path)
+		return fmt.Errorf("you must read this file with file_read before editing it. Path: %s", path)
 	}
 	return nil
 }

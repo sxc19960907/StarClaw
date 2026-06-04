@@ -23,10 +23,10 @@ func TestCloudClient_Delegate_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "data: {\"type\":\"thinking\",\"data\":\"analyzing...\"}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"Hello \"}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"world\"}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"done\",\"data\":\"\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"thinking\",\"data\":\"analyzing...\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"Hello \"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"text\",\"data\":\"world\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"done\",\"data\":\"\"}\n\n")
 	}))
 	defer server.Close()
 

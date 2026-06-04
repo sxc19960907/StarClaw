@@ -54,8 +54,8 @@ func TestSSEClientConnectAndReceive(t *testing.T) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
 
-		fmt.Fprintf(w, "event: message\ndata: hello world\n\n")
-		fmt.Fprintf(w, "event: done\ndata: {\"status\":\"complete\"}\n\n")
+		_, _ = fmt.Fprintf(w, "event: message\ndata: hello world\n\n")
+		_, _ = fmt.Fprintf(w, "event: done\ndata: {\"status\":\"complete\"}\n\n")
 	}))
 	defer srv.Close()
 
@@ -91,7 +91,7 @@ func TestSSEClientMultipleDataLines(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "event: update\ndata: line1\ndata: line2\n\n")
+		_, _ = fmt.Fprintf(w, "event: update\ndata: line1\ndata: line2\n\n")
 	}))
 	defer srv.Close()
 

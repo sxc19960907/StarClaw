@@ -734,7 +734,9 @@ api_key: anthropic-secret
 	if err != nil {
 		t.Fatalf("GET /config: %v", err)
 	}
-	defer raw.Body.Close()
+	defer func() {
+		_ = raw.Body.Close()
+	}()
 	var rawBody map[string]interface{}
 	if err := json.NewDecoder(raw.Body).Decode(&rawBody); err != nil {
 		t.Fatalf("decode raw: %v", err)

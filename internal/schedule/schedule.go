@@ -116,29 +116,32 @@ func (m *Manager) save(schedules []Schedule) error {
 	}
 	tmpPath := tmp.Name()
 	if err := filelock.Exclusive(tmp); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	data, err := json.MarshalIndent(schedules, "", "  ")
 	if err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
-	tmp.Close()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close temp: %w", err)
+	}
 	if err := os.Rename(tmpPath, m.indexPath); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("atomic rename: %w", err)
 	}
 	return nil
@@ -154,7 +157,9 @@ func (m *Manager) lockedModify(fn func([]Schedule) ([]Schedule, error)) error {
 	if err != nil {
 		return fmt.Errorf("open lock file: %w", err)
 	}
-	defer lockFile.Close()
+	defer func() {
+		_ = lockFile.Close()
+	}()
 	if err := filelock.Exclusive(lockFile); err != nil {
 		return err
 	}

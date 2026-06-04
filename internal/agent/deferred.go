@@ -90,7 +90,7 @@ func (t *toolSearchTool) Run(_ context.Context, argsJSON string) (ToolResult, er
 		schemas := t.registry.FullSchemas(matched)
 		for i, s := range schemas {
 			schemaJSON, _ := json.MarshalIndent(s, "", "  ")
-			sb.WriteString(fmt.Sprintf("\n\n## %s\n%s", matched[i], string(schemaJSON)))
+			_, _ = fmt.Fprintf(&sb, "\n\n## %s\n%s", matched[i], string(schemaJSON))
 		}
 	}
 

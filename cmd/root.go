@@ -206,7 +206,9 @@ func runChat(cfg *config.Config, query string) error {
 		} else {
 			loop.SetAuditLogger(auditLogger)
 			loop.SetSessionID(sess.ID)
-			defer auditLogger.Close()
+			defer func() {
+				_ = auditLogger.Close()
+			}()
 		}
 	}
 
@@ -350,7 +352,7 @@ func buildSystemPrompt(registry *agent.ToolRegistry) string {
 	tools := registry.List()
 	for _, tool := range tools {
 		info := tool.Info()
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", info.Name, info.Description))
+		_, _ = fmt.Fprintf(&sb, "- %s: %s\n", info.Name, info.Description)
 	}
 
 	sb.WriteString("\nWhen facing complex multi-step tasks, use the `think` tool first to plan your approach.")
@@ -638,7 +640,9 @@ var interactiveCmd = &cobra.Command{
 			} else {
 				loop.SetAuditLogger(auditLogger)
 				loop.SetSessionID(sess.ID)
-				defer auditLogger.Close()
+				defer func() {
+					_ = auditLogger.Close()
+				}()
 			}
 		}
 

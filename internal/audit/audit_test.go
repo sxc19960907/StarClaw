@@ -101,7 +101,9 @@ func TestNewAuditLogger(t *testing.T) {
 
 	logger, err := NewAuditLogger(tmpDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		require.NoError(t, logger.Close())
+	}()
 
 	// Check log file exists
 	logPath := filepath.Join(tmpDir, "audit.log")
@@ -131,7 +133,9 @@ func TestNewAuditLogger_CreatesDirectory(t *testing.T) {
 
 	logger, err := NewAuditLogger(logDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		require.NoError(t, logger.Close())
+	}()
 
 	// Check directory exists
 	_, err = os.Stat(logDir)
@@ -142,7 +146,9 @@ func TestAuditLogger_Log(t *testing.T) {
 	tmpDir := t.TempDir()
 	logger, err := NewAuditLogger(tmpDir)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() {
+		require.NoError(t, logger.Close())
+	}()
 
 	entry := AuditEntry{
 		Timestamp:     time.Now(),

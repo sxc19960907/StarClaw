@@ -135,7 +135,9 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() {
+		_ = in.Close()
+	}()
 
 	// Stat the source to get permissions
 	srcInfo, err := in.Stat()
@@ -149,7 +151,7 @@ func copyFile(src, dst string) error {
 	}
 
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
+		_ = out.Close()
 		return err
 	}
 

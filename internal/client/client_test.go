@@ -128,7 +128,7 @@ func TestAnthropicClient_StreamChat(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, `event: content_block_start
+		_, _ = fmt.Fprint(w, `event: content_block_start
 data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
 
 event: content_block_delta
@@ -215,7 +215,7 @@ data: {"type":"message_stop"}
 func TestAnthropicClient_StreamChat_ErrorResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"error":{"message":"bad stream request"}}`)
+		_, _ = fmt.Fprint(w, `{"error":{"message":"bad stream request"}}`)
 	}))
 	defer server.Close()
 

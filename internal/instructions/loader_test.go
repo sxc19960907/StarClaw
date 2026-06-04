@@ -173,7 +173,7 @@ func TestLoadInstructions_RulesAlphabetical(t *testing.T) {
 	ai := strings.Index(result, "alice")
 	bi := strings.Index(result, "bob")
 	ci := strings.Index(result, "charlie")
-	if !(ai < bi && bi < ci) {
+	if ai >= bi || bi >= ci {
 		t.Errorf("rules should be alphabetical")
 	}
 }

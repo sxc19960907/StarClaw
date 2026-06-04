@@ -47,8 +47,7 @@ var scheduleListCmd = &cobra.Command{
 			}
 			fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\t%s\n", s.ID, agent, s.Cron, s.Enabled, s.SyncStatus, prompt)
 		}
-		w.Flush()
-		return nil
+		return w.Flush()
 	},
 }
 

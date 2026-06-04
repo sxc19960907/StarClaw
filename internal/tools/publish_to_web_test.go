@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPublishToWebTool_Info(t *testing.T) {
@@ -137,7 +138,7 @@ func TestPublishToWebTool_Run_HappyPath(t *testing.T) {
 	}
 
 	// Cleanup: remove published files
-	os.RemoveAll(webDir)
+	require.NoError(t, os.RemoveAll(webDir))
 }
 
 func TestPublishToWebTool_Run_DirectoryPath(t *testing.T) {
@@ -208,7 +209,7 @@ func TestPublishToWebTool_Run_WithPurpose(t *testing.T) {
 
 	// Cleanup
 	starclawDir := config.StarclawDir()
-	os.RemoveAll(filepath.Join(starclawDir, "web"))
+	require.NoError(t, os.RemoveAll(filepath.Join(starclawDir, "web")))
 }
 
 func TestPublishToWebTool_Run_WithoutPurpose(t *testing.T) {

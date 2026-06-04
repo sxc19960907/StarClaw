@@ -49,9 +49,7 @@ func TestLoad(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Override home directory
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	// First load should create default config
 	cfg, err := Load()
@@ -134,9 +132,9 @@ func TestSave(t *testing.T) {
 
 func TestNeedsSetup(t *testing.T) {
 	tests := []struct {
-		name    string
-		cfg     *Config
-		want    bool
+		name string
+		cfg  *Config
+		want bool
 	}{
 		{
 			name: "Empty API key",
@@ -296,4 +294,3 @@ func TestConfig_UpdateDefaults(t *testing.T) {
 		t.Error("Update.AutoInstall should default to false")
 	}
 }
-

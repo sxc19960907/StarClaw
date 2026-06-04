@@ -30,7 +30,7 @@ func writeHeartbeatConfig(t *testing.T, agentsDir, name, interval, activeHours s
 	t.Helper()
 	var buf strings.Builder
 	buf.WriteString("heartbeat:\n")
-	buf.WriteString(fmt.Sprintf("  every: %s\n", interval))
+	_, _ = fmt.Fprintf(&buf, "  every: %s\n", interval)
 	if activeHours != "" {
 		buf.WriteString(fmt.Sprintf("  active_hours: %s\n", activeHours))
 	}
