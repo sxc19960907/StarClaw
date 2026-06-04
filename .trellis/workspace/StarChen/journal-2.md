@@ -1100,3 +1100,37 @@ Ran release candidate validation: full tests, vet, race tests, builds, CLI smoke
 ### Next Steps
 
 - None - task complete
+
+
+## Session 93: Push and confirm CI
+
+**Date**: 2026-06-04
+**Task**: Push and confirm CI
+**Branch**: `main`
+
+### Summary
+
+Pushed main to origin and confirmed GitHub Actions CI run 26927745119 passed for c3d9331. Noted the non-blocking Node.js 20 actions deprecation warning. Follow-up task/archive records were added locally and will be pushed for final CI confirmation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c3d9331` | (see git log) |
+| `b119fed` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
