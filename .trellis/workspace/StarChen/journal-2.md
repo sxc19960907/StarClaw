@@ -1169,3 +1169,43 @@ Updated GitHub Actions checkout/setup-go runtime pins, preserved golangci-lint a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 95: Migrate golangci-lint v2
+
+**Date**: 2026-06-04
+**Task**: Migrate golangci-lint v2
+**Branch**: `main`
+
+### Summary
+
+Migrated CI to golangci-lint-action v9.2.1 with golangci-lint v2.12.2, fixed v2 errcheck/staticcheck findings across daemon, tooling, server tests, and Web UI smoke paths, confirmed GitHub Actions runs 26943210417 and 26943407341 passed without the Node 20 warning. Local go test ./... and go vet ./... passed; local golangci-lint v2 remained blocked by Go proxy timeouts, so GitHub Actions is the authoritative lint verification.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ef70f26` | (see git log) |
+| `2caf81d` | (see git log) |
+| `f65050e` | (see git log) |
+| `4baec7a` | (see git log) |
+| `0e2967d` | (see git log) |
+| `de101bf` | (see git log) |
+| `e77c045` | (see git log) |
+| `74dbc36` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
