@@ -80,9 +80,9 @@ func ExportHTML(s *Session) string {
 	// Messages
 	for _, msg := range s.Messages {
 		roleClass := html.EscapeString(msg.Role)
-		b.WriteString(fmt.Sprintf("<div class=\"message %s\">\n", roleClass))
-		b.WriteString(fmt.Sprintf("<div class=\"role\">%s</div>\n", html.EscapeString(msg.Role)))
-		b.WriteString(fmt.Sprintf("<div class=\"content\">%s</div>\n", html.EscapeString(msg.Content)))
+		_, _ = fmt.Fprintf(&b, "<div class=\"message %s\">\n", roleClass)
+		_, _ = fmt.Fprintf(&b, "<div class=\"role\">%s</div>\n", html.EscapeString(msg.Role))
+		_, _ = fmt.Fprintf(&b, "<div class=\"content\">%s</div>\n", html.EscapeString(msg.Content))
 		b.WriteString("</div>\n")
 	}
 

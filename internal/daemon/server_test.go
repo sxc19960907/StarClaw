@@ -512,7 +512,9 @@ func TestHandleMessageMissingText(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /message: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("expected 500 for empty text, got %d", resp.StatusCode)
@@ -529,7 +531,9 @@ func TestHandleMessageInvalidBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /message: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid JSON, got %d", resp.StatusCode)
@@ -551,7 +555,9 @@ func TestHandleScheduleNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /schedules/nonexistent: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404 for nonexistent schedule, got %d", resp.StatusCode)
@@ -575,7 +581,9 @@ func TestHandleScheduleCreateInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /schedules: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for empty prompt, got %d", resp.StatusCode)
@@ -595,7 +603,9 @@ func TestHandleAgents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /agents: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -628,7 +638,9 @@ func TestHandleSkills(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /skills: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -663,7 +675,9 @@ func TestHandleSkillsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /skills: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -697,7 +711,9 @@ func TestHandleConfigGetPatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /config: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -710,7 +726,9 @@ func TestHandleConfigGetPatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PATCH /config: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -789,7 +807,9 @@ openai_model: old-model
 	if err != nil {
 		t.Fatalf("PATCH /config: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -825,7 +845,9 @@ func TestHandleConfigPatchRejectsUnsupportedProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PATCH /config: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
@@ -841,7 +863,9 @@ func TestHandleInstructions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /instructions: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -854,7 +878,9 @@ func TestHandleInstructions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PUT /instructions: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -864,7 +890,9 @@ func TestHandleInstructions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /instructions after PUT: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var body struct {
 		Content string `json:"content"`
@@ -890,7 +918,9 @@ func TestHandleSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /sessions: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -928,7 +958,9 @@ func TestHandlePatchSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PATCH /sessions/{id}: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -967,7 +999,9 @@ func TestHandlePatchSessionRejectsEmptyTitle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PATCH /sessions/{id}: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
@@ -994,7 +1028,9 @@ func TestHandlePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /permissions: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -1044,7 +1080,9 @@ ollama_model: smoke
 	if err != nil {
 		t.Fatalf("PATCH /config: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -1116,7 +1154,9 @@ permissions:
 	if err != nil {
 		t.Fatalf("PATCH /config: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -1178,7 +1218,9 @@ func TestHandleApproval(t *testing.T) {
 	if postErr != nil {
 		t.Fatalf("POST /approval: %v", postErr)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -1214,7 +1256,9 @@ func TestHandleCancel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /cancel: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -1231,7 +1275,9 @@ func TestHandleCancelNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /cancel: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
@@ -1248,7 +1294,9 @@ func TestHandleCancelMissingRequestID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /cancel: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400, got %d", resp.StatusCode)
@@ -1266,7 +1314,9 @@ func TestHandleCreateAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /agents: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
@@ -1315,7 +1365,9 @@ func TestHandleUpdateAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PUT /agents/{name}: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
@@ -1363,7 +1415,9 @@ func TestHandleUpdateAgentClearsHeartbeat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PUT /agents/{name}: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
@@ -1390,7 +1444,9 @@ func TestHandleUpdateAgentPreservesCommandsWhenOmitted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PUT /agents/{name}: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
@@ -1412,7 +1468,9 @@ func TestHandleCreateAgentRejectsInvalidCommandName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /agents: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -1427,7 +1485,9 @@ func TestHandleCreateAgentRejectsInvalidName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /agents: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
 	}
@@ -1446,7 +1506,9 @@ func TestHandleShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /shutdown: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -1559,7 +1621,9 @@ func decodeSSEEventData(t *testing.T, stream string, eventName string) map[strin
 
 func decodeJSONResponse(t *testing.T, resp *http.Response, wantStatus int, out interface{}) {
 	t.Helper()
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != wantStatus {
 		t.Fatalf("expected HTTP %d, got %d", wantStatus, resp.StatusCode)
 	}
