@@ -498,6 +498,26 @@ func TestSSEEventHandlerToolPayloads(t *testing.T) {
 	}
 }
 
+func TestSSEEventHandlerStreamsDeltasAsTextWithoutFinalDuplicate(t *testing.T) {
+	rec := httptest.NewRecorder()
+	h := &sseEventHandler{w: rec, flusher: rec}
+
+	h.OnStreamDelta("hello ")
+	h.OnStreamDelta("world")
+	h.OnText("hello world")
+
+	events := decodeSSEEvents(t, rec.Body.String(), "text")
+	if len(events) != 2 {
+		t.Fatalf("text event count = %d, want 2; stream:\n%s", len(events), rec.Body.String())
+	}
+	if events[0]["text"] != "hello " {
+		t.Fatalf("first delta text = %#v, want hello ", events[0]["text"])
+	}
+	if events[1]["text"] != "world" {
+		t.Fatalf("second delta text = %#v, want world", events[1]["text"])
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Error cases
 // ---------------------------------------------------------------------------
@@ -1602,6 +1622,16 @@ func deleteJSON(t *testing.T, url string, wantStatus int) {
 
 func decodeSSEEventData(t *testing.T, stream string, eventName string) map[string]interface{} {
 	t.Helper()
+	events := decodeSSEEvents(t, stream, eventName)
+	if len(events) == 0 {
+		t.Fatalf("SSE event %q not found in stream:\n%s", eventName, stream)
+	}
+	return events[0]
+}
+
+func decodeSSEEvents(t *testing.T, stream string, eventName string) []map[string]interface{} {
+	t.Helper()
+	var events []map[string]interface{}
 	blocks := strings.Split(stream, "\n\n")
 	for _, block := range blocks {
 		lines := strings.Split(block, "\n")
@@ -1613,10 +1643,9 @@ func decodeSSEEventData(t *testing.T, stream string, eventName string) map[strin
 		if err := json.Unmarshal([]byte(dataLine), &data); err != nil {
 			t.Fatalf("decode SSE %s data: %v", eventName, err)
 		}
-		return data
+		events = append(events, data)
 	}
-	t.Fatalf("SSE event %q not found in stream:\n%s", eventName, stream)
-	return nil
+	return events
 }
 
 func decodeJSONResponse(t *testing.T, resp *http.Response, wantStatus int, out interface{}) {

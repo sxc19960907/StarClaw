@@ -150,6 +150,10 @@ function writeSSE(res, data) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     writeJSON(res, 200, { status: "ok" });
@@ -180,6 +184,7 @@ const server = http.createServer(async (req, res) => {
   });
   for (const chunk of ["Fake provider ", "streamed response ", "for GUI smoke."]) {
     writeSSE(res, { choices: [{ delta: { content: chunk }, finish_reason: null }] });
+    await sleep(80);
   }
   writeSSE(res, { choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 11, completion_tokens: 7 } });
   res.write("data: [DONE]\n\n");
@@ -798,6 +803,8 @@ async function runStreamingProvider(page) {
   await page.locator("#chat-input").fill(prompt);
   await page.getByRole("button", { name: "Send" }).click();
 
+  await page.locator("#stop-button:not([hidden])").waitFor();
+  await page.locator("#chat-output").getByText("Fake provider").waitFor();
   await page.locator("#chat-output").getByText("Fake provider streamed response for GUI smoke.").waitFor();
   const summary = page.locator("#chat-output .run-summary").last();
   await summary.getByText("Run summary").waitFor();

@@ -965,8 +965,9 @@ func (h *httpEventHandler) OnPreamble(preamble string) {}
 
 // sseEventHandler streams agent events as SSE to an HTTP response.
 type sseEventHandler struct {
-	w       http.ResponseWriter
-	flusher http.Flusher
+	w            http.ResponseWriter
+	flusher      http.Flusher
+	streamedText bool
 }
 
 func (h *sseEventHandler) OnToolCall(name string, args string) {
@@ -992,6 +993,9 @@ func (h *sseEventHandler) OnToolResult(name string, result agent.ToolResult) {
 }
 
 func (h *sseEventHandler) OnText(text string) {
+	if h.streamedText {
+		return
+	}
 	data := mustJSON(map[string]string{"text": text})
 	_, _ = fmt.Fprintf(h.w, "event: text\ndata: %s\n\n", data)
 	h.flusher.Flush()
@@ -1002,7 +1006,13 @@ func (h *sseEventHandler) OnUsage(usage client.Usage) {
 }
 
 func (h *sseEventHandler) OnStreamDelta(delta string) {
-	// Stream deltas are not yet emitted via SSE; reserved for future use.
+	if delta == "" {
+		return
+	}
+	h.streamedText = true
+	data := mustJSON(map[string]string{"text": delta})
+	_, _ = fmt.Fprintf(h.w, "event: text\ndata: %s\n\n", data)
+	h.flusher.Flush()
 }
 
 func (h *sseEventHandler) OnPreamble(preamble string) {
