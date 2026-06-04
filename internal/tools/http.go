@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -116,7 +116,9 @@ func (t *HTTPTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, 
 	if err != nil {
 		return agent.TransientError(fmt.Sprintf("request failed: %v", err)), nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read body (limited to 10KB)
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 10240))

@@ -281,7 +281,7 @@ func TestClientCreateSchedule_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprint(w, `{"id":"schedule-abc123"}`)
+		_, _ = fmt.Fprint(w, `{"id":"schedule-abc123"}`)
 	}))
 	defer server.Close()
 
@@ -344,7 +344,7 @@ func TestClientDeleteSchedule_Success(t *testing.T) {
 func TestClient_ErrorResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"error":"invalid request"}`)
+		_, _ = fmt.Fprint(w, `{"error":"invalid request"}`)
 	}))
 	defer server.Close()
 
@@ -361,7 +361,7 @@ func TestClient_ErrorResponse(t *testing.T) {
 func TestClient_ErrorResponseNotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, `not found`)
+		_, _ = fmt.Fprint(w, `not found`)
 	}))
 	defer server.Close()
 

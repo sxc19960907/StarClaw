@@ -149,13 +149,13 @@ func launchDaemonWebUI(cmd *cobra.Command, ensure bool, openBrowser bool) error 
 	}
 	switch {
 	case ensure && started && openBrowser:
-		fmt.Fprintf(cmd.OutOrStdout(), "Started daemon and opened %s\n", daemonWebURL)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Started daemon and opened %s\n", daemonWebURL)
 	case ensure && openBrowser:
-		fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Opened %s\n", daemonWebURL)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Opened %s\n", daemonWebURL)
 	case ensure && started:
-		fmt.Fprintf(cmd.OutOrStdout(), "Started daemon. Web UI: %s\n", daemonWebURL)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Started daemon. Web UI: %s\n", daemonWebURL)
 	case ensure:
-		fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Web UI: %s\n", daemonWebURL)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Daemon already running. Web UI: %s\n", daemonWebURL)
 	default:
 		fmt.Fprintf(cmd.OutOrStdout(), "Opened %s\n", daemonWebURL)
 	}

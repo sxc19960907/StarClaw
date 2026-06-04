@@ -80,7 +80,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 			}
 			body := make([]byte, 100)
 			n, _ := resp.Body.Read(body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			bodyStr := string(body[:n])
 
 			// If it's the default mux 404, the route is not registered.
