@@ -1275,3 +1275,36 @@ Added a Web UI streaming smoke mode with a local fake OpenAI-compatible provider
 ### Next Steps
 
 - None - task complete
+
+
+## Session 98: Stream model deltas to GUI
+
+**Date**: 2026-06-04
+**Task**: Stream model deltas to GUI
+**Branch**: `main`
+
+### Summary
+
+Forwarded model stream deltas from daemon SSE /message responses as browser text events, suppressed duplicate final text after streaming, and extended streaming Web UI smoke to verify partial output appears while a provider stream is still active. Validation passed with go test ./internal/daemon, scripts/smoke_webui_streaming.sh, scripts/smoke_webui_core.sh, go test ./..., go vet ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `62f6269` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

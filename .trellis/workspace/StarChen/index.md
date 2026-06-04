@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 97
+- **Total Sessions**: 98
 - **Last Active**: 2026-06-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1277 | Active |
+| `journal-2.md` | ~1310 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 98 | 2026-06-04 | Stream model deltas to GUI | `62f6269` | `main` |
 | 97 | 2026-06-04 | Add GUI streaming provider smoke | `aadca59` | `main` |
 | 96 | 2026-06-04 | Harden GUI smoke coverage | `5c12459` | `main` |
 | 95 | 2026-06-04 | Migrate golangci-lint v2 | `ef70f26`, `2caf81d`, `f65050e`, `4baec7a`, `0e2967d`, `de101bf`, `e77c045`, `74dbc36` | `main` |
