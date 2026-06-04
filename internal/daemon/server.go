@@ -276,10 +276,10 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case evt := <-ch:
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", evt.Type, evt.Data)
+			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", evt.Type, evt.Data)
 			flusher.Flush()
 		case <-ticker.C:
-			fmt.Fprintf(w, ": keepalive\n\n")
+			_, _ = fmt.Fprintf(w, ": keepalive\n\n")
 			flusher.Flush()
 		case <-r.Context().Done():
 			return
@@ -971,7 +971,7 @@ type sseEventHandler struct {
 
 func (h *sseEventHandler) OnToolCall(name string, args string) {
 	data := mustJSON(map[string]string{"tool": name, "status": "running", "args": args})
-	fmt.Fprintf(h.w, "event: tool_call\ndata: %s\n\n", data)
+	_, _ = fmt.Fprintf(h.w, "event: tool_call\ndata: %s\n\n", data)
 	h.flusher.Flush()
 }
 
@@ -987,13 +987,13 @@ func (h *sseEventHandler) OnToolResult(name string, result agent.ToolResult) {
 		"is_error":       result.IsError,
 		"error_category": string(result.ErrorCategory),
 	})
-	fmt.Fprintf(h.w, "event: tool_result\ndata: %s\n\n", data)
+	_, _ = fmt.Fprintf(h.w, "event: tool_result\ndata: %s\n\n", data)
 	h.flusher.Flush()
 }
 
 func (h *sseEventHandler) OnText(text string) {
 	data := mustJSON(map[string]string{"text": text})
-	fmt.Fprintf(h.w, "event: text\ndata: %s\n\n", data)
+	_, _ = fmt.Fprintf(h.w, "event: text\ndata: %s\n\n", data)
 	h.flusher.Flush()
 }
 
@@ -1007,7 +1007,7 @@ func (h *sseEventHandler) OnStreamDelta(delta string) {
 
 func (h *sseEventHandler) OnPreamble(preamble string) {
 	data := mustJSON(map[string]string{"preamble": preamble})
-	fmt.Fprintf(h.w, "event: preamble\ndata: %s\n\n", data)
+	_, _ = fmt.Fprintf(h.w, "event: preamble\ndata: %s\n\n", data)
 	h.flusher.Flush()
 }
 

@@ -75,7 +75,9 @@ func (t *FilePreviewTool) Run(ctx context.Context, argsJSON string) (agent.ToolR
 			IsError: true,
 		}, nil
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	scanner := bufio.NewScanner(f)
 	var sb strings.Builder

@@ -194,7 +194,7 @@ func TestClientListSchedules_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `[{"id":"s1","agent":"daily-agent","cron":"0 9 * * *","prompt":"run daily","enabled":true,"sync_status":"ok","created_at":"2025-01-01T00:00:00Z"}]`)
+		_, _ = fmt.Fprint(w, `[{"id":"s1","agent":"daily-agent","cron":"0 9 * * *","prompt":"run daily","enabled":true,"sync_status":"ok","created_at":"2025-01-01T00:00:00Z"}]`)
 	}))
 	defer server.Close()
 
@@ -221,7 +221,7 @@ func TestClientListSchedules_Empty(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `[]`)
+		_, _ = fmt.Fprint(w, `[]`)
 	}))
 	defer server.Close()
 
@@ -245,7 +245,7 @@ func TestClientGetSchedule_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"id":"s1","agent":"daily-agent","cron":"0 9 * * *","prompt":"run daily","enabled":true,"sync_status":"ok","created_at":"2025-01-01T00:00:00Z"}`)
+		_, _ = fmt.Fprint(w, `{"id":"s1","agent":"daily-agent","cron":"0 9 * * *","prompt":"run daily","enabled":true,"sync_status":"ok","created_at":"2025-01-01T00:00:00Z"}`)
 	}))
 	defer server.Close()
 
