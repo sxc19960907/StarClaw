@@ -636,6 +636,44 @@ async function runRuns(page) {
   });
   await page.locator(`[data-session-id="${sessionID}"]`).getByRole("button", { name: "Delete" }).click();
   await page.locator(`[data-session-id="${sessionID}"]`).waitFor();
+
+  const errorRunID = "run_error_smoke";
+  const errorSessionID = await page.evaluate(async ({ url, errorRunID }) => {
+    const response = await fetch(`${url}/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "webui smoke provider unavailable", new_session: true, request_id: errorRunID })
+    });
+    const data = await response.json();
+    return data.session_id;
+  }, { url: baseURL, errorRunID });
+  assert(errorSessionID, "error run session id missing");
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
+  await page.locator(`[data-run-id="${errorRunID}"]`).waitFor();
+  await page.locator(`[data-run-id="${errorRunID}"]`).getByRole("button", { name: "Open run" }).click();
+  const errorRunDetail = await page.evaluate(async ({ url, errorRunID }) => {
+    const response = await fetch(`${url}/runs/${errorRunID}`);
+    return response.json();
+  }, { url: baseURL, errorRunID });
+  assert(errorRunDetail.status === "error", `provider-unavailable run should be error, got ${JSON.stringify(errorRunDetail)}`);
+  assert(errorRunDetail.error || errorRunDetail.response?.error, `provider-unavailable run should include an error, got ${JSON.stringify(errorRunDetail)}`);
+  await page.locator("#run-detail").getByText(errorRunID).waitFor();
+  await page.locator("#run-detail").getByText("webui smoke provider unavailable").waitFor();
+  await page.locator("#run-detail").getByText("error", { exact: true }).first().waitFor();
+  assert(await page.locator("#run-detail").getByText(errorSessionID).count() >= 1, "error run detail missing session id");
+  const errorResultText = await page.locator("#run-detail").locator("pre").last().innerText();
+  assert(errorResultText.includes(errorSessionID), "error run result should include session id");
+  assert(errorResultText.includes("error"), "error run result should include error field");
+  await page.locator("#run-detail").getByRole("button", { name: "Copy prompt" }).click();
+  await page.getByText("Prompt copied.").waitFor();
+  assert(await page.evaluate(() => navigator.clipboard.readText()) === "webui smoke provider unavailable", "copy prompt should copy error run prompt");
+  await page.locator("#run-detail").getByRole("button", { name: "Re-run" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator("#chat-input").inputValue() === "webui smoke provider unavailable", "error rerun should prefill chat prompt");
+  assert(await page.locator("#chat-new-session").isChecked(), "error rerun should use a new session");
+  assert(await page.locator("#chat-agent").inputValue() === "", "error rerun should select default agent");
 }
 
 async function runSelected(page) {
