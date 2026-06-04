@@ -61,16 +61,16 @@ func ExportHTML(s *Session) string {
 	b.WriteString("</head>\n<body>\n")
 
 	// Title
-	b.WriteString(fmt.Sprintf("<h1>%s</h1>\n", html.EscapeString(s.Title)))
+	_, _ = fmt.Fprintf(&b, "<h1>%s</h1>\n", html.EscapeString(s.Title))
 
 	// Metadata
 	b.WriteString("<div class=\"metadata\">\n")
-	b.WriteString(fmt.Sprintf("<p><strong>ID:</strong> %s</p>\n", html.EscapeString(s.ID)))
-	b.WriteString(fmt.Sprintf("<p><strong>Created:</strong> %s</p>\n", s.CreatedAt.Format(time.RFC3339)))
-	b.WriteString(fmt.Sprintf("<p><strong>Updated:</strong> %s</p>\n", s.UpdatedAt.Format(time.RFC3339)))
-	b.WriteString(fmt.Sprintf("<p><strong>Messages:</strong> %d</p>\n", len(s.Messages)))
+	_, _ = fmt.Fprintf(&b, "<p><strong>ID:</strong> %s</p>\n", html.EscapeString(s.ID))
+	_, _ = fmt.Fprintf(&b, "<p><strong>Created:</strong> %s</p>\n", s.CreatedAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(&b, "<p><strong>Updated:</strong> %s</p>\n", s.UpdatedAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(&b, "<p><strong>Messages:</strong> %d</p>\n", len(s.Messages))
 	if len(s.Tags) > 0 {
-		b.WriteString(fmt.Sprintf("<p><strong>Tags:</strong> %s</p>\n", html.EscapeString(strings.Join(s.Tags, ", "))))
+		_, _ = fmt.Fprintf(&b, "<p><strong>Tags:</strong> %s</p>\n", html.EscapeString(strings.Join(s.Tags, ", ")))
 	}
 	if s.Favorite {
 		b.WriteString("<p><strong>Favorite:</strong> true</p>\n")

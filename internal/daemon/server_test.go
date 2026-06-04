@@ -242,7 +242,9 @@ func TestScheduleCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET deleted: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404 after deletion, got %d", resp.StatusCode)
 	}
@@ -381,7 +383,9 @@ func TestHandleMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /message: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -412,7 +416,7 @@ func TestRunHistoryAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /message: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("POST /message status = %d", resp.StatusCode)
 	}
