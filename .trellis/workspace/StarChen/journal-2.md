@@ -1209,3 +1209,36 @@ Migrated CI to golangci-lint-action v9.2.1 with golangci-lint v2.12.2, fixed v2 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 96: Harden GUI smoke coverage
+
+**Date**: 2026-06-04
+**Task**: Harden GUI smoke coverage
+**Branch**: `main`
+
+### Summary
+
+Strengthened Web UI smoke coverage by adding a deterministic provider-unavailable error run detail path to the runs smoke. Verified prompt/result visibility, error status, copy prompt, and re-run prefill. Validation passed with scripts/smoke_webui_runs.sh, scripts/smoke_webui_core.sh, scripts/smoke_webui.sh, go test ./..., go vet ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5c12459` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
