@@ -17,8 +17,8 @@ Remove the GitHub Actions Node.js 20 deprecation warning by upgrading workflow a
 
 - [x] CI workflow uses updated checkout/setup-go action versions while preserving compatible lint behavior.
 - [x] Release workflow uses the updated action versions.
-- [ ] GitHub Actions CI passes after push.
-- [ ] Node.js 20 deprecation warning is no longer present, or any remaining warning is recorded.
+- [x] GitHub Actions CI passes after push.
+- [x] Node.js 20 deprecation warning is no longer present for updated checkout/setup-go actions; the remaining lint action compatibility constraint is recorded below.
 
 ## Notes
 
@@ -27,3 +27,5 @@ Remove the GitHub Actions Node.js 20 deprecation warning by upgrading workflow a
   - `actions/setup-go`: `v6.4.0`
   - `golangci/golangci-lint-action`: `v9.2.1`
 - CI attempts showed `golangci/golangci-lint-action@v9.2.1` requires golangci-lint v2; v2 currently reports existing lint debt. Keep the v6 action for this release and handle v2 migration separately.
+- Final CI: `26933356798` passed on commit `4f0b10c849e4d31ab420053890ad5c47a1e5d0f4`.
+- Follow-up: migrate to `golangci/golangci-lint-action` v7+ only after resolving the current golangci-lint v2 findings.
