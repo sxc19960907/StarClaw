@@ -10,13 +10,16 @@ SMOKE_HOME="$TMP_DIR/home"
 DAEMON_LOG="$TMP_DIR/daemon.log"
 NODE_DIR="$TMP_DIR/node"
 NODE_SCRIPT="$NODE_DIR/webui-smoke.mjs"
+FAKE_PROVIDER_SCRIPT="$NODE_DIR/fake-openai-provider.mjs"
 BASE_URL="${WEBUI_SMOKE_BASE_URL:-http://127.0.0.1:7533}"
+FAKE_PROVIDER_URL="${WEBUI_FAKE_PROVIDER_URL:-http://127.0.0.1:17534}"
 ARTIFACT_DIR="${WEBUI_SMOKE_ARTIFACT_DIR:-$ROOT_DIR/output/playwright}"
 SCREENSHOT_DIR="$ARTIFACT_DIR"
 SCREENSHOT="$SCREENSHOT_DIR/daemon-webui-${SMOKE_MODE}-smoke.png"
 DAEMON_LOG_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.log"
 METADATA_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.metadata"
 DAEMON_PID=""
+FAKE_PROVIDER_PID=""
 
 persist_artifacts() {
   mkdir -p "$ARTIFACT_DIR"
@@ -45,6 +48,9 @@ cleanup() {
     if kill -0 "$DAEMON_PID" >/dev/null 2>&1; then
       kill "$DAEMON_PID" >/dev/null 2>&1 || true
     fi
+  fi
+  if [[ -n "$FAKE_PROVIDER_PID" ]] && kill -0 "$FAKE_PROVIDER_PID" >/dev/null 2>&1; then
+    kill "$FAKE_PROVIDER_PID" >/dev/null 2>&1 || true
   fi
   rm -rf "$TMP_DIR"
 }
@@ -76,6 +82,27 @@ wait_for_health() {
 
 write_smoke_config() {
   mkdir -p "$SMOKE_HOME/.starclaw" "$SCREENSHOT_DIR"
+  if [[ "$SMOKE_MODE" == "streaming" ]]; then
+    cat > "$SMOKE_HOME/.starclaw/config.yaml" <<YAML
+provider: openai
+openai_endpoint: "$FAKE_PROVIDER_URL"
+openai_model: "fake-streaming-model"
+openai_api_key: "fake-key"
+api_key: dummy
+agent:
+  max_iterations: 1
+  thinking: false
+permissions:
+  allowed_dirs:
+    - "~"
+    - "."
+  denied_commands:
+    - "shutdown"
+audit:
+  enabled: false
+YAML
+    return
+  fi
   cat > "$SMOKE_HOME/.starclaw/config.yaml" <<'YAML'
 provider: ollama
 ollama_endpoint: http://127.0.0.1:1
@@ -96,6 +123,93 @@ permissions:
 audit:
   enabled: false
 YAML
+}
+
+write_fake_provider() {
+  cat > "$FAKE_PROVIDER_SCRIPT" <<'JS'
+import http from "node:http";
+
+const port = Number(process.env.FAKE_PROVIDER_PORT || "17534");
+
+function writeJSON(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.setEncoding("utf8");
+    req.on("data", (chunk) => { body += chunk; });
+    req.on("end", () => resolve(body));
+    req.on("error", reject);
+  });
+}
+
+function writeSSE(res, data) {
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+const server = http.createServer(async (req, res) => {
+  if (req.method === "GET" && req.url === "/health") {
+    writeJSON(res, 200, { status: "ok" });
+    return;
+  }
+  if (req.method !== "POST" || !req.url.endsWith("/chat/completions")) {
+    writeJSON(res, 404, { error: { message: `unexpected route: ${req.method} ${req.url}` } });
+    return;
+  }
+
+  const rawBody = await readBody(req);
+  const request = JSON.parse(rawBody || "{}");
+  const content = "Fake provider streamed response for GUI smoke.";
+  if (!request.stream) {
+    writeJSON(res, 200, {
+      id: "fake-chat-sync",
+      object: "chat.completion",
+      choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }],
+      usage: { prompt_tokens: 11, completion_tokens: 7 },
+    });
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+  });
+  for (const chunk of ["Fake provider ", "streamed response ", "for GUI smoke."]) {
+    writeSSE(res, { choices: [{ delta: { content: chunk }, finish_reason: null }] });
+  }
+  writeSSE(res, { choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 11, completion_tokens: 7 } });
+  res.write("data: [DONE]\n\n");
+  res.end();
+});
+
+server.listen(port, "127.0.0.1", () => {
+  console.log(`fake-openai-provider listening on http://127.0.0.1:${port}`);
+});
+
+process.on("SIGTERM", () => server.close(() => process.exit(0)));
+process.on("SIGINT", () => server.close(() => process.exit(0)));
+JS
+}
+
+start_fake_provider_if_needed() {
+  if [[ "$SMOKE_MODE" != "streaming" ]]; then
+    return
+  fi
+  write_fake_provider
+  echo "==> starting fake OpenAI provider"
+  FAKE_PROVIDER_PORT="${FAKE_PROVIDER_URL##*:}" node "$FAKE_PROVIDER_SCRIPT" >"$TMP_DIR/fake-provider.log" 2>&1 &
+  FAKE_PROVIDER_PID="$!"
+  for _ in {1..80}; do
+    if curl -fsS "$FAKE_PROVIDER_URL/health" >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.1
+  done
+  fail "fake provider did not become healthy"
 }
 
 write_node_package() {
@@ -676,6 +790,46 @@ async function runRuns(page) {
   assert(await page.locator("#chat-agent").inputValue() === "", "error rerun should select default agent");
 }
 
+async function runStreamingProvider(page) {
+  const prompt = "webui streaming provider smoke";
+  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.locator("#chat-agent").selectOption("");
+  await page.locator("#chat-new-session").check();
+  await page.locator("#chat-input").fill(prompt);
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await page.locator("#chat-output").getByText("Fake provider streamed response for GUI smoke.").waitFor();
+  const summary = page.locator("#chat-output .run-summary").last();
+  await summary.getByText("Run summary").waitFor();
+  await summary.getByText("input_tokens: 11").waitFor();
+  await summary.getByText("output_tokens: 7").waitFor();
+  const runID = await summary.getByRole("button", { name: "Open run" }).getAttribute("data-run-summary-run");
+  const sessionID = await summary.getByRole("button", { name: "Open session" }).getAttribute("data-run-summary-session");
+  assert(runID, "streaming run summary missing request id");
+  assert(sessionID, "streaming run summary missing session id");
+
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await summary.getByRole("button", { name: "Open session" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "streaming open session should select persisted session");
+  await page.locator("#chat-output").getByText("Fake provider streamed response for GUI smoke.").waitFor();
+
+  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.locator(`[data-run-id="${runID}"]`).waitFor();
+  await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
+  await page.locator("#run-detail").getByText(runID).waitFor();
+  await page.locator("#run-detail").getByText("completed", { exact: true }).first().waitFor();
+  await page.locator("#run-detail").getByText(prompt).waitFor();
+  assert(await page.locator("#run-detail").getByText("Fake provider streamed response for GUI smoke.").count() >= 1, "streaming run detail missing response text");
+  assert(await page.locator("#run-detail").getByText(sessionID).count() >= 1, "streaming run detail missing session id");
+  assert(await page.locator("#run-detail").getByText("input_tokens").count() >= 1, "streaming run detail missing usage");
+  await page.locator("#run-detail").getByRole("button", { name: "Copy summary" }).click();
+  await page.getByText("Run summary copied.").waitFor();
+  const copiedRunSummary = await page.evaluate(() => navigator.clipboard.readText());
+  assert(copiedRunSummary.includes(`Run: ${runID}`), "streaming copied run summary missing run id");
+  assert(copiedRunSummary.includes("Usage: input_tokens: 11, output_tokens: 7, total_tokens: 18"), "streaming copied run summary missing usage");
+}
+
 async function runSelected(page) {
   switch (mode) {
     case "core":
@@ -689,6 +843,9 @@ async function runSelected(page) {
       return;
     case "runs":
       await runRuns(page);
+      return;
+    case "streaming":
+      await runStreamingProvider(page);
       return;
     case "full":
       await runCore(page);
@@ -768,6 +925,8 @@ if [[ "${CI:-}" == "true" ]]; then
 else
   (cd "$NODE_DIR" && npx playwright install chromium >/dev/null)
 fi
+
+start_fake_provider_if_needed
 
 echo "==> starting daemon"
 env HOME="$SMOKE_HOME" "$BIN" daemon start >"$DAEMON_LOG" 2>&1 &
