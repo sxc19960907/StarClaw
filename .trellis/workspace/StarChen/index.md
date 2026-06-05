@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 101
+- **Total Sessions**: 102
 - **Last Active**: 2026-06-05
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1409 | Active |
+| `journal-2.md` | ~1442 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 102 | 2026-06-05 | Implement npm release installer | `b63cccb` | `main` |
 | 101 | 2026-06-05 | Align app launch runtime status | `932022d` | `main` |
 | 100 | 2026-06-05 | Improve GUI run detail experience | `26b7eb8` | `main` |
 | 99 | 2026-06-05 | Add GUI tool call smoke | `77e8c4f` | `main` |

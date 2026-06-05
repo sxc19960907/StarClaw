@@ -1407,3 +1407,36 @@ Aligned app launch readiness, diagnostics runtime JSON, GUI diagnostics display,
 ### Next Steps
 
 - None - task complete
+
+
+## Session 102: Implement npm release installer
+
+**Date**: 2026-06-05
+**Task**: Implement npm release installer
+**Branch**: `main`
+
+### Summary
+
+Replaced npm placeholders with a release-backed installer and shim, added local npm install smoke, wired it into CI, and updated npm install docs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b63cccb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
