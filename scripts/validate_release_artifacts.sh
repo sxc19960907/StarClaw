@@ -4,10 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${RELEASE_DIST_DIR:-$ROOT_DIR/dist}"
 RUN_SNAPSHOT=false
+NPM_ONLY=false
 
-if [[ "${1:-}" == "--snapshot" ]]; then
-  RUN_SNAPSHOT=true
-fi
+for arg in "$@"; do
+  case "$arg" in
+    --snapshot) RUN_SNAPSHOT=true ;;
+    --npm-only) NPM_ONLY=true ;;
+    *) fail "unknown argument: $arg" ;;
+  esac
+done
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -45,6 +50,30 @@ find_one() {
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
 }
 
+validate_npm_package() {
+  require_cmd npm
+  require_cmd node
+  echo "==> checking npm package"
+  local output
+  output="$(cd "$ROOT_DIR/npm" && npm pack --dry-run --json)"
+  node - <<'NODE' "$output"
+const packages = JSON.parse(process.argv[2]);
+const files = new Set((packages[0]?.files || []).map((file) => file.path));
+for (const file of ["bin/starclaw", "scripts/install.js", "scripts/uninstall.js", "package.json"]) {
+  if (!files.has(file)) {
+    console.error(`npm package missing ${file}`);
+    process.exit(1);
+  }
+}
+NODE
+}
+
+if "$NPM_ONLY"; then
+  validate_npm_package
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$RUN_SNAPSHOT"; then
   echo "==> building GoReleaser snapshot"
   require_cmd goreleaser
@@ -77,5 +106,7 @@ apk="$(find_one "starclaw_*_linux_*.apk")"
 [[ -n "$deb" ]] || fail "missing deb package artifact"
 [[ -n "$rpm" ]] || fail "missing rpm package artifact"
 [[ -n "$apk" ]] || fail "missing apk package artifact"
+
+validate_npm_package
 
 echo "validate_release_artifacts: ok"
