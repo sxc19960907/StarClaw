@@ -1473,3 +1473,36 @@ Ran core and targeted tool-call GUI smoke, visually reviewed generated Playwrigh
 ### Next Steps
 
 - None - task complete
+
+
+## Session 104: Harden npm release checks
+
+**Date**: 2026-06-05
+**Task**: Harden npm release checks
+**Branch**: `main`
+
+### Summary
+
+Added release checklist docs, npm package validation to release artifact checks, npm-only validation mode, and npm smoke preflight in the release workflow.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `47dc8ff` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

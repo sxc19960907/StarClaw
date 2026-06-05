@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 103
+- **Total Sessions**: 104
 - **Last Active**: 2026-06-05
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1475 | Active |
+| `journal-2.md` | ~1508 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 104 | 2026-06-05 | Harden npm release checks | `47dc8ff` | `main` |
 | 103 | 2026-06-05 | Run GUI e2e user regression | `097552d` | `main` |
 | 102 | 2026-06-05 | Implement npm release installer | `b63cccb` | `main` |
 | 101 | 2026-06-05 | Align app launch runtime status | `932022d` | `main` |
