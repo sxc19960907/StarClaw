@@ -1341,3 +1341,36 @@ Added a deterministic Web UI smoke scenario for the real tool-call loop using th
 ### Next Steps
 
 - None - task complete
+
+
+## Session 100: Improve GUI run detail experience
+
+**Date**: 2026-06-05
+**Task**: Improve GUI run detail experience
+**Branch**: `main`
+
+### Summary
+
+Added Run detail copy-result actions, per-tool result copy, consistent grouped Agent Test streaming tool events, and smoke coverage for the new GUI interactions.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `26b7eb8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
