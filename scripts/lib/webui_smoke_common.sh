@@ -616,6 +616,8 @@ async function runAgents(page) {
       contentType: "text/event-stream",
       body: [
         `event: text\ndata: ${JSON.stringify({ text: "agent test streamed response" })}`,
+        `event: tool_call\ndata: ${JSON.stringify({ tool: "version", args: "{}", status: "running" })}`,
+        `event: tool_result\ndata: ${JSON.stringify({ tool: "version", content: "agent test tool result", status: "completed", is_error: false })}`,
         `event: usage\ndata: ${JSON.stringify({ input_tokens: 5, output_tokens: 6 })}`,
         `event: done\ndata: ${JSON.stringify({
           session_id: "sess_agent_test_smoke",
@@ -632,6 +634,9 @@ async function runAgents(page) {
   await page.locator("#panel-agents.active").waitFor();
   await page.locator("#agent-test-output").getByText("Agent test result").waitFor();
   await page.locator("#agent-test-output").getByText("agent test direct smoke").waitFor();
+  const agentTestToolEvent = page.locator("#agent-test-output .run-tool-event").filter({ hasText: "version" });
+  await agentTestToolEvent.getByText("completed").waitFor();
+  await agentTestToolEvent.getByText("agent test tool result").waitFor();
   await page.locator("#agent-test-output").getByText(capturedAgentTestRequestID).waitFor();
   await page.locator("#agent-test-output").getByRole("button", { name: "Open run" }).waitFor();
   await page.locator("#agent-test-output").getByRole("button", { name: "Open session" }).waitFor();
@@ -751,11 +756,17 @@ async function runRuns(page) {
   assert(await page.locator("#run-detail .run-tool-event").count() === 1, "run detail should group tool call/result into one tool card");
   await page.locator("#run-detail .run-tool-event").getByText("grep").waitFor();
   await page.locator("#run-detail .run-tool-event").getByText("smoke result").waitFor();
+  await page.locator("#run-detail .run-tool-event").getByRole("button", { name: "Copy result" }).click();
+  await page.getByText("Tool result copied.").waitFor();
+  assert(await page.evaluate(() => navigator.clipboard.readText()) === "smoke result", "tool result copy should copy grouped tool result");
   await page.locator("#run-detail").getByText("planning smoke run").waitFor();
   assert(await page.locator("#run-detail").getByText("input_tokens").count() >= 1, "run detail missing usage event");
   await page.locator("#run-detail").getByRole("button", { name: "Copy prompt" }).click();
   await page.getByText("Prompt copied.").waitFor();
   assert(await page.evaluate(() => navigator.clipboard.readText()) === "webui smoke session", "copy prompt should copy run prompt");
+  await page.locator("#run-detail").getByRole("button", { name: "Copy result" }).click();
+  await page.getByText("Result copied.").waitFor();
+  assert(await page.evaluate(() => navigator.clipboard.readText()) === "summary smoke response", "copy result should copy formatted run response");
   await page.locator("#run-detail").getByRole("button", { name: "Copy summary" }).click();
   await page.getByText("Run summary copied.").waitFor();
   const copiedRunSummary = await page.evaluate(() => navigator.clipboard.readText());
@@ -917,6 +928,9 @@ async function runToolCallProvider(page) {
   await runToolEvent.getByText("version").waitFor();
   await runToolEvent.getByText("completed").waitFor();
   await runToolEvent.getByText("StarClaw").waitFor();
+  await runToolEvent.getByRole("button", { name: "Copy result" }).click();
+  await page.getByText("Tool result copied.").waitFor();
+  assert((await page.evaluate(() => navigator.clipboard.readText())).includes("StarClaw"), "tool-call run detail tool copy should include version output");
   assert(await page.locator("#run-detail").getByText("Version tool call completed for GUI smoke.").count() >= 1, "tool-call run detail missing final response");
 }
 

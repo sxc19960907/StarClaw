@@ -1185,18 +1185,14 @@ function beginAgentTestStream() {
   </div>`;
   const textTarget = $("agent-test-output").querySelector("[data-agent-test-stream-text]");
   const eventsTarget = $("agent-test-output").querySelector("[data-agent-test-stream-events]");
+  const events = [];
   return {
     appendText(text) {
       textTarget.textContent += text;
     },
     appendEvent(eventType, data) {
-      eventsTarget.insertAdjacentHTML("beforeend", `<article class="run-event">
-        <div class="run-event-header">
-          <strong>${escapeHTML(eventType || "event")}</strong>
-          <span>${escapeHTML(data.status || "")}</span>
-        </div>
-        <pre>${escapeHTML(formatToolPayload(data || {}))}</pre>
-      </article>`);
+      events.push({ type: eventType || "event", at: new Date().toISOString(), data: data || {} });
+      eventsTarget.innerHTML = groupRunTimelineEvents(events).map(renderRunTimelineEntry).join("");
     },
   };
 }
@@ -1458,6 +1454,7 @@ function renderRunDetail(run) {
       <div class="run-detail-actions">
         <button type="button" data-run-detail-copy-summary>Copy summary</button>
         <button type="button" data-run-detail-copy-prompt>Copy prompt</button>
+        <button type="button" data-run-detail-copy-result>Copy result</button>
         ${sessionID ? `<button type="button" data-run-detail-open-session="${escapeHTML(sessionID)}">Open session</button>` : ""}
         ${prompt ? `<button type="button" data-run-detail-rerun>Re-run</button>` : ""}
       </div>
@@ -1532,14 +1529,19 @@ function groupRunTimelineEvents(events) {
 function renderRunTimelineEntry(entry) {
   if (entry.kind === "tool") {
     const status = entry.status || (entry.isError ? "error" : "completed");
+    const resultText = entry.result ? formatToolPayload(entry.result) : "";
+    const resultAction = resultText
+      ? `<button type="button" data-run-tool-copy-result="${escapeHTML(resultText)}">Copy result</button>`
+      : "";
     return `<article class="run-event run-tool-event ${entry.isError ? "bad" : ""}">
       <div class="run-event-header">
         <strong>${escapeHTML(entry.tool)}</strong>
         <span>${escapeHTML(status)} · ${escapeHTML(formatTimestamp(entry.at))}</span>
       </div>
+      ${resultAction ? `<div class="run-event-actions">${resultAction}</div>` : ""}
       <div class="run-tool-grid">
         ${entry.args ? `<div><span>Args</span><pre>${escapeHTML(formatToolPayload(entry.args))}</pre></div>` : ""}
-        ${entry.result ? `<div><span>Result</span><pre>${escapeHTML(formatToolPayload(entry.result))}</pre></div>` : ""}
+        ${resultText ? `<div><span>Result</span><pre>${escapeHTML(resultText)}</pre></div>` : ""}
         ${entry.errorCategory ? `<div class="tool-meta">category: ${escapeHTML(entry.errorCategory)}</div>` : ""}
       </div>
     </article>`;
@@ -1595,6 +1597,10 @@ function runSummaryText(run) {
     `Usage: ${formatUsage(usage)}`,
     `Prompt: ${runPrompt(run) || "-"}`,
   ].join("\n");
+}
+
+function runResultText(run) {
+  return formatRunResponse(run?.response);
 }
 
 function rerunCurrentRun() {
@@ -2200,6 +2206,22 @@ document.addEventListener("click", (event) => {
   if (runDetailCopyPrompt) {
     copyText(runPrompt(state.currentRunDetail), "Prompt copied.")
       .then(() => markButtonCopied(runDetailCopyPrompt))
+      .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const runDetailCopyResult = event.target.closest("[data-run-detail-copy-result]");
+  if (runDetailCopyResult) {
+    copyText(runResultText(state.currentRunDetail), "Result copied.")
+      .then(() => markButtonCopied(runDetailCopyResult))
+      .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const runToolCopyResult = event.target.closest("[data-run-tool-copy-result]");
+  if (runToolCopyResult) {
+    copyText(runToolCopyResult.dataset.runToolCopyResult || "", "Tool result copied.")
+      .then(() => markButtonCopied(runToolCopyResult))
       .catch((error) => showToast(error.message));
     return;
   }

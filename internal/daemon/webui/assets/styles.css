@@ -1067,6 +1067,16 @@ textarea:focus {
   gap: 7px;
 }
 
+.run-event-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.run-event-actions button {
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
 .run-tool-event {
   border: 1px solid var(--line);
   border-radius: 8px;
