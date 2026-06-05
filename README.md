@@ -41,7 +41,11 @@ Homebrew distribution is not available yet. Use the pre-built release binaries, 
 
 ### Using npm
 
-npm distribution is not published yet. Use Go, source builds, or GitHub Release assets for now.
+```bash
+npm install -g @starclaw/cli
+```
+
+The npm package installs a small wrapper and downloads the matching StarClaw binary from GitHub Releases during `postinstall`.
 
 ### Pre-built Binaries
 

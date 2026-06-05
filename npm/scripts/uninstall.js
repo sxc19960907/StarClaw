@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 const binDir = path.join(__dirname, '..', 'bin');
-if (fs.existsSync(binDir)) {
-  fs.rmSync(binDir, { recursive: true, force: true });
+for (const name of ['starclaw-bin', 'starclaw.exe']) {
+  const file = path.join(binDir, name);
+  if (fs.existsSync(file)) {
+    fs.rmSync(file, { force: true });
+  }
 }
 console.log('StarClaw uninstalled');

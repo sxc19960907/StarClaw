@@ -58,6 +58,9 @@ jobs:
       - name: Local release install smoke
         run: scripts/smoke_release_local.sh
 
+      - name: Npm install smoke
+        run: scripts/smoke_npm_install.sh
+
       - name: Web UI core smoke
         run: scripts/smoke_webui_core.sh
 

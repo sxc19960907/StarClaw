@@ -1,3 +1,23 @@
 #!/usr/bin/env node
-console.log('StarClaw - Please build from source: go build .');
-process.exit(1);
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+const binDir = __dirname;
+const binary = process.platform === "win32"
+  ? path.join(binDir, "starclaw.exe")
+  : path.join(binDir, "starclaw-bin");
+
+if (!fs.existsSync(binary)) {
+  console.error("StarClaw binary is missing. Reinstall @starclaw/cli or install from GitHub Releases:");
+  console.error("  npm install -g @starclaw/cli");
+  console.error("  https://github.com/starclaw/starclaw/releases");
+  process.exit(1);
+}
+
+const result = spawnSync(binary, process.argv.slice(2), { stdio: "inherit" });
+if (result.error) {
+  console.error(`Failed to run StarClaw: ${result.error.message}`);
+  process.exit(1);
+}
+process.exit(result.status ?? 0);

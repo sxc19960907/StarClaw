@@ -42,7 +42,11 @@ Homebrew distribution is not available yet. Use the pre-built release binaries, 
 
 #### npm (Cross-platform)
 
-npm distribution is not published yet. The repository contains npm packaging scaffolding, but its installer is not a supported release path yet.
+```bash
+npm install -g @starclaw/cli
+```
+
+The npm package installs a small wrapper and downloads the matching StarClaw binary from GitHub Releases during `postinstall`. It supports macOS, Linux, and Windows on x64/arm64 where release assets are available.
 
 ### Method 3: Build from Source
 
@@ -138,7 +142,11 @@ No Homebrew formula is published yet, so there is nothing to uninstall through H
 
 ### npm
 
-npm distribution is not published yet. If you installed from local npm packaging during development, uninstall that package from the same npm environment.
+If installed with npm:
+
+```bash
+npm uninstall -g @starclaw/cli
+```
 
 ## Troubleshooting
 
