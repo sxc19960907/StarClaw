@@ -82,7 +82,11 @@ wait_for_health() {
 
 write_smoke_config() {
   mkdir -p "$SMOKE_HOME/.starclaw" "$SCREENSHOT_DIR"
-  if [[ "$SMOKE_MODE" == "streaming" ]]; then
+  if [[ "$SMOKE_MODE" == "streaming" || "$SMOKE_MODE" == "tool_call" ]]; then
+    local max_iterations="1"
+    if [[ "$SMOKE_MODE" == "tool_call" ]]; then
+      max_iterations="2"
+    fi
     cat > "$SMOKE_HOME/.starclaw/config.yaml" <<YAML
 provider: openai
 openai_endpoint: "$FAKE_PROVIDER_URL"
@@ -90,7 +94,7 @@ openai_model: "fake-streaming-model"
 openai_api_key: "fake-key"
 api_key: dummy
 agent:
-  max_iterations: 1
+  max_iterations: $max_iterations
   thinking: false
 permissions:
   allowed_dirs:
@@ -130,6 +134,7 @@ write_fake_provider() {
 import http from "node:http";
 
 const port = Number(process.env.FAKE_PROVIDER_PORT || "17534");
+const scenario = process.env.FAKE_PROVIDER_SCENARIO || "streaming";
 
 function writeJSON(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -166,12 +171,46 @@ const server = http.createServer(async (req, res) => {
 
   const rawBody = await readBody(req);
   const request = JSON.parse(rawBody || "{}");
+  const messages = Array.isArray(request.messages) ? request.messages : [];
+  const hasToolResult = messages.some((message) => String(message.content || "").includes('"type":"tool_result"'));
+  if (scenario === "tool_call" && !hasToolResult) {
+    const toolCall = {
+      index: 0,
+      id: "call_version_smoke",
+      type: "function",
+      function: { name: "version", arguments: "{}" },
+    };
+    if (!request.stream) {
+      writeJSON(res, 200, {
+        id: "fake-tool-call-sync",
+        object: "chat.completion",
+        choices: [{
+          message: { role: "assistant", content: "", tool_calls: [{ id: toolCall.id, type: toolCall.type, function: toolCall.function }] },
+          finish_reason: "tool_calls",
+        }],
+        usage: { prompt_tokens: 13, completion_tokens: 2 },
+      });
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    });
+    writeSSE(res, { choices: [{ delta: { tool_calls: [toolCall] }, finish_reason: null }] });
+    writeSSE(res, { choices: [{ delta: {}, finish_reason: "tool_calls" }], usage: { prompt_tokens: 13, completion_tokens: 2 } });
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
   const content = "Fake provider streamed response for GUI smoke.";
+  const toolContent = "Version tool call completed for GUI smoke.";
+  const responseContent = scenario === "tool_call" ? toolContent : content;
   if (!request.stream) {
     writeJSON(res, 200, {
       id: "fake-chat-sync",
       object: "chat.completion",
-      choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }],
+      choices: [{ message: { role: "assistant", content: responseContent }, finish_reason: "stop" }],
       usage: { prompt_tokens: 11, completion_tokens: 7 },
     });
     return;
@@ -182,7 +221,10 @@ const server = http.createServer(async (req, res) => {
     "Cache-Control": "no-cache",
     "Connection": "keep-alive",
   });
-  for (const chunk of ["Fake provider ", "streamed response ", "for GUI smoke."]) {
+  const chunks = scenario === "tool_call"
+    ? ["Version tool call ", "completed for GUI smoke."]
+    : ["Fake provider ", "streamed response ", "for GUI smoke."];
+  for (const chunk of chunks) {
     writeSSE(res, { choices: [{ delta: { content: chunk }, finish_reason: null }] });
     await sleep(80);
   }
@@ -201,12 +243,12 @@ JS
 }
 
 start_fake_provider_if_needed() {
-  if [[ "$SMOKE_MODE" != "streaming" ]]; then
+  if [[ "$SMOKE_MODE" != "streaming" && "$SMOKE_MODE" != "tool_call" ]]; then
     return
   fi
   write_fake_provider
   echo "==> starting fake OpenAI provider"
-  FAKE_PROVIDER_PORT="${FAKE_PROVIDER_URL##*:}" node "$FAKE_PROVIDER_SCRIPT" >"$TMP_DIR/fake-provider.log" 2>&1 &
+  FAKE_PROVIDER_PORT="${FAKE_PROVIDER_URL##*:}" FAKE_PROVIDER_SCENARIO="$SMOKE_MODE" node "$FAKE_PROVIDER_SCRIPT" >"$TMP_DIR/fake-provider.log" 2>&1 &
   FAKE_PROVIDER_PID="$!"
   for _ in {1..80}; do
     if curl -fsS "$FAKE_PROVIDER_URL/health" >/dev/null 2>&1; then
@@ -837,6 +879,47 @@ async function runStreamingProvider(page) {
   assert(copiedRunSummary.includes("Usage: input_tokens: 11, output_tokens: 7, total_tokens: 18"), "streaming copied run summary missing usage");
 }
 
+async function runToolCallProvider(page) {
+  const prompt = "webui tool call smoke";
+  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.locator("#chat-agent").selectOption("");
+  await page.locator("#chat-new-session").check();
+  await page.locator("#chat-input").fill(prompt);
+  await page.getByRole("button", { name: "Send" }).click();
+
+  const toolEvent = page.locator("#chat-output .tool-event").filter({ hasText: "version" }).first();
+  await toolEvent.getByText("completed").waitFor();
+  await toolEvent.locator("summary").click();
+  await toolEvent.getByText("StarClaw").waitFor();
+  await page.locator("#chat-output").getByText("Version tool call completed for GUI smoke.").waitFor();
+
+  const summary = page.locator("#chat-output .run-summary").last();
+  await summary.getByText("Run summary").waitFor();
+  const runID = await summary.getByRole("button", { name: "Open run" }).getAttribute("data-run-summary-run");
+  const sessionID = await summary.getByRole("button", { name: "Open session" }).getAttribute("data-run-summary-session");
+  assert(runID, "tool-call run summary missing request id");
+  assert(sessionID, "tool-call run summary missing session id");
+
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await summary.getByRole("button", { name: "Open session" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "tool-call open session should select persisted session");
+  await page.locator("#chat-output").getByText("Version tool call completed for GUI smoke.").waitFor();
+
+  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.locator(`[data-run-id="${runID}"]`).waitFor();
+  await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
+  await page.locator("#run-detail").getByText(runID).waitFor();
+  await page.locator("#run-detail").getByText("completed", { exact: true }).first().waitFor();
+  await page.locator("#run-detail").getByText(prompt).waitFor();
+  assert(await page.locator("#run-detail .run-tool-event").count() === 1, "tool-call run detail should group tool call/result into one tool card");
+  const runToolEvent = page.locator("#run-detail .run-tool-event").first();
+  await runToolEvent.getByText("version").waitFor();
+  await runToolEvent.getByText("completed").waitFor();
+  await runToolEvent.getByText("StarClaw").waitFor();
+  assert(await page.locator("#run-detail").getByText("Version tool call completed for GUI smoke.").count() >= 1, "tool-call run detail missing final response");
+}
+
 async function runSelected(page) {
   switch (mode) {
     case "core":
@@ -853,6 +936,9 @@ async function runSelected(page) {
       return;
     case "streaming":
       await runStreamingProvider(page);
+      return;
+    case "tool_call":
+      await runToolCallProvider(page);
       return;
     case "full":
       await runCore(page);
