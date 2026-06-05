@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 98
-- **Last Active**: 2026-06-04
+- **Total Sessions**: 99
+- **Last Active**: 2026-06-05
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1310 | Active |
+| `journal-2.md` | ~1343 | Active |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 99 | 2026-06-05 | Add GUI tool call smoke | `77e8c4f` | `main` |
 | 98 | 2026-06-04 | Stream model deltas to GUI | `62f6269` | `main` |
 | 97 | 2026-06-04 | Add GUI streaming provider smoke | `aadca59` | `main` |
 | 96 | 2026-06-04 | Harden GUI smoke coverage | `5c12459` | `main` |

@@ -1308,3 +1308,36 @@ Forwarded model stream deltas from daemon SSE /message responses as browser text
 ### Next Steps
 
 - None - task complete
+
+
+## Session 99: Add GUI tool call smoke
+
+**Date**: 2026-06-05
+**Task**: Add GUI tool call smoke
+**Branch**: `main`
+
+### Summary
+
+Added a deterministic Web UI smoke scenario for the real tool-call loop using the fake OpenAI provider and version tool; verified targeted smoke, core smoke, go test, go vet, and diff check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `77e8c4f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
