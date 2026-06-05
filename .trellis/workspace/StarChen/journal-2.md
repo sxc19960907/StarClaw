@@ -1374,3 +1374,36 @@ Added Run detail copy-result actions, per-tool result copy, consistent grouped A
 ### Next Steps
 
 - None - task complete
+
+
+## Session 101: Align app launch runtime status
+
+**Date**: 2026-06-05
+**Task**: Align app launch runtime status
+**Branch**: `main`
+
+### Summary
+
+Aligned app launch readiness, diagnostics runtime JSON, GUI diagnostics display, README launch docs, and smoke coverage for consistent daemon/GUI status context.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `932022d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
