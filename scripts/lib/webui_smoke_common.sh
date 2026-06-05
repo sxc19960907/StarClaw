@@ -332,6 +332,9 @@ async function runCore(page) {
   await page.locator("#panel-diagnostics").getByText("Launch readiness").waitFor();
   await page.locator("#panel-diagnostics").getByText("starclaw app").waitFor();
   await page.locator("#panel-diagnostics").getByText(`${baseURL}/app/`).waitFor();
+  await page.locator("#panel-diagnostics").getByText(`${baseURL}/health`).waitFor();
+  await page.locator("#panel-diagnostics").getByText(`${baseURL}/status`).waitFor();
+  await page.locator("#panel-diagnostics").getByText(`${baseURL}/diagnostics`).waitFor();
   await page.locator("#panel-diagnostics").getByText("Config", { exact: true }).waitFor();
   await page.locator("#panel-diagnostics").getByText("Agents", { exact: true }).waitFor();
   await page.locator("#panel-diagnostics").getByText("Sessions", { exact: true }).waitFor();
@@ -1007,6 +1010,9 @@ check_routes() {
   curl -fsS "$BASE_URL/diagnostics" | grep -F '"checks"' >/dev/null || fail "diagnostics JSON missing checks"
   curl -fsS "$BASE_URL/diagnostics" | grep -F '"launch_command":"starclaw app"' >/dev/null || fail "diagnostics JSON missing launch command"
   curl -fsS "$BASE_URL/diagnostics" | grep -F '"web_url":"'"$BASE_URL"'/app/"' >/dev/null || fail "diagnostics JSON missing web URL"
+  curl -fsS "$BASE_URL/diagnostics" | grep -F '"health_url":"'"$BASE_URL"'/health"' >/dev/null || fail "diagnostics JSON missing health URL"
+  curl -fsS "$BASE_URL/diagnostics" | grep -F '"status_url":"'"$BASE_URL"'/status"' >/dev/null || fail "diagnostics JSON missing status URL"
+  curl -fsS "$BASE_URL/diagnostics" | grep -F '"diagnostics_url":"'"$BASE_URL"'/diagnostics"' >/dev/null || fail "diagnostics JSON missing diagnostics URL"
   curl -fsS "$BASE_URL/diagnostics" | grep -F '"config_path":"'"$SMOKE_HOME"'/.starclaw/config.yaml"' >/dev/null || fail "diagnostics JSON missing config path"
   curl -fsS "$BASE_URL/permissions" | grep -F '"configured":true' >/dev/null || fail "permissions JSON missing configured policy"
   curl -fsSI "$BASE_URL/" | grep -F "Location: /app/" >/dev/null || fail "root redirect missing"

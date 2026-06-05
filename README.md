@@ -101,7 +101,13 @@ To inspect launch readiness without starting anything:
 starclaw app --check
 ```
 
-`starclaw app` reuses an already-running daemon. If the browser cannot be opened automatically, copy the printed Web UI URL manually. The GUI Version page also shows local runtime context such as health, status, diagnostics, data, and config paths.
+For a broader support snapshot:
+```bash
+starclaw doctor
+starclaw doctor --json
+```
+
+`starclaw app` reuses an already-running daemon. If the browser cannot be opened automatically, copy the printed Web UI URL manually. `starclaw app --check`, `starclaw doctor`, and the GUI Version page show the same local runtime context: Web UI, health, status, diagnostics, data, and config paths.
 
 **Pipe input:**
 ```bash

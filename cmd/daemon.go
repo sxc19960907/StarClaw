@@ -174,8 +174,11 @@ func printAppLaunchReadiness(cmd *cobra.Command) error {
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Launch:        starclaw app\n")
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Daemon:        %s\n", status)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Web UI:        %s\n", daemonWebURL)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Health:        %s\n", daemonHealthURL)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Status API:    %s\n", daemonStatusURL)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Diagnostics:   %s\n", daemonDiagnosticsURL)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Data:          %s\n", config.StarclawDir())
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Config:        %s\n", filepath.Join(config.StarclawDir(), "config.yaml"))
 	return nil
 }
 

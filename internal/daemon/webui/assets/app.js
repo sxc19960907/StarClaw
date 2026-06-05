@@ -406,6 +406,9 @@ function diagnosticsLaunchRows(diagnostics) {
   const rows = [
     ["Launch", diagnostics.launch_command || "starclaw app"],
     ["Web UI", diagnostics.web_url || "-"],
+    ["Health", diagnostics.health_url || "-"],
+    ["Status API", diagnostics.status_url || "-"],
+    ["Diagnostics", diagnostics.diagnostics_url || "-"],
     ["Data", diagnostics.starclaw_dir || "-"],
     ["Config", diagnostics.config_path || "-"],
     ["Agents", diagnostics.agents_dir || "-"],

@@ -25,6 +25,9 @@ type DiagnosticsResponse struct {
 	Status         DiagnosticStatus  `json:"status"`
 	Summary        string            `json:"summary"`
 	WebURL         string            `json:"web_url"`
+	HealthURL      string            `json:"health_url"`
+	StatusURL      string            `json:"status_url"`
+	DiagnosticsURL string            `json:"diagnostics_url"`
 	LaunchCommand  string            `json:"launch_command"`
 	ExecutablePath string            `json:"executable_path,omitempty"`
 	StarclawDir    string            `json:"starclaw_dir,omitempty"`
@@ -62,15 +65,18 @@ func (s *Server) buildDiagnostics(ctx context.Context) DiagnosticsResponse {
 	}
 	status := highestDiagnosticStatus(checks)
 	resp := DiagnosticsResponse{
-		Status:        status,
-		Summary:       diagnosticSummary(status),
-		WebURL:        daemonWebURLForPort(s.port),
-		LaunchCommand: daemonLaunchCommand,
-		StarclawDir:   starclawDir,
-		ConfigPath:    configPath,
-		AgentsDir:     agentsDir,
-		SessionsDir:   sessionsDir,
-		Checks:        checks,
+		Status:         status,
+		Summary:        diagnosticSummary(status),
+		WebURL:         daemonWebURLForPort(s.port),
+		HealthURL:      daemonHealthURLForPort(s.port),
+		StatusURL:      daemonStatusURLForPort(s.port),
+		DiagnosticsURL: daemonDiagnosticsURLForPort(s.port),
+		LaunchCommand:  daemonLaunchCommand,
+		StarclawDir:    starclawDir,
+		ConfigPath:     configPath,
+		AgentsDir:      agentsDir,
+		SessionsDir:    sessionsDir,
+		Checks:         checks,
 	}
 	if executablePath, err := os.Executable(); err == nil {
 		resp.ExecutablePath = executablePath

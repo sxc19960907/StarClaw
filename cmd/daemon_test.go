@@ -125,7 +125,10 @@ func TestAppCmdCheckPrintsLaunchReadiness(t *testing.T) {
 		"Launch:        starclaw app",
 		"Daemon:        running",
 		"Web UI:        " + daemonWebURL,
+		"Health:        " + daemonHealthURL,
+		"Status API:    " + daemonStatusURL,
 		"Diagnostics:   " + daemonDiagnosticsURL,
+		"Config:",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output %q should contain %q", output, want)
