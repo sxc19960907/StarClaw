@@ -1440,3 +1440,36 @@ Replaced npm placeholders with a release-backed installer and shim, added local 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 103: Run GUI e2e user regression
+
+**Date**: 2026-06-05
+**Task**: Run GUI e2e user regression
+**Branch**: `main`
+
+### Summary
+
+Ran core and targeted tool-call GUI smoke, visually reviewed generated Playwright screenshots, and recorded the user-flow regression report with no blocking GUI defects found.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `097552d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
