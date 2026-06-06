@@ -155,6 +155,18 @@ func CheckToolCall(toolName, argsJSON string, cfg *Config) (Decision, string) {
 		return checkCommand(cmd, cfg)
 	case "file_read":
 		return checkFilePath(extractField(argsJSON, "path"), "read", cfg)
+	case "document_text", "archive_inspect":
+		return checkFilePath(extractField(argsJSON, "path"), "read", cfg)
+	case "archive_extract":
+		pathDecision, pathReason := checkFilePath(extractField(argsJSON, "path"), "read", cfg)
+		if pathDecision == Deny {
+			return pathDecision, pathReason
+		}
+		destDecision, destReason := checkFilePath(extractField(argsJSON, "destination"), "write", cfg)
+		if destDecision == Deny {
+			return destDecision, destReason
+		}
+		return Ask, "archive extraction writes files and requires approval"
 	case "file_write", "file_edit":
 		return checkFilePath(extractField(argsJSON, "path"), "write", cfg)
 	case "glob", "grep":

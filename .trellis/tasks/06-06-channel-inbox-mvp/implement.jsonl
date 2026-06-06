@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Defines embedded daemon Web UI routing, static asset, same-origin API, and validation expectations."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Guides HTTP validation and contextual backend error handling for inbox API additions."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Covers test placement, UI smoke expectations, and consistency requirements for new daemon/UI behavior."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Inbox spans UI, API, store, run handoff, and tests; cross-layer contract review is required."}

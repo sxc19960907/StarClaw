@@ -10,10 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	mcpproto "github.com/mark3labs/mcp-go/mcp"
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/mcp"
 	"github.com/starclaw/starclaw/internal/permissions"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
@@ -763,6 +765,18 @@ openai_api_key: sk-secret
 openai_endpoint: https://api.openai.test/v1
 openai_model: gpt-test
 api_key: anthropic-secret
+mcp_servers:
+  browser:
+    command: npx
+    args: ["@playwright/mcp@latest"]
+    env:
+      BROWSER_TOKEN: browser-secret
+    context: browser context
+    keep_alive: true
+  disabled_http:
+    type: http
+    url: http://127.0.0.1:8888/mcp
+    disabled: true
 `), 0600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -784,6 +798,21 @@ api_key: anthropic-secret
 	if !body.Config.OpenAIAPIKeySet || !body.Config.APIKeySet {
 		t.Fatalf("expected key presence booleans, got %+v", body.Config)
 	}
+	if len(body.Config.MCPServers) != 2 {
+		t.Fatalf("mcp server count = %d, want 2: %+v", len(body.Config.MCPServers), body.Config.MCPServers)
+	}
+	if body.Config.MCPServers[0].Name != "browser" || body.Config.MCPServers[0].Type != "stdio" {
+		t.Fatalf("unexpected first mcp server: %+v", body.Config.MCPServers[0])
+	}
+	if len(body.Config.MCPServers[0].EnvKeys) != 1 || body.Config.MCPServers[0].EnvKeys[0] != "BROWSER_TOKEN" {
+		t.Fatalf("unexpected env key redaction: %+v", body.Config.MCPServers[0].EnvKeys)
+	}
+	if !body.Config.MCPServers[0].Context || !body.Config.MCPServers[0].KeepAlive {
+		t.Fatalf("expected context and keep_alive flags: %+v", body.Config.MCPServers[0])
+	}
+	if !body.Config.MCPServers[1].Disabled || body.Config.MCPServers[1].URL == "" {
+		t.Fatalf("unexpected disabled http mcp server: %+v", body.Config.MCPServers[1])
+	}
 	raw, err := http.Get(ts.URL + "/config")
 	if err != nil {
 		t.Fatalf("GET /config: %v", err)
@@ -796,7 +825,7 @@ api_key: anthropic-secret
 		t.Fatalf("decode raw: %v", err)
 	}
 	encoded, _ := json.Marshal(rawBody)
-	if strings.Contains(string(encoded), "sk-secret") || strings.Contains(string(encoded), "anthropic-secret") {
+	if strings.Contains(string(encoded), "sk-secret") || strings.Contains(string(encoded), "anthropic-secret") || strings.Contains(string(encoded), "browser-secret") {
 		t.Fatalf("GET /config leaked secret: %s", encoded)
 	}
 }
@@ -871,6 +900,209 @@ func TestHandleConfigPatchRejectsUnsupportedProvider(t *testing.T) {
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
+}
+
+func TestHandleMCPTestDisabledAndMissing(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+mcp_servers:
+  disabled:
+    command: echo
+    disabled: true
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/mcp/test", strings.NewReader(`{"name":"missing"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /mcp/test missing: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing status = %d, want 404", resp.StatusCode)
+	}
+
+	var body mcpTestResponse
+	postJSON(t, ts.URL+"/mcp/test", `{"name":"disabled"}`, http.StatusOK, &body)
+	if body.Status != "disabled" || body.Error == "" {
+		t.Fatalf("disabled response = %+v", body)
+	}
+}
+
+func TestHandleMCPTestDiscoversTools(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+mcp_servers:
+  local:
+    command: local-mcp
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{}
+	deps.MCPTester = func(name string, server mcp.MCPServerConfig) ([]mcp.RemoteTool, error) {
+		if name != "local" || server.Command != "local-mcp" {
+			t.Fatalf("unexpected MCP tester input: %s %+v", name, server)
+		}
+		return []mcp.RemoteTool{
+			{ServerName: name, Tool: mcpproto.Tool{Name: "search_docs", Description: "Search local docs"}},
+		}, nil
+	}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var body mcpTestResponse
+	postJSON(t, ts.URL+"/mcp/test", `{"name":"local"}`, http.StatusOK, &body)
+	if body.Status != "ok" || body.ToolCount != 1 {
+		t.Fatalf("unexpected MCP test response: %+v", body)
+	}
+	if len(body.Tools) != 1 || body.Tools[0].Name != "search_docs" || body.Tools[0].Description != "Search local docs" {
+		t.Fatalf("unexpected MCP tools: %+v", body.Tools)
+	}
+}
+
+func TestHandleMemoryLifecycle(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var initial memoryView
+	getJSON(t, ts.URL+"/memory", http.StatusOK, &initial)
+	if initial.MemoryDir == "" {
+		t.Fatalf("memory_dir should be set")
+	}
+	if len(initial.Entries) != 0 {
+		t.Fatalf("initial entries = %+v, want empty", initial.Entries)
+	}
+
+	var appended memoryView
+	postJSON(t, ts.URL+"/memory", `{"content":"- User prefers Astria UI to stay desktop-like."}`, http.StatusOK, &appended)
+	if !strings.Contains(appended.Content, "desktop-like") {
+		t.Fatalf("memory content missing appended entry: %q", appended.Content)
+	}
+	if len(appended.Entries) != 1 || !appended.Entries[0].Primary {
+		t.Fatalf("unexpected entries after append: %+v", appended.Entries)
+	}
+
+	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/memory/MEMORY.md", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE memory: %v", err)
+	}
+	var afterDelete memoryView
+	decodeJSONResponse(t, resp, http.StatusOK, &afterDelete)
+	if afterDelete.Content != "" || len(afterDelete.Entries) != 0 {
+		t.Fatalf("memory should be empty after delete: %+v", afterDelete)
+	}
+}
+
+func TestHandleMemoryRejectsTraversal(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/memory/..%2Fsecret", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE traversal: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestInboxWebhookApproveAndDeduplicate(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var created struct {
+		Item      InboxItem `json:"item"`
+		Duplicate bool      `json:"duplicate"`
+	}
+	postJSON(t, ts.URL+"/inbox/webhook", `{"external_id":"evt-1","sender":"alice","text":"summarize this","metadata":{"thread":"t1"}}`, http.StatusCreated, &created)
+	if created.Duplicate {
+		t.Fatal("first inbox event should not be duplicate")
+	}
+	if created.Item.ID == "" || created.Item.Status != "pending" || created.Item.Provider != "webhook" {
+		t.Fatalf("unexpected created inbox item: %+v", created.Item)
+	}
+	if created.Item.Metadata["thread"] != "t1" {
+		t.Fatalf("metadata not preserved: %+v", created.Item.Metadata)
+	}
+
+	var duplicate struct {
+		Item      InboxItem `json:"item"`
+		Duplicate bool      `json:"duplicate"`
+	}
+	postJSON(t, ts.URL+"/inbox/webhook", `{"external_id":"evt-1","sender":"alice","text":"summarize this again"}`, http.StatusOK, &duplicate)
+	if !duplicate.Duplicate || duplicate.Item.ID != created.Item.ID || duplicate.Item.Text != "summarize this" {
+		t.Fatalf("unexpected duplicate response: %+v", duplicate)
+	}
+
+	var list struct {
+		Items []InboxItem `json:"items"`
+	}
+	getJSON(t, ts.URL+"/inbox", http.StatusOK, &list)
+	if len(list.Items) != 1 || list.Items[0].ID != created.Item.ID {
+		t.Fatalf("unexpected inbox list: %+v", list.Items)
+	}
+
+	var approved struct {
+		Item InboxItem        `json:"item"`
+		Run  RunAgentResponse `json:"run"`
+	}
+	postJSON(t, ts.URL+"/inbox/"+created.Item.ID+"/approve", `{}`, http.StatusOK, &approved)
+	if approved.Item.Status != "completed" || approved.Item.RunID == "" {
+		t.Fatalf("unexpected approved item: %+v", approved.Item)
+	}
+	if approved.Run.SessionID == "" || len(approved.Run.Messages) == 0 {
+		t.Fatalf("expected run response after approve: %+v", approved.Run)
+	}
+
+	var run RunRecord
+	getJSON(t, ts.URL+"/runs/"+approved.Item.RunID, http.StatusOK, &run)
+	if run.Channel != ChannelInbox || run.Prompt != "summarize this" {
+		t.Fatalf("unexpected inbox run record: %+v", run)
+	}
+	if run.Request.Sender != "alice" {
+		t.Fatalf("run request sender = %q, want alice", run.Request.Sender)
+	}
+}
+
+func TestInboxRejectAndRetryValidation(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var created struct {
+		Item InboxItem `json:"item"`
+	}
+	postJSON(t, ts.URL+"/inbox/webhook", `{"external_id":"evt-2","text":"reject me"}`, http.StatusCreated, &created)
+
+	var rejected InboxItem
+	postJSON(t, ts.URL+"/inbox/"+created.Item.ID+"/reject", `{}`, http.StatusOK, &rejected)
+	if rejected.Status != "rejected" {
+		t.Fatalf("status = %q, want rejected", rejected.Status)
+	}
+	postJSON(t, ts.URL+"/inbox/"+created.Item.ID+"/approve", `{}`, http.StatusBadRequest, &map[string]string{})
+	postJSON(t, ts.URL+"/inbox/"+created.Item.ID+"/retry", `{}`, http.StatusBadRequest, &map[string]string{})
 }
 
 func TestHandleInstructions(t *testing.T) {

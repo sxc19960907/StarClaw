@@ -4,6 +4,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/mcp"
 	"github.com/starclaw/starclaw/internal/schedule"
 )
 
@@ -47,6 +48,7 @@ type ServerDeps struct {
 	LLMClient       client.LLMClient
 	Registry        *agent.ToolRegistry
 	ScheduleManager *schedule.Manager
+	MCPTester       func(name string, server mcp.MCPServerConfig) ([]mcp.RemoteTool, error)
 }
 
 // ApprovalDecision represents the user's response to a tool approval request.

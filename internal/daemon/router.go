@@ -27,6 +27,9 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 	r.registerConfigRoutes(mux)
 	r.registerInstructionsRoutes(mux)
 	r.registerSessionRoutes(mux)
+	r.registerMemoryRoutes(mux)
+	r.registerCouncilRoutes(mux)
+	r.registerInboxRoutes(mux)
 	r.registerPermissionRoutes(mux)
 }
 
@@ -81,6 +84,7 @@ func (r *Router) registerSkillRoutes(mux *http.ServeMux) {
 func (r *Router) registerConfigRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /config", r.srv.handleGetConfig)
 	mux.HandleFunc("PATCH /config", r.srv.handlePatchConfig)
+	mux.HandleFunc("POST /mcp/test", r.srv.handleTestMCPServer)
 }
 
 func (r *Router) registerInstructionsRoutes(mux *http.ServeMux) {
@@ -94,6 +98,26 @@ func (r *Router) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /sessions/{id}", r.srv.handlePatchSession)
 	mux.HandleFunc("DELETE /sessions/{id}", r.srv.handleDeleteSession)
 	mux.HandleFunc("GET /sessions/search", r.srv.handleSessionSearch)
+}
+
+func (r *Router) registerMemoryRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /memory", r.srv.handleGetMemory)
+	mux.HandleFunc("POST /memory", r.srv.handleAppendMemory)
+	mux.HandleFunc("DELETE /memory/{name}", r.srv.handleDeleteMemory)
+}
+
+func (r *Router) registerCouncilRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /council", r.srv.handleListCouncilRuns)
+	mux.HandleFunc("POST /council", r.srv.handleCreateCouncilRun)
+	mux.HandleFunc("GET /council/{id}", r.srv.handleGetCouncilRun)
+}
+
+func (r *Router) registerInboxRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /inbox", r.srv.handleListInbox)
+	mux.HandleFunc("POST /inbox/webhook", r.srv.handleInboxWebhook)
+	mux.HandleFunc("POST /inbox/{id}/approve", r.srv.handleApproveInboxItem)
+	mux.HandleFunc("POST /inbox/{id}/reject", r.srv.handleRejectInboxItem)
+	mux.HandleFunc("POST /inbox/{id}/retry", r.srv.handleRetryInboxItem)
 }
 
 func (r *Router) registerPermissionRoutes(mux *http.ServeMux) {

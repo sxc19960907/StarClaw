@@ -1,0 +1,37 @@
+{
+  "id": "astria-product-roadmap",
+  "name": "astria-product-roadmap",
+  "title": "Astria product roadmap inspired by Kocoro",
+  "description": "Parent roadmap for Astria's next product phase: Kocoro-inspired UI/product capabilities plus StarClaw gap closure.",
+  "status": "done",
+  "dev_type": "integration-review",
+  "scope": "six-child Astria roadmap integration review and Web UI approval-count fix",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-06",
+  "completedAt": "2026-06-06",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-06-astria-home-actions",
+    "06-06-mcp-starport-ui",
+    "06-06-document-archive-tools",
+    "06-06-memory-map-mvp",
+    "06-06-agent-council-swarm",
+    "06-06-channel-inbox-mvp"
+  ],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/tasks/06-06-astria-product-roadmap/prd.md",
+    "internal/daemon/webui/assets/app.js",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "",
+  "meta": {}
+}

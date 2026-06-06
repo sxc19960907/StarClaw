@@ -45,7 +45,7 @@ func TestWebUIRoutes(t *testing.T) {
 			wantStatus:      http.StatusOK,
 			wantContentType: "text/html",
 			wantBodyContains: []string{
-				"StarClaw",
+				"Astria",
 				"/app/assets/styles.css",
 				"/app/assets/app.js",
 			},

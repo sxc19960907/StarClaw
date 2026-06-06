@@ -16,6 +16,7 @@ FAKE_PROVIDER_URL="${WEBUI_FAKE_PROVIDER_URL:-http://127.0.0.1:17534}"
 ARTIFACT_DIR="${WEBUI_SMOKE_ARTIFACT_DIR:-$ROOT_DIR/output/playwright}"
 SCREENSHOT_DIR="$ARTIFACT_DIR"
 SCREENSHOT="$SCREENSHOT_DIR/daemon-webui-${SMOKE_MODE}-smoke.png"
+HOME_SCREENSHOT="$SCREENSHOT_DIR/astria-home-${SMOKE_MODE}-smoke.png"
 DAEMON_LOG_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.log"
 METADATA_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.metadata"
 DAEMON_PID=""
@@ -30,6 +31,7 @@ persist_artifacts() {
     printf 'mode=%s\n' "$SMOKE_MODE"
     printf 'base_url=%s\n' "$BASE_URL"
     printf 'screenshot=%s\n' "$SCREENSHOT"
+    printf 'home_screenshot=%s\n' "$HOME_SCREENSHOT"
     printf 'daemon_log=%s\n' "$DAEMON_LOG_ARTIFACT"
     printf 'created_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   } > "$METADATA_ARTIFACT"
@@ -273,6 +275,7 @@ import fs from "node:fs";
 
 const baseURL = process.env.BASE_URL;
 const screenshot = process.env.SCREENSHOT;
+const homeScreenshot = process.env.HOME_SCREENSHOT;
 const mode = process.env.WEBUI_SMOKE_MODE || "full";
 
 function assert(condition, message) {
@@ -307,21 +310,28 @@ async function fulfillIfUnhandled(route, options) {
 
 async function boot(page) {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Chat" }).waitFor();
-  await page.getByPlaceholder("Message StarClaw").waitFor();
+  await page.getByRole("heading", { name: "Hiya, welcome to Astria" }).waitFor();
+  await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").waitFor();
+  if (homeScreenshot) {
+    await page.screenshot({ path: homeScreenshot, fullPage: true });
+    assert(fs.existsSync(homeScreenshot), "home screenshot was not written");
+  }
+  await page.getByRole("button", { name: "Chat" }).click();
+  await page.locator("#panel-chat").waitFor();
+  await page.getByPlaceholder("Message Astria").waitFor();
   await page.getByRole("button", { name: "Send" }).waitFor();
   assert(await page.locator(".sidebar").count() === 1, "sidebar missing");
   await page.locator("#diagnostics-chip").waitFor();
 }
 
 async function openManagePanel(page, name) {
-  await page.getByRole("button", { name: /^Manage/ }).click();
+  await page.getByRole("button", { name: "Manage" }).click();
   await page.locator("#panel-manage").getByRole("heading", { name: "Manage" }).waitFor();
   await page.locator("#panel-manage").getByRole("button", { name: new RegExp(`^${name}`) }).click();
 }
 
 async function openSettingsPanel(page, name) {
-  await page.getByRole("button", { name: /^Settings/ }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
   await page.locator("#panel-settings").getByRole("heading", { name: "Settings" }).waitFor();
   await page.locator("#panel-settings").getByRole("button", { name: new RegExp(`^${name}`) }).click();
 }
@@ -369,13 +379,52 @@ async function runCore(page) {
   await page.getByRole("button", { name: "Copy support info" }).click();
   await page.getByText("Support info copied.").waitFor();
   const supportInfo = await page.evaluate(() => navigator.clipboard.readText());
-  assert(supportInfo.includes("StarClaw support info"), "support info missing heading");
+  assert(supportInfo.includes("Astria support info"), "support info missing heading");
   assert(supportInfo.includes("Version: dev"), "support info missing version");
   assert(supportInfo.includes(`Web UI: ${baseURL}/app/`), "support info missing web URL");
   assert(supportInfo.includes(`Diagnostics URL: ${baseURL}/diagnostics`), "support info missing diagnostics URL");
   assert(supportInfo.includes(`Data dir: ${process.env.SMOKE_HOME}/.starclaw`), "support info missing data dir");
   assert(supportInfo.includes("Diagnostics status:"), "support info missing diagnostics status");
   assert(!supportInfo.toLowerCase().includes("api_key"), "support info should not include API key fields");
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.locator("#home-tool-orbit").getByRole("button", { name: /MCP/ }).click();
+  await page.locator("#panel-mcp.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.locator(".constellation-card").filter({ hasText: "记忆星图" }).click();
+  await page.locator("#panel-memory.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.getByRole("button", { name: "MCP", exact: true }).click();
+  await page.locator("#panel-mcp.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.getByRole("button", { name: "多智能体" }).click();
+  await page.locator("#panel-council.active").waitFor();
+  await page.getByLabel("Council goal").fill("webui council smoke");
+  await page.getByRole("button", { name: "Start council" }).click();
+  await page.locator("#council-detail").getByRole("heading", { name: "webui council smoke" }).waitFor();
+  await page.locator("#council-detail").getByText("planner", { exact: true }).waitFor();
+  await page.locator("#council-detail").getByText("researcher", { exact: true }).waitFor();
+  await page.locator("#council-detail").getByText("reviewer", { exact: true }).waitFor();
+  await page.locator("#council-detail").getByText("Final synthesis").waitFor();
+  await page.locator("#council-detail").getByRole("button", { name: "Copy synthesis" }).click();
+  await page.getByText("Council synthesis copied.").waitFor();
+  const councilSynthesis = await page.evaluate(() => navigator.clipboard.readText());
+  assert(councilSynthesis.includes("Council synthesis for: webui council smoke"), "council synthesis copy missing goal");
+  await openManagePanel(page, "Inbox");
+  await page.locator("#panel-inbox").getByRole("heading", { name: "Inbox" }).waitFor();
+  await page.getByLabel("Inbox external id").fill("evt-smoke-core");
+  await page.getByLabel("Inbox sender").fill("webui-smoke");
+  await page.getByLabel("Inbox text").fill("Review this inbound smoke task.");
+  await page.getByRole("button", { name: "Receive webhook" }).click();
+  await page.getByText("Inbound task received.").waitFor();
+  await page.locator("#inbox-list").getByText("Review this inbound smoke task.").waitFor();
+  await page.locator("#inbox-list").getByText("pending").waitFor();
+  await page.locator("#inbox-list").getByRole("button", { name: "Reject" }).click();
+  await page.getByText("Inbox item rejected.").waitFor();
+  await page.locator("#inbox-list .tag").getByText("rejected", { exact: true }).waitFor();
   await openManagePanel(page, "Schedules");
   await page.getByLabel("Cron expression").fill("* * * * *");
   await page.getByLabel("Schedule prompt").fill("webui smoke schedule");
@@ -385,7 +434,7 @@ async function runCore(page) {
   await page.getByRole("button", { name: "Enable" }).waitFor();
   await page.getByRole("button", { name: "Delete" }).click();
   await page.getByText("No schedules configured.").waitFor();
-  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.getByRole("button", { name: "Chat" }).click();
   const approvalRendered = await page.evaluate(async () => {
     if (typeof window.renderApprovalCard !== "function") return false;
     window.renderApprovalCard({
@@ -404,6 +453,10 @@ async function runCore(page) {
   await approvalCard.getByText("smoke approval").waitFor();
   await page.getByRole("button", { name: "Allow" }).click();
   await approvalCard.getByText("allowed").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.locator("#home-count-pending").getByText("0", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Chat" }).click();
   const eventStatus = await page.evaluate(async (url) => {
     const response = await fetch(`${url}/events`);
     await response.body.cancel();
@@ -670,7 +723,7 @@ async function runAgents(page) {
 }
 
 async function runRuns(page) {
-  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.getByRole("button", { name: "Chat" }).click();
   await page.locator("#chat-agent").selectOption("");
   await page.locator("#chat-new-session").check();
   await page.locator("#chat-input").fill("webui smoke session");
@@ -718,7 +771,7 @@ async function runRuns(page) {
   }, { url: baseURL, runID });
   assert(sessionID, "session id missing");
   await page.getByRole("button", { name: "Refresh data" }).click();
-  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.getByRole("button", { name: "Runs" }).click();
   await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
   await page.route(`**/runs/${runID}`, async (route) => {
@@ -780,7 +833,7 @@ async function runRuns(page) {
   assert(await page.locator("#chat-input").inputValue() === "webui smoke session", "rerun should prefill chat prompt");
   assert(await page.locator("#chat-new-session").isChecked(), "rerun should use a new session");
   assert(await page.locator("#chat-agent").inputValue() === "", "rerun should select default agent");
-  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.getByRole("button", { name: "Runs" }).click();
   await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
   await page.locator("#run-detail").getByRole("button", { name: "Open session" }).click();
   await page.locator("#panel-chat.active").waitFor();
@@ -824,7 +877,7 @@ async function runRuns(page) {
   }, { url: baseURL, errorRunID });
   assert(errorSessionID, "error run session id missing");
   await page.getByRole("button", { name: "Refresh data" }).click();
-  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.getByRole("button", { name: "Runs" }).click();
   await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
   await page.locator(`[data-run-id="${errorRunID}"]`).waitFor();
   await page.locator(`[data-run-id="${errorRunID}"]`).getByRole("button", { name: "Open run" }).click();
@@ -852,8 +905,18 @@ async function runRuns(page) {
 }
 
 async function runStreamingProvider(page) {
+  const homePrompt = "webui home composer smoke";
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.locator("#home-task-input").fill(homePrompt);
+  await page.getByRole("button", { name: "Launch task" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  await page.locator("#chat-output").getByText(homePrompt).waitFor();
+  await page.locator("#chat-output").getByText("Fake provider streamed response for GUI smoke.").waitFor();
+  await page.getByRole("button", { name: "New mission" }).click();
+
   const prompt = "webui streaming provider smoke";
-  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.getByRole("button", { name: "Chat" }).click();
   await page.locator("#chat-agent").selectOption("");
   await page.locator("#chat-new-session").check();
   await page.locator("#chat-input").fill(prompt);
@@ -877,7 +940,7 @@ async function runStreamingProvider(page) {
   assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "streaming open session should select persisted session");
   await page.locator("#chat-output").getByText("Fake provider streamed response for GUI smoke.").waitFor();
 
-  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.getByRole("button", { name: "Runs" }).click();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
   await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
   await page.locator("#run-detail").getByText(runID).waitFor();
@@ -895,7 +958,7 @@ async function runStreamingProvider(page) {
 
 async function runToolCallProvider(page) {
   const prompt = "webui tool call smoke";
-  await page.getByRole("button", { name: /Chat/ }).click();
+  await page.getByRole("button", { name: "Chat" }).click();
   await page.locator("#chat-agent").selectOption("");
   await page.locator("#chat-new-session").check();
   await page.locator("#chat-input").fill(prompt);
@@ -920,7 +983,7 @@ async function runToolCallProvider(page) {
   assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "tool-call open session should select persisted session");
   await page.locator("#chat-output").getByText("Version tool call completed for GUI smoke.").waitFor();
 
-  await page.getByRole("button", { name: /Runs/ }).click();
+  await page.getByRole("button", { name: "Runs" }).click();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
   await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
   await page.locator("#run-detail").getByText(runID).waitFor();
@@ -1017,7 +1080,7 @@ check_routes() {
   curl -fsS "$BASE_URL/permissions" | grep -F '"configured":true' >/dev/null || fail "permissions JSON missing configured policy"
   curl -fsSI "$BASE_URL/" | grep -F "Location: /app/" >/dev/null || fail "root redirect missing"
   curl -fsSI "$BASE_URL/app" | grep -F "Location: /app/" >/dev/null || fail "app redirect missing"
-  curl -fsS "$BASE_URL/app/" | grep -F "StarClaw" >/dev/null || fail "app HTML missing StarClaw"
+  curl -fsS "$BASE_URL/app/" | grep -F "Astria" >/dev/null || fail "app HTML missing Astria"
   curl -fsS "$BASE_URL/app/assets/app.js" | grep -F "connectEventStream" >/dev/null || fail "app JS missing event stream code"
   curl -fsS "$BASE_URL/app/assets/styles.css" | grep -F "approval-card" >/dev/null || fail "CSS missing approval styles"
 }
@@ -1049,9 +1112,10 @@ check_routes
 write_browser_smoke
 
 echo "==> running browser smoke ($SMOKE_MODE)"
-env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" NODE_DIR="$NODE_DIR" WEBUI_SMOKE_MODE="$SMOKE_MODE" SMOKE_HOME="$SMOKE_HOME" node "$NODE_SCRIPT"
+env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" HOME_SCREENSHOT="$HOME_SCREENSHOT" NODE_DIR="$NODE_DIR" WEBUI_SMOKE_MODE="$SMOKE_MODE" SMOKE_HOME="$SMOKE_HOME" node "$NODE_SCRIPT"
 
 echo "smoke_webui_${SMOKE_MODE}: ok"
 echo "screenshot: $SCREENSHOT"
+echo "home screenshot: $HOME_SCREENSHOT"
 echo "daemon log: $DAEMON_LOG_ARTIFACT"
 echo "metadata: $METADATA_ARTIFACT"

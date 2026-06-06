@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Quality check for daemon route registration, embedded Web UI assets, and route/smoke coverage."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Quality check for unit tests, smoke coverage, no new dependencies, and existing code patterns."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Quality check for webhook input, store state, API output, UI rendering, and approval-to-run data flow."}

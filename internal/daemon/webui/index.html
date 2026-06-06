@@ -3,38 +3,94 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>StarClaw</title>
+    <title>Astria</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/app/assets/styles.css">
   </head>
   <body>
     <div class="shell">
       <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="window-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
         <div class="brand-row">
-          <div class="brand-mark" aria-hidden="true">S</div>
+          <div class="brand-mark" aria-hidden="true">A</div>
           <div class="brand-copy">
-            <strong>StarClaw</strong>
-            <span>Local agent workspace</span>
+            <strong>Astria</strong>
+            <span>Local celestial agent</span>
           </div>
         </div>
 
-        <button class="new-chat-button" id="new-chat-button" type="button">New chat</button>
+        <button class="new-chat-button" id="new-chat-button" type="button" aria-label="New mission">新任务</button>
 
         <nav class="nav-list" aria-label="Primary">
           <div class="nav-group">
-            <button class="nav-item active" data-panel="chat">
-              <span>Chat</span>
+            <button class="nav-item active" data-panel="home" aria-label="Home">
+              <span><span class="nav-icon" aria-hidden="true">⌂</span>首页</span>
+              <small id="home-orbit-count">0</small>
+            </button>
+            <button class="nav-item" data-panel="chat" aria-label="Chat">
+              <span><span class="nav-icon" aria-hidden="true">◌</span>消息</span>
               <small id="daemon-pill">Checking</small>
             </button>
-            <button class="nav-item" data-panel="runs">
-              <span>Runs</span>
+            <button class="nav-item" data-panel="runs" aria-label="Runs">
+              <span><span class="nav-icon" aria-hidden="true">◎</span>运行</span>
               <small id="runs-count">0</small>
+            </button>
+            <button class="nav-item" data-panel="inbox" aria-label="Inbox">
+              <span><span class="nav-icon" aria-hidden="true">◫</span>收件箱</span>
+              <small id="nav-inbox-count">0</small>
+            </button>
+            <button class="nav-item" data-panel="agents" aria-label="Agents">
+              <span><span class="nav-icon" aria-hidden="true">✺</span>智能体</span>
+              <small id="nav-agents-count">0</small>
+            </button>
+            <button class="nav-item" data-panel="schedules" aria-label="Schedules">
+              <span><span class="nav-icon" aria-hidden="true">◷</span>定时任务</span>
+              <small id="nav-schedules-count">0</small>
+            </button>
+            <button class="nav-item" data-home-action="publish" aria-label="Publish">
+              <span><span class="nav-icon" aria-hidden="true">⇧</span>发布资源</span>
+              <small>draft</small>
+            </button>
+          </div>
+          <div class="nav-group">
+            <div class="nav-kicker">能力</div>
+            <button class="nav-item" data-panel="skills" aria-label="Skills">
+              <span><span class="nav-icon" aria-hidden="true">✧</span>技能</span>
+              <small id="nav-skills-count">0</small>
+            </button>
+            <button class="nav-item" data-panel="config" aria-label="Connectors">
+              <span><span class="nav-icon" aria-hidden="true">∞</span>连接器</span>
+              <small>setup</small>
+            </button>
+            <button class="nav-item" data-home-action="browser" aria-label="Browser">
+              <span><span class="nav-icon" aria-hidden="true">◉</span>浏览器</span>
+              <small>probe</small>
+            </button>
+            <button class="nav-item" data-panel="mcp" aria-label="MCP Servers">
+              <span><span class="nav-icon" aria-hidden="true">▤</span>MCP 服务器</span>
+              <small id="nav-mcp-count">0</small>
+            </button>
+            <button class="nav-item" data-home-action="files" aria-label="Local Files">
+              <span><span class="nav-icon" aria-hidden="true">▱</span>本地文件</span>
+              <small>vault</small>
+            </button>
+            <button class="nav-item" data-panel="memory" aria-label="Memory Map">
+              <span><span class="nav-icon" aria-hidden="true">✶</span>记忆星图</span>
+              <small id="nav-memory-count">0</small>
+            </button>
+            <button class="nav-item" data-panel="council" aria-label="Agent Council">
+              <span><span class="nav-icon" aria-hidden="true">✷</span>智能体议会</span>
+              <small id="nav-council-count">0</small>
             </button>
           </div>
         </nav>
 
         <div class="sidebar-section">
-          <div class="section-kicker">Recent sessions</div>
+          <div class="section-kicker">最近会话</div>
           <form class="search-form" id="session-search-form">
             <input id="session-search" type="search" placeholder="Search">
             <button type="button" id="session-search-clear">Clear</button>
@@ -43,13 +99,17 @@
         </div>
 
         <nav class="sidebar-footer" aria-label="Workspace tools">
-          <button class="nav-item" data-panel="manage">
-            <span>Manage</span>
+          <button class="nav-item" data-panel="manage" aria-label="Manage">
+            <span><span class="nav-icon" aria-hidden="true">⌘</span>管理</span>
             <small id="manage-count">0</small>
           </button>
-          <button class="nav-item" data-panel="settings">
-            <span>Settings</span>
+          <button class="nav-item" data-panel="settings" aria-label="Settings">
+            <span><span class="nav-icon" aria-hidden="true">⚙</span>设置</span>
             <small id="settings-state">Setup</small>
+          </button>
+          <button class="nav-item" data-panel="diagnostics" aria-label="Diagnostics">
+            <span><span class="nav-icon" aria-hidden="true">◇</span>诊断</span>
+            <small id="nav-diagnostics-state">Check</small>
           </button>
         </nav>
       </aside>
@@ -57,8 +117,8 @@
       <main class="workspace">
         <header class="topbar">
           <div class="title-block">
-            <span class="crumb">StarClaw</span>
-            <h1 id="view-title">Chat</h1>
+            <span class="crumb">Astria</span>
+            <h1 id="view-title">首页</h1>
           </div>
           <div class="runtime-strip" aria-label="Daemon status">
             <button class="diagnostics-chip" id="diagnostics-chip" type="button" data-panel="diagnostics">Checking diagnostics</button>
@@ -69,13 +129,118 @@
           </div>
         </header>
 
-        <section class="panel conversation-panel active" id="panel-chat" aria-labelledby="chat-heading">
+        <section class="panel home-panel active" id="panel-home" aria-labelledby="home-heading">
+          <div class="home-wrap">
+            <div class="home-hero">
+              <div class="home-brand-mark" aria-hidden="true">A</div>
+              <h2 id="home-heading">Hiya, welcome to Astria</h2>
+              <p>给 Astria 一个目标，它会把本地任务推进成可交付结果。</p>
+            </div>
+
+            <div class="activity-strip" aria-label="Current activity">
+              <button class="activity-pill pending" type="button" data-panel="chat" title="Review pending approvals">
+                <span>待确认</span>
+                <strong id="home-count-pending">0</strong>
+              </button>
+              <button class="activity-pill running" type="button" data-panel="runs" title="Open active runs">
+                <span>进行中</span>
+                <strong id="home-count-running">0</strong>
+              </button>
+              <button class="activity-pill completed" type="button" data-panel="runs" title="Open completed runs">
+                <span>完成</span>
+                <strong id="home-count-completed">0</strong>
+              </button>
+              <button class="activity-pill failed" type="button" data-panel="runs" title="Open failed runs">
+                <span>失败</span>
+                <strong id="home-count-failed">0</strong>
+              </button>
+            </div>
+
+            <form class="mission-composer" id="home-task-form">
+              <div class="mission-mode-bar" id="home-mode-bar">
+                <div>
+                  <span id="home-mode-kicker">Mission mode</span>
+                  <strong id="home-mode-title">General mission</strong>
+                </div>
+                <p id="home-mode-description">直接描述目标，Astria 会从当前工作区和默认智能体开始。</p>
+                <button type="button" id="home-mode-route" hidden>Open panel</button>
+              </div>
+              <textarea id="home-task-input" rows="4" placeholder="请输入任务，交给 Astria 来帮您完成"></textarea>
+              <div class="mission-controls">
+                <button class="ghost-icon-button" type="button" title="Attach context" aria-label="Attach context">⌘</button>
+                <span class="workdir-chip">在当前文件夹中工作</span>
+                <select id="home-agent" aria-label="Home agent">
+                  <option value="">Default agent</option>
+                </select>
+                <button class="primary-button send-orbit-button" type="submit" aria-label="Launch task">➤</button>
+              </div>
+            </form>
+
+            <div class="capability-ribbon" aria-label="Astria capabilities">
+              <button type="button" data-panel="schedules">定时</button>
+              <button type="button" data-home-action="browser">浏览器</button>
+              <button type="button" data-home-action="data">数据</button>
+              <button type="button" data-home-action="writing">撰写</button>
+              <button type="button" data-home-action="research">深度调研</button>
+              <button type="button" data-home-action="council">多智能体</button>
+              <button type="button" data-home-action="desktop">电脑控制</button>
+              <button type="button" data-home-action="files">本地文件</button>
+              <button type="button" data-home-action="mcp">MCP</button>
+            </div>
+
+            <div class="mission-board" aria-label="Recommended next actions">
+              <div class="board-section">
+                <span class="board-kicker">Next orbit</span>
+                <button class="board-run" type="button" id="home-latest-run" data-panel="runs">
+                  <strong>暂无运行记录</strong>
+                  <small>开始一个任务后，这里会显示最近一次运行。</small>
+                </button>
+              </div>
+              <div class="board-section">
+                <span class="board-kicker">Docked tools</span>
+                <div class="tool-orbit-list" id="home-tool-orbit">
+                  <button type="button" data-panel="skills"><strong>技能</strong><span id="home-skill-count">0</span></button>
+                  <button type="button" data-panel="agents"><strong>智能体</strong><span id="home-agent-count">0</span></button>
+                  <button type="button" data-panel="schedules"><strong>定时</strong><span id="home-schedule-count">0</span></button>
+                  <button type="button" data-panel="mcp"><strong>MCP</strong><span id="home-mcp-count">0</span></button>
+                  <button type="button" data-panel="memory"><strong>记忆</strong><span id="home-memory-count">0</span></button>
+                  <button type="button" data-panel="council"><strong>议会</strong><span id="home-council-count">0</span></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="constellation-cards">
+              <button class="constellation-card" type="button" data-panel="memory">
+                <span>Memory Map</span>
+                <strong>记忆星图</strong>
+                <small>让 Astria 记住项目中的重要人物、决策和上下文。</small>
+              </button>
+              <button class="constellation-card" type="button" data-panel="runs">
+                <span>Mission Orbit</span>
+                <strong>任务轨道</strong>
+                <small>查看每次运行的状态、工具调用、确认和结果。</small>
+              </button>
+              <button class="constellation-card" type="button" data-panel="mcp">
+                <span>MCP Docking</span>
+                <strong>MCP 星港</strong>
+                <small>连接外部工具，管理权限，并扩展 Astria 能力。</small>
+              </button>
+              <button class="constellation-card" type="button" data-panel="council">
+                <span>Agent Council</span>
+                <strong>智能体议会</strong>
+                <small>把规划、调研和评审意见分开，再汇总成一个可执行方案。</small>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel conversation-panel" id="panel-chat" aria-labelledby="chat-heading">
           <div class="conversation-scroll">
             <div class="transcript" id="chat-output" aria-live="polite">
               <div class="empty-thread">
                 <div class="assistant-mark" aria-hidden="true">S</div>
                 <div>
-                  <strong id="chat-heading">StarClaw is ready.</strong>
+                  <strong id="chat-heading">Astria is ready.</strong>
                   <span>Start a local task or choose an agent from the composer.</span>
                 </div>
               </div>
@@ -83,7 +248,7 @@
           </div>
 
           <form class="composer" id="chat-form">
-            <textarea id="chat-input" rows="1" placeholder="Message StarClaw"></textarea>
+            <textarea id="chat-input" rows="1" placeholder="Message Astria"></textarea>
             <div class="composer-controls">
               <select id="chat-agent" aria-label="Agent">
                 <option value="">Default agent</option>
@@ -98,6 +263,52 @@
               <button type="submit" id="send-button" class="primary-button">Send</button>
             </div>
           </form>
+        </section>
+
+        <section class="panel split-panel" id="panel-inbox" aria-labelledby="inbox-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="inbox-heading">Inbox</h2>
+              <p id="inbox-summary">Inbound channel tasks wait here until you approve them.</p>
+            </div>
+            <div class="data-list" id="inbox-list">
+              <div class="empty-state">No inbound tasks yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Webhook Intake</h2>
+              <p>Use local HTTP webhook events as the first external channel provider.</p>
+            </div>
+            <form class="inbox-form" id="inbox-webhook-form">
+              <label>
+                External ID
+                <input id="inbox-external-id" aria-label="Inbox external id" placeholder="evt-123">
+              </label>
+              <label>
+                Sender
+                <input id="inbox-sender" aria-label="Inbox sender" placeholder="teammate or system">
+              </label>
+              <label>
+                Text
+                <textarea id="inbox-text" rows="6" aria-label="Inbox text" placeholder="Task from an external channel"></textarea>
+              </label>
+              <label>
+                Agent
+                <select id="inbox-agent" aria-label="Inbox agent">
+                  <option value="">Default agent</option>
+                </select>
+              </label>
+              <div class="form-actions">
+                <span id="inbox-state">Ready</span>
+                <button type="submit" class="primary-button">Receive webhook</button>
+              </div>
+            </form>
+            <div class="diagnostics-overview" id="inbox-overview">
+              <strong>Guarded</strong>
+              <span>Inbound items never execute until approved.</span>
+            </div>
+          </aside>
         </section>
 
         <section class="panel hub-panel" id="panel-manage" aria-labelledby="manage-heading">
@@ -115,7 +326,27 @@
               <button class="hub-card" type="button" data-panel="skills">
                 <span>Skills</span>
                 <strong id="manage-skills-count">0 installed</strong>
-                <small>Review reusable workflows exposed to StarClaw.</small>
+                <small>Review reusable workflows exposed to Astria.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="mcp">
+                <span>MCP Starport</span>
+                <strong id="manage-mcp-count">0 docks</strong>
+                <small>Inspect configured MCP servers and docking state.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="memory">
+                <span>Memory Map</span>
+                <strong id="manage-memory-count">0 sources</strong>
+                <small>Draft reviewable memory from sessions and runs.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="council">
+                <span>Agent Council</span>
+                <strong id="manage-council-count">0 reviews</strong>
+                <small>Coordinate planner, researcher, and reviewer roles.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="inbox">
+                <span>Inbox</span>
+                <strong id="manage-inbox-count">0 pending</strong>
+                <small>Approve inbound channel tasks before running them.</small>
               </button>
               <button class="hub-card" type="button" data-panel="schedules">
                 <span>Schedules</span>
@@ -293,6 +524,105 @@
             </div>
             <div class="data-list two-column" id="skills-list"></div>
           </div>
+        </section>
+
+        <section class="panel split-panel" id="panel-mcp" aria-labelledby="mcp-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="mcp-heading">MCP Starport</h2>
+              <p id="mcp-summary">Configured MCP servers and docking readiness.</p>
+            </div>
+            <div class="data-list" id="mcp-list">
+              <div class="empty-state">Waiting for MCP configuration.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Docking Plan</h2>
+              <p>Use configured servers or ask Astria to suggest the next connection.</p>
+            </div>
+            <div class="diagnostics-overview" id="mcp-overview">
+              <strong>Checking</strong>
+              <span>Waiting for config.</span>
+            </div>
+            <div class="inline-actions">
+              <button type="button" class="primary-button" data-home-action="mcp">Ask Astria</button>
+              <button type="button" data-panel="config">Open config</button>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-memory" aria-labelledby="memory-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="memory-heading">Memory Map</h2>
+              <p id="memory-summary">Reviewed memory candidates and source sessions.</p>
+            </div>
+            <div class="data-list" id="memory-list">
+              <div class="empty-state">Waiting for sessions.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Review Flow</h2>
+              <p>Memory writes still go through Astria and the memory tools.</p>
+            </div>
+            <div class="diagnostics-overview" id="memory-overview">
+              <strong>Preview</strong>
+              <span>Use recent sessions to draft reviewable memory candidates.</span>
+            </div>
+            <form class="memory-review-form" id="memory-review-form">
+              <label>
+                Candidate
+                <textarea id="memory-candidate" rows="7" aria-label="Memory candidate" placeholder="- Durable fact to remember"></textarea>
+              </label>
+              <div class="form-actions">
+                <span id="memory-save-state">Ready</span>
+                <button type="submit" class="primary-button">Approve memory</button>
+              </div>
+            </form>
+            <div class="inline-actions">
+              <button type="button" class="primary-button" data-home-action="memory">Draft memory map</button>
+              <button type="button" data-panel="chat">Open chat</button>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-council" aria-labelledby="council-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="council-heading">Agent Council</h2>
+              <p id="council-summary">Multi-role planning and review runs.</p>
+            </div>
+            <div class="data-list" id="council-list">
+              <div class="empty-state">No council runs yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Council Room</h2>
+              <p>Planner, researcher, and reviewer contributions stay separate from the final synthesis.</p>
+            </div>
+            <form class="council-form" id="council-form">
+              <label>
+                Goal
+                <textarea id="council-goal" rows="6" aria-label="Council goal" placeholder="Describe the planning or review goal"></textarea>
+              </label>
+              <label>
+                Agent
+                <select id="council-agent" aria-label="Council agent">
+                  <option value="">Default agent</option>
+                </select>
+              </label>
+              <div class="form-actions">
+                <span id="council-state">Ready</span>
+                <button type="submit" class="primary-button">Start council</button>
+              </div>
+            </form>
+            <div class="council-detail" id="council-detail">
+              <div class="empty-state">Start or select a council run.</div>
+            </div>
+          </aside>
         </section>
 
         <section class="panel split-panel" id="panel-schedules" aria-labelledby="schedules-heading">

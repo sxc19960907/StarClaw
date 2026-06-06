@@ -17,12 +17,15 @@ func TestRegisterLocalTools(t *testing.T) {
 	// Check that all expected tools are registered
 	expectedTools := []string{
 		"accessibility",
+		"archive_extract",
+		"archive_inspect",
 		"applescript",
 		"bash",
 		"browser",
 		"clipboard",
 		"computer",
 		"directory_list",
+		"document_text",
 		"file_edit",
 		"file_preview",
 		"file_read",

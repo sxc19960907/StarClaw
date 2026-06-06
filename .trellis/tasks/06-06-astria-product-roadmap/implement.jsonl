@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Roadmap integration depends on embedded daemon Web UI and same-origin daemon route conventions."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Roadmap integration review checks child tests, smoke coverage, and no new frontend build pipeline."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Roadmap children span tool registry, daemon APIs, static UI panels, and smoke flows."}

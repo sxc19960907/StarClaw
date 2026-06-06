@@ -1,14 +1,18 @@
 const state = {
-  panel: "chat",
+  panel: "home",
   agents: [],
   skills: [],
   sessions: [],
   schedules: [],
   runs: [],
+  councilRuns: [],
+  inboxItems: [],
   currentRunDetail: null,
+  currentCouncilRun: null,
   diagnostics: null,
   config: null,
   permissions: null,
+  memory: null,
   version: null,
   updateCheck: null,
   editingAgent: "",
@@ -26,20 +30,99 @@ const state = {
   toolDetails: new Map(),
   approvals: new Map(),
   eventSource: null,
+  homeMode: "general",
 };
 
 const views = {
-  chat: ["Chat", "Work with StarClaw from the local daemon."],
-  manage: ["Manage", "Configure agent resources and local automation."],
-  settings: ["Settings", "Inspect daemon setup, permissions, and build state."],
-  agents: ["Agents", "Inspect named agents available to the daemon."],
-  skills: ["Skills", "Review installed skills exposed to StarClaw."],
-  schedules: ["Schedules", "Create and manage cron-based local tasks."],
-  runs: ["Runs", "Inspect recent daemon executions."],
-  diagnostics: ["Diagnostics", "Inspect daemon readiness and setup checks."],
-  config: ["Config", "Repair provider setup for daemon runs."],
-  permissions: ["Permissions", "Review local tool policy."],
-  version: ["Version", "Inspect build and update status."],
+  home: ["首页", "Launch local missions from Astria."],
+  chat: ["消息", "Work with Astria from the local daemon."],
+  manage: ["管理", "Configure agent resources and local automation."],
+  settings: ["设置", "Inspect daemon setup, permissions, and build state."],
+  agents: ["智能体", "Inspect named agents available to the daemon."],
+  skills: ["技能", "Review installed skills exposed to Astria."],
+  mcp: ["MCP 星港", "Inspect configured MCP servers and docking readiness."],
+  memory: ["记忆星图", "Review source sessions and draft memory candidates."],
+  council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
+  inbox: ["收件箱", "Review inbound channel tasks before running them."],
+  schedules: ["定时任务", "Create and manage cron-based local tasks."],
+  runs: ["运行", "Inspect recent daemon executions."],
+  diagnostics: ["诊断", "Inspect daemon readiness and setup checks."],
+  config: ["连接器", "Repair provider setup for daemon runs."],
+  permissions: ["权限", "Review local tool policy."],
+  version: ["版本", "Inspect build and update status."],
+};
+
+const homeActions = {
+  publish: {
+    title: "Publish resource",
+    status: "Ready",
+    description: "整理当前项目中可以交付或发布的资源，并生成打包清单。",
+    prompt: "Prepare a publishable resource from the current project and list the files you would package.",
+    notice: "已为发布资源任务预填提示，可以直接启动。",
+  },
+  browser: {
+    title: "Browser probe",
+    status: "Ready",
+    description: "用于网页检查、截图、表单验证和变更摘要；从 Chat 中按需请求浏览器操作。",
+    prompt: "Use browser automation to inspect the relevant page and summarize what changed.",
+    notice: "已为浏览器检查预填提示，Astria 会在需要操作网页时说明动作。",
+  },
+  data: {
+    title: "Data signal",
+    status: "Ready",
+    description: "从当前工作区的数据、日志或导出文件里找出关键结论。",
+    prompt: "Analyze the local data or logs in this workspace and return the key signal.",
+    notice: "数据分析会从当前工作区上下文开始。",
+  },
+  writing: {
+    title: "Writing pass",
+    status: "Ready",
+    description: "起草、润色或压缩文字交付物，适合 PRD、说明、汇报和发布稿。",
+    prompt: "Draft a concise, polished write-up for this task.",
+  },
+  research: {
+    title: "Research orbit",
+    status: "Ready",
+    description: "进行带证据链的调研，并输出可追踪来源和结论。",
+    prompt: "Run deep research for this task and produce an evidence-backed brief.",
+  },
+  council: {
+    title: "Agent Council",
+    status: "Ready",
+    description: "多智能体规划和评审模式。启动一个议会运行，分别生成规划、调研和评审意见。",
+    prompt: "Split this task across multiple named agents and propose a coordination plan.",
+    panel: "council",
+    notice: "Agent Council 会先生成可审核的角色贡献，不会自动执行代码改动。",
+  },
+  desktop: {
+    title: "Desktop control",
+    status: "Guarded",
+    description: "需要操作本机 UI 时使用；Astria 会先说明动作并等待授权。",
+    prompt: "Use desktop control only if needed and explain the intended action first.",
+    notice: "桌面控制需要明确授权，Astria 会先说明动作。",
+  },
+  files: {
+    title: "Local files",
+    status: "Ready",
+    description: "围绕当前工作区进行文件阅读、定位、修改建议或安全编辑。",
+    prompt: "Inspect local files and recommend the safest next edit.",
+  },
+  mcp: {
+    title: "MCP Starport",
+    status: "Ready",
+    description: "查看配置的 MCP 服务器、连接测试和可用工具。",
+    prompt: "Review MCP docking options and suggest the first server to connect.",
+    panel: "mcp",
+    notice: "已打开 MCP Starport。",
+  },
+  memory: {
+    title: "Memory Map",
+    status: "Ready",
+    description: "查看记忆文件、会话来源，并审核写入 MEMORY.md 的候选内容。",
+    prompt: "Create a memory map for this project: people, decisions, recurring tasks, and useful files.",
+    panel: "memory",
+    notice: "已打开 Memory Map。",
+  },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -170,10 +253,15 @@ function updateActiveSessionLabel() {
 function setRunControls(isRunning) {
   if (isRunning) $("chat-state").textContent = "Running";
   $("chat-input").disabled = isRunning;
+  if ($("home-task-input")) $("home-task-input").disabled = isRunning;
   $("chat-agent").disabled = isRunning;
+  if ($("home-agent")) $("home-agent").disabled = isRunning;
   $("chat-new-session").disabled = isRunning;
   $("send-button").hidden = isRunning;
   $("stop-button").hidden = !isRunning;
+  document.querySelectorAll(".send-orbit-button").forEach((button) => {
+    button.disabled = isRunning;
+  });
 }
 
 function handleChatInputKeydown(event) {
@@ -194,7 +282,7 @@ function renderEmptyThread() {
   state.approvals.clear();
   const diagnostics = state.diagnostics || {};
   const needsSetup = diagnostics.status && diagnostics.status !== "ready";
-  const title = needsSetup ? "StarClaw needs setup." : "StarClaw is ready.";
+  const title = needsSetup ? "Astria needs setup." : "Astria is ready.";
   const subtitle = needsSetup
     ? (diagnostics.summary || "Open Diagnostics or Config to finish setup.")
     : "Start a local task or choose an agent from the composer.";
@@ -265,6 +353,57 @@ function startNewChat() {
   switchPanel("chat");
 }
 
+function seedMissionPrompt(prompt, panel = "home") {
+  const text = prompt || "";
+  if (panel === "chat") {
+    $("chat-input").value = text;
+    switchPanel("chat");
+    $("chat-input").focus();
+    return;
+  }
+  $("home-task-input").value = text;
+  switchPanel("home");
+  $("home-task-input").focus();
+}
+
+function runHomeAction(name) {
+  const action = homeActions[name];
+  if (!action) return;
+  state.homeMode = name;
+  renderHomeMode();
+  if (name === "council") {
+    $("council-goal").value = action.prompt || "";
+    switchPanel("council");
+    $("council-goal").focus();
+  } else if (action.panel) {
+    switchPanel(action.panel);
+  } else {
+    seedMissionPrompt(action.prompt || "");
+  }
+  if (action.notice) showToast(action.notice);
+}
+
+function renderHomeMode() {
+  const action = homeActions[state.homeMode] || {
+    title: "General mission",
+    status: "Ready",
+    description: "直接描述目标，Astria 会从当前工作区和默认智能体开始。",
+  };
+  setText("home-mode-kicker", action.status || "Ready");
+  setText("home-mode-title", action.title || "General mission");
+  setText("home-mode-description", action.description || "");
+  const route = $("home-mode-route");
+  if (!route) return;
+  if (action.panel) {
+    route.hidden = false;
+    route.dataset.panel = action.panel;
+    route.textContent = action.panel === "mcp" ? "打开星港" : action.panel === "memory" ? "打开星图" : action.panel === "council" ? "打开议会" : "打开面板";
+  } else {
+    route.hidden = true;
+    delete route.dataset.panel;
+  }
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   const source = new EventSource("/events");
@@ -307,6 +446,195 @@ function switchPanel(panel) {
     section.classList.toggle("active", section.id === `panel-${panel}`);
   });
   $("view-title").textContent = views[panel][0];
+}
+
+function runStatusValue(run) {
+  return String(run?.status || "").toLowerCase();
+}
+
+function runStatusGroup(run) {
+  const status = runStatusValue(run);
+  if (["running", "queued", "pending"].includes(status)) return "running";
+  if (["completed", "complete", "success", "succeeded"].includes(status)) return "completed";
+  if (["failed", "failure", "error", "cancelled", "canceled"].includes(status)) return "failed";
+  return "unknown";
+}
+
+function renderHomeActivity() {
+  const running = state.runs.filter((run) => runStatusGroup(run) === "running").length;
+  const completed = state.runs.filter((run) => runStatusGroup(run) === "completed").length;
+  const failed = state.runs.filter((run) => runStatusGroup(run) === "failed").length;
+  const pending = state.approvals.size;
+  setText("home-count-pending", pending);
+  setText("home-count-running", running);
+  setText("home-count-completed", completed);
+  setText("home-count-failed", failed);
+  setText("home-orbit-count", state.runs.length);
+  renderHomeLatestRun();
+}
+
+function renderHomeLatestRun() {
+  const target = $("home-latest-run");
+  if (!target) return;
+  const latest = state.runs[0];
+  if (!latest) {
+    target.className = "board-run";
+    target.removeAttribute("data-run-open");
+    target.dataset.panel = "runs";
+    target.innerHTML = `<strong>暂无运行记录</strong><small>开始一个任务后，这里会显示最近一次运行。</small>`;
+    return;
+  }
+  const status = runStatusGroup(latest);
+  delete target.dataset.panel;
+  target.dataset.runOpen = latest.id || "";
+  target.className = `board-run ${status}`;
+  target.innerHTML = `<strong>${escapeHTML(latest.prompt || latest.id || "Untitled run")}</strong>
+    <small>${escapeHTML(latest.status || "unknown")} · ${escapeHTML(latest.agent || "default")} · ${escapeHTML(formatTimestamp(latest.started_at))}</small>`;
+}
+
+function renderHomeDockedTools() {
+  setText("home-skill-count", state.skills.length);
+  setText("home-agent-count", state.agents.length);
+  setText("home-schedule-count", state.schedules.length);
+  const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  setText("home-mcp-count", mcpCount);
+  setText("home-memory-count", memoryCount);
+  setText("home-council-count", state.councilRuns.length);
+}
+
+function renderManageCount() {
+  const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length);
+}
+
+function renderMCPStarport() {
+  const servers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  setText("nav-mcp-count", servers.length);
+  setText("manage-mcp-count", `${servers.length} ${servers.length === 1 ? "dock" : "docks"}`);
+  renderManageCount();
+  setText("mcp-summary", servers.length ? `${servers.length} configured MCP server${servers.length === 1 ? "" : "s"}.` : "No MCP servers configured.");
+  const enabled = servers.filter((server) => !server.disabled).length;
+  const overview = $("mcp-overview");
+  if (overview) {
+    overview.innerHTML = `<strong>${escapeHTML(enabled ? `${enabled} enabled` : "No docks")}</strong><span>${escapeHTML(servers.length ? "MCP configuration is visible from Astria. Connection testing is planned next." : "Add mcp_servers to config.yaml, then refresh Astria.")}</span>`;
+  }
+  const list = $("mcp-list");
+  if (!list) return;
+  if (!servers.length) {
+    renderEmpty(list, "No MCP servers configured. Open Config or ask Astria to suggest a first dock.");
+    return;
+  }
+  list.innerHTML = servers.map((server) => {
+    const transport = server.type || "stdio";
+    const endpoint = transport === "http" ? (server.url || "missing url") : [server.command || "missing command"].concat(server.args || []).join(" ");
+    const envKeys = Array.isArray(server.env_keys) ? server.env_keys : [];
+    return `<article class="row-item mcp-server-card ${server.disabled ? "disabled" : "enabled"}">
+      <div class="row-item-title">
+        <span>${escapeHTML(server.name || "Unnamed server")}</span>
+        <span class="tag">${escapeHTML(server.disabled ? "disabled" : transport)}</span>
+      </div>
+      <p>${escapeHTML(endpoint)}</p>
+      <div class="pill-list">
+        <span>${server.keep_alive ? "keep alive" : "on demand"}</span>
+        <span>${server.context ? "context" : "no context"}</span>
+        <span>${envKeys.length} env keys</span>
+      </div>
+      ${envKeys.length ? `<p class="secret-note">Env values hidden: ${envKeys.map(escapeHTML).join(", ")}</p>` : ""}
+      <div class="row-actions">
+        <button type="button" data-mcp-test="${escapeHTML(server.name || "")}" ${server.disabled ? "disabled" : ""}>Test connection</button>
+      </div>
+      <div class="mcp-test-result" id="mcp-test-${escapeHTML(server.name || "")}"></div>
+    </article>`;
+  }).join("");
+}
+
+async function testMCPServer(name) {
+  if (!name) return;
+  const target = $(`mcp-test-${name}`);
+  if (target) target.innerHTML = `<div class="inline-state">Testing connection...</div>`;
+  try {
+    const result = await api("/mcp/test", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    renderMCPTestResult(name, result);
+  } catch (error) {
+    renderMCPTestResult(name, { status: "error", error: error.message, tools: [] });
+  }
+}
+
+function renderMCPTestResult(name, result) {
+  const target = $(`mcp-test-${name}`);
+  if (!target) return;
+  const status = result?.status || "unknown";
+  const tools = Array.isArray(result?.tools) ? result.tools : [];
+  const preview = tools.slice(0, 6).map((tool) => `<span>${escapeHTML(tool.name || "tool")}</span>`).join("");
+  target.innerHTML = `<div class="mcp-test-card ${escapeHTML(status)}">
+    <strong>${escapeHTML(status === "ok" ? `${result.tool_count || tools.length} tools discovered` : status)}</strong>
+    <p>${escapeHTML(result?.error || (status === "ok" ? "Connection test succeeded." : "Connection test finished."))}</p>
+    ${preview ? `<div class="pill-list">${preview}</div>` : ""}
+  </div>`;
+}
+
+function renderMemoryMapPreview() {
+  const list = $("memory-list");
+  if (!list) return;
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const favoriteSessions = state.sessions.filter((session) => session.favorite);
+  const recentRuns = state.runs.slice(0, 3);
+  const count = memoryEntries.length + favoriteSessions.length + recentRuns.length;
+  setText("nav-memory-count", count);
+  setText("manage-memory-count", `${count} ${count === 1 ? "source" : "sources"}`);
+  renderManageCount();
+  setText("memory-summary", count ? `${count} memory source candidate${count === 1 ? "" : "s"} from sessions and runs.` : "No memory candidates yet.");
+  const overview = $("memory-overview");
+  if (overview) {
+    overview.innerHTML = `<strong>${escapeHTML(memoryEntries.length ? `${memoryEntries.length} memory files` : count ? "Sources ready" : "Preview")}</strong><span>${escapeHTML(state.memory?.memory_dir || (count ? "Draft reviewable memory from recent work before writing MEMORY.md." : "Favorite sessions or complete runs to create stronger memory candidates."))}</span>`;
+  }
+  const cards = [];
+  for (const entry of memoryEntries) {
+    cards.push(`<article class="row-item memory-source-card ${entry.primary ? "primary" : ""}">
+      <div class="row-item-title"><span>${escapeHTML(entry.name)}</span><span class="tag">${entry.primary ? "active memory" : "memory file"}</span></div>
+      <p>${escapeHTML(formatBytes(entry.size || 0))} · ${escapeHTML(formatTimestamp(entry.modified))}</p>
+      <div class="row-actions">
+        <button type="button" class="danger-button" data-memory-delete="${escapeHTML(entry.name)}">Delete</button>
+      </div>
+    </article>`);
+  }
+  for (const session of favoriteSessions.slice(0, 4)) {
+    cards.push(`<article class="row-item memory-source-card">
+      <div class="row-item-title"><span>${escapeHTML(session.title || session.id)}</span><span class="tag">favorite session</span></div>
+      <p>${escapeHTML(session.id)}</p>
+      <div class="row-actions">
+        <button type="button" data-session-id="${escapeHTML(session.id)}">Open session</button>
+        <button type="button" data-memory-draft="session:${escapeHTML(session.id)}">Draft memory</button>
+      </div>
+    </article>`);
+  }
+  for (const run of recentRuns) {
+    cards.push(`<article class="row-item memory-source-card">
+      <div class="row-item-title"><span>${escapeHTML(run.prompt || run.id)}</span><span class="tag">recent run</span></div>
+      <p>${escapeHTML(run.status || "unknown")} · ${escapeHTML(formatTimestamp(run.started_at))}</p>
+      <div class="row-actions">
+        <button type="button" data-run-open="${escapeHTML(run.id)}">Open run</button>
+        <button type="button" data-memory-draft="run:${escapeHTML(run.id)}">Draft memory</button>
+      </div>
+    </article>`);
+  }
+  if (!cards.length) {
+    renderEmpty(list, "No memory sources yet. Complete a run, favorite a session, or ask Astria to draft a memory map.");
+    return;
+  }
+  list.innerHTML = cards.join("");
+}
+
+function formatBytes(size) {
+  if (!Number.isFinite(size)) return "-";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 async function loadStatus() {
@@ -358,6 +686,8 @@ async function loadDiagnostics() {
     const label = statusLabel(status);
     setText("settings-state", label);
     setClass("settings-state", status);
+    setText("nav-diagnostics-state", label);
+    setClass("nav-diagnostics-state", status);
     setText("settings-diagnostics-state", label);
     setClass("settings-diagnostics-state", status);
     chip.textContent = label;
@@ -391,6 +721,8 @@ async function loadDiagnostics() {
     state.diagnostics = null;
     setText("settings-state", "Offline");
     setClass("settings-state", "error");
+    setText("nav-diagnostics-state", "Offline");
+    setClass("nav-diagnostics-state", "error");
     setText("settings-diagnostics-state", "Offline");
     setClass("settings-diagnostics-state", "error");
     chip.textContent = "Diagnostics unavailable";
@@ -434,11 +766,13 @@ async function loadConfig() {
     const data = await api("/config");
     state.config = data.config || {};
     renderConfigForm();
+    renderMCPStarport();
   } catch (error) {
     state.config = null;
     setText("settings-config-state", "Error");
     setClass("settings-config-state", "bad");
     $("config-save-state").textContent = error.message;
+    renderMCPStarport();
   }
 }
 
@@ -528,6 +862,334 @@ async function loadPermissions() {
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
   }
+}
+
+async function loadMemory() {
+  try {
+    state.memory = await api("/memory");
+    renderMemoryMapPreview();
+  } catch (error) {
+    state.memory = { entries: [], content: "", memory_dir: "" };
+    setText("memory-save-state", "Error");
+    renderMemoryMapPreview();
+    showToast(error.message);
+  }
+}
+
+async function submitMemoryCandidate(event) {
+  event.preventDefault();
+  const content = $("memory-candidate").value.trim();
+  if (!content) {
+    showToast("Add a memory candidate first.");
+    return;
+  }
+  $("memory-save-state").textContent = "Saving";
+  try {
+    state.memory = await api("/memory", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+    $("memory-candidate").value = "";
+    $("memory-save-state").textContent = "Saved";
+    renderMemoryMapPreview();
+    showToast("Memory approved.");
+  } catch (error) {
+    $("memory-save-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+async function deleteMemoryEntry(name) {
+  if (!name) return;
+  if (!globalThis.confirm(`Delete memory entry "${name}"?`)) return;
+  try {
+    state.memory = await api(`/memory/${encodeURIComponent(name)}`, { method: "DELETE" });
+    renderMemoryMapPreview();
+    showToast("Memory entry deleted.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function draftMemoryCandidate(source) {
+  const [kind, id] = String(source || "").split(":", 2);
+  const prefix = kind === "run" ? `run ${id}` : kind === "session" ? `session ${id}` : "recent work";
+  $("memory-candidate").value = `- From ${prefix}: `;
+  switchPanel("memory");
+  $("memory-candidate").focus();
+}
+
+async function loadCouncilRuns() {
+  const list = $("council-list");
+  try {
+    const data = await api("/council");
+    state.councilRuns = Array.isArray(data.runs) ? data.runs : [];
+    renderCouncilRuns();
+  } catch (error) {
+    state.councilRuns = [];
+    state.currentCouncilRun = null;
+    setText("council-state", "Error");
+    renderError(list, error.message);
+  }
+}
+
+function renderCouncilRuns() {
+  const list = $("council-list");
+  if (!list) return;
+  const count = state.councilRuns.length;
+  setText("nav-council-count", count);
+  setText("manage-council-count", `${count} ${count === 1 ? "review" : "reviews"}`);
+  renderManageCount();
+  setText("council-summary", count ? `${count} council run${count === 1 ? "" : "s"} with role contributions.` : "No council runs yet.");
+  if (!count) {
+    renderEmpty(list, "No council runs yet. Start with a planning or review goal.");
+    renderCouncilDetail(state.currentCouncilRun);
+    return;
+  }
+  list.innerHTML = state.councilRuns.map((run) => `<article class="row-item council-run-card ${state.currentCouncilRun?.id === run.id ? "active" : ""}" data-council-id="${escapeHTML(run.id)}">
+    <div class="row-item-title"><span>${escapeHTML(run.goal || run.id)}</span><span class="tag">${escapeHTML(run.status || "unknown")}</span></div>
+    <p>${escapeHTML((run.roles || []).map((role) => role.role).join(" · ") || "No role contributions")} · ${escapeHTML(formatTimestamp(run.created_at))}</p>
+    <div class="row-actions">
+      <button type="button" data-council-open="${escapeHTML(run.id)}">Open council</button>
+      <button type="button" data-council-copy="${escapeHTML(run.id)}">Copy synthesis</button>
+    </div>
+  </article>`).join("");
+  if (!state.currentCouncilRun) renderCouncilDetail(state.councilRuns[0]);
+}
+
+function renderCouncilDetail(run) {
+  const target = $("council-detail");
+  if (!target) return;
+  state.currentCouncilRun = run || null;
+  if (!run) {
+    target.innerHTML = `<div class="empty-state">Start or select a council run.</div>`;
+    return;
+  }
+  const roles = Array.isArray(run.roles) ? run.roles : [];
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(run.goal || "Council run")}</h3>
+      <div class="run-meta-grid">
+        <span>Status</span><strong>${escapeHTML(run.status || "unknown")}</strong>
+        <span>Created</span><strong>${escapeHTML(formatTimestamp(run.created_at))}</strong>
+        <span>Roles</span><strong>${roles.length}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Role contributions</h3>
+      <div class="council-role-list">
+        ${roles.map((role) => `<article class="council-role-card">
+          <div class="row-item-title"><span>${escapeHTML(role.role || "role")}</span><span class="tag">${escapeHTML(role.status || "unknown")}</span></div>
+          <strong>${escapeHTML(role.summary || "")}</strong>
+          <p>${escapeHTML(role.notes || "")}</p>
+        </article>`).join("")}
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Final synthesis</h3>
+      <pre>${escapeHTML(run.synthesis || "")}</pre>
+      <div class="run-detail-actions">
+        <button type="button" data-council-copy="${escapeHTML(run.id)}">Copy synthesis</button>
+        <button type="button" data-council-send="${escapeHTML(run.id)}">Send to chat</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+async function submitCouncilRun(event) {
+  event.preventDefault();
+  const goal = $("council-goal").value.trim();
+  if (!goal) {
+    showToast("Add a council goal first.");
+    return;
+  }
+  $("council-state").textContent = "Running";
+  try {
+    const run = await api("/council", {
+      method: "POST",
+      body: JSON.stringify({ goal, agent: $("council-agent").value }),
+    });
+    $("council-goal").value = "";
+    $("council-state").textContent = "Completed";
+    state.currentCouncilRun = run;
+    await loadCouncilRuns();
+    renderCouncilDetail(run);
+    showToast("Council synthesis ready.");
+  } catch (error) {
+    $("council-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+function councilRunByID(id) {
+  if (state.currentCouncilRun?.id === id) return state.currentCouncilRun;
+  return state.councilRuns.find((run) => run.id === id) || null;
+}
+
+function councilSynthesisText(run) {
+  return run?.synthesis || "";
+}
+
+function copyCouncilSynthesis(id, button) {
+  copyText(councilSynthesisText(councilRunByID(id)), "Council synthesis copied.")
+    .then(() => {
+      if (button) markButtonCopied(button);
+    })
+    .catch((error) => showToast(error.message));
+}
+
+function sendCouncilToChat(id) {
+  const run = councilRunByID(id);
+  if (!run) return;
+  $("chat-input").value = councilSynthesisText(run);
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+}
+
+async function loadInbox() {
+  const list = $("inbox-list");
+  try {
+    const data = await api("/inbox");
+    state.inboxItems = Array.isArray(data.items) ? data.items : [];
+    renderInbox();
+  } catch (error) {
+    state.inboxItems = [];
+    setText("inbox-state", "Error");
+    renderError(list, error.message);
+  }
+}
+
+function inboxStatusCounts() {
+  return state.inboxItems.reduce((counts, item) => {
+    const status = item.status || "pending";
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function renderInbox() {
+  const list = $("inbox-list");
+  if (!list) return;
+  const counts = inboxStatusCounts();
+  const pending = counts.pending || 0;
+  const failed = counts.failed || 0;
+  const completed = counts.completed || 0;
+  setText("nav-inbox-count", pending);
+  setText("manage-inbox-count", `${pending} pending`);
+  renderManageCount();
+  setText("inbox-summary", state.inboxItems.length ? `${pending} pending · ${failed} failed · ${completed} completed` : "No inbound tasks yet.");
+  const overview = $("inbox-overview");
+  if (overview) {
+    overview.innerHTML = `<strong>${escapeHTML(pending ? `${pending} waiting` : "Guarded")}</strong><span>${escapeHTML(pending ? "Review inbound channel work before it can become an Astria run." : "Inbound items never execute until approved.")}</span>`;
+  }
+  if (!state.inboxItems.length) {
+    renderEmpty(list, "No inbound tasks yet. Use the local webhook intake to simulate one.");
+    return;
+  }
+  list.innerHTML = state.inboxItems.map((item) => `<article class="row-item inbox-card ${escapeHTML(item.status || "pending")}">
+    <div class="row-item-title">
+      <span>${escapeHTML(item.text || item.external_id || item.id)}</span>
+      <span class="tag">${escapeHTML(item.status || "pending")}</span>
+    </div>
+    <p>${escapeHTML(item.sender || "unknown sender")} · ${escapeHTML(item.provider || "webhook")} · ${escapeHTML(item.external_id || item.id)} · ${escapeHTML(formatTimestamp(item.created_at))}</p>
+    ${item.error ? `<p class="error-copy">${escapeHTML(item.error)}</p>` : ""}
+    <div class="pill-list">
+      <span>${escapeHTML(item.agent || "default agent")}</span>
+      ${item.run_id ? `<span>run ${escapeHTML(item.run_id)}</span>` : "<span>approval required</span>"}
+    </div>
+    <div class="row-actions">${inboxActionsHTML(item)}</div>
+  </article>`).join("");
+}
+
+function inboxActionsHTML(item) {
+  const id = escapeHTML(item.id || "");
+  switch (item.status) {
+    case "pending":
+      return `<button type="button" class="primary-button" data-inbox-approve="${id}">Approve</button><button type="button" data-inbox-reject="${id}">Reject</button>`;
+    case "failed":
+      return `<button type="button" class="primary-button" data-inbox-retry="${id}">Retry</button><button type="button" data-inbox-reject="${id}">Reject</button>`;
+    case "completed":
+      return item.run_id ? `<button type="button" data-inbox-run="${escapeHTML(item.run_id)}">Open run</button>` : "";
+    case "running":
+      return `<button type="button" disabled>Running</button>`;
+    case "rejected":
+      return `<button type="button" disabled>Rejected</button>`;
+    default:
+      return "";
+  }
+}
+
+async function submitInboxWebhook(event) {
+  event.preventDefault();
+  const externalID = $("inbox-external-id").value.trim();
+  const text = $("inbox-text").value.trim();
+  if (!externalID || !text) {
+    showToast("External ID and text are required.");
+    return;
+  }
+  $("inbox-state").textContent = "Receiving";
+  try {
+    const data = await api("/inbox/webhook", {
+      method: "POST",
+      body: JSON.stringify({
+        provider: "webhook",
+        external_id: externalID,
+        sender: $("inbox-sender").value.trim(),
+        text,
+        agent: $("inbox-agent").value,
+      }),
+    });
+    $("inbox-state").textContent = data.duplicate ? "Duplicate" : "Received";
+    if (!data.duplicate) {
+      $("inbox-external-id").value = "";
+      $("inbox-sender").value = "";
+      $("inbox-text").value = "";
+    }
+    await loadInbox();
+    showToast(data.duplicate ? "Duplicate webhook ignored." : "Inbound task received.");
+  } catch (error) {
+    $("inbox-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+async function approveInboxItem(id) {
+  await runInboxAction(id, "approve", "Approving", "Inbox item approved.");
+}
+
+async function rejectInboxItem(id) {
+  await runInboxAction(id, "reject", "Rejecting", "Inbox item rejected.");
+}
+
+async function retryInboxItem(id) {
+  await runInboxAction(id, "retry", "Retrying", "Inbox item retried.");
+}
+
+async function runInboxAction(id, action, busyText, doneText) {
+  if (!id) return;
+  $("inbox-state").textContent = busyText;
+  try {
+    const options = { method: "POST" };
+    if (action === "approve" || action === "retry") {
+      options.body = JSON.stringify({ agent: $("inbox-agent").value });
+    }
+    await api(`/inbox/${encodeURIComponent(id)}/${action}`, options);
+    $("inbox-state").textContent = "Ready";
+    await Promise.allSettled([loadInbox(), loadRuns()]);
+    showToast(doneText);
+  } catch (error) {
+    $("inbox-state").textContent = "Error";
+    await loadInbox();
+    showToast(error.message);
+  }
+}
+
+function openInboxRun(runID) {
+  if (!runID) return;
+  selectRun(runID);
 }
 
 function fillPermissionsForm() {
@@ -639,7 +1301,7 @@ function supportInfoText() {
   const info = state.version || {};
   const diagnostics = state.diagnostics || {};
   const rows = [
-    ["StarClaw support info", ""],
+    ["Astria support info", ""],
     ["Version", info.version || "-"],
     ["Platform", info.platform || "-"],
     ["Build status", info.status || "-"],
@@ -767,7 +1429,9 @@ async function loadAgents() {
     const data = await api("/agents");
     state.agents = data.agents || [];
     setText("manage-agents-count", `${state.agents.length} ${state.agents.length === 1 ? "profile" : "profiles"}`);
-    setText("manage-count", state.agents.length + state.skills.length + state.schedules.length);
+    setText("nav-agents-count", state.agents.length);
+    renderManageCount();
+    renderHomeDockedTools();
     updateAgentSelects();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
@@ -795,8 +1459,11 @@ function updateAgentSelects() {
     })
   ).join("");
   $("chat-agent").innerHTML = options;
+  $("home-agent").innerHTML = options;
   $("schedule-agent").innerHTML = options;
   $("agent-test-agent").innerHTML = options;
+  $("council-agent").innerHTML = options;
+  $("inbox-agent").innerHTML = options;
 }
 
 async function inspectAgent(name) {
@@ -1301,7 +1968,9 @@ async function loadSkills() {
     const data = await api("/skills");
     state.skills = data.skills || [];
     setText("manage-skills-count", `${state.skills.length} installed`);
-    setText("manage-count", state.agents.length + state.skills.length + state.schedules.length);
+    setText("nav-skills-count", state.skills.length);
+    renderManageCount();
+    renderHomeDockedTools();
     if (!state.skills.length) {
       renderEmpty(list, "No skills installed.");
       return;
@@ -1324,6 +1993,7 @@ async function loadSessions(query = "") {
     state.sessions = data.sessions || data.results || [];
     if (!state.sessions.length) {
       renderEmpty(list, query ? "No matching sessions." : "No sessions saved.");
+      renderMemoryMapPreview();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
@@ -1340,8 +2010,10 @@ async function loadSessions(query = "") {
       </div>
     </article>`).join("");
     updateActiveSessionLabel();
+    renderMemoryMapPreview();
   } catch (error) {
     renderError(list, error.message);
+    renderMemoryMapPreview();
   }
 }
 
@@ -1351,7 +2023,9 @@ async function loadSchedules() {
     const data = await api("/schedules");
     state.schedules = data.schedules || [];
     setText("manage-schedules-count", `${state.schedules.length} configured`);
-    setText("manage-count", state.agents.length + state.skills.length + state.schedules.length);
+    setText("nav-schedules-count", state.schedules.length);
+    renderManageCount();
+    renderHomeDockedTools();
     if (!state.schedules.length) {
       renderEmpty(list, "No schedules configured.");
       return;
@@ -1378,6 +2052,8 @@ async function loadRuns() {
     const data = await api("/runs");
     state.runs = data.runs || [];
     $("runs-count").textContent = state.runs.length;
+    renderHomeActivity();
+    renderMemoryMapPreview();
     renderRunsList();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -1386,6 +2062,8 @@ async function loadRuns() {
   } catch (error) {
     state.runs = [];
     $("runs-count").textContent = "0";
+    renderHomeActivity();
+    renderMemoryMapPreview();
     renderError(list, error.message);
   }
 }
@@ -1662,6 +2340,7 @@ async function submitChat(event) {
   state.toolEvents.clear();
   state.toolDetails.clear();
   output.innerHTML = "";
+  switchPanel("chat");
   appendMessage("user", text);
   const assistantMessage = appendMessage("assistant", "");
   const abort = new AbortController();
@@ -1722,7 +2401,7 @@ function messageRoleLabel(role) {
     case "user":
       return "You";
     case "assistant":
-      return "StarClaw";
+      return "Astria";
     case "system":
       return "System";
     case "error":
@@ -1778,6 +2457,7 @@ function renderApprovalCard(data) {
   card.innerHTML = approvalCardHTML(data, "pending");
   $("chat-output").appendChild(card);
   state.approvals.set(requestID, { data, element: card });
+  renderHomeActivity();
   $("chat-state").textContent = "Approval required";
   scrollConversationToBottom();
 }
@@ -1811,7 +2491,9 @@ function markApprovalResolved(data) {
   item.element.classList.remove("pending", "allowed", "denied");
   item.element.classList.add(status);
   item.element.innerHTML = approvalCardHTML(item.data, status);
+  state.approvals.delete(requestID);
   $("chat-state").textContent = status === "allowed" ? "Approval allowed" : "Approval denied";
+  renderHomeActivity();
 }
 
 async function resolveApproval(requestID, decision) {
@@ -2038,6 +2720,23 @@ async function submitSchedule(event) {
   }
 }
 
+function submitHomeTask(event) {
+  event.preventDefault();
+  const text = $("home-task-input").value.trim();
+  if (!text) {
+    showToast("Enter a mission first.");
+    return;
+  }
+  $("chat-input").value = text;
+  $("chat-agent").value = $("home-agent").value;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
+  updateActiveSessionLabel();
+  $("home-task-input").value = "";
+  $("chat-form").requestSubmit();
+}
+
 async function toggleSchedule(id, enabled) {
   try {
     await api(`/schedules/${encodeURIComponent(id)}`, {
@@ -2120,6 +2819,9 @@ async function refreshAll() {
     loadDiagnostics(),
     loadConfig(),
     loadPermissions(),
+    loadMemory(),
+    loadCouncilRuns(),
+    loadInbox(),
     loadAgents(),
     loadSkills(),
     loadSessions(),
@@ -2163,8 +2865,83 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const mcpTest = event.target.closest("[data-mcp-test]");
+  if (mcpTest) {
+    testMCPServer(mcpTest.dataset.mcpTest);
+    return;
+  }
+
+  const memoryDelete = event.target.closest("[data-memory-delete]");
+  if (memoryDelete) {
+    deleteMemoryEntry(memoryDelete.dataset.memoryDelete);
+    return;
+  }
+
+  const memoryDraft = event.target.closest("[data-memory-draft]");
+  if (memoryDraft) {
+    draftMemoryCandidate(memoryDraft.dataset.memoryDraft);
+    return;
+  }
+
+  const councilOpen = event.target.closest("[data-council-open]");
+  if (councilOpen) {
+    renderCouncilDetail(councilRunByID(councilOpen.dataset.councilOpen));
+    return;
+  }
+
+  const councilCopy = event.target.closest("[data-council-copy]");
+  if (councilCopy) {
+    copyCouncilSynthesis(councilCopy.dataset.councilCopy, councilCopy);
+    return;
+  }
+
+  const councilSend = event.target.closest("[data-council-send]");
+  if (councilSend) {
+    sendCouncilToChat(councilSend.dataset.councilSend);
+    return;
+  }
+
+  const inboxApprove = event.target.closest("[data-inbox-approve]");
+  if (inboxApprove) {
+    approveInboxItem(inboxApprove.dataset.inboxApprove);
+    return;
+  }
+
+  const inboxReject = event.target.closest("[data-inbox-reject]");
+  if (inboxReject) {
+    rejectInboxItem(inboxReject.dataset.inboxReject);
+    return;
+  }
+
+  const inboxRetry = event.target.closest("[data-inbox-retry]");
+  if (inboxRetry) {
+    retryInboxItem(inboxRetry.dataset.inboxRetry);
+    return;
+  }
+
+  const inboxRun = event.target.closest("[data-inbox-run]");
+  if (inboxRun) {
+    openInboxRun(inboxRun.dataset.inboxRun);
+    return;
+  }
+
   const nav = event.target.closest("[data-panel]");
-  if (nav) switchPanel(nav.dataset.panel);
+  if (nav) {
+    switchPanel(nav.dataset.panel);
+    return;
+  }
+
+  const homeAction = event.target.closest("[data-home-action]");
+  if (homeAction) {
+    runHomeAction(homeAction.dataset.homeAction);
+    return;
+  }
+
+  const promptButton = event.target.closest("[data-home-prompt]");
+  if (promptButton) {
+    seedMissionPrompt(promptButton.dataset.homePrompt || "");
+    return;
+  }
 
   const sessionItem = event.target.closest("[data-session-id]");
   if (sessionItem) selectSession(sessionItem.dataset.sessionId);
@@ -2268,6 +3045,11 @@ document.addEventListener("click", (event) => {
 
 $("refresh-button").addEventListener("click", refreshAll);
 $("new-chat-button").addEventListener("click", startNewChat);
+$("home-task-form").addEventListener("submit", submitHomeTask);
+$("home-agent").addEventListener("change", () => {
+  $("chat-agent").value = $("home-agent").value;
+  updateSelectedAgent();
+});
 $("chat-new-session").addEventListener("change", () => {
   if ($("chat-new-session").checked) {
     state.activeSessionID = "";
@@ -2284,6 +3066,9 @@ $("config-provider").addEventListener("change", updateProviderFields);
 $("permissions-form").addEventListener("submit", submitPermissions);
 $("permissions-form").addEventListener("input", renderPermissionsPendingPreview);
 $("permissions-clear-button").addEventListener("click", clearPermissions);
+$("memory-review-form").addEventListener("submit", submitMemoryCandidate);
+$("council-form").addEventListener("submit", submitCouncilRun);
+$("inbox-webhook-form").addEventListener("submit", submitInboxWebhook);
 $("update-check-button").addEventListener("click", checkForUpdates);
 $("copy-support-info-button").addEventListener("click", copySupportInfo);
 $("agent-form").addEventListener("submit", submitAgent);
@@ -2318,5 +3103,6 @@ $("session-search-clear").addEventListener("click", () => {
   $("session-search").focus();
 });
 
+renderHomeMode();
 connectEventStream();
 refreshAll();

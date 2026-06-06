@@ -1506,3 +1506,70 @@ Added release checklist docs, npm package validation to release artifact checks,
 ### Next Steps
 
 - None - task complete
+
+
+## Session 105: Channel Inbox MVP
+
+**Date**: 2026-06-06
+**Task**: Channel Inbox MVP
+**Branch**: `main`
+
+### Summary
+
+Implemented Astria's first guarded external channel inbox using a local webhook provider. Inbound events now deduplicate by provider/external ID, appear in the Web UI Inbox, and require explicit approval before becoming normal daemon runs.
+
+### Main Changes
+
+- Added in-memory inbox store and `/inbox` daemon APIs for list, webhook ingest, approve, reject, and retry.
+- Added Astria Inbox navigation, management card, webhook intake form, guarded status display, and item actions.
+- Added daemon tests for webhook ingest, deduplication, approval-to-run handoff, reject validation, and retry validation.
+- Added Web UI smoke coverage for webhook ingest, pending visibility, and reject flow.
+
+### Testing
+
+- [OK] `go test ./internal/daemon`
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./...`
+- [OK] `./scripts/smoke_webui_core.sh`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Parent roadmap is now 6/6 children complete; run final parent integration review before archiving.
+
+
+## Session 106: Astria Roadmap Integration Review
+
+**Date**: 2026-06-06
+**Task**: Astria product roadmap inspired by Kocoro
+**Branch**: `main`
+
+### Summary
+
+Completed the final parent integration review for the Astria roadmap after all six child tasks reached done. Verified first-class Web UI entry points for Home, MCP Starport, Memory Map, Agent Council, Channel Inbox, Schedules, and Runs, and fixed a Home activity regression where resolved approval cards still counted as pending.
+
+### Main Changes
+
+- Updated approval resolution to remove completed approvals from the pending activity count while keeping the resolved card visible.
+- Added Web UI smoke coverage to assert Home pending count returns to zero after approval resolution.
+- Marked parent roadmap acceptance criteria complete and replaced parent manifest seed rows with real check context.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `go test ./internal/tools`
+- [OK] `./scripts/smoke_webui_core.sh`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Run final full-suite validation before commit/archive.

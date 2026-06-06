@@ -3,6 +3,7 @@ package daemon
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/starclaw/starclaw/internal/config"
@@ -11,15 +12,28 @@ import (
 )
 
 type daemonConfigView struct {
-	Provider        string `json:"provider"`
-	Endpoint        string `json:"endpoint"`
-	ModelTier       string `json:"model_tier"`
-	OpenAIEndpoint  string `json:"openai_endpoint"`
-	OpenAIModel     string `json:"openai_model"`
-	OllamaEndpoint  string `json:"ollama_endpoint"`
-	OllamaModel     string `json:"ollama_model"`
-	APIKeySet       bool   `json:"api_key_set"`
-	OpenAIAPIKeySet bool   `json:"openai_api_key_set"`
+	Provider        string          `json:"provider"`
+	Endpoint        string          `json:"endpoint"`
+	ModelTier       string          `json:"model_tier"`
+	OpenAIEndpoint  string          `json:"openai_endpoint"`
+	OpenAIModel     string          `json:"openai_model"`
+	OllamaEndpoint  string          `json:"ollama_endpoint"`
+	OllamaModel     string          `json:"ollama_model"`
+	APIKeySet       bool            `json:"api_key_set"`
+	OpenAIAPIKeySet bool            `json:"openai_api_key_set"`
+	MCPServers      []mcpServerView `json:"mcp_servers"`
+}
+
+type mcpServerView struct {
+	Name      string   `json:"name"`
+	Type      string   `json:"type"`
+	Command   string   `json:"command,omitempty"`
+	Args      []string `json:"args,omitempty"`
+	URL       string   `json:"url,omitempty"`
+	Disabled  bool     `json:"disabled"`
+	KeepAlive bool     `json:"keep_alive"`
+	Context   bool     `json:"context"`
+	EnvKeys   []string `json:"env_keys,omitempty"`
 }
 
 func newDaemonConfigView(cfg *config.Config) daemonConfigView {
@@ -36,7 +50,41 @@ func newDaemonConfigView(cfg *config.Config) daemonConfigView {
 		OllamaModel:     cfg.OllamaModel,
 		APIKeySet:       strings.TrimSpace(cfg.APIKey) != "",
 		OpenAIAPIKeySet: strings.TrimSpace(cfg.OpenAIAPIKey) != "",
+		MCPServers:      newMCPServerViews(cfg),
 	}
+}
+
+func newMCPServerViews(cfg *config.Config) []mcpServerView {
+	if cfg == nil || len(cfg.MCPServers) == 0 {
+		return nil
+	}
+	views := make([]mcpServerView, 0, len(cfg.MCPServers))
+	for name, server := range cfg.MCPServers {
+		serverType := server.Type
+		if serverType == "" {
+			serverType = "stdio"
+		}
+		envKeys := make([]string, 0, len(server.Env))
+		for key := range server.Env {
+			envKeys = append(envKeys, key)
+		}
+		sort.Strings(envKeys)
+		views = append(views, mcpServerView{
+			Name:      name,
+			Type:      serverType,
+			Command:   server.Command,
+			Args:      append([]string(nil), server.Args...),
+			URL:       server.URL,
+			Disabled:  server.Disabled,
+			KeepAlive: server.KeepAlive,
+			Context:   strings.TrimSpace(server.Context) != "",
+			EnvKeys:   envKeys,
+		})
+	}
+	sort.Slice(views, func(i, j int) bool {
+		return views[i].Name < views[j].Name
+	})
+	return views
 }
 
 func readDaemonConfig(path string, fallback *config.Config) (*config.Config, error) {

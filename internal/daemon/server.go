@@ -37,6 +37,8 @@ type Server struct {
 	startedAt      time.Time
 	running        sync.Map // requestID -> context.CancelFunc
 	runStore       *RunStore
+	councilStore   *CouncilStore
+	inboxStore     *InboxStore
 }
 
 // NewServer creates a new Server.
@@ -48,6 +50,8 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		eventBus:       NewEventBus(),
 		approvalBroker: NewApprovalBroker(),
 		runStore:       NewRunStore(defaultRunStoreLimit),
+		councilStore:   NewCouncilStore(defaultCouncilStoreLimit),
+		inboxStore:     NewInboxStore(defaultInboxStoreLimit),
 	}
 }
 

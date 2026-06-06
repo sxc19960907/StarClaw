@@ -1,0 +1,5 @@
+{"command":"go test ./internal/daemon","result":"passed"}
+{"command":"go test ./...","result":"passed"}
+{"command":"node --check internal/daemon/webui/assets/app.js","result":"passed"}
+{"command":"git diff --check","result":"passed"}
+{"command":"./scripts/smoke_webui_core.sh","result":"passed"}

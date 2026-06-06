@@ -21,6 +21,9 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	}
 
 	// File tools
+	reg.Register(&DocumentTextTool{})
+	reg.Register(&ArchiveInspectTool{})
+	reg.Register(&ArchiveExtractTool{})
 	reg.Register(&FileReadTool{})
 	reg.Register(&FileWriteTool{})
 	reg.Register(&FileEditTool{})

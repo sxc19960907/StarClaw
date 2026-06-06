@@ -51,6 +51,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		// Config
 		{"GET", "/config"},
 		{"PATCH", "/config"},
+		{"POST", "/mcp/test"},
 
 		// Instructions
 		{"GET", "/instructions"},
@@ -62,6 +63,23 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		{"PATCH", "/sessions/test-id"},
 		{"DELETE", "/sessions/test-id"},
 		{"GET", "/sessions/search?q=test"},
+
+		// Memory
+		{"GET", "/memory"},
+		{"POST", "/memory"},
+		{"DELETE", "/memory/MEMORY.md"},
+
+		// Council
+		{"GET", "/council"},
+		{"POST", "/council"},
+		{"GET", "/council/test-id"},
+
+		// Inbox
+		{"GET", "/inbox"},
+		{"POST", "/inbox/webhook"},
+		{"POST", "/inbox/test-id/approve"},
+		{"POST", "/inbox/test-id/reject"},
+		{"POST", "/inbox/test-id/retry"},
 
 		// Permissions / Approval
 		{"GET", "/permissions"},

@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/error-handling.md","reason":"Daemon MCP endpoints must expose actionable errors without crashing the UI."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Follow static Web UI and daemon route/test conventions."}
+{"file":".trellis/spec/backend/permissions.md","reason":"MCP config view must not expose secret env values."}

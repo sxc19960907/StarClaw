@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Follow existing static Web UI and smoke-test patterns."}
+{"file":".trellis/spec/guides/index.md","reason":"Home actions touch UI state across multiple panels and counters."}
