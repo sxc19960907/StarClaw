@@ -1788,3 +1788,26 @@ Added a first-class Astria File Intake surface so local documents and archives c
 ### Next Steps
 
 - Review and commit the completed Astria second phase.
+
+
+## Session 113: Astria Web UI Home Task Closeout
+
+**Date**: 2026-06-06
+**Task**: Rebrand Web UI to Astria with celestial home launcher
+**Branch**: `main`
+
+### Summary
+
+Closed the earlier Astria Web UI home Trellis task after auditing current code and smoke coverage. The implementation was completed in `3142d9c` and extended by the second-phase commit `f7001e5`.
+
+### Evidence
+
+- `state.panel` defaults to `home`.
+- The embedded app title, brand, home heading, chat copy, support info, and smoke checks use Astria.
+- Home composer, activity strip, capability ribbon, docked tools, and constellation cards are present.
+- Chat, Runs, Agents, Skills, Schedules, Settings, Diagnostics, Config, Permissions, Memory, MCP, Inbox, and File Intake remain reachable.
+- Core Web UI smoke covers the Astria home screen, chat panel, capability navigation, MCP, Memory, Council, Inbox, and File Intake.
+
+### Status
+
+[OK] **Completed**

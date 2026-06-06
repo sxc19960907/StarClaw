@@ -36,10 +36,10 @@ Rebrand the daemon Web UI surface from StarClaw to Astria and add a Kocoro-inspi
 
 ## Acceptance Criteria
 
-- Opening the Web UI shows `Astria` and the new home launcher as the default view.
-- Submitting a prompt from Home creates/streams a chat run using the existing `/chat/stream` flow.
-- Existing Chat panel still supports manual message submission, agent selection, session selection, stop, and approvals.
-- Existing Runs/Agents/Skills/Schedules/Settings panels remain reachable from sidebar or home cards.
-- Visual styling includes Astria-specific celestial accents without turning the UI into a dark sci-fi theme.
-- `go test ./...` passes.
-- Existing Web UI smoke coverage is run where feasible.
+- [x] Opening the Web UI shows `Astria` and the new home launcher as the default view.
+- [x] Submitting a prompt from Home creates/streams a chat run using the existing `/chat/stream` flow.
+- [x] Existing Chat panel still supports manual message submission, agent selection, session selection, stop, and approvals.
+- [x] Existing Runs/Agents/Skills/Schedules/Settings panels remain reachable from sidebar or home cards.
+- [x] Visual styling includes Astria-specific celestial accents without turning the UI into a dark sci-fi theme.
+- [x] `go test ./...` passes.
+- [x] Existing Web UI smoke coverage is run where feasible.
