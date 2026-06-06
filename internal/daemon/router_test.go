@@ -73,13 +73,19 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		{"GET", "/council"},
 		{"POST", "/council"},
 		{"GET", "/council/test-id"},
+		{"POST", "/council/test-id/run"},
 
 		// Inbox
 		{"GET", "/inbox"},
+		{"GET", "/inbox/providers"},
 		{"POST", "/inbox/webhook"},
+		{"POST", "/inbox/github"},
 		{"POST", "/inbox/test-id/approve"},
 		{"POST", "/inbox/test-id/reject"},
 		{"POST", "/inbox/test-id/retry"},
+
+		// Intake
+		{"POST", "/intake/file"},
 
 		// Permissions / Approval
 		{"GET", "/permissions"},

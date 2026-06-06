@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Daemon route and embedded Web UI conventions for Council handoff."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Backend tests and smoke coverage expectations."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Council synthesis to run record to UI handoff data flow."}

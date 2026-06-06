@@ -1,12 +1,17 @@
 package daemon
 
 import (
+	"archive/zip"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -882,6 +887,116 @@ openai_model: old-model
 	}
 }
 
+func TestHandleConfigPatchUpdatesMCPServersAndPreservesBlankEnv(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+provider: openai
+mcp_servers:
+  browser:
+    command: npx
+    args: ["@playwright/mcp@latest"]
+    env:
+      BROWSER_TOKEN: existing-token
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	patchBody := `{"mcp_servers":[{"name":"browser","type":"stdio","command":"npx","args":["@playwright/mcp@latest","--headless"],"env":{"BROWSER_TOKEN":"","NEW_TOKEN":"new-secret"},"context":"browser context","keep_alive":true},{"name":"docs","type":"http","url":"http://127.0.0.1:3000/mcp","disabled":true}]}`
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/config", strings.NewReader(patchBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH /config: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	var saved config.Config
+	if err := yaml.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("saved config is not valid YAML: %v\n%s", err, data)
+	}
+	browser := saved.MCPServers["browser"]
+	if browser.Command != "npx" || len(browser.Args) != 2 || browser.Args[1] != "--headless" {
+		t.Fatalf("unexpected browser config: %+v", browser)
+	}
+	if browser.Env["BROWSER_TOKEN"] != "existing-token" || browser.Env["NEW_TOKEN"] != "new-secret" {
+		t.Fatalf("unexpected browser env preservation: %+v", browser.Env)
+	}
+	if browser.Context != "browser context" || !browser.KeepAlive {
+		t.Fatalf("unexpected browser metadata: %+v", browser)
+	}
+	docs := saved.MCPServers["docs"]
+	if docs.Type != "http" || docs.URL != "http://127.0.0.1:3000/mcp" || !docs.Disabled {
+		t.Fatalf("unexpected docs config: %+v", docs)
+	}
+	if deps.Config.MCPServers["browser"].Env["BROWSER_TOKEN"] != "existing-token" {
+		t.Fatalf("in-memory MCP config not refreshed: %+v", deps.Config.MCPServers)
+	}
+
+	var body struct {
+		Config daemonConfigView `json:"config"`
+	}
+	getJSON(t, ts.URL+"/config", http.StatusOK, &body)
+	encoded, _ := json.Marshal(body)
+	if strings.Contains(string(encoded), "existing-token") || strings.Contains(string(encoded), "new-secret") {
+		t.Fatalf("GET /config leaked MCP env secret: %s", encoded)
+	}
+	if len(body.Config.MCPServers) != 2 || len(body.Config.MCPServers[0].EnvKeys) == 0 {
+		t.Fatalf("expected redacted MCP env keys in view: %+v", body.Config.MCPServers)
+	}
+}
+
+func TestHandleConfigPatchRejectsInvalidMCPServer(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"bad name", `{"mcp_servers":[{"name":"../bad","type":"stdio","command":"npx"}]}`},
+		{"missing command", `{"mcp_servers":[{"name":"browser","type":"stdio"}]}`},
+		{"missing url", `{"mcp_servers":[{"name":"docs","type":"http"}]}`},
+		{"unsupported type", `{"mcp_servers":[{"name":"docs","type":"sse","url":"http://127.0.0.1"}]}`},
+		{"blank env key", `{"mcp_servers":[{"name":"browser","type":"stdio","command":"npx","env":{" ":"secret"}}]}`},
+		{"duplicate", `{"mcp_servers":[{"name":"browser","type":"stdio","command":"npx"},{"name":"browser","type":"stdio","command":"node"}]}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPatch, ts.URL+"/config", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("PATCH /config: %v", err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400", resp.StatusCode)
+			}
+		})
+	}
+}
+
 func TestHandleConfigPatchRejectsUnsupportedProvider(t *testing.T) {
 	deps := newTestServerDeps(t)
 	s := newTestServer(t, deps)
@@ -975,6 +1090,117 @@ mcp_servers:
 	}
 }
 
+func TestHandleFileIntakeDocumentText(t *testing.T) {
+	dir := makeDaemonWorkspaceFixtureDir(t)
+	docPath := filepath.Join(dir, "report.docx")
+	writeDaemonZipFixture(t, docPath, map[string]string{
+		"word/document.xml": `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Astria intake report</w:t></w:r></w:p></w:body></w:document>`,
+	})
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var body fileIntakeResponse
+	postJSON(t, ts.URL+"/intake/file", `{"path":`+strconv.Quote(docPath)+`,"mode":"document_text","max_chars":2000}`, http.StatusOK, &body)
+	if body.Mode != "document_text" || body.Status != "ok" || body.IsError {
+		t.Fatalf("unexpected intake response: %+v", body)
+	}
+	if !strings.Contains(body.Content, "Astria intake report") {
+		t.Fatalf("document intake content missing fixture text: %s", body.Content)
+	}
+}
+
+func TestHandleFileIntakeArchiveInspectAuto(t *testing.T) {
+	dir := makeDaemonWorkspaceFixtureDir(t)
+	archivePath := filepath.Join(dir, "bundle.zip")
+	writeDaemonZipFixture(t, archivePath, map[string]string{
+		"README.md": "Astria archive intake",
+		"notes.txt": "second file",
+	})
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var body fileIntakeResponse
+	postJSON(t, ts.URL+"/intake/file", `{"path":`+strconv.Quote(archivePath)+`,"mode":"auto","max_entries":10}`, http.StatusOK, &body)
+	if body.Mode != "archive_inspect" || body.Status != "ok" || body.IsError {
+		t.Fatalf("unexpected intake response: %+v", body)
+	}
+	if !strings.Contains(body.Content, "README.md") || !strings.Contains(body.Content, `"format": "zip"`) {
+		t.Fatalf("archive intake content missing expected entries: %s", body.Content)
+	}
+}
+
+func TestHandleFileIntakeRejectsInvalidMode(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/intake/file", strings.NewReader(`{"path":"README.md","mode":"archive_extract"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /intake/file: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestHandleFileIntakeToolErrorVisible(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var body fileIntakeResponse
+	postJSON(t, ts.URL+"/intake/file", `{"path":"testdata/missing-astria-doc.docx","mode":"document_text"}`, http.StatusOK, &body)
+	if !body.IsError || body.Status != "error" || !strings.Contains(body.Content, "file not found") {
+		t.Fatalf("expected visible tool error, got %+v", body)
+	}
+}
+
+func makeDaemonWorkspaceFixtureDir(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join("testdata", "tmp-"+strings.ReplaceAll(t.Name(), "/", "-"))
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("remove fixture dir: %v", err)
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("create fixture dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(dir)
+	})
+	return dir
+}
+
+func writeDaemonZipFixture(t *testing.T, path string, files map[string]string) {
+	t.Helper()
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create zip fixture: %v", err)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	zw := zip.NewWriter(f)
+	for name, content := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatalf("create zip entry: %v", err)
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			t.Fatalf("write zip entry: %v", err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip fixture: %v", err)
+	}
+}
+
 func TestHandleMemoryLifecycle(t *testing.T) {
 	deps := newTestServerDeps(t)
 	s := newTestServer(t, deps)
@@ -1008,6 +1234,42 @@ func TestHandleMemoryLifecycle(t *testing.T) {
 	decodeJSONResponse(t, resp, http.StatusOK, &afterDelete)
 	if afterDelete.Content != "" || len(afterDelete.Entries) != 0 {
 		t.Fatalf("memory should be empty after delete: %+v", afterDelete)
+	}
+}
+
+func TestMemoryTaxonomyParsesCategoriesAndWarnings(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	content := strings.Join([]string{
+		"## Decisions",
+		"- Use embedded Web UI assets.",
+		"- Use embedded Web UI assets.",
+		"## Risks",
+		"- Provider setup: GitHub secret is missing.",
+		"- Provider setup: GitHub secret is configured.",
+		"- [command] go test ./internal/daemon",
+	}, "\n")
+	var view memoryView
+	postJSON(t, ts.URL+"/memory", `{"content":`+strconv.Quote(content)+`}`, http.StatusOK, &view)
+	if view.Categories["decisions"] != 2 || view.Categories["risks"] != 2 || view.Categories["commands"] != 1 {
+		t.Fatalf("unexpected categories: %+v", view.Categories)
+	}
+	if len(view.Facts) != 5 {
+		t.Fatalf("expected 5 parsed facts, got %d: %+v", len(view.Facts), view.Facts)
+	}
+	var duplicate, conflict bool
+	for _, warning := range view.Warnings {
+		if warning.Type == "duplicate" {
+			duplicate = true
+		}
+		if warning.Type == "conflict" && warning.Subject == "provider setup" {
+			conflict = true
+		}
+	}
+	if !duplicate || !conflict {
+		t.Fatalf("expected duplicate and conflict warnings, got %+v", view.Warnings)
 	}
 }
 
@@ -1103,6 +1365,109 @@ func TestInboxRejectAndRetryValidation(t *testing.T) {
 	}
 	postJSON(t, ts.URL+"/inbox/"+created.Item.ID+"/approve", `{}`, http.StatusBadRequest, &map[string]string{})
 	postJSON(t, ts.URL+"/inbox/"+created.Item.ID+"/retry", `{}`, http.StatusBadRequest, &map[string]string{})
+}
+
+func TestInboxGitHubIssueWebhook(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{
+		"action":"opened",
+		"repository":{"full_name":"acme/roadmap","html_url":"https://github.com/acme/roadmap"},
+		"sender":{"login":"octo"},
+		"issue":{"id":42,"number":7,"title":"Plan Astria channels","body":"Please wire this into Astria.","html_url":"https://github.com/acme/roadmap/issues/7","user":{"login":"alice"}}
+	}`
+	var created struct {
+		Item      InboxItem `json:"item"`
+		Duplicate bool      `json:"duplicate"`
+	}
+	postGitHubJSON(t, ts.URL+"/inbox/github", "issues", "delivery-1", body, "", http.StatusCreated, &created)
+	if created.Duplicate || created.Item.Provider != "github" || created.Item.Status != "pending" {
+		t.Fatalf("unexpected github inbox item: %+v", created)
+	}
+	if created.Item.ExternalID != "issue:acme/roadmap:42:opened" {
+		t.Fatalf("external id = %q", created.Item.ExternalID)
+	}
+	if created.Item.Sender != "alice" || !strings.Contains(created.Item.Text, "Plan Astria channels") {
+		t.Fatalf("unexpected sender/text: %+v", created.Item)
+	}
+	if created.Item.Metadata["delivery"] != "delivery-1" || created.Item.Metadata["html_url"] == "" {
+		t.Fatalf("metadata not preserved: %+v", created.Item.Metadata)
+	}
+
+	var duplicate struct {
+		Item      InboxItem `json:"item"`
+		Duplicate bool      `json:"duplicate"`
+	}
+	postGitHubJSON(t, ts.URL+"/inbox/github", "issues", "delivery-2", body, "", http.StatusOK, &duplicate)
+	if !duplicate.Duplicate || duplicate.Item.ID != created.Item.ID {
+		t.Fatalf("expected duplicate GitHub item, got %+v", duplicate)
+	}
+}
+
+func TestInboxGitHubIssueCommentWebhook(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{
+		"action":"created",
+		"repository":{"full_name":"acme/roadmap","html_url":"https://github.com/acme/roadmap"},
+		"sender":{"login":"octo"},
+		"issue":{"id":42,"number":7,"title":"Plan Astria channels"},
+		"comment":{"id":99,"body":"Can Astria take this?","html_url":"https://github.com/acme/roadmap/issues/7#issuecomment-99","user":{"login":"bob"}}
+	}`
+	var created struct {
+		Item InboxItem `json:"item"`
+	}
+	postGitHubJSON(t, ts.URL+"/inbox/github", "issue_comment", "delivery-comment", body, "", http.StatusCreated, &created)
+	if created.Item.ExternalID != "issue_comment:acme/roadmap:99:created" {
+		t.Fatalf("external id = %q", created.Item.ExternalID)
+	}
+	if created.Item.Sender != "bob" || !strings.Contains(created.Item.Text, "Can Astria take this?") {
+		t.Fatalf("unexpected comment item: %+v", created.Item)
+	}
+}
+
+func TestInboxProvidersExposeGitHubSetup(t *testing.T) {
+	t.Setenv("STARCLAW_GITHUB_WEBHOOK_SECRET", "secret")
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var body struct {
+		Providers []inboxProviderView `json:"providers"`
+	}
+	getJSON(t, ts.URL+"/inbox/providers", http.StatusOK, &body)
+	var github inboxProviderView
+	for _, provider := range body.Providers {
+		if provider.Kind == "github" {
+			github = provider
+		}
+	}
+	if github.Endpoint != "/inbox/github" || !github.SecretConfigured {
+		t.Fatalf("unexpected github provider view: %+v", github)
+	}
+}
+
+func TestInboxGitHubSignatureVerification(t *testing.T) {
+	t.Setenv("STARCLAW_GITHUB_WEBHOOK_SECRET", "top-secret")
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"action":"opened","repository":{"full_name":"acme/roadmap"},"issue":{"id":42,"number":7,"title":"Signed"}}`
+	var failed map[string]string
+	postGitHubJSON(t, ts.URL+"/inbox/github", "issues", "delivery-bad", body, "sha256=bad", http.StatusUnauthorized, &failed)
+
+	var created struct {
+		Item InboxItem `json:"item"`
+	}
+	postGitHubJSON(t, ts.URL+"/inbox/github", "issues", "delivery-good", body, githubSignature("top-secret", body), http.StatusCreated, &created)
+	if created.Item.ID == "" || created.Item.Provider != "github" {
+		t.Fatalf("unexpected signed response: %+v", created)
+	}
 }
 
 func TestHandleInstructions(t *testing.T) {
@@ -1823,6 +2188,31 @@ func postJSON(t *testing.T, url string, body string, wantStatus int, out interfa
 		t.Fatalf("POST %s: %v", url, err)
 	}
 	decodeJSONResponse(t, resp, wantStatus, out)
+}
+
+func postGitHubJSON(t *testing.T, url, event, delivery, body, signature string, wantStatus int, out interface{}) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("new GitHub POST request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-GitHub-Event", event)
+	req.Header.Set("X-GitHub-Delivery", delivery)
+	if signature != "" {
+		req.Header.Set("X-Hub-Signature-256", signature)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST %s: %v", url, err)
+	}
+	decodeJSONResponse(t, resp, wantStatus, out)
+}
+
+func githubSignature(secret, body string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(body))
+	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
 func patchJSON(t *testing.T, url string, body string, wantStatus int, out interface{}) {

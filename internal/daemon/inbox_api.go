@@ -2,8 +2,15 @@ package daemon
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -22,8 +29,70 @@ type inboxActionRequest struct {
 	Agent string `json:"agent,omitempty"`
 }
 
+type inboxProviderView struct {
+	Name             string   `json:"name"`
+	Kind             string   `json:"kind"`
+	Endpoint         string   `json:"endpoint"`
+	Configured       bool     `json:"configured"`
+	SecretConfigured bool     `json:"secret_configured"`
+	SupportedEvents  []string `json:"supported_events"`
+	Description      string   `json:"description"`
+}
+
+type githubWebhookPayload struct {
+	Action string `json:"action"`
+	Issue  struct {
+		ID      int64  `json:"id"`
+		Number  int    `json:"number"`
+		Title   string `json:"title"`
+		Body    string `json:"body"`
+		HTMLURL string `json:"html_url"`
+		User    struct {
+			Login string `json:"login"`
+		} `json:"user"`
+	} `json:"issue"`
+	Comment struct {
+		ID      int64  `json:"id"`
+		Body    string `json:"body"`
+		HTMLURL string `json:"html_url"`
+		User    struct {
+			Login string `json:"login"`
+		} `json:"user"`
+	} `json:"comment"`
+	Repository struct {
+		FullName string `json:"full_name"`
+		HTMLURL  string `json:"html_url"`
+	} `json:"repository"`
+	Sender struct {
+		Login string `json:"login"`
+	} `json:"sender"`
+}
+
 func (s *Server) handleListInbox(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"items": s.inboxStore.List()})
+}
+
+func (s *Server) handleInboxProviders(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"providers": []inboxProviderView{
+		{
+			Name:             "Local webhook",
+			Kind:             "webhook",
+			Endpoint:         "/inbox/webhook",
+			Configured:       true,
+			SecretConfigured: false,
+			SupportedEvents:  []string{"generic"},
+			Description:      "Local JSON intake for tests and manual channel bridges.",
+		},
+		{
+			Name:             "GitHub",
+			Kind:             "github",
+			Endpoint:         "/inbox/github",
+			Configured:       true,
+			SecretConfigured: githubWebhookSecret() != "",
+			SupportedEvents:  []string{"issues", "issue_comment"},
+			Description:      "GitHub issue and comment webhooks enter the guarded Inbox.",
+		},
+	}})
 }
 
 func (s *Server) handleInboxWebhook(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +101,34 @@ func (s *Server) handleInboxWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	item, status, err := inboxItemFromWebhook(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	stored, duplicate := s.inboxStore.Upsert(item)
+	if duplicate {
+		writeJSON(w, http.StatusOK, map[string]any{"item": stored, "duplicate": true})
+		return
+	}
+	writeJSON(w, status, map[string]any{"item": stored, "duplicate": false})
+}
+
+func (s *Server) handleInboxGitHubWebhook(w http.ResponseWriter, r *http.Request) {
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read webhook body")
+		return
+	}
+	if err := verifyGitHubSignature(raw, r.Header.Get("X-Hub-Signature-256")); err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	var payload githubWebhookPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid GitHub webhook payload")
+		return
+	}
+	item, status, err := inboxItemFromGitHubWebhook(r.Header.Get("X-GitHub-Event"), r.Header.Get("X-GitHub-Delivery"), payload)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -172,6 +269,103 @@ func inboxItemFromWebhook(req inboxWebhookRequest) (InboxItem, int, error) {
 		Agent:      strings.TrimSpace(req.Agent),
 		Metadata:   cleanInboxMetadata(req.Metadata),
 	}, http.StatusCreated, nil
+}
+
+func inboxItemFromGitHubWebhook(event, delivery string, payload githubWebhookPayload) (InboxItem, int, error) {
+	event = strings.TrimSpace(event)
+	action := strings.TrimSpace(payload.Action)
+	repo := strings.TrimSpace(payload.Repository.FullName)
+	if event == "" {
+		return InboxItem{}, 0, errors.New("X-GitHub-Event is required")
+	}
+	if repo == "" {
+		return InboxItem{}, 0, errors.New("repository.full_name is required")
+	}
+	switch event {
+	case "issues":
+		if payload.Issue.ID == 0 {
+			return InboxItem{}, 0, errors.New("issue.id is required")
+		}
+		title := strings.TrimSpace(payload.Issue.Title)
+		body := strings.TrimSpace(payload.Issue.Body)
+		text := strings.TrimSpace(fmt.Sprintf("GitHub issue %s#%d %s\n\n%s", repo, payload.Issue.Number, title, body))
+		if body == "" {
+			text = strings.TrimSpace(fmt.Sprintf("GitHub issue %s#%d %s", repo, payload.Issue.Number, title))
+		}
+		return InboxItem{
+			Provider:   "github",
+			ExternalID: fmt.Sprintf("issue:%s:%d:%s", repo, payload.Issue.ID, action),
+			Sender:     firstNonEmpty(payload.Issue.User.Login, payload.Sender.Login),
+			Text:       text,
+			Status:     "pending",
+			Metadata: cleanInboxMetadata(map[string]string{
+				"event":      event,
+				"action":     action,
+				"delivery":   delivery,
+				"repository": repo,
+				"issue":      fmt.Sprintf("%d", payload.Issue.Number),
+				"html_url":   payload.Issue.HTMLURL,
+				"repo_url":   payload.Repository.HTMLURL,
+				"sender":     payload.Sender.Login,
+			}),
+		}, http.StatusCreated, nil
+	case "issue_comment":
+		if payload.Comment.ID == 0 {
+			return InboxItem{}, 0, errors.New("comment.id is required")
+		}
+		text := strings.TrimSpace(fmt.Sprintf("GitHub comment on %s#%d\n\n%s", repo, payload.Issue.Number, strings.TrimSpace(payload.Comment.Body)))
+		return InboxItem{
+			Provider:   "github",
+			ExternalID: fmt.Sprintf("issue_comment:%s:%d:%s", repo, payload.Comment.ID, action),
+			Sender:     firstNonEmpty(payload.Comment.User.Login, payload.Sender.Login),
+			Text:       text,
+			Status:     "pending",
+			Metadata: cleanInboxMetadata(map[string]string{
+				"event":      event,
+				"action":     action,
+				"delivery":   delivery,
+				"repository": repo,
+				"issue":      fmt.Sprintf("%d", payload.Issue.Number),
+				"html_url":   payload.Comment.HTMLURL,
+				"repo_url":   payload.Repository.HTMLURL,
+				"sender":     payload.Sender.Login,
+			}),
+		}, http.StatusCreated, nil
+	default:
+		return InboxItem{}, 0, fmt.Errorf("unsupported GitHub event %q", event)
+	}
+}
+
+func verifyGitHubSignature(body []byte, signature string) error {
+	secret := githubWebhookSecret()
+	if secret == "" {
+		return nil
+	}
+	signature = strings.TrimSpace(signature)
+	if !strings.HasPrefix(signature, "sha256=") {
+		return errors.New("invalid GitHub webhook signature")
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(body)
+	expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(expected), []byte(signature)) {
+		return errors.New("invalid GitHub webhook signature")
+	}
+	return nil
+}
+
+func githubWebhookSecret() string {
+	return strings.TrimSpace(os.Getenv("STARCLAW_GITHUB_WEBHOOK_SECRET"))
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func cleanInboxMetadata(input map[string]string) map[string]string {

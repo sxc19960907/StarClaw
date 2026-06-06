@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Backend validation and persistence errors must follow project error handling conventions."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Config patch changes must follow existing config and test coverage guidelines."}

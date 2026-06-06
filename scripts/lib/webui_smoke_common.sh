@@ -17,6 +17,7 @@ ARTIFACT_DIR="${WEBUI_SMOKE_ARTIFACT_DIR:-$ROOT_DIR/output/playwright}"
 SCREENSHOT_DIR="$ARTIFACT_DIR"
 SCREENSHOT="$SCREENSHOT_DIR/daemon-webui-${SMOKE_MODE}-smoke.png"
 HOME_SCREENSHOT="$SCREENSHOT_DIR/astria-home-${SMOKE_MODE}-smoke.png"
+INTAKE_DOC="$SCREENSHOT_DIR/intake-smoke.docx"
 DAEMON_LOG_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.log"
 METADATA_ARTIFACT="$ARTIFACT_DIR/daemon-webui-${SMOKE_MODE}-smoke.metadata"
 DAEMON_PID=""
@@ -268,6 +269,22 @@ write_node_package() {
 JSON
 }
 
+write_intake_fixture() {
+  mkdir -p "$SCREENSHOT_DIR"
+  INTAKE_DOC="$INTAKE_DOC" python3 - <<'PY'
+import os
+import zipfile
+
+path = os.environ["INTAKE_DOC"]
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with zipfile.ZipFile(path, "w") as zf:
+    zf.writestr(
+        "word/document.xml",
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Astria smoke intake document</w:t></w:r></w:p></w:body></w:document>',
+    )
+PY
+}
+
 write_browser_smoke() {
   cat > "$NODE_SCRIPT" <<'JS'
 import { chromium } from "playwright";
@@ -276,6 +293,7 @@ import fs from "node:fs";
 const baseURL = process.env.BASE_URL;
 const screenshot = process.env.SCREENSHOT;
 const homeScreenshot = process.env.HOME_SCREENSHOT;
+const intakeDoc = process.env.INTAKE_DOC;
 const mode = process.env.WEBUI_SMOKE_MODE || "full";
 
 function assert(condition, message) {
@@ -390,10 +408,66 @@ async function runCore(page) {
   await page.locator("#panel-home.active").waitFor();
   await page.locator("#home-tool-orbit").getByRole("button", { name: /MCP/ }).click();
   await page.locator("#panel-mcp.active").waitFor();
+  await page.getByRole("button", { name: "Add dock" }).click();
+  await page.getByLabel("MCP server name").fill("smoke");
+  await page.getByLabel("MCP command").fill("node");
+  await page.getByLabel("MCP args").fill("smoke-mcp.js");
+  await page.getByLabel("MCP env").fill("SMOKE_TOKEN=fake-secret");
+  await page.locator("#mcp-form").getByRole("button", { name: "Save dock" }).click();
+  await page.getByText("MCP dock saved.").waitFor();
+  await page.locator("#mcp-list").getByText("smoke", { exact: true }).waitFor();
+  await page.locator("#mcp-list").getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("MCP args").fill("smoke-mcp.js, --edited");
+  await page.locator("#mcp-form").getByRole("button", { name: "Save dock" }).click();
+  await page.getByText("MCP dock saved.").waitFor();
+  await page.locator("#mcp-list").getByRole("button", { name: "Disable" }).click();
+  await page.getByText("MCP dock disabled.").waitFor();
+  const mcpConfig = await page.evaluate(async () => {
+    const response = await fetch("/config");
+    return response.json();
+  });
+  const smokeDock = mcpConfig.config.mcp_servers.find((server) => server.name === "smoke");
+  assert(smokeDock, "smoke MCP dock should be saved");
+  assert(smokeDock.disabled === true, "smoke MCP dock should be disabled");
+  assert(smokeDock.args.includes("--edited"), `smoke MCP args should include edit, got ${JSON.stringify(smokeDock.args)}`);
+  assert(smokeDock.env_keys.includes("SMOKE_TOKEN"), `smoke MCP env key should be redacted, got ${JSON.stringify(smokeDock.env_keys)}`);
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.locator("#home-tool-orbit").getByRole("button", { name: /文件/ }).click();
+  await page.locator("#panel-intake.active").waitFor();
+  await page.getByLabel("File intake path").fill(intakeDoc);
+  await page.getByLabel("File intake mode").selectOption("document_text");
+  const intakeResponsePromise = page.waitForResponse((response) => response.url().endsWith("/intake/file") && response.request().method() === "POST");
+  await page.locator("#intake-form").getByRole("button", { name: "Analyze file" }).click();
+  const intakeResponse = await intakeResponsePromise;
+  const intakePayload = await intakeResponse.json();
+  assert(String(intakePayload.content || "").includes("Astria smoke intake document"), `UI file intake response failed: ${JSON.stringify(intakePayload)}`);
+  const directIntake = await page.evaluate(async (path) => {
+    const response = await fetch("/intake/file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, mode: "document_text", max_chars: 12000 }),
+    });
+    return response.json();
+  }, intakeDoc);
+  assert(String(directIntake.content || "").includes("Astria smoke intake document"), `direct file intake failed: ${JSON.stringify(directIntake)}`);
+  await page.locator("#intake-result").getByText("Astria smoke intake document").waitFor();
+  await page.getByRole("button", { name: "Send to Chat" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  await page.getByPlaceholder("Message Astria").inputValue().then((value) => {
+    assert(value.includes("Astria smoke intake document"), "chat prompt should include intake result");
+  });
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
+  await page.locator("#home-tool-orbit").getByRole("button", { name: /收件箱/ }).click();
+  await page.locator("#panel-inbox.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
   await page.locator(".constellation-card").filter({ hasText: "记忆星图" }).click();
   await page.locator("#panel-memory.active").waitFor();
+  await page.locator("#memory-taxonomy-bar").getByRole("button", { name: /Decisions/ }).waitFor();
+  await page.getByLabel("Memory candidate").fill("- [decision] Keep Astria UI calm and native.");
+  await page.locator("#memory-candidate-preview").getByText("Decisions").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
   await page.getByRole("button", { name: "MCP", exact: true }).click();
@@ -413,8 +487,16 @@ async function runCore(page) {
   await page.getByText("Council synthesis copied.").waitFor();
   const councilSynthesis = await page.evaluate(() => navigator.clipboard.readText());
   assert(councilSynthesis.includes("Council synthesis for: webui council smoke"), "council synthesis copy missing goal");
+  await page.locator("#council-detail").getByRole("button", { name: "Start run" }).click();
+  await page.locator("#panel-runs.active").waitFor();
+  await page.locator("#run-detail").getByText("council_handoff").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
   await openManagePanel(page, "Inbox");
   await page.locator("#panel-inbox").getByRole("heading", { name: "Inbox" }).waitFor();
+  await page.locator("#inbox-provider-list").getByText("GitHub", { exact: true }).waitFor();
+  await page.locator("#inbox-provider-list").getByText("/inbox/github").waitFor();
+  await page.locator("#inbox-provider-list").getByText("issues").waitFor();
   await page.getByLabel("Inbox external id").fill("evt-smoke-core");
   await page.getByLabel("Inbox sender").fill("webui-smoke");
   await page.getByLabel("Inbox text").fill("Review this inbound smoke task.");
@@ -1092,6 +1174,7 @@ echo "==> building StarClaw"
 (cd "$ROOT_DIR" && go build -o "$BIN" ./main.go)
 
 write_smoke_config
+write_intake_fixture
 write_node_package
 
 echo "==> installing browser smoke dependency"
@@ -1112,7 +1195,7 @@ check_routes
 write_browser_smoke
 
 echo "==> running browser smoke ($SMOKE_MODE)"
-env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" HOME_SCREENSHOT="$HOME_SCREENSHOT" NODE_DIR="$NODE_DIR" WEBUI_SMOKE_MODE="$SMOKE_MODE" SMOKE_HOME="$SMOKE_HOME" node "$NODE_SCRIPT"
+env BASE_URL="$BASE_URL" SCREENSHOT="$SCREENSHOT" HOME_SCREENSHOT="$HOME_SCREENSHOT" INTAKE_DOC="$INTAKE_DOC" NODE_DIR="$NODE_DIR" WEBUI_SMOKE_MODE="$SMOKE_MODE" SMOKE_HOME="$SMOKE_HOME" node "$NODE_SCRIPT"
 
 echo "smoke_webui_${SMOKE_MODE}: ok"
 echo "screenshot: $SCREENSHOT"

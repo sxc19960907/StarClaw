@@ -1573,3 +1573,218 @@ Completed the final parent integration review for the Astria roadmap after all s
 ### Next Steps
 
 - Run final full-suite validation before commit/archive.
+
+
+## Session 107: Astria UI Polish
+
+**Date**: 2026-06-06
+**Task**: Astria UI polish
+**Branch**: `main`
+
+### Summary
+
+Started the second Astria phase with a parent task for product polish and external channels, then implemented the first UI polish slice. Home now exposes Inbox as a first-class docked tool and constellation card, core empty states include direct action buttons, and the docked tool grid is more stable across widths.
+
+### Main Changes
+
+- Added Home Inbox count and entry point.
+- Added actionable empty states for MCP, Memory, Council, and Inbox.
+- Adjusted docked tool responsive grid and empty-state action styling.
+- Extended Web UI smoke to verify the Home Inbox docked tool route.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Continue second phase with real channel provider planning/implementation.
+
+
+## Session 108: Real Channel Provider
+
+**Date**: 2026-06-06
+**Task**: Real channel provider
+**Branch**: `main`
+
+### Summary
+
+Added GitHub issue/comment webhooks as Astria's first real external channel provider. GitHub events now enter the guarded Inbox with preserved repository, issue, delivery, sender, URL, and action metadata, while execution remains approval-gated.
+
+### Main Changes
+
+- Added `POST /inbox/github` for GitHub `issues` and `issue_comment` webhook intake.
+- Added optional `STARCLAW_GITHUB_WEBHOOK_SECRET` HMAC SHA-256 verification.
+- Added `GET /inbox/providers` for provider setup/status display.
+- Added Inbox UI provider route cards for local webhook and GitHub.
+- Added backend tests for GitHub issue/comment intake, dedupe, provider status, and signature verification.
+- Extended Web UI smoke to assert GitHub provider visibility in Inbox.
+
+### Testing
+
+- [OK] `go test ./internal/daemon`
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Continue with Council workflow handoff or commit the completed second-phase slices.
+
+
+## Session 109: Council Workflow Handoff
+
+**Date**: 2026-06-06
+**Task**: Council workflow handoff
+**Branch**: `main`
+
+### Summary
+
+Made Agent Council synthesis actionable by adding an explicit user-driven handoff into normal Astria runs. Council remains non-autonomous, but users can now start a run directly from a completed synthesis and inspect it in Run Detail.
+
+### Main Changes
+
+- Added `POST /council/{id}/run`.
+- Built handoff prompts from Council ID, goal, and synthesis.
+- Recorded handoff runs with `channel=council_handoff` and `source=council:<id>`.
+- Added Council detail `Start run` action.
+- Extended Web UI smoke to start a Council handoff and verify the resulting run detail.
+- Added backend test coverage for handoff run creation and metadata.
+
+### Testing
+
+- [OK] `go test ./internal/daemon`
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Continue second phase with Memory taxonomy, MCP config editor, or commit current completed slices.
+
+
+## Session 110: Memory Taxonomy
+
+**Date**: 2026-06-06
+**Task**: Memory taxonomy
+**Branch**: `main`
+
+### Summary
+
+Upgraded Memory Map from plain memory text into a governed taxonomy surface. The daemon now parses categories, facts, duplicate warnings, and conflict warnings from `MEMORY.md`, while the Web UI exposes category filters, warning cards, and candidate classification before approval.
+
+### Main Changes
+
+- Added memory categories: preferences, decisions, commands, architecture, people, risks, and uncategorized.
+- Added markdown taxonomy parsing for bracket tags, category prefixes, and section headings.
+- Added duplicate and conflict warning generation.
+- Added Memory Map category filter and warning list.
+- Added candidate preview classification and duplicate hinting in the review form.
+- Added backend tests for category parsing, duplicate detection, and conflict detection.
+- Extended Web UI smoke to verify taxonomy controls and candidate preview.
+
+### Testing
+
+- [OK] `go test ./internal/daemon`
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Continue second phase with MCP config editor or file intake UI.
+
+
+## Session 111: MCP Config Editor
+
+**Date**: 2026-06-06
+**Task**: MCP config editor
+**Branch**: `main`
+
+### Summary
+
+Turned MCP Starport from a read/test surface into a configurable dock manager. Users can now add a stdio MCP dock, edit existing dock fields, disable or enable docks, and keep connection testing available after saves.
+
+### Main Changes
+
+- Extended `PATCH /config` with `mcp_servers` replacement semantics.
+- Added validation for MCP server names, transport types, required stdio commands, required HTTP URLs, duplicate names, and blank env keys.
+- Preserved existing MCP env secrets when submitted env values are blank.
+- Kept GET `/config` redacted by returning env keys and context text but never env values.
+- Added MCP Starport editor controls for add/edit/disable and transport-specific fields.
+- Extended Web UI smoke to add, edit, disable, and verify a smoke MCP dock.
+
+### Testing
+
+- [OK] `go test ./internal/daemon`
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Continue second phase with File intake UI, then run final parent integration review.
+
+
+## Session 112: File Intake UI
+
+**Date**: 2026-06-06
+**Task**: File intake UI
+**Branch**: `main`
+
+### Summary
+
+Added a first-class Astria File Intake surface so local documents and archives can be inspected before becoming normal chat/run work. The direct endpoint stays read-only; archive extraction remains a drafted run prompt so write operations still go through approval.
+
+### Main Changes
+
+- Added `POST /intake/file` with `auto`, `document_text`, and `archive_inspect` modes.
+- Reused existing `document_text` and `archive_inspect` tools instead of duplicating parsing logic.
+- Added File Intake navigation, Home dock entry, Manage card, and a split panel with local path input and result preview.
+- Added Send to Chat and Draft extract run helpers.
+- Added backend tests for document intake, archive auto inspection, invalid mode rejection, and visible tool errors.
+- Extended Web UI smoke to analyze a local DOCX fixture and send the result into Chat.
+
+### Testing
+
+- [OK] `go test ./internal/daemon`
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Review and commit the completed Astria second phase.

@@ -30,6 +30,7 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 	r.registerMemoryRoutes(mux)
 	r.registerCouncilRoutes(mux)
 	r.registerInboxRoutes(mux)
+	r.registerIntakeRoutes(mux)
 	r.registerPermissionRoutes(mux)
 }
 
@@ -110,14 +111,21 @@ func (r *Router) registerCouncilRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /council", r.srv.handleListCouncilRuns)
 	mux.HandleFunc("POST /council", r.srv.handleCreateCouncilRun)
 	mux.HandleFunc("GET /council/{id}", r.srv.handleGetCouncilRun)
+	mux.HandleFunc("POST /council/{id}/run", r.srv.handleRunCouncilSynthesis)
 }
 
 func (r *Router) registerInboxRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /inbox", r.srv.handleListInbox)
+	mux.HandleFunc("GET /inbox/providers", r.srv.handleInboxProviders)
 	mux.HandleFunc("POST /inbox/webhook", r.srv.handleInboxWebhook)
+	mux.HandleFunc("POST /inbox/github", r.srv.handleInboxGitHubWebhook)
 	mux.HandleFunc("POST /inbox/{id}/approve", r.srv.handleApproveInboxItem)
 	mux.HandleFunc("POST /inbox/{id}/reject", r.srv.handleRejectInboxItem)
 	mux.HandleFunc("POST /inbox/{id}/retry", r.srv.handleRetryInboxItem)
+}
+
+func (r *Router) registerIntakeRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /intake/file", r.srv.handleFileIntake)
 }
 
 func (r *Router) registerPermissionRoutes(mux *http.ServeMux) {

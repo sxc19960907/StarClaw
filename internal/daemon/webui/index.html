@@ -74,7 +74,7 @@
               <span><span class="nav-icon" aria-hidden="true">▤</span>MCP 服务器</span>
               <small id="nav-mcp-count">0</small>
             </button>
-            <button class="nav-item" data-home-action="files" aria-label="Local Files">
+            <button class="nav-item" data-panel="intake" aria-label="File Intake">
               <span><span class="nav-icon" aria-hidden="true">▱</span>本地文件</span>
               <small>vault</small>
             </button>
@@ -184,7 +184,7 @@
               <button type="button" data-home-action="research">深度调研</button>
               <button type="button" data-home-action="council">多智能体</button>
               <button type="button" data-home-action="desktop">电脑控制</button>
-              <button type="button" data-home-action="files">本地文件</button>
+              <button type="button" data-panel="intake">本地文件</button>
               <button type="button" data-home-action="mcp">MCP</button>
             </div>
 
@@ -205,6 +205,8 @@
                   <button type="button" data-panel="mcp"><strong>MCP</strong><span id="home-mcp-count">0</span></button>
                   <button type="button" data-panel="memory"><strong>记忆</strong><span id="home-memory-count">0</span></button>
                   <button type="button" data-panel="council"><strong>议会</strong><span id="home-council-count">0</span></button>
+                  <button type="button" data-panel="inbox"><strong>收件箱</strong><span id="home-inbox-count">0</span></button>
+                  <button type="button" data-panel="intake"><strong>文件</strong><span id="home-intake-count">local</span></button>
                 </div>
               </div>
             </div>
@@ -229,6 +231,16 @@
                 <span>Agent Council</span>
                 <strong>智能体议会</strong>
                 <small>把规划、调研和评审意见分开，再汇总成一个可执行方案。</small>
+              </button>
+              <button class="constellation-card" type="button" data-panel="inbox">
+                <span>Channel Inbox</span>
+                <strong>收件星门</strong>
+                <small>外部渠道任务先进入审批队列，再转成可追踪运行。</small>
+              </button>
+              <button class="constellation-card" type="button" data-panel="intake">
+                <span>File Intake</span>
+                <strong>文件星舱</strong>
+                <small>读取本地文档、检查归档内容，再把结果送入普通任务流。</small>
               </button>
             </div>
           </div>
@@ -308,6 +320,61 @@
               <strong>Guarded</strong>
               <span>Inbound items never execute until approved.</span>
             </div>
+            <div class="provider-route-list" id="inbox-provider-list" aria-label="Inbox routes">
+              <div class="empty-state">Checking inbox providers.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-intake" aria-labelledby="intake-heading">
+          <div class="panel-list">
+            <div class="panel-heading">
+              <h2 id="intake-heading">File Intake</h2>
+              <p id="intake-summary">Inspect local documents and archives before sending them into a run.</p>
+            </div>
+            <div class="intake-result" id="intake-result">
+              <div class="empty-state">Choose a local path to inspect.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>File Dock</h2>
+              <p>Read document text or inspect archive entries using local tools.</p>
+            </div>
+            <form class="config-form intake-form" id="intake-form">
+              <label>
+                Local path
+                <input id="intake-path" aria-label="File intake path" placeholder="docs/report.docx">
+              </label>
+              <label>
+                Mode
+                <select id="intake-mode" aria-label="File intake mode">
+                  <option value="auto">Auto</option>
+                  <option value="document_text">Document text</option>
+                  <option value="archive_inspect">Archive inspect</option>
+                </select>
+              </label>
+              <label>
+                Max characters
+                <input id="intake-max-chars" aria-label="File intake max chars" type="number" min="1000" step="1000" value="12000">
+              </label>
+              <label>
+                Max entries
+                <input id="intake-max-entries" aria-label="File intake max entries" type="number" min="1" step="10" value="80">
+              </label>
+              <div class="form-actions">
+                <span id="intake-state">Ready</span>
+                <button type="button" class="primary-button" id="intake-analyze-button">Analyze file</button>
+              </div>
+            </form>
+            <div class="diagnostics-overview" id="intake-overview">
+              <strong>Local</strong>
+              <span>Read-only intake runs before extraction or summarization.</span>
+            </div>
+            <div class="inline-actions">
+              <button type="button" id="intake-chat-button" disabled>Send to Chat</button>
+              <button type="button" id="intake-extract-button" disabled>Draft extract run</button>
+            </div>
           </aside>
         </section>
 
@@ -347,6 +414,11 @@
                 <span>Inbox</span>
                 <strong id="manage-inbox-count">0 pending</strong>
                 <small>Approve inbound channel tasks before running them.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="intake">
+                <span>File Intake</span>
+                <strong id="manage-intake-count">Local paths</strong>
+                <small>Inspect documents and archives before sending them to a run.</small>
               </button>
               <button class="hub-card" type="button" data-panel="schedules">
                 <span>Schedules</span>
@@ -546,9 +618,52 @@
               <span>Waiting for config.</span>
             </div>
             <div class="inline-actions">
+              <button type="button" class="primary-button" id="mcp-new-button">Add stdio dock</button>
               <button type="button" class="primary-button" data-home-action="mcp">Ask Astria</button>
               <button type="button" data-panel="config">Open config</button>
             </div>
+            <form class="config-form mcp-editor-form" id="mcp-form">
+              <label>
+                Dock name
+                <input id="mcp-name" aria-label="MCP server name" placeholder="browser">
+              </label>
+              <label>
+                Transport
+                <select id="mcp-type" aria-label="MCP transport">
+                  <option value="stdio">stdio</option>
+                  <option value="http">http</option>
+                </select>
+              </label>
+              <label class="mcp-stdio-field">
+                Command
+                <input id="mcp-command" aria-label="MCP command" placeholder="npx">
+              </label>
+              <label class="mcp-stdio-field">
+                Args
+                <input id="mcp-args" aria-label="MCP args" placeholder="@playwright/mcp@latest">
+              </label>
+              <label class="mcp-http-field">
+                URL
+                <input id="mcp-url" aria-label="MCP URL" placeholder="http://127.0.0.1:3000/mcp">
+              </label>
+              <label class="span-two">
+                Context
+                <textarea id="mcp-context" aria-label="MCP context" rows="3" placeholder="When this dock should be used."></textarea>
+              </label>
+              <label class="span-two">
+                Env
+                <textarea id="mcp-env" aria-label="MCP env" rows="4" placeholder="TOKEN=&#10;API_KEY=new-secret"></textarea>
+              </label>
+              <div class="mcp-toggle-row span-two">
+                <label><input id="mcp-keep-alive" type="checkbox"> Keep alive</label>
+                <label><input id="mcp-disabled" type="checkbox"> Disabled</label>
+              </div>
+              <div class="form-actions span-two">
+                <span id="mcp-save-state">Ready</span>
+                <button type="button" id="mcp-clear-button">Clear</button>
+                <button type="submit" class="primary-button">Save dock</button>
+              </div>
+            </form>
           </aside>
         </section>
 
@@ -558,6 +673,10 @@
               <h2 id="memory-heading">Memory Map</h2>
               <p id="memory-summary">Reviewed memory candidates and source sessions.</p>
             </div>
+            <div class="memory-taxonomy-bar" id="memory-taxonomy-bar" aria-label="Memory categories">
+              <button type="button" class="active" data-memory-category="all">All</button>
+            </div>
+            <div class="memory-warning-list" id="memory-warning-list"></div>
             <div class="data-list" id="memory-list">
               <div class="empty-state">Waiting for sessions.</div>
             </div>
@@ -576,6 +695,7 @@
                 Candidate
                 <textarea id="memory-candidate" rows="7" aria-label="Memory candidate" placeholder="- Durable fact to remember"></textarea>
               </label>
+              <div class="memory-candidate-preview" id="memory-candidate-preview">No candidate yet.</div>
               <div class="form-actions">
                 <span id="memory-save-state">Ready</span>
                 <button type="submit" class="primary-button">Approve memory</button>

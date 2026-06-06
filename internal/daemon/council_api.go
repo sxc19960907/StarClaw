@@ -40,6 +40,10 @@ type createCouncilRequest struct {
 	Agent string `json:"agent,omitempty"`
 }
 
+type councilRunHandoffRequest struct {
+	Agent string `json:"agent,omitempty"`
+}
+
 func NewCouncilStore(limit int) *CouncilStore {
 	if limit <= 0 {
 		limit = defaultCouncilStoreLimit
@@ -109,6 +113,60 @@ func (s *Server) handleCreateCouncilRun(w http.ResponseWriter, r *http.Request) 
 	run := buildCouncilRun(req)
 	s.councilStore.Add(run)
 	writeJSON(w, http.StatusCreated, run)
+}
+
+func (s *Server) handleRunCouncilSynthesis(w http.ResponseWriter, r *http.Request) {
+	if s.deps == nil {
+		writeError(w, http.StatusInternalServerError, "daemon deps not configured")
+		return
+	}
+	id := strings.TrimSpace(r.PathValue("id"))
+	run, ok := s.councilStore.Get(id)
+	if !ok {
+		writeError(w, http.StatusNotFound, "council run not found")
+		return
+	}
+	var req councilRunHandoffRequest
+	if r.Body != nil && r.ContentLength != 0 {
+		if !decodeBody(w, r, &req) {
+			return
+		}
+	}
+	agentName := strings.TrimSpace(req.Agent)
+	if agentName == "" {
+		agentName = run.Agent
+	}
+	runID := "council_run_" + generateRequestID()
+	runReq := RunAgentRequest{
+		Text:       councilHandoffPrompt(run),
+		Agent:      agentName,
+		Source:     "council:" + run.ID,
+		Channel:    "council_handoff",
+		Sender:     "agent-council",
+		NewSession: true,
+		RequestID:  runID,
+	}
+	s.runStore.Start(runReq)
+	handler := s.recordingHandler(runID, &httpEventHandler{})
+	result, runErr := s.runAgent(r.Context(), runReq, handler)
+	s.runStore.Complete(runID, result, runErr)
+	if runErr != nil {
+		writeError(w, http.StatusBadGateway, runErr.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"run_id":  runID,
+		"run":     result,
+		"council": run,
+	})
+}
+
+func councilHandoffPrompt(run CouncilRun) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Continue from this Agent Council synthesis.\n\nCouncil ID: %s\nGoal: %s\n\n", run.ID, run.Goal)
+	sb.WriteString(run.Synthesis)
+	sb.WriteString("\n\nTurn this into the next concrete implementation step. Keep the work explicit and verify it before reporting completion.")
+	return sb.String()
 }
 
 func buildCouncilRun(req createCouncilRequest) CouncilRun {

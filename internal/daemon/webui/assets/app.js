@@ -7,6 +7,8 @@ const state = {
   runs: [],
   councilRuns: [],
   inboxItems: [],
+  inboxProviders: [],
+  intakeResult: null,
   currentRunDetail: null,
   currentCouncilRun: null,
   diagnostics: null,
@@ -31,6 +33,8 @@ const state = {
   approvals: new Map(),
   eventSource: null,
   homeMode: "general",
+  memoryCategory: "all",
+  editingMCPServer: "",
 };
 
 const views = {
@@ -44,6 +48,7 @@ const views = {
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
+  intake: ["文件星舱", "Inspect local documents and archives before a run."],
   schedules: ["定时任务", "Create and manage cron-based local tasks."],
   runs: ["运行", "Inspect recent daemon executions."],
   diagnostics: ["诊断", "Inspect daemon readiness and setup checks."],
@@ -102,10 +107,12 @@ const homeActions = {
     notice: "桌面控制需要明确授权，Astria 会先说明动作。",
   },
   files: {
-    title: "Local files",
+    title: "File Intake",
     status: "Ready",
-    description: "围绕当前工作区进行文件阅读、定位、修改建议或安全编辑。",
+    description: "读取本地文档、检查归档内容，并把结果送入普通任务流。",
     prompt: "Inspect local files and recommend the safest next edit.",
+    panel: "intake",
+    notice: "已打开 File Intake。",
   },
   mcp: {
     title: "MCP Starport",
@@ -213,6 +220,15 @@ function escapeHTML(value) {
 
 function renderEmpty(target, message) {
   target.innerHTML = `<div class="empty-state">${escapeHTML(message)}</div>`;
+}
+
+function renderEmptyAction(target, message, actions = []) {
+  const buttons = actions.map((action) => {
+    const attrs = action.panel ? ` data-panel="${escapeHTML(action.panel)}"` : action.homeAction ? ` data-home-action="${escapeHTML(action.homeAction)}"` : action.action ? ` data-action="${escapeHTML(action.action)}"` : "";
+    const className = action.primary ? ' class="primary-button"' : "";
+    return `<button type="button"${className}${attrs}>${escapeHTML(action.label)}</button>`;
+  }).join("");
+  target.innerHTML = `<div class="empty-state empty-action"><span>${escapeHTML(message)}</span>${buttons ? `<div class="inline-actions">${buttons}</div>` : ""}</div>`;
 }
 
 function renderError(target, message) {
@@ -501,12 +517,15 @@ function renderHomeDockedTools() {
   setText("home-mcp-count", mcpCount);
   setText("home-memory-count", memoryCount);
   setText("home-council-count", state.councilRuns.length);
+  setText("home-inbox-count", (inboxStatusCounts().pending || 0));
+  setText("home-intake-count", state.intakeResult ? "ready" : "local");
 }
 
 function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length);
+  setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + 1);
 }
 
 function renderMCPStarport() {
@@ -518,12 +537,16 @@ function renderMCPStarport() {
   const enabled = servers.filter((server) => !server.disabled).length;
   const overview = $("mcp-overview");
   if (overview) {
-    overview.innerHTML = `<strong>${escapeHTML(enabled ? `${enabled} enabled` : "No docks")}</strong><span>${escapeHTML(servers.length ? "MCP configuration is visible from Astria. Connection testing is planned next." : "Add mcp_servers to config.yaml, then refresh Astria.")}</span>`;
+    overview.innerHTML = `<strong>${escapeHTML(enabled ? `${enabled} enabled` : "No docks")}</strong><span>${escapeHTML(servers.length ? "Edit, disable, or test configured MCP docks from Astria." : "Add a stdio dock from Astria, then test the connection.")}</span>`;
   }
+  renderMCPForm();
   const list = $("mcp-list");
   if (!list) return;
   if (!servers.length) {
-    renderEmpty(list, "No MCP servers configured. Open Config or ask Astria to suggest a first dock.");
+    renderEmptyAction(list, "No MCP servers configured. Add a stdio dock or ask Astria to suggest a first connection.", [
+      { label: "Add dock", action: "mcp-new", primary: true },
+      { label: "Ask Astria", homeAction: "mcp" },
+    ]);
     return;
   }
   list.innerHTML = servers.map((server) => {
@@ -543,11 +566,167 @@ function renderMCPStarport() {
       </div>
       ${envKeys.length ? `<p class="secret-note">Env values hidden: ${envKeys.map(escapeHTML).join(", ")}</p>` : ""}
       <div class="row-actions">
+        <button type="button" data-mcp-edit="${escapeHTML(server.name || "")}">Edit</button>
+        <button type="button" data-mcp-toggle="${escapeHTML(server.name || "")}">${server.disabled ? "Enable" : "Disable"}</button>
         <button type="button" data-mcp-test="${escapeHTML(server.name || "")}" ${server.disabled ? "disabled" : ""}>Test connection</button>
       </div>
       <div class="mcp-test-result" id="mcp-test-${escapeHTML(server.name || "")}"></div>
     </article>`;
   }).join("");
+}
+
+function renderMCPForm() {
+  const form = $("mcp-form");
+  if (!form) return;
+  const server = getMCPServer(state.editingMCPServer) || null;
+  $("mcp-name").value = server?.name || "";
+  $("mcp-name").disabled = Boolean(server?.name);
+  $("mcp-type").value = server?.type || "stdio";
+  $("mcp-command").value = server?.command || "";
+  $("mcp-args").value = Array.isArray(server?.args) ? server.args.join("\n") : "";
+  $("mcp-url").value = server?.url || "";
+  $("mcp-context").value = server?.context_text || "";
+  $("mcp-env").value = Array.isArray(server?.env_keys) ? server.env_keys.map((key) => `${key}=`).join("\n") : "";
+  $("mcp-keep-alive").checked = Boolean(server?.keep_alive);
+  $("mcp-disabled").checked = Boolean(server?.disabled);
+  setText("mcp-save-state", server ? `Editing ${server.name}` : "Ready");
+  updateMCPTransportFields();
+}
+
+function getMCPServer(name) {
+  const servers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  return servers.find((server) => server.name === name);
+}
+
+function beginMCPCreate() {
+  state.editingMCPServer = "";
+  renderMCPForm();
+  $("mcp-name")?.focus();
+}
+
+function editMCPServer(name) {
+  state.editingMCPServer = name || "";
+  renderMCPForm();
+  $("mcp-command")?.focus();
+}
+
+function updateMCPTransportFields() {
+  const type = $("mcp-type")?.value || "stdio";
+  for (const field of document.querySelectorAll(".mcp-stdio-field")) {
+    field.hidden = type !== "stdio";
+  }
+  for (const field of document.querySelectorAll(".mcp-http-field")) {
+    field.hidden = type !== "http";
+  }
+}
+
+function buildMCPPatchServers(replacement) {
+  const servers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  const next = [];
+  let replaced = false;
+  for (const server of servers) {
+    if (server.name === replacement.name) {
+      next.push(replacement);
+      replaced = true;
+    } else {
+      next.push(mcpViewToPatch(server));
+    }
+  }
+  if (!replaced) next.push(replacement);
+  return next;
+}
+
+function mcpViewToPatch(server) {
+  const env = {};
+  for (const key of Array.isArray(server.env_keys) ? server.env_keys : []) {
+    env[key] = "";
+  }
+  return {
+    name: server.name || "",
+    type: server.type || "stdio",
+    command: server.command || "",
+    args: Array.isArray(server.args) ? server.args : [],
+    url: server.url || "",
+    env,
+    disabled: Boolean(server.disabled),
+    keep_alive: Boolean(server.keep_alive),
+    context: server.context_text || "",
+  };
+}
+
+function buildMCPFormPatch() {
+  const name = $("mcp-name").value.trim();
+  const type = $("mcp-type").value || "stdio";
+  const patch = {
+    name,
+    type,
+    command: $("mcp-command").value.trim(),
+    args: parseCSVList($("mcp-args").value),
+    url: $("mcp-url").value.trim(),
+    env: parseMCPEnv($("mcp-env").value),
+    context: $("mcp-context").value.trim(),
+    keep_alive: $("mcp-keep-alive").checked,
+    disabled: $("mcp-disabled").checked,
+  };
+  return patch;
+}
+
+function parseMCPEnv(value) {
+  const env = {};
+  for (const rawLine of String(value || "").split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const idx = line.indexOf("=");
+    if (idx < 0) {
+      env[line] = "";
+    } else {
+      const key = line.slice(0, idx).trim();
+      if (!key) continue;
+      env[key] = line.slice(idx + 1);
+    }
+  }
+  return env;
+}
+
+async function submitMCPServer(event) {
+  event.preventDefault();
+  $("mcp-save-state").textContent = "Saving";
+  try {
+    const replacement = buildMCPFormPatch();
+    const result = await api("/config", {
+      method: "PATCH",
+      body: JSON.stringify({ mcp_servers: buildMCPPatchServers(replacement) }),
+    });
+    state.config = result.config || state.config;
+    state.editingMCPServer = replacement.name;
+    renderMCPStarport();
+    renderHomeDockedTools();
+    showToast("MCP dock saved.");
+  } catch (error) {
+    $("mcp-save-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+async function toggleMCPServer(name) {
+  const server = getMCPServer(name);
+  if (!server) return;
+  const replacement = mcpViewToPatch(server);
+  replacement.disabled = !server.disabled;
+  $("mcp-save-state").textContent = "Saving";
+  try {
+    const result = await api("/config", {
+      method: "PATCH",
+      body: JSON.stringify({ mcp_servers: buildMCPPatchServers(replacement) }),
+    });
+    state.config = result.config || state.config;
+    renderMCPStarport();
+    renderHomeDockedTools();
+    showToast(replacement.disabled ? "MCP dock disabled." : "MCP dock enabled.");
+  } catch (error) {
+    $("mcp-save-state").textContent = "Error";
+    showToast(error.message);
+  }
 }
 
 async function testMCPServer(name) {
@@ -578,23 +757,114 @@ function renderMCPTestResult(name, result) {
   </div>`;
 }
 
+function renderFileIntake() {
+  const result = state.intakeResult;
+  setText("intake-summary", result ? `${result.mode === "archive_inspect" ? "Archive inspected" : "Document text extracted"} from ${result.path || "local path"}.` : "Inspect local documents and archives before sending them into a run.");
+  const overview = $("intake-overview");
+  if (overview) {
+    overview.innerHTML = `<strong>${escapeHTML(result ? (result.is_error ? "Needs attention" : "Ready") : "Local")}</strong><span>${escapeHTML(result ? (result.is_error ? "Fix the path or mode, then analyze again." : "Result can be sent into a normal chat/run workflow.") : "Read-only intake runs before extraction or summarization.")}</span>`;
+  }
+  const target = $("intake-result");
+  if (!target) return;
+  $("intake-chat-button").disabled = !result || result.is_error;
+  $("intake-extract-button").disabled = !result || result.mode !== "archive_inspect" || result.is_error;
+  renderHomeDockedTools();
+  renderManageCount();
+  if (!result) {
+    renderEmptyAction(target, "Choose a local path to inspect with document_text or archive_inspect.", [
+      { label: "Open chat", panel: "chat" },
+    ]);
+    return;
+  }
+  const status = result.is_error ? "error" : "ok";
+  const preview = String(result.content || "").slice(0, 12000);
+  target.innerHTML = `<article class="intake-result-card ${escapeHTML(status)}">
+    <div class="row-item-title">
+      <span>${escapeHTML(result.path || "Local file")}</span>
+      <span class="tag">${escapeHTML(result.mode || "intake")}</span>
+    </div>
+    <pre>${escapeHTML(preview || "No content returned.")}</pre>
+  </article>`;
+}
+
+async function submitFileIntake(event) {
+  event?.preventDefault?.();
+  const path = $("intake-path").value.trim();
+  if (!path) {
+    showToast("File path is required.");
+    return;
+  }
+  $("intake-state").textContent = "Analyzing";
+  try {
+    const result = await api("/intake/file", {
+      method: "POST",
+      body: JSON.stringify({
+        path,
+        mode: $("intake-mode").value || "auto",
+        max_chars: Number($("intake-max-chars").value || 0),
+        max_entries: Number($("intake-max-entries").value || 0),
+      }),
+    });
+    state.intakeResult = result;
+    $("intake-state").textContent = result.is_error ? "Error" : "Ready";
+    renderFileIntake();
+    showToast(result.is_error ? "File intake returned an error." : "File intake ready.");
+  } catch (error) {
+    $("intake-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
+function sendIntakeToChat() {
+  const result = state.intakeResult;
+  if (!result || result.is_error) return;
+  $("chat-input").value = `Summarize this local file intake result and identify useful next actions.\n\nPath: ${result.path}\nMode: ${result.mode}\n\n${String(result.content || "").slice(0, 8000)}`;
+  $("chat-new-session").checked = true;
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("File intake copied into Chat.");
+}
+
+function draftArchiveExtractRun() {
+  const result = state.intakeResult;
+  if (!result || result.mode !== "archive_inspect" || result.is_error) return;
+  $("chat-input").value = `Inspect this archive result and, if extraction is appropriate, call archive_extract with approval. Ask before choosing a destination if it is not obvious.\n\nArchive path: ${result.path}\n\nArchive inspection:\n${String(result.content || "").slice(0, 8000)}`;
+  $("chat-new-session").checked = true;
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Archive extraction prompt drafted.");
+}
+
 function renderMemoryMapPreview() {
   const list = $("memory-list");
   if (!list) return;
   const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
   const favoriteSessions = state.sessions.filter((session) => session.favorite);
   const recentRuns = state.runs.slice(0, 3);
-  const count = memoryEntries.length + favoriteSessions.length + recentRuns.length;
+  const count = memoryEntries.length + favoriteSessions.length + recentRuns.length + memoryFacts.length;
   setText("nav-memory-count", count);
   setText("manage-memory-count", `${count} ${count === 1 ? "source" : "sources"}`);
   renderManageCount();
-  setText("memory-summary", count ? `${count} memory source candidate${count === 1 ? "" : "s"} from sessions and runs.` : "No memory candidates yet.");
+  setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
   const overview = $("memory-overview");
   if (overview) {
-    overview.innerHTML = `<strong>${escapeHTML(memoryEntries.length ? `${memoryEntries.length} memory files` : count ? "Sources ready" : "Preview")}</strong><span>${escapeHTML(state.memory?.memory_dir || (count ? "Draft reviewable memory from recent work before writing MEMORY.md." : "Favorite sessions or complete runs to create stronger memory candidates."))}</span>`;
+    overview.innerHTML = `<strong>${escapeHTML(memoryFacts.length ? `${memoryFacts.length} facts` : memoryEntries.length ? `${memoryEntries.length} memory files` : count ? "Sources ready" : "Preview")}</strong><span>${escapeHTML(memoryWarnings.length ? `${memoryWarnings.length} taxonomy warning${memoryWarnings.length === 1 ? "" : "s"} need review before adding more memory.` : state.memory?.memory_dir || (count ? "Draft reviewable memory from recent work before writing MEMORY.md." : "Favorite sessions or complete runs to create stronger memory candidates."))}</span>`;
   }
+  renderMemoryTaxonomyBar(state.memory?.categories || {});
+  renderMemoryWarnings(memoryWarnings);
   const cards = [];
+  const selectedCategory = state.memoryCategory || "all";
+  const filteredFacts = selectedCategory === "all" ? memoryFacts : memoryFacts.filter((fact) => fact.category === selectedCategory);
+  for (const fact of filteredFacts) {
+    cards.push(`<article class="row-item memory-fact-card ${escapeHTML(fact.category || "uncategorized")}">
+      <div class="row-item-title"><span>${escapeHTML(fact.text)}</span><span class="tag">${escapeHTML(fact.category || "uncategorized")}</span></div>
+      <p>${escapeHTML(fact.entry || "MEMORY.md")} · line ${escapeHTML(fact.line || "-")}${fact.subject ? ` · ${escapeHTML(fact.subject)}` : ""}</p>
+    </article>`);
+  }
   for (const entry of memoryEntries) {
+    if (selectedCategory !== "all") continue;
     cards.push(`<article class="row-item memory-source-card ${entry.primary ? "primary" : ""}">
       <div class="row-item-title"><span>${escapeHTML(entry.name)}</span><span class="tag">${entry.primary ? "active memory" : "memory file"}</span></div>
       <p>${escapeHTML(formatBytes(entry.size || 0))} · ${escapeHTML(formatTimestamp(entry.modified))}</p>
@@ -604,6 +874,7 @@ function renderMemoryMapPreview() {
     </article>`);
   }
   for (const session of favoriteSessions.slice(0, 4)) {
+    if (selectedCategory !== "all") continue;
     cards.push(`<article class="row-item memory-source-card">
       <div class="row-item-title"><span>${escapeHTML(session.title || session.id)}</span><span class="tag">favorite session</span></div>
       <p>${escapeHTML(session.id)}</p>
@@ -614,6 +885,7 @@ function renderMemoryMapPreview() {
     </article>`);
   }
   for (const run of recentRuns) {
+    if (selectedCategory !== "all") continue;
     cards.push(`<article class="row-item memory-source-card">
       <div class="row-item-title"><span>${escapeHTML(run.prompt || run.id)}</span><span class="tag">recent run</span></div>
       <p>${escapeHTML(run.status || "unknown")} · ${escapeHTML(formatTimestamp(run.started_at))}</p>
@@ -624,10 +896,53 @@ function renderMemoryMapPreview() {
     </article>`);
   }
   if (!cards.length) {
-    renderEmpty(list, "No memory sources yet. Complete a run, favorite a session, or ask Astria to draft a memory map.");
+    renderEmptyAction(list, "No memory sources yet. Complete a run, favorite a session, or ask Astria to draft a memory map.", [
+      { label: "Draft memory map", homeAction: "memory", primary: true },
+      { label: "Open chat", panel: "chat" },
+    ]);
     return;
   }
   list.innerHTML = cards.join("");
+}
+
+function renderMemoryTaxonomyBar(categories) {
+  const bar = $("memory-taxonomy-bar");
+  if (!bar) return;
+  const order = ["all", "preferences", "decisions", "commands", "architecture", "people", "risks", "uncategorized"];
+  const total = Object.values(categories).reduce((sum, value) => sum + Number(value || 0), 0);
+  bar.innerHTML = order.map((category) => {
+    const count = category === "all" ? total : (categories[category] || 0);
+    const active = state.memoryCategory === category || (!state.memoryCategory && category === "all");
+    return `<button type="button" class="${active ? "active" : ""}" data-memory-category="${escapeHTML(category)}">${escapeHTML(memoryCategoryLabel(category))}<span>${count}</span></button>`;
+  }).join("");
+}
+
+function renderMemoryWarnings(warnings) {
+  const list = $("memory-warning-list");
+  if (!list) return;
+  if (!warnings.length) {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = warnings.map((warning) => `<article class="memory-warning-card ${escapeHTML(warning.type || "")}">
+    <strong>${escapeHTML(warning.type || "warning")}</strong>
+    <span>${escapeHTML(warning.message || "")}</span>
+    ${warning.lines?.length ? `<small>lines ${warning.lines.map(escapeHTML).join(", ")}</small>` : ""}
+  </article>`).join("");
+}
+
+function memoryCategoryLabel(category) {
+  const labels = {
+    all: "All",
+    preferences: "Prefs",
+    decisions: "Decisions",
+    commands: "Commands",
+    architecture: "Architecture",
+    people: "People",
+    risks: "Risks",
+    uncategorized: "Other",
+  };
+  return labels[category] || category;
 }
 
 function formatBytes(size) {
@@ -915,8 +1230,62 @@ function draftMemoryCandidate(source) {
   const [kind, id] = String(source || "").split(":", 2);
   const prefix = kind === "run" ? `run ${id}` : kind === "session" ? `session ${id}` : "recent work";
   $("memory-candidate").value = `- From ${prefix}: `;
+  renderMemoryCandidatePreview();
   switchPanel("memory");
   $("memory-candidate").focus();
+}
+
+function renderMemoryCandidatePreview() {
+  const target = $("memory-candidate-preview");
+  if (!target) return;
+  const text = $("memory-candidate")?.value || "";
+  const facts = parseCandidateFacts(text);
+  if (!facts.length) {
+    target.textContent = "No candidate yet.";
+    return;
+  }
+  const categories = facts.map((fact) => memoryCategoryLabel(fact.category)).join(", ");
+  const existingTexts = new Set((state.memory?.facts || []).map((fact) => normalizeCandidateText(fact.text)));
+  const duplicate = facts.some((fact) => existingTexts.has(normalizeCandidateText(fact.text)));
+  target.innerHTML = `<strong>${escapeHTML(categories)}</strong><span>${duplicate ? "Possible duplicate before approval." : "Ready for reviewed memory approval."}</span>`;
+}
+
+function parseCandidateFacts(text) {
+  return String(text || "").split("\n").map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("-")) return null;
+    const bracket = trimmed.match(/^[-*]\s*\[([A-Za-z _-]+)\]\s*(.+)$/);
+    if (bracket) return { category: normalizeCandidateCategory(bracket[1]), text: bracket[2].trim() };
+    const colon = trimmed.match(/^[-*]\s*([A-Za-z _-]+):\s*(.+)$/);
+    if (colon) {
+      const category = normalizeCandidateCategory(colon[1]);
+      if (category !== "uncategorized") return { category, text: colon[2].trim() };
+    }
+    return { category: "uncategorized", text: trimmed.replace(/^[-*]\s*/, "") };
+  }).filter(Boolean);
+}
+
+function normalizeCandidateCategory(value) {
+  const key = String(value || "").toLowerCase().trim().replaceAll(" ", "_").replaceAll("-", "_");
+  const map = {
+    preference: "preferences",
+    preferences: "preferences",
+    decision: "decisions",
+    decisions: "decisions",
+    command: "commands",
+    commands: "commands",
+    architecture: "architecture",
+    arch: "architecture",
+    person: "people",
+    people: "people",
+    risk: "risks",
+    risks: "risks",
+  };
+  return map[key] || "uncategorized";
+}
+
+function normalizeCandidateText(text) {
+  return String(text || "").toLowerCase().trim().replace(/\s+/g, " ");
 }
 
 async function loadCouncilRuns() {
@@ -942,7 +1311,10 @@ function renderCouncilRuns() {
   renderManageCount();
   setText("council-summary", count ? `${count} council run${count === 1 ? "" : "s"} with role contributions.` : "No council runs yet.");
   if (!count) {
-    renderEmpty(list, "No council runs yet. Start with a planning or review goal.");
+    renderEmptyAction(list, "No council runs yet. Start with a planning or review goal.", [
+      { label: "Seed council goal", homeAction: "council", primary: true },
+      { label: "Open chat", panel: "chat" },
+    ]);
     renderCouncilDetail(state.currentCouncilRun);
     return;
   }
@@ -991,6 +1363,7 @@ function renderCouncilDetail(run) {
       <div class="run-detail-actions">
         <button type="button" data-council-copy="${escapeHTML(run.id)}">Copy synthesis</button>
         <button type="button" data-council-send="${escapeHTML(run.id)}">Send to chat</button>
+        <button type="button" class="primary-button" data-council-run="${escapeHTML(run.id)}">Start run</button>
       </div>
     </section>
   </div>`;
@@ -1049,6 +1422,26 @@ function sendCouncilToChat(id) {
   $("chat-input").focus();
 }
 
+async function runCouncilSynthesis(id) {
+  if (!id) return;
+  $("council-state").textContent = "Starting run";
+  try {
+    const result = await api(`/council/${encodeURIComponent(id)}/run`, {
+      method: "POST",
+      body: JSON.stringify({ agent: $("council-agent").value }),
+    });
+    $("council-state").textContent = "Run started";
+    await loadRuns();
+    if (result.run_id) {
+      selectRun(result.run_id);
+    }
+    showToast("Council handoff run completed.");
+  } catch (error) {
+    $("council-state").textContent = "Error";
+    showToast(error.message);
+  }
+}
+
 async function loadInbox() {
   const list = $("inbox-list");
   try {
@@ -1060,6 +1453,39 @@ async function loadInbox() {
     setText("inbox-state", "Error");
     renderError(list, error.message);
   }
+}
+
+async function loadInboxProviders() {
+  const list = $("inbox-provider-list");
+  try {
+    const data = await api("/inbox/providers");
+    state.inboxProviders = Array.isArray(data.providers) ? data.providers : [];
+    renderInboxProviders();
+  } catch (error) {
+    state.inboxProviders = [];
+    renderError(list, error.message);
+  }
+}
+
+function renderInboxProviders() {
+  const list = $("inbox-provider-list");
+  if (!list) return;
+  if (!state.inboxProviders.length) {
+    renderEmpty(list, "No inbox providers reported.");
+    return;
+  }
+  list.innerHTML = state.inboxProviders.map((provider) => `<article class="provider-route-card ${provider.kind || ""}">
+    <div class="row-item-title">
+      <span>${escapeHTML(provider.name || provider.kind || "Provider")}</span>
+      <span class="tag">${escapeHTML(provider.configured ? "ready" : "setup")}</span>
+    </div>
+    <code>${escapeHTML(provider.endpoint || "")}</code>
+    <p>${escapeHTML(provider.description || "")}</p>
+    <div class="pill-list">
+      ${(provider.supported_events || []).map((event) => `<span>${escapeHTML(event)}</span>`).join("")}
+      <span>${provider.secret_configured ? "secret set" : "no secret"}</span>
+    </div>
+  </article>`).join("");
 }
 
 function inboxStatusCounts() {
@@ -1079,6 +1505,7 @@ function renderInbox() {
   const completed = counts.completed || 0;
   setText("nav-inbox-count", pending);
   setText("manage-inbox-count", `${pending} pending`);
+  setText("home-inbox-count", pending);
   renderManageCount();
   setText("inbox-summary", state.inboxItems.length ? `${pending} pending · ${failed} failed · ${completed} completed` : "No inbound tasks yet.");
   const overview = $("inbox-overview");
@@ -1086,7 +1513,10 @@ function renderInbox() {
     overview.innerHTML = `<strong>${escapeHTML(pending ? `${pending} waiting` : "Guarded")}</strong><span>${escapeHTML(pending ? "Review inbound channel work before it can become an Astria run." : "Inbound items never execute until approved.")}</span>`;
   }
   if (!state.inboxItems.length) {
-    renderEmpty(list, "No inbound tasks yet. Use the local webhook intake to simulate one.");
+    renderEmptyAction(list, "No inbound tasks yet. Use the local webhook intake to simulate one.", [
+      { label: "Open intake", panel: "inbox", primary: true },
+      { label: "Open chat", panel: "chat" },
+    ]);
     return;
   }
   list.innerHTML = state.inboxItems.map((item) => `<article class="row-item inbox-card ${escapeHTML(item.status || "pending")}">
@@ -2822,6 +3252,7 @@ async function refreshAll() {
     loadMemory(),
     loadCouncilRuns(),
     loadInbox(),
+    loadInboxProviders(),
     loadAgents(),
     loadSkills(),
     loadSessions(),
@@ -2871,6 +3302,24 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const mcpEdit = event.target.closest("[data-mcp-edit]");
+  if (mcpEdit) {
+    editMCPServer(mcpEdit.dataset.mcpEdit);
+    return;
+  }
+
+  const mcpToggle = event.target.closest("[data-mcp-toggle]");
+  if (mcpToggle) {
+    toggleMCPServer(mcpToggle.dataset.mcpToggle);
+    return;
+  }
+
+  const action = event.target.closest("[data-action]");
+  if (action?.dataset.action === "mcp-new") {
+    beginMCPCreate();
+    return;
+  }
+
   const memoryDelete = event.target.closest("[data-memory-delete]");
   if (memoryDelete) {
     deleteMemoryEntry(memoryDelete.dataset.memoryDelete);
@@ -2880,6 +3329,13 @@ document.addEventListener("click", (event) => {
   const memoryDraft = event.target.closest("[data-memory-draft]");
   if (memoryDraft) {
     draftMemoryCandidate(memoryDraft.dataset.memoryDraft);
+    return;
+  }
+
+  const memoryCategory = event.target.closest("[data-memory-category]");
+  if (memoryCategory) {
+    state.memoryCategory = memoryCategory.dataset.memoryCategory || "all";
+    renderMemoryMapPreview();
     return;
   }
 
@@ -2898,6 +3354,12 @@ document.addEventListener("click", (event) => {
   const councilSend = event.target.closest("[data-council-send]");
   if (councilSend) {
     sendCouncilToChat(councilSend.dataset.councilSend);
+    return;
+  }
+
+  const councilRun = event.target.closest("[data-council-run]");
+  if (councilRun) {
+    runCouncilSynthesis(councilRun.dataset.councilRun);
     return;
   }
 
@@ -3063,10 +3525,19 @@ $("stop-button").addEventListener("click", cancelActiveRun);
 $("schedule-form").addEventListener("submit", submitSchedule);
 $("config-form").addEventListener("submit", submitConfig);
 $("config-provider").addEventListener("change", updateProviderFields);
+$("mcp-form").addEventListener("submit", submitMCPServer);
+$("mcp-type").addEventListener("change", updateMCPTransportFields);
+$("mcp-new-button").addEventListener("click", beginMCPCreate);
+$("mcp-clear-button").addEventListener("click", beginMCPCreate);
+$("intake-form").addEventListener("submit", submitFileIntake);
+$("intake-analyze-button").addEventListener("click", submitFileIntake);
+$("intake-chat-button").addEventListener("click", sendIntakeToChat);
+$("intake-extract-button").addEventListener("click", draftArchiveExtractRun);
 $("permissions-form").addEventListener("submit", submitPermissions);
 $("permissions-form").addEventListener("input", renderPermissionsPendingPreview);
 $("permissions-clear-button").addEventListener("click", clearPermissions);
 $("memory-review-form").addEventListener("submit", submitMemoryCandidate);
+$("memory-candidate").addEventListener("input", renderMemoryCandidatePreview);
 $("council-form").addEventListener("submit", submitCouncilRun);
 $("inbox-webhook-form").addEventListener("submit", submitInboxWebhook);
 $("update-check-button").addEventListener("click", checkForUpdates);
@@ -3104,5 +3575,6 @@ $("session-search-clear").addEventListener("click", () => {
 });
 
 renderHomeMode();
+renderFileIntake();
 connectEventStream();
 refreshAll();

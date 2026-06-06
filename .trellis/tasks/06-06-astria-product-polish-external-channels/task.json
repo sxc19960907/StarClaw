@@ -1,0 +1,33 @@
+{
+  "id": "astria-product-polish-external-channels",
+  "name": "astria-product-polish-external-channels",
+  "title": "Astria product polish and external channels",
+  "description": "Second Astria phase: polish the product shell, connect real channels, and turn MVP capabilities into cohesive workflows.",
+  "status": "done",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-06",
+  "completedAt": "2026-06-06",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-06-astria-ui-polish",
+    "06-06-real-channel-provider",
+    "06-06-council-workflow-handoff",
+    "06-06-memory-taxonomy",
+    "06-06-mcp-config-editor",
+    "06-06-file-intake-ui"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

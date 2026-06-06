@@ -69,3 +69,34 @@ func TestCreateCouncilRunRequiresGoal(t *testing.T) {
 
 	postJSON(t, ts.URL+"/council", `{"goal":"   "}`, http.StatusBadRequest, &map[string]string{})
 }
+
+func TestCouncilRunHandoffStartsRun(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var created CouncilRun
+	postJSON(t, ts.URL+"/council", `{"goal":"Ship the next Astria slice"}`, http.StatusCreated, &created)
+
+	var handoff struct {
+		RunID   string           `json:"run_id"`
+		Run     RunAgentResponse `json:"run"`
+		Council CouncilRun       `json:"council"`
+	}
+	postJSON(t, ts.URL+"/council/"+created.ID+"/run", `{}`, http.StatusOK, &handoff)
+	if handoff.RunID == "" || handoff.Council.ID != created.ID {
+		t.Fatalf("unexpected handoff response: %+v", handoff)
+	}
+	if handoff.Run.SessionID == "" || len(handoff.Run.Messages) == 0 {
+		t.Fatalf("expected run response after handoff: %+v", handoff.Run)
+	}
+
+	var record RunRecord
+	getJSON(t, ts.URL+"/runs/"+handoff.RunID, http.StatusOK, &record)
+	if record.Channel != "council_handoff" || record.Request.Source != "council:"+created.ID {
+		t.Fatalf("unexpected run source/channel: %+v", record)
+	}
+	if record.Request.Sender != "agent-council" || !strings.Contains(record.Prompt, "Ship the next Astria slice") {
+		t.Fatalf("unexpected handoff prompt metadata: %+v", record)
+	}
+}

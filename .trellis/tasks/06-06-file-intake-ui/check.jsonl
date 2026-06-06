@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality check must include daemon tests, JS syntax, whitespace, and Web UI smoke."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Check must confirm extraction stays behind normal approval workflow."}
