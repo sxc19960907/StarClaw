@@ -1230,6 +1230,74 @@ textarea:focus {
   font-weight: 700;
 }
 
+.approval-center {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.approval-center-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approval-center-item {
+  min-width: 0;
+  min-height: 104px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(28, 67, 132, 0.07), transparent 42%),
+    rgba(255, 255, 255, 0.76);
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(23, 25, 35, 0.035);
+}
+
+.approval-center-item span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.approval-center-item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.approval-center-item small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.approval-center-item.warning {
+  border-color: rgba(214, 123, 42, 0.24);
+  background: rgba(214, 123, 42, 0.08);
+}
+
+.approval-center-item.attention {
+  border-color: rgba(164, 61, 58, 0.26);
+  background: rgba(164, 61, 58, 0.08);
+}
+
+.approval-center-item.clear {
+  border-color: rgba(22, 125, 104, 0.18);
+  background: rgba(22, 125, 104, 0.06);
+}
+
 .review-queue {
   position: relative;
   width: min(1034px, 100%);
@@ -3114,6 +3182,7 @@ textarea:focus {
   .strategy-grid,
   .recipe-grid,
   .workspace-hub-grid,
+  .approval-center-grid,
   .review-queue-list,
   .workspace-health-grid,
   .workflow-brief-grid,

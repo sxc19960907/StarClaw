@@ -1025,6 +1025,114 @@ function renderReviewQueue() {
   }).join("");
 }
 
+function approvalCenterItems() {
+  const items = [];
+  const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed");
+  const inboxCounts = inboxStatusCounts();
+  const diagnosticsStatus = state.diagnostics?.status || "unknown";
+  const mcpServers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  const enabledMCP = mcpServers.filter((server) => !server.disabled).length;
+  if (state.approvals.size) {
+    items.push({
+      tone: "attention",
+      label: "Approvals",
+      title: `${state.approvals.size} pending confirmation${state.approvals.size === 1 ? "" : "s"}`,
+      detail: "Review tool or command approval cards in Chat before continuing.",
+      panel: "chat",
+    });
+  }
+  if (state.permissions && state.permissions.configured !== true) {
+    items.push({
+      tone: "warning",
+      label: "Permissions",
+      title: "Default guardrails",
+      detail: "Create explicit permissions before high-risk workflows.",
+      panel: "permissions",
+    });
+  } else if (state.permissions) {
+    const hints = permissionsRiskHints(state.permissions);
+    if (hints.length) {
+      items.push({
+        tone: "warning",
+        label: "Permissions",
+        title: `${hints.length} policy review${hints.length === 1 ? "" : "s"}`,
+        detail: hints[0],
+        panel: "permissions",
+      });
+    }
+  }
+  if (!["ready", "unknown"].includes(diagnosticsStatus)) {
+    items.push({
+      tone: diagnosticsStatus === "warning" ? "warning" : "attention",
+      label: "Diagnostics",
+      title: `Runtime ${statusLabel(diagnosticsStatus)}`,
+      detail: state.diagnostics?.summary || "Resolve launch readiness before risky work.",
+      panel: "diagnostics",
+    });
+  }
+  if (failedRuns.length) {
+    const run = failedRuns[0];
+    items.push({
+      tone: "attention",
+      label: "Recovery",
+      title: `${failedRuns.length} run${failedRuns.length === 1 ? "" : "s"} need recovery`,
+      detail: run.prompt || run.id || "Open Mission Control to review failure state.",
+      runID: run.id || "",
+    });
+  }
+  if (inboxCounts.failed || inboxCounts.pending) {
+    items.push({
+      tone: inboxCounts.failed ? "attention" : "warning",
+      label: "Inbox",
+      title: inboxCounts.failed ? `${inboxCounts.failed} failed inbound` : `${inboxCounts.pending} pending inbound`,
+      detail: "Approve, retry, or reject external channel work before it runs.",
+      panel: "inbox",
+    });
+  }
+  if (mcpServers.length && !enabledMCP) {
+    items.push({
+      tone: "warning",
+      label: "MCP",
+      title: "Tool docks disabled",
+      detail: "Enable or test docks before tool-heavy runs.",
+      panel: "mcp",
+    });
+  } else if (!mcpServers.length && state.config) {
+    items.push({
+      tone: "",
+      label: "MCP",
+      title: "No tool docks",
+      detail: "Add a dock when approval-gated work needs external tools.",
+      panel: "mcp",
+    });
+  }
+  return items.slice(0, 6);
+}
+
+function renderApprovalCenter() {
+  const target = $("approval-center-grid");
+  if (!target) return;
+  const items = approvalCenterItems();
+  if (!items.length) {
+    target.innerHTML = `<button type="button" class="approval-center-item clear" data-panel="permissions">
+      <span>Clear</span>
+      <strong>没有待确认风险</strong>
+      <small>审批、权限、诊断、收件箱和失败运行当前没有阻塞项。</small>
+    </button>`;
+    return;
+  }
+  target.innerHTML = items.map((item) => {
+    const actionAttr = item.runID
+      ? `data-run-open="${escapeHTML(item.runID)}"`
+      : `data-panel="${escapeHTML(item.panel || "home")}"`;
+    return `<button type="button" class="approval-center-item ${escapeHTML(item.tone)}" ${actionAttr}>
+      <span>${escapeHTML(item.label)}</span>
+      <strong>${escapeHTML(item.title)}</strong>
+      <small>${escapeHTML(item.detail)}</small>
+    </button>`;
+  }).join("");
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   const source = new EventSource("/events");
@@ -1095,6 +1203,7 @@ function renderHomeActivity() {
   renderWorkspaceHub();
   renderWorkflowStageRail();
   renderFocusBrief();
+  renderApprovalCenter();
   renderReviewQueue();
 }
 
@@ -1131,6 +1240,7 @@ function renderHomeDockedTools() {
   renderWorkspaceHub();
   renderFocusBrief();
   renderWorkspaceHealthStrip();
+  renderApprovalCenter();
   renderReviewQueue();
 }
 
@@ -1532,6 +1642,7 @@ function renderMemoryMapPreview() {
   renderManageCount();
   setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
   renderWorkspaceHealthStrip();
+  renderApprovalCenter();
   renderReviewQueue();
   const overview = $("memory-overview");
   if (overview) {
@@ -1696,6 +1807,7 @@ async function loadDiagnostics() {
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
     renderWorkspaceHealthStrip();
+    renderApprovalCenter();
     renderReviewQueue();
     if ($("chat-output").querySelector(".empty-thread")) renderEmptyThread();
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
@@ -1734,6 +1846,7 @@ async function loadDiagnostics() {
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderApprovalCenter();
     renderReviewQueue();
   }
 }
@@ -1771,6 +1884,7 @@ async function loadConfig() {
     state.config = data.config || {};
     renderConfigForm();
     renderMCPStarport();
+    renderApprovalCenter();
     renderReviewQueue();
   } catch (error) {
     state.config = null;
@@ -1778,6 +1892,7 @@ async function loadConfig() {
     setClass("settings-config-state", "bad");
     $("config-save-state").textContent = error.message;
     renderMCPStarport();
+    renderApprovalCenter();
     renderReviewQueue();
   }
 }
@@ -1861,6 +1976,7 @@ async function loadPermissions() {
     fillPermissionsForm();
     renderPermissions();
     renderWorkspaceHealthStrip();
+    renderApprovalCenter();
     renderReviewQueue();
   } catch (error) {
     state.permissions = null;
@@ -1870,6 +1986,7 @@ async function loadPermissions() {
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderApprovalCenter();
     renderReviewQueue();
   }
 }
@@ -2204,6 +2321,7 @@ function renderInbox() {
   setText("manage-inbox-count", `${pending} pending`);
   setText("home-inbox-count", pending);
   renderManageCount();
+  renderApprovalCenter();
   renderReviewQueue();
   setText("inbox-summary", state.inboxItems.length ? `${pending} pending · ${failed} failed · ${completed} completed` : "No inbound tasks yet.");
   const overview = $("inbox-overview");
@@ -3756,6 +3874,7 @@ function markApprovalResolved(data) {
   state.approvals.delete(requestID);
   $("chat-state").textContent = status === "allowed" ? "Approval allowed" : "Approval denied";
   renderHomeActivity();
+  renderApprovalCenter();
 }
 
 async function resolveApproval(requestID, decision) {
@@ -4464,6 +4583,7 @@ renderStrategyMatrix();
 renderFileIntake();
 renderWorkspaceHub();
 renderFocusBrief();
+renderApprovalCenter();
 renderWorkspaceHealthStrip();
 connectEventStream();
 refreshAll();

@@ -128,6 +128,29 @@ Upgraded Run Detail with a Time Travel timeline that synthesizes run metadata, p
 [OK] **Completed**
 
 
+## Session 112: Approval Center Control Console
+
+**Date**: 2026-06-07
+**Task**: Approval center control console
+**Branch**: `main`
+
+### Summary
+
+Added a Home Approval Center that centralizes approvals, permission risk, diagnostics readiness, failed run recovery, inbox state, and MCP/tooling gaps.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 107: Focus Brief Current Mission
 
 **Date**: 2026-06-07

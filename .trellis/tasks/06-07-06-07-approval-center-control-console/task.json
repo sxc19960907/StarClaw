@@ -1,0 +1,31 @@
+{
+  "id": "06-07-approval-center-control-console",
+  "name": "06-07-approval-center-control-console",
+  "title": "Approval center control console",
+  "description": "Add an Astria Approval Center that centralizes human-in-the-loop approvals, permission risk, diagnostics, inbox, and failed run recovery.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Home Approval Center",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Home now includes an Approval Center that aggregates approvals, permissions, diagnostics, failed runs, inbox, and MCP/tooling gaps into direct actions.",
+  "meta": {}
+}
