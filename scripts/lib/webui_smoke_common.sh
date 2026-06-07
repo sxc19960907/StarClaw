@@ -373,6 +373,10 @@ async function boot(page) {
   await page.locator("#panel-memory.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await page.locator("#tool-dock-inspector-grid").getByRole("button", { name: /No tool docks/ }).click();
+  await page.locator("#panel-mcp.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
   await page.locator("#workflow-brief").getByText("一份按严重程度排序的评审报告").waitFor();
   await page.locator("#workflow-brief").getByText("当前 git diff").waitFor();
   await page.locator("#workflow-recipes").getByRole("button", { name: /文件理解/ }).click();

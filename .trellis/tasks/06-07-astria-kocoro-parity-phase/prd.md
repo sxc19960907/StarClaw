@@ -29,6 +29,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-06-07-run-timeline-time-travel` | Add a Mission Control Time Travel timeline for replay-like run review. |
 | P1 | `06-07-06-07-approval-center-control-console` | Add an Approval Center for human-in-the-loop risks, recovery, and policy actions. |
 | P1 | `06-07-06-07-knowledge-curation-console` | Add a Knowledge Curation console for reviewable long-term memory candidates. |
+| P1 | `06-07-06-07-mcp-capability-inspector` | Add a Tool Dock Inspector for MCP transports, env keys, readiness flags, and no-dock recovery. |
 
 ## Acceptance Criteria
 

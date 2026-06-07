@@ -1202,6 +1202,7 @@ function renderHomeActivity() {
   renderHomeLatestRun();
   renderWorkspaceHub();
   renderKnowledgeCuration();
+  renderToolDockInspector();
   renderWorkflowStageRail();
   renderFocusBrief();
   renderApprovalCenter();
@@ -1240,6 +1241,7 @@ function renderHomeDockedTools() {
   setText("home-intake-count", state.intakeResult ? "ready" : "local");
   renderWorkspaceHub();
   renderKnowledgeCuration();
+  renderToolDockInspector();
   renderFocusBrief();
   renderWorkspaceHealthStrip();
   renderApprovalCenter();
@@ -1398,6 +1400,71 @@ function renderKnowledgeCuration() {
       <small>${escapeHTML(item.detail)}</small>
     </button>`;
   }).join("");
+}
+
+function toolDockInspectorItems() {
+  const servers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  if (!servers.length) {
+    return [{
+      tone: "clear",
+      label: "MCP",
+      title: "No tool docks",
+      detail: "Open MCP Starport to add stdio or HTTP tool connections.",
+    }];
+  }
+  const enabled = servers.filter((server) => !server.disabled).length;
+  const disabled = servers.length - enabled;
+  const transports = servers.reduce((counts, server) => {
+    const key = server.type || "stdio";
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+  const envCount = servers.reduce((total, server) => total + (Array.isArray(server.env_keys) ? server.env_keys.length : 0), 0);
+  const keepAlive = servers.filter((server) => server.keep_alive).length;
+  const contextual = servers.filter((server) => server.context || server.context_text).length;
+  const transportDetail = Object.entries(transports)
+    .map(([name, count]) => `${count} ${name}`)
+    .join(" · ");
+  const items = [{
+    tone: disabled ? "attention" : "ready",
+    label: "Docks",
+    title: `${enabled}/${servers.length} enabled`,
+    detail: `${transportDetail || "stdio"} · ${envCount} env key${envCount === 1 ? "" : "s"}`,
+  }, {
+    tone: keepAlive || contextual ? "active" : "",
+    label: "Readiness",
+    title: `${keepAlive} keep-alive · ${contextual} context`,
+    detail: disabled ? `${disabled} disabled dock${disabled === 1 ? "" : "s"} need review.` : "Tool docks are available for agent workflows.",
+  }];
+  servers.slice(0, 4).forEach((server) => {
+    const transport = server.type || "stdio";
+    const envKeys = Array.isArray(server.env_keys) ? server.env_keys : [];
+    const endpoint = transport === "http"
+      ? (server.url || "missing url")
+      : [server.command || "missing command"].concat(server.args || []).join(" ");
+    const flags = [
+      server.keep_alive ? "keep alive" : "on demand",
+      server.context || server.context_text ? "context" : "no context",
+      `${envKeys.length} env`,
+    ].join(" · ");
+    items.push({
+      tone: server.disabled ? "attention" : "ready",
+      label: server.disabled ? "Disabled" : transport,
+      title: server.name || "Unnamed dock",
+      detail: `${flags} · ${endpoint}`,
+    });
+  });
+  return items.slice(0, 6);
+}
+
+function renderToolDockInspector() {
+  const target = $("tool-dock-inspector-grid");
+  if (!target) return;
+  target.innerHTML = toolDockInspectorItems().map((item) => `<button type="button" class="tool-dock-item ${escapeHTML(item.tone || "")}" data-panel="mcp">
+    <span>${escapeHTML(item.label)}</span>
+    <strong>${escapeHTML(item.title)}</strong>
+    <small>${escapeHTML(item.detail)}</small>
+  </button>`).join("");
 }
 
 function renderManageCount() {
@@ -1971,6 +2038,7 @@ async function loadConfig() {
     state.config = data.config || {};
     renderConfigForm();
     renderMCPStarport();
+    renderToolDockInspector();
     renderApprovalCenter();
     renderReviewQueue();
   } catch (error) {
@@ -1979,6 +2047,7 @@ async function loadConfig() {
     setClass("settings-config-state", "bad");
     $("config-save-state").textContent = error.message;
     renderMCPStarport();
+    renderToolDockInspector();
     renderApprovalCenter();
     renderReviewQueue();
   }
@@ -4673,6 +4742,7 @@ renderStrategyMatrix();
 renderFileIntake();
 renderWorkspaceHub();
 renderKnowledgeCuration();
+renderToolDockInspector();
 renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();

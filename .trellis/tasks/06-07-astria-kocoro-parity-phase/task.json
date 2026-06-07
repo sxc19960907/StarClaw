@@ -32,7 +32,8 @@
     "06-07-06-07-strategy-matrix-workflow-modes",
     "06-07-06-07-run-timeline-time-travel",
     "06-07-06-07-approval-center-control-console",
-    "06-07-06-07-knowledge-curation-console"
+    "06-07-06-07-knowledge-curation-console",
+    "06-07-06-07-mcp-capability-inspector"
   ],
   "parent": null,
   "relatedFiles": [
@@ -41,6 +42,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, Run Time Travel, Approval Center, and Knowledge Curation are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, Run Time Travel, Approval Center, Knowledge Curation, and Tool Dock Inspector are complete.",
   "meta": {}
 }

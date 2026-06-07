@@ -1,0 +1,31 @@
+{
+  "id": "06-07-mcp-capability-inspector",
+  "name": "06-07-mcp-capability-inspector",
+  "title": "MCP capability inspector",
+  "description": "Add a Home MCP capability inspector that summarizes tool docks, transports, env keys, and readiness actions.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Home Tool Dock Inspector",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Home now includes a Tool Dock Inspector that summarizes MCP docks, transports, env keys, readiness flags, disabled state, and no-dock state from existing config.",
+  "meta": {}
+}

@@ -151,6 +151,29 @@ Added a Home Approval Center that centralizes approvals, permission risk, diagno
 [OK] **Completed**
 
 
+## Session 114: MCP Capability Inspector
+
+**Date**: 2026-06-07
+**Task**: MCP capability inspector
+**Branch**: `main`
+
+### Summary
+
+Added a Home Tool Dock Inspector that summarizes MCP docks, enabled state, transport mix, env keys, keep-alive/context flags, disabled docks, and no-dock recovery into MCP Starport navigation.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 113: Knowledge Curation Console
 
 **Date**: 2026-06-07

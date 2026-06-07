@@ -1232,6 +1232,88 @@ textarea:focus {
   background: rgba(22, 125, 104, 0.05);
 }
 
+.tool-dock-inspector {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.tool-dock-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tool-dock-item {
+  min-width: 0;
+  min-height: 106px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 88% 16%, rgba(49, 92, 255, 0.12), transparent 25%),
+    linear-gradient(135deg, rgba(22, 125, 104, 0.07), transparent 46%),
+    rgba(255, 255, 255, 0.76);
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(23, 25, 35, 0.035);
+}
+
+.tool-dock-item span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.tool-dock-item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-dock-item small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tool-dock-item.ready {
+  border-color: rgba(22, 125, 104, 0.2);
+  background:
+    radial-gradient(circle at 88% 16%, rgba(22, 125, 104, 0.14), transparent 24%),
+    rgba(22, 125, 104, 0.06);
+}
+
+.tool-dock-item.active {
+  border-color: rgba(49, 92, 255, 0.22);
+  background:
+    radial-gradient(circle at 88% 16%, rgba(49, 92, 255, 0.14), transparent 24%),
+    rgba(49, 92, 255, 0.06);
+}
+
+.tool-dock-item.attention {
+  border-color: rgba(214, 123, 42, 0.24);
+  background:
+    radial-gradient(circle at 88% 16%, rgba(214, 123, 42, 0.14), transparent 24%),
+    rgba(214, 123, 42, 0.08);
+}
+
+.tool-dock-item.clear {
+  border-color: rgba(49, 92, 255, 0.18);
+  background:
+    radial-gradient(circle at 88% 16%, rgba(49, 92, 255, 0.12), transparent 24%),
+    rgba(49, 92, 255, 0.05);
+}
+
 .focus-brief {
   width: min(1034px, 100%);
   display: grid;
@@ -3256,6 +3338,7 @@ textarea:focus {
   .recipe-grid,
   .workspace-hub-grid,
   .knowledge-curation-grid,
+  .tool-dock-grid,
   .approval-center-grid,
   .review-queue-list,
   .workspace-health-grid,
