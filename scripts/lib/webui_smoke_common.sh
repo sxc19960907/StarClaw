@@ -541,7 +541,7 @@ async function runCore(page) {
   assert(councilSynthesis.includes("Council synthesis for: webui council smoke"), "council synthesis copy missing goal");
   await page.locator("#council-detail").getByRole("button", { name: "Start run" }).click();
   await page.locator("#panel-runs.active").waitFor();
-  await page.locator("#run-detail").getByText("council_handoff").waitFor();
+  await page.locator("#run-detail .run-meta-grid").getByText("council_handoff", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
   await openManagePanel(page, "Inbox");
@@ -958,6 +958,10 @@ async function runRuns(page) {
   await page.locator("#run-detail").getByText("Status").waitFor();
   await page.locator("#run-detail").getByText("webui smoke session").waitFor();
   assert(await page.locator("#run-detail").getByText(sessionID).count() >= 1, "run detail missing session id");
+  await page.locator("#run-detail").getByText("Time Travel").waitFor();
+  await page.locator("#run-detail .run-milestone").getByText("Run completed").waitFor();
+  await page.locator("#run-detail .run-milestone").getByText("Prompt locked").waitFor();
+  await page.locator("#run-detail .run-milestone").getByRole("button", { name: "Open linked session" }).waitFor();
   assert(await page.locator("#run-detail .run-tool-event").count() === 1, "run detail should group tool call/result into one tool card");
   await page.locator("#run-detail .run-tool-event").getByText("grep").waitFor();
   await page.locator("#run-detail .run-tool-event").getByText("smoke result").waitFor();
@@ -982,6 +986,11 @@ async function runRuns(page) {
   assert(await page.locator("#chat-input").inputValue() === "webui smoke session", "rerun should prefill chat prompt");
   assert(await page.locator("#chat-new-session").isChecked(), "rerun should use a new session");
   assert(await page.locator("#chat-agent").inputValue() === "", "rerun should select default agent");
+  await page.getByRole("button", { name: "Runs" }).click();
+  await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
+  await page.locator("#run-detail .run-milestone").getByRole("button", { name: "Open linked session" }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "timeline open linked session should select run session");
   await page.getByRole("button", { name: "Runs" }).click();
   await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
   await page.locator("#run-detail").getByRole("button", { name: "Open session" }).click();

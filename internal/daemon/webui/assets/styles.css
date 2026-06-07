@@ -2747,13 +2747,68 @@ textarea:focus {
 }
 
 .run-timeline {
+  position: relative;
   display: grid;
   gap: 10px;
+  padding-left: 14px;
+}
+
+.run-timeline::before {
+  position: absolute;
+  inset: 5px auto 5px 3px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(49, 92, 255, 0.32), rgba(22, 125, 104, 0.18));
+  content: "";
 }
 
 .run-event {
+  position: relative;
   display: grid;
   gap: 7px;
+}
+
+.run-event::before {
+  position: absolute;
+  top: 9px;
+  left: -14px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(49, 92, 255, 0.36);
+  border-radius: 50%;
+  background: #fff;
+  content: "";
+}
+
+.run-milestone {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(49, 92, 255, 0.06), transparent 42%),
+    var(--surface);
+  padding: 10px;
+}
+
+.run-milestone p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.run-milestone.completed {
+  border-color: rgba(22, 125, 104, 0.22);
+}
+
+.run-milestone.failed {
+  border-color: rgba(164, 61, 58, 0.26);
+}
+
+.run-milestone.session {
+  border-color: rgba(49, 92, 255, 0.22);
 }
 
 .run-event-actions {

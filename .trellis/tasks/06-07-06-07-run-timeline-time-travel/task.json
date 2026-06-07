@@ -1,0 +1,30 @@
+{
+  "id": "06-07-run-timeline-time-travel",
+  "name": "06-07-run-timeline-time-travel",
+  "title": "Run timeline time travel",
+  "description": "Add a Mission Control run timeline that makes executions reviewable and replay-like from existing run detail data.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Mission Control Time Travel",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Run detail now synthesizes a Time Travel timeline from run metadata, prompt, session links, events, usage, and finish/error state.",
+  "meta": {}
+}

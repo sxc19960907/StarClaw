@@ -105,6 +105,29 @@ Added a Home Strategy Matrix for Quick Run, Research Brief, Agent Council, Human
 [OK] **Completed**
 
 
+## Session 111: Run Timeline Time Travel
+
+**Date**: 2026-06-07
+**Task**: Run timeline time travel
+**Branch**: `main`
+
+### Summary
+
+Upgraded Run Detail with a Time Travel timeline that synthesizes run metadata, prompt, session links, tool events, usage, and finish/error milestones.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 107: Focus Brief Current Mission
 
 **Date**: 2026-06-07

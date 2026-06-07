@@ -3341,10 +3341,68 @@ function renderRunDetail(run) {
       <pre>${escapeHTML(formatRunResponse(run.response))}</pre>
     </section>
     <section class="run-detail-section">
-      <h3>Timeline</h3>
-      ${renderRunEvents(run.events || [])}
+      <h3>Time Travel</h3>
+      ${renderRunTimeline(run)}
     </section>
   </div>`;
+}
+
+function renderRunTimeline(run) {
+  const entries = buildRunTimelineEntries(run);
+  if (!entries.length) return `<div class="empty-state">No timeline data captured for this run.</div>`;
+  return `<div class="run-timeline">${entries.map(renderRunTimelineEntry).join("")}</div>`;
+}
+
+function buildRunTimelineEntries(run) {
+  if (!run) return [];
+  const entries = [];
+  const prompt = runPrompt(run);
+  const sessionID = runSessionID(run);
+  const usage = run.usage || run.response?.usage || {};
+  entries.push({
+    kind: "milestone",
+    tone: runHealthGroup(run),
+    at: run.started_at,
+    title: `Run ${run.status || "recorded"}`,
+    detail: `${run.agent || "default"} · ${run.channel || "local"} · ${run.id || "run"}`,
+  });
+  if (prompt) {
+    entries.push({
+      kind: "milestone",
+      tone: "prompt",
+      at: run.started_at,
+      title: "Prompt locked",
+      detail: prompt,
+    });
+  }
+  if (sessionID) {
+    entries.push({
+      kind: "milestone",
+      tone: "session",
+      at: run.started_at,
+      title: "Session linked",
+      detail: sessionID,
+      sessionID,
+    });
+  }
+  entries.push(...groupRunTimelineEvents(run.events || []));
+  if (Object.keys(usage).length && !(run.events || []).some((event) => event.type === "usage")) {
+    entries.push({
+      kind: "usage",
+      at: run.ended_at || run.started_at,
+      data: usage,
+    });
+  }
+  if (run.ended_at || run.error || run.response) {
+    entries.push({
+      kind: "milestone",
+      tone: run.error || run.response?.error ? "failed" : "completed",
+      at: run.ended_at || run.started_at,
+      title: run.error || run.response?.error ? "Run needs review" : "Run finished",
+      detail: run.error || run.response?.error || formatRunResponse(run.response) || run.status || "Completed",
+    });
+  }
+  return entries;
 }
 
 function renderRunEvents(events) {
@@ -3399,6 +3457,19 @@ function groupRunTimelineEvents(events) {
 }
 
 function renderRunTimelineEntry(entry) {
+  if (entry.kind === "milestone") {
+    const action = entry.sessionID
+      ? `<button type="button" data-run-detail-open-session="${escapeHTML(entry.sessionID)}">Open linked session</button>`
+      : "";
+    return `<article class="run-event run-milestone ${escapeHTML(entry.tone || "")}">
+      <div class="run-event-header">
+        <strong>${escapeHTML(entry.title || "Milestone")}</strong>
+        <span>${escapeHTML(formatTimestamp(entry.at))}</span>
+      </div>
+      ${action ? `<div class="run-event-actions">${action}</div>` : ""}
+      <p>${escapeHTML(entry.detail || "")}</p>
+    </article>`;
+  }
   if (entry.kind === "tool") {
     const status = entry.status || (entry.isError ? "error" : "completed");
     const resultText = entry.result ? formatToolPayload(entry.result) : "";

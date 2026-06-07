@@ -29,7 +29,8 @@
     "06-07-focus-brief-current-mission",
     "06-07-workspace-health-strip",
     "06-07-06-07-review-queue-next-actions",
-    "06-07-06-07-strategy-matrix-workflow-modes"
+    "06-07-06-07-strategy-matrix-workflow-modes",
+    "06-07-06-07-run-timeline-time-travel"
   ],
   "parent": null,
   "relatedFiles": [
@@ -38,6 +39,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, and Strategy Matrix are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, and Run Time Travel are complete.",
   "meta": {}
 }
