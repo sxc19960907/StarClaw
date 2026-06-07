@@ -905,6 +905,78 @@ textarea:focus {
   line-height: 1;
 }
 
+.workspace-hub {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workspace-hub-card {
+  min-width: 0;
+  min-height: 108px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.68)),
+    var(--surface);
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 9px 20px rgba(23, 25, 35, 0.035);
+}
+
+.workspace-hub-card:hover {
+  border-color: rgba(49, 92, 255, 0.24);
+  background: #fff;
+}
+
+.workspace-hub-card span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.workspace-hub-card strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-hub-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.workspace-hub-card.ready {
+  background:
+    linear-gradient(135deg, rgba(22, 125, 104, 0.08), transparent 42%),
+    rgba(255, 255, 255, 0.78);
+}
+
+.workspace-hub-card.active {
+  background:
+    linear-gradient(135deg, rgba(49, 92, 255, 0.08), transparent 42%),
+    rgba(255, 255, 255, 0.78);
+}
+
+.workspace-hub-card.attention {
+  background:
+    linear-gradient(135deg, rgba(214, 123, 42, 0.12), transparent 42%),
+    rgba(255, 255, 255, 0.78);
+}
+
 .constellation-cards {
   width: min(1064px, 100%);
   display: grid;
@@ -2465,6 +2537,7 @@ textarea:focus {
   .mission-board,
   .constellation-cards,
   .recipe-grid,
+  .workspace-hub-grid,
   .workflow-brief-grid,
   .two-column {
     grid-template-columns: 1fr;

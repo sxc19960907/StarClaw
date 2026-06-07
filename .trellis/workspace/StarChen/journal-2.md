@@ -36,6 +36,37 @@ Batched session sidebar improvements: live debounced search, clear search action
 [OK] **Completed**
 
 
+## Session 117: Workspace Session Hub
+
+**Date**: 2026-06-07
+**Task**: Workspace session hub
+**Branch**: `main`
+
+### Summary
+
+Added a Home-level Workspace Session Hub so Astria feels more like an independent workspace shell. The hub summarizes latest session context, run health, memory readiness, and local file intake from existing loaded state.
+
+### Main Changes
+
+- Added Workspace Hub cards for Session, Runs, Memory, and Files.
+- Reused existing sessions, runs, memory, and intake state without adding backend endpoints.
+- Wired hub refreshes into session, run, memory, and Home dock state rendering.
+- Added dense Astria-style hub card styling.
+- Extended core Web UI smoke to verify hub rendering and file navigation.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 116: Workflow Brief Context
 
 **Date**: 2026-06-07

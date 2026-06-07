@@ -609,6 +609,7 @@ function renderHomeActivity() {
   setText("home-count-failed", failed);
   setText("home-orbit-count", state.runs.length);
   renderHomeLatestRun();
+  renderWorkspaceHub();
 }
 
 function renderHomeLatestRun() {
@@ -641,6 +642,68 @@ function renderHomeDockedTools() {
   setText("home-council-count", state.councilRuns.length);
   setText("home-inbox-count", (inboxStatusCounts().pending || 0));
   setText("home-intake-count", state.intakeResult ? "ready" : "local");
+  renderWorkspaceHub();
+}
+
+function renderWorkspaceHub() {
+  const hub = $("workspace-session-hub");
+  if (!hub) return;
+  const latestSession = state.sessions[0];
+  const running = state.runs.filter((run) => runStatusGroup(run) === "running").length;
+  const failed = state.runs.filter((run) => runStatusGroup(run) === "failed").length;
+  const completed = state.runs.filter((run) => runStatusGroup(run) === "completed").length;
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const memoryLabel = memoryWarnings.length
+    ? `${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}`
+    : memoryFacts.length
+      ? `${memoryFacts.length} facts`
+      : `${memoryEntries.length} sources`;
+  const runHealth = failed
+    ? `${failed} need attention`
+    : running
+      ? `${running} active`
+      : completed
+        ? `${completed} completed`
+        : "No runs yet";
+  const intakeLabel = state.intakeResult
+    ? (state.intakeResult.mode || "Result ready")
+    : "Local paths";
+  hub.innerHTML = [
+    {
+      panel: "chat",
+      kicker: "Session",
+      title: latestSession?.title || latestSession?.id || "等待会话",
+      detail: latestSession ? `${latestSession.msg_count ?? 0} messages · open Chat` : "开始一次对话后，这里会显示最近会话。",
+      tone: latestSession ? "ready" : "",
+    },
+    {
+      panel: "runs",
+      kicker: "Runs",
+      title: runHealth,
+      detail: `${state.runs.length} total · open Mission Control`,
+      tone: failed ? "attention" : running ? "active" : completed ? "ready" : "",
+    },
+    {
+      panel: "memory",
+      kicker: "Memory",
+      title: memoryLabel,
+      detail: memoryWarnings.length ? "Review taxonomy warnings before adding more memory." : "Open Memory Map for durable context.",
+      tone: memoryWarnings.length ? "attention" : memoryFacts.length || memoryEntries.length ? "ready" : "",
+    },
+    {
+      panel: "intake",
+      kicker: "Files",
+      title: intakeLabel,
+      detail: state.intakeResult ? "Review the latest extracted local context." : "Open File Intake to inspect a document or archive.",
+      tone: state.intakeResult ? "ready" : "",
+    },
+  ].map((item) => `<button type="button" class="workspace-hub-card ${escapeHTML(item.tone)}" data-panel="${escapeHTML(item.panel)}">
+      <span>${escapeHTML(item.kicker)}</span>
+      <strong>${escapeHTML(item.title)}</strong>
+      <small>${escapeHTML(item.detail)}</small>
+    </button>`).join("");
 }
 
 function renderManageCount() {
@@ -1305,10 +1368,12 @@ async function loadMemory() {
   try {
     state.memory = await api("/memory");
     renderMemoryMapPreview();
+    renderHomeDockedTools();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
     renderMemoryMapPreview();
+    renderHomeDockedTools();
     showToast(error.message);
   }
 }
@@ -2546,6 +2611,7 @@ async function loadSessions(query = "") {
     if (!state.sessions.length) {
       renderEmpty(list, query ? "No matching sessions." : "No sessions saved.");
       renderMemoryMapPreview();
+      renderWorkspaceHub();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
@@ -2563,9 +2629,11 @@ async function loadSessions(query = "") {
     </article>`).join("");
     updateActiveSessionLabel();
     renderMemoryMapPreview();
+    renderWorkspaceHub();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
+    renderWorkspaceHub();
   }
 }
 
@@ -3768,5 +3836,6 @@ $("session-search-clear").addEventListener("click", () => {
 
 renderHomeMode();
 renderFileIntake();
+renderWorkspaceHub();
 connectEventStream();
 refreshAll();

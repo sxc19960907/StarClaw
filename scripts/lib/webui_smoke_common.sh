@@ -343,6 +343,13 @@ async function boot(page) {
   await page.locator("#panel-intake.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await page.locator("#workspace-session-hub").getByRole("button", { name: /Session/ }).waitFor();
+  await page.locator("#workspace-session-hub").getByRole("button", { name: /Runs/ }).waitFor();
+  await page.locator("#workspace-session-hub").getByRole("button", { name: /Memory/ }).waitFor();
+  await page.locator("#workspace-session-hub").getByRole("button", { name: /Files/ }).click();
+  await page.locator("#panel-intake.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
   if (homeScreenshot) {
     await page.screenshot({ path: homeScreenshot, fullPage: true });
     assert(fs.existsSync(homeScreenshot), "home screenshot was not written");
