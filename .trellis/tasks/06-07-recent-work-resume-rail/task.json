@@ -1,0 +1,29 @@
+{
+  "id": "recent-work-resume-rail",
+  "name": "recent-work-resume-rail",
+  "title": "Recent work resume rail",
+  "description": "",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria recent work resume commands and Home hub resume actions",
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/assets/app.js",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Command Center now exposes recent session/run commands, and Home Workspace Hub resumes the latest session/run directly when available.",
+  "meta": {}
+}

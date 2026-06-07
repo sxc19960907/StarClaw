@@ -345,7 +345,21 @@ function commandCenterItems() {
     detail,
     run: () => runHomeAction(action),
   }));
-  return [...recipeItems, ...panelItems, ...actionItems];
+  const recentSessionItems = state.sessions.slice(0, 3).map((session) => ({
+    id: `session:${session.id}`,
+    type: "Recent",
+    title: session.title || session.id,
+    detail: `${session.msg_count ?? 0} messages · resume session`,
+    run: () => selectSession(session.id),
+  }));
+  const recentRunItems = state.runs.slice(0, 3).map((run) => ({
+    id: `run:${run.id}`,
+    type: "Recent",
+    title: run.prompt || run.id,
+    detail: `${run.status || "unknown"} · ${run.agent || "default"} · open run`,
+    run: () => selectRun(run.id),
+  }));
+  return [...recentSessionItems, ...recentRunItems, ...recipeItems, ...panelItems, ...actionItems];
 }
 
 function openCommandCenter() {
@@ -805,6 +819,7 @@ function renderWorkspaceHub() {
   hub.innerHTML = [
     {
       panel: "chat",
+      sessionID: latestSession?.id || "",
       kicker: "Session",
       title: latestSession?.title || latestSession?.id || "等待会话",
       detail: latestSession ? `${latestSession.msg_count ?? 0} messages · open Chat` : "开始一次对话后，这里会显示最近会话。",
@@ -812,6 +827,7 @@ function renderWorkspaceHub() {
     },
     {
       panel: "runs",
+      runID: state.runs[0]?.id || "",
       kicker: "Runs",
       title: runHealth,
       detail: `${state.runs.length} total · open Mission Control`,
@@ -831,11 +847,18 @@ function renderWorkspaceHub() {
       detail: state.intakeResult ? "Review the latest extracted local context." : "Open File Intake to inspect a document or archive.",
       tone: state.intakeResult ? "ready" : "",
     },
-  ].map((item) => `<button type="button" class="workspace-hub-card ${escapeHTML(item.tone)}" data-panel="${escapeHTML(item.panel)}">
+  ].map((item) => {
+    const actionAttr = item.sessionID
+      ? `data-session-resume="${escapeHTML(item.sessionID)}"`
+      : item.runID
+        ? `data-run-open="${escapeHTML(item.runID)}"`
+        : `data-panel="${escapeHTML(item.panel)}"`;
+    return `<button type="button" class="workspace-hub-card ${escapeHTML(item.tone)}" ${actionAttr}>
       <span>${escapeHTML(item.kicker)}</span>
       <strong>${escapeHTML(item.title)}</strong>
       <small>${escapeHTML(item.detail)}</small>
-    </button>`).join("");
+    </button>`;
+  }).join("");
 }
 
 function renderManageCount() {
@@ -3778,6 +3801,12 @@ document.addEventListener("click", (event) => {
   const commandClose = event.target.closest("[data-command-close]");
   if (commandClose) {
     closeCommandCenter();
+    return;
+  }
+
+  const sessionResume = event.target.closest("[data-session-resume]");
+  if (sessionResume) {
+    selectSession(sessionResume.dataset.sessionResume);
     return;
   }
 

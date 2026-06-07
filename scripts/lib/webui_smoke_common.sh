@@ -883,6 +883,15 @@ async function runRuns(page) {
   }, { url: baseURL, runID });
   assert(sessionID, "session id missing");
   await page.getByRole("button", { name: "Refresh data" }).click();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#workspace-session-hub").getByRole("button", { name: /webui smoke session|sess_/ }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "workspace hub should resume latest session");
+  await page.getByRole("button", { name: "Open Command Center" }).click();
+  await page.getByLabel("Command search").fill("run_history_smoke");
+  await page.locator("#command-center-list").getByRole("button", { name: /run_history_smoke/ }).click();
+  await page.locator("#panel-runs.active").waitFor();
+  await page.locator("#run-detail").getByText(runID).waitFor();
   await page.getByRole("button", { name: "Runs" }).click();
   await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
   await page.locator("#mission-control-board").getByText("Completed").waitFor();
