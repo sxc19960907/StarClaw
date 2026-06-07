@@ -132,6 +132,55 @@ const homeActions = {
   },
 };
 
+const workflowRecipes = {
+  "code-review": {
+    title: "代码评审",
+    status: "Review",
+    description: "检查当前改动的风险、回归点和测试缺口。",
+    prompt: "Review the current working tree like a senior engineer. Lead with concrete findings, include file/line references where possible, and call out missing tests or risky behavior.",
+  },
+  "feature-plan": {
+    title: "功能规划",
+    status: "Plan",
+    description: "把一个产品想法拆成 PRD、设计和可验证实施步骤。",
+    prompt: "Turn this feature idea into a concise PRD, technical design, implementation plan, and validation checklist. Keep the scope shippable and aligned with the current codebase.",
+  },
+  "file-intake": {
+    title: "文件理解",
+    status: "Files",
+    description: "先进入 File Intake 读取文档或归档，再把结果送入任务。",
+    prompt: "Use File Intake to inspect the relevant local document or archive, then summarize the important content and propose the next action.",
+    panel: "intake",
+  },
+  "research-brief": {
+    title: "调研简报",
+    status: "Research",
+    description: "生成带证据链的调研结论和行动建议。",
+    prompt: "Prepare a research brief for this topic. Separate facts, assumptions, tradeoffs, and recommended next steps. Include sources if external research is needed.",
+  },
+  "mcp-setup": {
+    title: "工具接入",
+    status: "MCP",
+    description: "规划新的 MCP dock，检查配置，并测试连接。",
+    prompt: "Help set up an MCP server for this workflow. Identify the server command or URL, required env keys, safety considerations, and a test plan.",
+    panel: "mcp",
+  },
+  "inbox-triage": {
+    title: "任务分拣",
+    status: "Inbox",
+    description: "审核外部渠道任务，决定拒绝、重试或转成运行。",
+    prompt: "Triage the pending Inbox items. Identify which should become runs, which need more context, and which should be rejected.",
+    panel: "inbox",
+  },
+  "memory-update": {
+    title: "记忆更新",
+    status: "Memory",
+    description: "从最近工作中提炼决策、偏好、命令和风险。",
+    prompt: "Draft a memory update from recent work. Categorize decisions, preferences, commands, architecture notes, people, and risks. Do not write memory without review.",
+    panel: "memory",
+  },
+};
+
 const $ = (id) => document.getElementById(id);
 
 function setText(id, value) {
@@ -399,21 +448,35 @@ function runHomeAction(name) {
   if (action.notice) showToast(action.notice);
 }
 
+function selectWorkflowRecipe(id) {
+  const recipe = workflowRecipes[id];
+  if (!recipe) return;
+  state.homeMode = `recipe:${id}`;
+  $("home-task-input").value = recipe.prompt || "";
+  renderHomeMode();
+  switchPanel("home");
+  $("home-task-input").focus();
+  showToast(`${recipe.title} workflow ready.`);
+}
+
 function renderHomeMode() {
-  const action = homeActions[state.homeMode] || {
+  const action = state.homeMode.startsWith("recipe:")
+    ? workflowRecipes[state.homeMode.slice("recipe:".length)]
+    : homeActions[state.homeMode];
+  const mode = action || {
     title: "General mission",
     status: "Ready",
     description: "直接描述目标，Astria 会从当前工作区和默认智能体开始。",
   };
-  setText("home-mode-kicker", action.status || "Ready");
-  setText("home-mode-title", action.title || "General mission");
-  setText("home-mode-description", action.description || "");
+  setText("home-mode-kicker", mode.status || "Ready");
+  setText("home-mode-title", mode.title || "General mission");
+  setText("home-mode-description", mode.description || "");
   const route = $("home-mode-route");
   if (!route) return;
-  if (action.panel) {
+  if (mode.panel) {
     route.hidden = false;
-    route.dataset.panel = action.panel;
-    route.textContent = action.panel === "mcp" ? "打开星港" : action.panel === "memory" ? "打开星图" : action.panel === "council" ? "打开议会" : "打开面板";
+    route.dataset.panel = mode.panel;
+    route.textContent = mode.panel === "mcp" ? "打开星港" : mode.panel === "memory" ? "打开星图" : mode.panel === "council" ? "打开议会" : mode.panel === "intake" ? "打开文件星舱" : mode.panel === "inbox" ? "打开收件箱" : "打开面板";
   } else {
     route.hidden = true;
     delete route.dataset.panel;
@@ -3396,6 +3459,12 @@ document.addEventListener("click", (event) => {
   const homeAction = event.target.closest("[data-home-action]");
   if (homeAction) {
     runHomeAction(homeAction.dataset.homeAction);
+    return;
+  }
+
+  const recipe = event.target.closest("[data-recipe]");
+  if (recipe) {
+    selectWorkflowRecipe(recipe.dataset.recipe);
     return;
   }
 

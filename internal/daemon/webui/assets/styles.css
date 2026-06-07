@@ -652,6 +652,79 @@ textarea:focus {
   background: #fff;
 }
 
+.workflow-recipes {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.section-heading.compact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.section-heading.compact span {
+  color: var(--faint);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.section-heading.compact strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.recipe-grid button {
+  min-width: 0;
+  min-height: 96px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 11px;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(23, 25, 35, 0.035);
+}
+
+.recipe-grid button:hover {
+  border-color: rgba(49, 92, 255, 0.24);
+  background: #fff;
+}
+
+.recipe-grid span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.recipe-grid strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipe-grid small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .mission-board {
   width: min(1034px, 100%);
   display: grid;
@@ -2234,6 +2307,7 @@ textarea:focus {
   .activity-strip,
   .mission-board,
   .constellation-cards,
+  .recipe-grid,
   .two-column {
     grid-template-columns: 1fr;
   }

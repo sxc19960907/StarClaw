@@ -330,6 +330,15 @@ async function boot(page) {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Hiya, welcome to Astria" }).waitFor();
   await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").waitFor();
+  await page.locator("#workflow-recipes").getByRole("button", { name: /代码评审/ }).click();
+  const reviewPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
+  assert(reviewPrompt.includes("Review the current working tree"), "code review recipe should prefill home prompt");
+  await page.locator("#workflow-recipes").getByRole("button", { name: /文件理解/ }).click();
+  await page.locator("#home-mode-route", { hasText: "打开文件星舱" }).waitFor();
+  await page.locator("#home-mode-route").click();
+  await page.locator("#panel-intake.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
   if (homeScreenshot) {
     await page.screenshot({ path: homeScreenshot, fullPage: true });
     assert(fs.existsSync(homeScreenshot), "home screenshot was not written");

@@ -1,0 +1,31 @@
+{
+  "id": "workflow-recipes-launcher",
+  "name": "workflow-recipes-launcher",
+  "title": "Workflow recipes launcher",
+  "description": "",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Home workflow recipe launcher",
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "",
+  "meta": {}
+}

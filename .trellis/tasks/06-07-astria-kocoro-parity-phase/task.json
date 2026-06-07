@@ -1,0 +1,33 @@
+{
+  "id": "astria-kocoro-parity-phase",
+  "name": "astria-kocoro-parity-phase",
+  "title": "Astria Kocoro parity phase",
+  "description": "",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-07-workflow-recipes-launcher"
+  ],
+  "parent": null,
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Phase remains open for continued Kocoro parity work; first child workflow recipes is complete.",
+  "meta": {}
+}

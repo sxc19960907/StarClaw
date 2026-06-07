@@ -35,6 +35,38 @@ Batched session sidebar improvements: live debounced search, clear search action
 
 [OK] **Completed**
 
+
+## Session 114: Workflow Recipes Launcher
+
+**Date**: 2026-06-07
+**Task**: Workflow recipes launcher
+**Branch**: `main`
+
+### Summary
+
+Started the next Kocoro-parity phase and added Workflow Recipes to Astria Home. The launcher turns existing panels and tools into guided starting points so users can begin common work without composing prompts from scratch.
+
+### Main Changes
+
+- Added a third-phase Trellis parent for ongoing Kocoro parity.
+- Added Home workflow recipes for code review, feature planning, file intake, research brief, MCP setup, inbox triage, and memory update.
+- Recipe selection preloads the Home composer and updates the mission mode bar.
+- Route-aware recipes expose the existing mode route button for File Intake, MCP, Inbox, and Memory.
+- Added compact recipe grid styling with mobile fallback.
+- Extended core Web UI smoke to verify prompt-only and route-aware recipes.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
 ### Next Steps
 
 - None - task complete
