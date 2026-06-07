@@ -308,6 +308,87 @@ function renderError(target, message) {
   target.innerHTML = `<div class="error-state">${escapeHTML(message)}</div>`;
 }
 
+function commandCenterItems() {
+  const recipeItems = Object.entries(workflowRecipes).map(([id, recipe]) => ({
+    id: `recipe:${id}`,
+    type: "Workflow",
+    title: recipe.title,
+    detail: recipe.description || recipe.outcome || "",
+    run: () => selectWorkflowRecipe(id),
+  }));
+  const panelItems = [
+    ["home", "Home", "Return to Astria launch workspace."],
+    ["chat", "Chat", "Open the current conversation surface."],
+    ["runs", "Mission Control", "Review recent runs and status filters."],
+    ["intake", "File Intake", "Inspect local documents and archives."],
+    ["memory", "Memory Map", "Review durable context candidates."],
+    ["mcp", "MCP Starport", "Manage configured tool docks."],
+    ["council", "Agent Council", "Coordinate planner, researcher, and reviewer roles."],
+    ["inbox", "Inbox", "Triage external channel work."],
+    ["schedules", "Schedules", "Manage recurring local tasks."],
+  ].map(([panel, title, detail]) => ({
+    id: `panel:${panel}`,
+    type: "Panel",
+    title,
+    detail,
+    run: () => switchPanel(panel),
+  }));
+  const actionItems = [
+    ["research", "Deep research", "Prepare an evidence-backed brief."],
+    ["mcp", "Plan MCP setup", "Draft a first tool dock connection."],
+    ["memory", "Draft memory map", "Prepare reviewed memory candidates."],
+    ["council", "Start Agent Council", "Split work across named roles."],
+  ].map(([action, title, detail]) => ({
+    id: `action:${action}`,
+    type: "Action",
+    title,
+    detail,
+    run: () => runHomeAction(action),
+  }));
+  return [...recipeItems, ...panelItems, ...actionItems];
+}
+
+function openCommandCenter() {
+  const center = $("command-center");
+  if (!center) return;
+  center.hidden = false;
+  $("command-center-input").value = "";
+  renderCommandCenterList();
+  $("command-center-input").focus();
+}
+
+function closeCommandCenter() {
+  const center = $("command-center");
+  if (!center) return;
+  center.hidden = true;
+}
+
+function renderCommandCenterList() {
+  const list = $("command-center-list");
+  if (!list) return;
+  const query = ($("command-center-input")?.value || "").trim().toLowerCase();
+  const items = commandCenterItems().filter((item) => {
+    const haystack = `${item.id} ${item.type} ${item.title} ${item.detail}`.toLowerCase();
+    return !query || haystack.includes(query);
+  }).slice(0, 16);
+  if (!items.length) {
+    renderEmpty(list, "No matching commands.");
+    return;
+  }
+  list.innerHTML = items.map((item) => `<button type="button" data-command-id="${escapeHTML(item.id)}">
+    <span>${escapeHTML(item.type)}</span>
+    <strong>${escapeHTML(item.title)}</strong>
+    <small>${escapeHTML(item.detail)}</small>
+  </button>`).join("");
+}
+
+function runCommandCenterItem(id) {
+  const item = commandCenterItems().find((candidate) => candidate.id === id);
+  if (!item) return;
+  closeCommandCenter();
+  item.run();
+}
+
 function statusLabel(status) {
   switch (status) {
     case "ready":
@@ -3688,6 +3769,18 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const commandItem = event.target.closest("[data-command-id]");
+  if (commandItem) {
+    runCommandCenterItem(commandItem.dataset.commandId);
+    return;
+  }
+
+  const commandClose = event.target.closest("[data-command-close]");
+  if (commandClose) {
+    closeCommandCenter();
+    return;
+  }
+
   const nav = event.target.closest("[data-panel]");
   if (nav) {
     switchPanel(nav.dataset.panel);
@@ -3821,6 +3914,19 @@ document.addEventListener("click", (event) => {
 
 $("refresh-button").addEventListener("click", refreshAll);
 $("new-chat-button").addEventListener("click", startNewChat);
+$("command-center-button").addEventListener("click", openCommandCenter);
+$("command-center-input").addEventListener("input", renderCommandCenterList);
+document.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    openCommandCenter();
+    return;
+  }
+  if (event.key === "Escape" && !$("command-center")?.hidden) {
+    event.preventDefault();
+    closeCommandCenter();
+  }
+});
 $("home-task-form").addEventListener("submit", submitHomeTask);
 $("home-agent").addEventListener("change", () => {
   $("chat-agent").value = $("home-agent").value;

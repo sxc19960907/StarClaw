@@ -121,6 +121,7 @@
             <h1 id="view-title">首页</h1>
           </div>
           <div class="runtime-strip" aria-label="Daemon status">
+            <button class="command-center-button" id="command-center-button" type="button" aria-label="Open Command Center">Command</button>
             <button class="diagnostics-chip" id="diagnostics-chip" type="button" data-panel="diagnostics">Checking diagnostics</button>
             <span class="status-chip"><strong id="metric-version">-</strong></span>
             <span id="metric-uptime">-</span>
@@ -1021,6 +1022,20 @@
           </aside>
         </section>
       </main>
+    </div>
+    <div class="command-center" id="command-center" hidden>
+      <div class="command-center-backdrop" data-command-close></div>
+      <section class="command-center-dialog" role="dialog" aria-modal="true" aria-labelledby="command-center-title">
+        <div class="command-center-head">
+          <div>
+            <span class="board-kicker">Command Center</span>
+            <h2 id="command-center-title">Astria 快速操作</h2>
+          </div>
+          <button type="button" data-command-close aria-label="Close Command Center">Close</button>
+        </div>
+        <input id="command-center-input" type="search" placeholder="搜索 workflow、panel 或 action" aria-label="Command search" />
+        <div class="command-center-list" id="command-center-list"></div>
+      </section>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="/app/assets/app.js" defer></script>

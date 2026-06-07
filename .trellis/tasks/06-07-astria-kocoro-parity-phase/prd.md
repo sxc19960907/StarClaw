@@ -20,6 +20,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-workflow-brief-context` | Turn Home recipes into visible work briefs with outcome, context, route, and next checks. |
 | P1 | `06-07-workspace-session-hub` | Add a Home workspace hub that summarizes session, run, memory, and file context. |
 | P1 | `06-07-workflow-stage-continuity` | Add a Home workflow stage rail and keep run status grouping coherent across Home and Mission Control. |
+| P1 | `06-07-command-center-palette` | Add an app-level Command Center for workflows, panel jumps, and workspace actions. |
 
 ## Acceptance Criteria
 

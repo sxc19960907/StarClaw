@@ -1476,6 +1476,17 @@ textarea:focus {
   padding: 1px 9px;
 }
 
+.command-center-button {
+  min-height: 26px;
+  border-color: rgba(49, 92, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(49, 92, 255, 0.07);
+  color: var(--accent);
+  padding: 1px 10px;
+  font-size: 12px;
+  font-weight: 720;
+}
+
 .diagnostics-chip {
   min-height: 24px;
   border-radius: 999px;
@@ -1501,6 +1512,114 @@ textarea:focus {
   border-color: rgba(164, 61, 58, 0.3);
   color: var(--danger);
   background: #fff4f3;
+}
+
+.command-center[hidden] {
+  display: none;
+}
+
+.command-center {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: start center;
+  padding: 76px 18px 18px;
+}
+
+.command-center-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(23, 25, 35, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.command-center-dialog {
+  position: relative;
+  width: min(720px, 100%);
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(23, 25, 35, 0.1);
+  border-radius: 14px;
+  background: rgba(251, 250, 248, 0.96);
+  box-shadow: 0 24px 80px rgba(23, 25, 35, 0.22);
+  padding: 16px;
+}
+
+.command-center-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.command-center-head h2 {
+  margin: 3px 0 0;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.command-center-head button {
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.command-center input {
+  min-height: 44px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 15px;
+}
+
+.command-center-list {
+  display: grid;
+  gap: 7px;
+  max-height: min(520px, calc(100vh - 220px));
+  overflow: auto;
+}
+
+.command-center-list button {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 82px minmax(0, 0.55fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border-color: rgba(23, 25, 35, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px;
+  text-align: left;
+}
+
+.command-center-list button:hover {
+  border-color: rgba(49, 92, 255, 0.24);
+  background: #fff;
+}
+
+.command-center-list span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.command-center-list strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-center-list small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel {

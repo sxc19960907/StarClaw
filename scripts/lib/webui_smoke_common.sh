@@ -330,6 +330,14 @@ async function boot(page) {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Hiya, welcome to Astria" }).waitFor();
   await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").waitFor();
+  await page.getByRole("button", { name: "Open Command Center" }).click();
+  await page.getByLabel("Command search").fill("memory");
+  await page.locator("#command-center-list").getByRole("button", { name: /Memory Map/ }).click();
+  await page.locator("#panel-memory.active").waitFor();
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+K" : "Control+K");
+  await page.getByLabel("Command search").fill("review");
+  await page.locator("#command-center-list").getByRole("button", { name: /代码评审/ }).click();
+  await page.locator("#panel-home.active").waitFor();
   await page.locator("#workflow-recipes").getByRole("button", { name: /代码评审/ }).click();
   const reviewPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
   assert(reviewPrompt.includes("Review the current working tree"), "code review recipe should prefill home prompt");

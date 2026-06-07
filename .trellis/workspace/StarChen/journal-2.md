@@ -36,6 +36,29 @@ Batched session sidebar improvements: live debounced search, clear search action
 [OK] **Completed**
 
 
+## Session 119: Command Center Palette
+
+**Date**: 2026-06-07
+**Task**: Command center palette
+**Branch**: `main`
+
+### Summary
+
+Added an app-level Astria Command Center for quick workflow launch, panel navigation, and common workspace actions.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 118: Workflow Stage Continuity
 
 **Date**: 2026-06-07
