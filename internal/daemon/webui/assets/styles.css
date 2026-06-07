@@ -1098,6 +1098,90 @@ textarea:focus {
   font-weight: 700;
 }
 
+.review-queue {
+  position: relative;
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.review-queue::before {
+  position: absolute;
+  inset: 34px auto auto -10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 22px 13px 0 rgba(28, 67, 132, 0.22), 42px -4px 0 rgba(22, 125, 104, 0.2);
+  content: "";
+}
+
+.review-queue-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.review-queue-item {
+  min-width: 0;
+  min-height: 94px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(246, 248, 252, 0.74)),
+    radial-gradient(circle at 94% 16%, rgba(28, 67, 132, 0.1), transparent 24%);
+  padding: 12px;
+  text-align: left;
+}
+
+.review-queue-item span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.review-queue-item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-queue-item small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.review-queue-item.active {
+  border-color: rgba(28, 67, 132, 0.24);
+  background: rgba(28, 67, 132, 0.07);
+}
+
+.review-queue-item.warning {
+  border-color: rgba(214, 123, 42, 0.24);
+  background: rgba(214, 123, 42, 0.08);
+}
+
+.review-queue-item.attention {
+  border-color: rgba(164, 61, 58, 0.24);
+  background: rgba(164, 61, 58, 0.08);
+}
+
+.review-queue-item.clear {
+  border-color: rgba(22, 125, 104, 0.18);
+  background: rgba(22, 125, 104, 0.06);
+}
+
 .workspace-health {
   width: min(1034px, 100%);
   display: grid;
@@ -2842,6 +2926,7 @@ textarea:focus {
   .constellation-cards,
   .recipe-grid,
   .workspace-hub-grid,
+  .review-queue-list,
   .workspace-health-grid,
   .workflow-brief-grid,
   .two-column {

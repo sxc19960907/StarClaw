@@ -1,0 +1,31 @@
+{
+  "id": "06-07-review-queue-next-actions",
+  "name": "06-07-review-queue-next-actions",
+  "title": "Review queue next actions",
+  "description": "Add a Home review queue that aggregates actionable workspace issues and routes users to the right panel.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Home Review Queue",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Home Review Queue aggregates runs, inbox, memory, diagnostics, permissions, and MCP/config state into actionable next steps.",
+  "meta": {}
+}

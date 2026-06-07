@@ -24,6 +24,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-recent-work-resume-rail` | Make recent sessions and runs resumable from Command Center and Home Workspace Hub. |
 | P1 | `06-07-focus-brief-current-mission` | Add a Home Focus Brief that summarizes current mission context and next action. |
 | P1 | `06-07-workspace-health-strip` | Add a Home readiness strip for diagnostics, permissions, MCP, and memory health. |
+| P1 | `06-07-06-07-review-queue-next-actions` | Add a Home review queue that turns scattered workspace risks into direct next actions. |
 
 ## Acceptance Criteria
 

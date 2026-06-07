@@ -59,6 +59,29 @@ Added a Home Workspace Health Strip for diagnostics, permissions, MCP, and memor
 [OK] **Completed**
 
 
+## Session 109: Review Queue Next Actions
+
+**Date**: 2026-06-07
+**Task**: Review queue next actions
+**Branch**: `main`
+
+### Summary
+
+Added a Home Review Queue that aggregates actionable items from runs, inbox, memory, diagnostics, permissions, and MCP/config state.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 107: Focus Brief Current Mission
 
 **Date**: 2026-06-07

@@ -777,6 +777,139 @@ function renderWorkspaceHealthStrip() {
   </button>`).join("");
 }
 
+function reviewQueueItems() {
+  const items = [];
+  const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed");
+  const activeRuns = state.runs.filter((run) => runHealthGroup(run) === "running");
+  if (failedRuns.length) {
+    const run = failedRuns[0];
+    items.push({
+      tone: "attention",
+      label: "Run",
+      title: `${failedRuns.length} run${failedRuns.length === 1 ? "" : "s"} need review`,
+      detail: run.prompt || run.id || "Open Mission Control to inspect the failed run.",
+      runID: run.id || "",
+    });
+  } else if (activeRuns.length) {
+    const run = activeRuns[0];
+    items.push({
+      tone: "active",
+      label: "Run",
+      title: `${activeRuns.length} active mission${activeRuns.length === 1 ? "" : "s"}`,
+      detail: run.prompt || run.id || "Monitor the active daemon execution.",
+      runID: run.id || "",
+    });
+  }
+
+  const inboxCounts = inboxStatusCounts();
+  if (inboxCounts.failed) {
+    items.push({
+      tone: "attention",
+      label: "Inbox",
+      title: `${inboxCounts.failed} inbound item${inboxCounts.failed === 1 ? "" : "s"} failed`,
+      detail: "Retry or reject failed channel work before it blocks the queue.",
+      panel: "inbox",
+    });
+  } else if (inboxCounts.pending) {
+    items.push({
+      tone: "warning",
+      label: "Inbox",
+      title: `${inboxCounts.pending} inbound item${inboxCounts.pending === 1 ? "" : "s"} waiting`,
+      detail: "Review external tasks before they become Astria runs.",
+      panel: "inbox",
+    });
+  }
+
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  if (memoryWarnings.length) {
+    items.push({
+      tone: "attention",
+      label: "Memory",
+      title: `${memoryWarnings.length} memory warning${memoryWarnings.length === 1 ? "" : "s"}`,
+      detail: String(memoryWarnings[0] || "Review taxonomy warnings before adding durable context."),
+      panel: "memory",
+    });
+  }
+
+  const diagnosticsStatus = state.diagnostics?.status || "unknown";
+  if (!["ready", "unknown"].includes(diagnosticsStatus)) {
+    items.push({
+      tone: diagnosticsStatus === "warning" ? "warning" : "attention",
+      label: "Diagnostics",
+      title: `Diagnostics ${statusLabel(diagnosticsStatus)}`,
+      detail: state.diagnostics?.summary || "Inspect launch readiness checks.",
+      panel: "diagnostics",
+    });
+  }
+
+  if (state.permissions && state.permissions.configured !== true) {
+    items.push({
+      tone: "warning",
+      label: "Permissions",
+      title: "Permissions using defaults",
+      detail: "Set explicit tool guardrails for this workspace.",
+      panel: "permissions",
+    });
+  } else if (state.permissions) {
+    const hints = permissionsRiskHints(state.permissions);
+    if (hints.length) {
+      items.push({
+        tone: "warning",
+        label: "Permissions",
+        title: `${hints.length} policy hint${hints.length === 1 ? "" : "s"}`,
+        detail: hints[0],
+        panel: "permissions",
+      });
+    }
+  }
+
+  const mcpServers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  const enabledMCP = mcpServers.filter((server) => !server.disabled).length;
+  if (mcpServers.length && !enabledMCP) {
+    items.push({
+      tone: "warning",
+      label: "MCP",
+      title: "MCP docks disabled",
+      detail: "Enable or test a dock before tool-heavy workflows.",
+      panel: "mcp",
+    });
+  } else if (!mcpServers.length && state.config) {
+    items.push({
+      tone: "",
+      label: "MCP",
+      title: "No MCP docks configured",
+      detail: "Add a dock when this workspace needs external tools.",
+      panel: "mcp",
+    });
+  }
+
+  return items.slice(0, 6);
+}
+
+function renderReviewQueue() {
+  const target = $("review-queue-list");
+  if (!target) return;
+  const items = reviewQueueItems();
+  if (!items.length) {
+    target.innerHTML = `<button type="button" class="review-queue-item clear" data-panel="runs">
+      <span>Clear</span>
+      <strong>队列已清空</strong>
+      <small>没有失败运行、待审收件箱、记忆警告或配置风险。</small>
+    </button>`;
+    return;
+  }
+  target.innerHTML = items.map((item) => {
+    const actionAttr = item.runID
+      ? `data-run-open="${escapeHTML(item.runID)}"`
+      : `data-panel="${escapeHTML(item.panel || "home")}"`;
+    return `<button type="button" class="review-queue-item ${escapeHTML(item.tone)}" ${actionAttr}>
+      <span>${escapeHTML(item.label)}</span>
+      <strong>${escapeHTML(item.title)}</strong>
+      <small>${escapeHTML(item.detail)}</small>
+    </button>`;
+  }).join("");
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   const source = new EventSource("/events");
@@ -847,6 +980,7 @@ function renderHomeActivity() {
   renderWorkspaceHub();
   renderWorkflowStageRail();
   renderFocusBrief();
+  renderReviewQueue();
 }
 
 function renderHomeLatestRun() {
@@ -882,6 +1016,7 @@ function renderHomeDockedTools() {
   renderWorkspaceHub();
   renderFocusBrief();
   renderWorkspaceHealthStrip();
+  renderReviewQueue();
 }
 
 function renderWorkspaceHub() {
@@ -1282,6 +1417,7 @@ function renderMemoryMapPreview() {
   renderManageCount();
   setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
   renderWorkspaceHealthStrip();
+  renderReviewQueue();
   const overview = $("memory-overview");
   if (overview) {
     overview.innerHTML = `<strong>${escapeHTML(memoryFacts.length ? `${memoryFacts.length} facts` : memoryEntries.length ? `${memoryEntries.length} memory files` : count ? "Sources ready" : "Preview")}</strong><span>${escapeHTML(memoryWarnings.length ? `${memoryWarnings.length} taxonomy warning${memoryWarnings.length === 1 ? "" : "s"} need review before adding more memory.` : state.memory?.memory_dir || (count ? "Draft reviewable memory from recent work before writing MEMORY.md." : "Favorite sessions or complete runs to create stronger memory candidates."))}</span>`;
@@ -1445,6 +1581,7 @@ async function loadDiagnostics() {
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
     renderWorkspaceHealthStrip();
+    renderReviewQueue();
     if ($("chat-output").querySelector(".empty-thread")) renderEmptyThread();
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
     const launchRows = diagnosticsLaunchRows(diagnostics);
@@ -1482,6 +1619,7 @@ async function loadDiagnostics() {
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderReviewQueue();
   }
 }
 
@@ -1518,12 +1656,14 @@ async function loadConfig() {
     state.config = data.config || {};
     renderConfigForm();
     renderMCPStarport();
+    renderReviewQueue();
   } catch (error) {
     state.config = null;
     setText("settings-config-state", "Error");
     setClass("settings-config-state", "bad");
     $("config-save-state").textContent = error.message;
     renderMCPStarport();
+    renderReviewQueue();
   }
 }
 
@@ -1606,6 +1746,7 @@ async function loadPermissions() {
     fillPermissionsForm();
     renderPermissions();
     renderWorkspaceHealthStrip();
+    renderReviewQueue();
   } catch (error) {
     state.permissions = null;
     setText("settings-permissions-state", "Error");
@@ -1614,6 +1755,7 @@ async function loadPermissions() {
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderReviewQueue();
   }
 }
 
@@ -1947,6 +2089,7 @@ function renderInbox() {
   setText("manage-inbox-count", `${pending} pending`);
   setText("home-inbox-count", pending);
   renderManageCount();
+  renderReviewQueue();
   setText("inbox-summary", state.inboxItems.length ? `${pending} pending · ${failed} failed · ${completed} completed` : "No inbound tasks yet.");
   const overview = $("inbox-overview");
   if (overview) {
