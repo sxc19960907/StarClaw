@@ -1027,6 +1027,77 @@ textarea:focus {
     rgba(255, 255, 255, 0.78);
 }
 
+.focus-brief {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(49, 92, 255, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.76);
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(23, 25, 35, 0.04);
+}
+
+.focus-brief-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-brief strong {
+  color: var(--text);
+}
+
+.focus-brief p,
+.focus-brief small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.focus-brief-grid {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 7px 10px;
+  border: 1px solid rgba(23, 25, 35, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 10px;
+}
+
+.focus-brief-grid span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.focus-brief-grid strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-brief-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.focus-brief-actions button {
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .constellation-cards {
   width: min(1064px, 100%);
   display: grid;

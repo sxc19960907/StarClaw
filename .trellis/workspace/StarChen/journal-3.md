@@ -36,6 +36,29 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 107: Focus Brief Current Mission
+
+**Date**: 2026-06-07
+**Task**: Focus brief current mission
+**Branch**: `main`
+
+### Summary
+
+Added a Home Focus Brief that summarizes the current Astria mission stage, selected workflow, recent session/run context, and next action.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 106: Recent Work Resume Rail
 
 **Date**: 2026-06-07

@@ -343,6 +343,8 @@ async function boot(page) {
   assert(reviewPrompt.includes("Review the current working tree"), "code review recipe should prefill home prompt");
   await page.locator("#workflow-stage-rail").getByRole("button", { name: /Draft.*代码评审/ }).waitFor();
   await page.locator("#workflow-stage-rail").getByRole("button", { name: /Running.*Daemon execution/ }).waitFor();
+  await page.locator("#focus-brief").getByText("代码评审").waitFor();
+  await page.locator("#focus-brief .board-kicker").getByText("draft", { exact: true }).waitFor();
   await page.locator("#workflow-brief").getByText("一份按严重程度排序的评审报告").waitFor();
   await page.locator("#workflow-brief").getByText("当前 git diff").waitFor();
   await page.locator("#workflow-recipes").getByRole("button", { name: /文件理解/ }).click();

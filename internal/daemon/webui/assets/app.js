@@ -578,6 +578,7 @@ function selectWorkflowRecipe(id) {
   renderHomeMode();
   renderWorkflowBrief(id);
   renderWorkflowStageRail();
+  renderFocusBrief();
   switchPanel("home");
   $("home-task-input").focus();
   showToast(`${recipe.title} workflow ready.`);
@@ -687,6 +688,49 @@ function renderWorkflowStageRail() {
   }).join("");
 }
 
+function renderFocusBrief() {
+  const target = $("focus-brief");
+  if (!target) return;
+  const stage = currentWorkflowStage();
+  const recipe = state.homeMode.startsWith("recipe:")
+    ? workflowRecipes[state.homeMode.slice("recipe:".length)]
+    : null;
+  const latestSession = state.sessions[0];
+  const latestRun = state.runs[0];
+  const title = recipe?.title || stage.label || "General mission";
+  const context = latestRun
+    ? `${latestRun.status || "unknown"} run · ${latestRun.agent || "default"}`
+    : latestSession
+      ? `${latestSession.msg_count ?? 0} message session`
+      : "No recent work yet";
+  const next = stage.stage === "memory"
+    ? "Review memory candidates"
+    : stage.stage === "review"
+      ? "Open Mission Control"
+      : stage.stage === "running"
+        ? "Monitor active run"
+        : "Draft or launch the next mission";
+  const runAction = latestRun?.id ? `<button type="button" data-run-open="${escapeHTML(latestRun.id)}">Open run</button>` : "";
+  const sessionAction = latestSession?.id ? `<button type="button" data-session-resume="${escapeHTML(latestSession.id)}">Resume session</button>` : "";
+  target.innerHTML = `<div class="focus-brief-head">
+      <div>
+        <span class="board-kicker">${escapeHTML(stage.stage)}</span>
+        <strong>${escapeHTML(title)}</strong>
+      </div>
+      <small>${escapeHTML(next)}</small>
+    </div>
+    <div class="focus-brief-grid">
+      <span>Context</span><strong>${escapeHTML(context)}</strong>
+      <span>Session</span><strong>${escapeHTML(latestSession?.title || latestSession?.id || "No session")}</strong>
+      <span>Run</span><strong>${escapeHTML(latestRun?.prompt || latestRun?.id || "No run")}</strong>
+    </div>
+    <div class="focus-brief-actions">
+      ${runAction}
+      ${sessionAction}
+      <button type="button" data-panel="${stage.stage === "memory" ? "memory" : "runs"}">${escapeHTML(stage.stage === "memory" ? "Open Memory" : "Open Mission Control")}</button>
+    </div>`;
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   const source = new EventSource("/events");
@@ -756,6 +800,7 @@ function renderHomeActivity() {
   renderHomeLatestRun();
   renderWorkspaceHub();
   renderWorkflowStageRail();
+  renderFocusBrief();
 }
 
 function renderHomeLatestRun() {
@@ -789,6 +834,7 @@ function renderHomeDockedTools() {
   setText("home-inbox-count", (inboxStatusCounts().pending || 0));
   setText("home-intake-count", state.intakeResult ? "ready" : "local");
   renderWorkspaceHub();
+  renderFocusBrief();
 }
 
 function renderWorkspaceHub() {
@@ -2767,6 +2813,7 @@ async function loadSessions(query = "") {
       renderEmpty(list, query ? "No matching sessions." : "No sessions saved.");
       renderMemoryMapPreview();
       renderWorkspaceHub();
+      renderFocusBrief();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
@@ -2785,10 +2832,12 @@ async function loadSessions(query = "") {
     updateActiveSessionLabel();
     renderMemoryMapPreview();
     renderWorkspaceHub();
+    renderFocusBrief();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
     renderWorkspaceHub();
+    renderFocusBrief();
   }
 }
 
@@ -4026,5 +4075,6 @@ $("session-search-clear").addEventListener("click", () => {
 renderHomeMode();
 renderFileIntake();
 renderWorkspaceHub();
+renderFocusBrief();
 connectEventStream();
 refreshAll();
