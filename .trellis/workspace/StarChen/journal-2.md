@@ -36,6 +36,38 @@ Batched session sidebar improvements: live debounced search, clear search action
 [OK] **Completed**
 
 
+## Session 118: Workflow Stage Continuity
+
+**Date**: 2026-06-07
+**Task**: Workflow stage continuity
+**Branch**: `main`
+
+### Summary
+
+Added a Home workflow stage rail that shows Draft, Running, Review, and Memory stages, making Astria workflows feel more continuous from recipe selection through run review and memory capture.
+
+### Main Changes
+
+- Added a compact stage rail inside the Home mission composer.
+- Selecting a workflow recipe marks Draft active with the selected recipe title.
+- Launching a Home mission moves the rail toward Running before Chat submission.
+- Existing run and memory state can advance the rail to Running, Review, or Memory.
+- Split Home run-health grouping from Mission Control grouping to keep filters correct.
+- Extended core Web UI smoke to verify the stage rail.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 117: Workspace Session Hub
 
 **Date**: 2026-06-07

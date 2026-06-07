@@ -33,6 +33,8 @@ const state = {
   approvals: new Map(),
   eventSource: null,
   homeMode: "general",
+  workflowStage: "draft",
+  workflowStageLabel: "General mission",
   memoryCategory: "all",
   editingMCPServer: "",
   runFilter: "all",
@@ -475,9 +477,12 @@ function selectWorkflowRecipe(id) {
   const recipe = workflowRecipes[id];
   if (!recipe) return;
   state.homeMode = `recipe:${id}`;
+  state.workflowStage = "draft";
+  state.workflowStageLabel = recipe.title || "Workflow draft";
   $("home-task-input").value = recipe.prompt || "";
   renderHomeMode();
   renderWorkflowBrief(id);
+  renderWorkflowStageRail();
   switchPanel("home");
   $("home-task-input").focus();
   showToast(`${recipe.title} workflow ready.`);
@@ -542,6 +547,51 @@ function renderHomeMode() {
   }
 }
 
+function currentWorkflowStage() {
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const latestRun = state.runs[0];
+  if (memoryFacts.length || memoryWarnings.length) {
+    return {
+      stage: "memory",
+      label: memoryWarnings.length ? `${memoryWarnings.length} memory warning${memoryWarnings.length === 1 ? "" : "s"}` : `${memoryFacts.length} memory fact${memoryFacts.length === 1 ? "" : "s"}`,
+    };
+  }
+  if (latestRun) {
+    const group = runHealthGroup(latestRun);
+    if (group === "running") {
+      return { stage: "running", label: latestRun.prompt || latestRun.id || "Running mission" };
+    }
+    return { stage: "review", label: latestRun.prompt || latestRun.id || "Review latest run" };
+  }
+  return {
+    stage: state.workflowStage || "draft",
+    label: state.workflowStageLabel || "General mission",
+  };
+}
+
+function renderWorkflowStageRail() {
+  const rail = $("workflow-stage-rail");
+  if (!rail) return;
+  const current = currentWorkflowStage();
+  const order = ["draft", "running", "review", "memory"];
+  const activeIndex = order.indexOf(current.stage);
+  const stages = [
+    ["draft", "Draft", "Recipe and prompt"],
+    ["running", "Running", "Daemon execution"],
+    ["review", "Review", "Mission Control"],
+    ["memory", "Memory", "Durable context"],
+  ];
+  rail.innerHTML = stages.map(([key, label, hint], index) => {
+    const active = current.stage === key;
+    const done = activeIndex > index;
+    return `<button type="button" class="workflow-stage ${active ? "active" : ""} ${done ? "done" : ""}" data-panel="${key === "running" || key === "review" ? "runs" : key === "memory" ? "memory" : "home"}">
+      <span>${escapeHTML(label)}</span>
+      <strong>${escapeHTML(active ? current.label : hint)}</strong>
+    </button>`;
+  }).join("");
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   const source = new EventSource("/events");
@@ -590,7 +640,7 @@ function runStatusValue(run) {
   return String(run?.status || "").toLowerCase();
 }
 
-function runStatusGroup(run) {
+function runHealthGroup(run) {
   const status = runStatusValue(run);
   if (["running", "queued", "pending"].includes(status)) return "running";
   if (["completed", "complete", "success", "succeeded"].includes(status)) return "completed";
@@ -599,9 +649,9 @@ function runStatusGroup(run) {
 }
 
 function renderHomeActivity() {
-  const running = state.runs.filter((run) => runStatusGroup(run) === "running").length;
-  const completed = state.runs.filter((run) => runStatusGroup(run) === "completed").length;
-  const failed = state.runs.filter((run) => runStatusGroup(run) === "failed").length;
+  const running = state.runs.filter((run) => runHealthGroup(run) === "running").length;
+  const completed = state.runs.filter((run) => runHealthGroup(run) === "completed").length;
+  const failed = state.runs.filter((run) => runHealthGroup(run) === "failed").length;
   const pending = state.approvals.size;
   setText("home-count-pending", pending);
   setText("home-count-running", running);
@@ -610,6 +660,7 @@ function renderHomeActivity() {
   setText("home-orbit-count", state.runs.length);
   renderHomeLatestRun();
   renderWorkspaceHub();
+  renderWorkflowStageRail();
 }
 
 function renderHomeLatestRun() {
@@ -623,7 +674,7 @@ function renderHomeLatestRun() {
     target.innerHTML = `<strong>暂无运行记录</strong><small>开始一个任务后，这里会显示最近一次运行。</small>`;
     return;
   }
-  const status = runStatusGroup(latest);
+  const status = runHealthGroup(latest);
   delete target.dataset.panel;
   target.dataset.runOpen = latest.id || "";
   target.className = `board-run ${status}`;
@@ -649,9 +700,9 @@ function renderWorkspaceHub() {
   const hub = $("workspace-session-hub");
   if (!hub) return;
   const latestSession = state.sessions[0];
-  const running = state.runs.filter((run) => runStatusGroup(run) === "running").length;
-  const failed = state.runs.filter((run) => runStatusGroup(run) === "failed").length;
-  const completed = state.runs.filter((run) => runStatusGroup(run) === "completed").length;
+  const running = state.runs.filter((run) => runHealthGroup(run) === "running").length;
+  const failed = state.runs.filter((run) => runHealthGroup(run) === "failed").length;
+  const completed = state.runs.filter((run) => runHealthGroup(run) === "completed").length;
   const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
   const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
   const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
@@ -2717,7 +2768,7 @@ function renderRunsList() {
   }).join("");
 }
 
-function runStatusGroup(run) {
+function runMissionGroup(run) {
   const status = String(run?.status || "").toLowerCase();
   if (status === "running" || status === "queued" || status === "pending") return "active";
   if (status === "error" || status === "failed" || status === "cancelled" || status === "canceled") return "attention";
@@ -2730,7 +2781,7 @@ function filteredRuns() {
     case "active":
     case "attention":
     case "completed":
-      return state.runs.filter((run) => runStatusGroup(run) === state.runFilter);
+      return state.runs.filter((run) => runMissionGroup(run) === state.runFilter);
     case "council":
       return state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:"));
     default:
@@ -2744,9 +2795,9 @@ function renderMissionControl() {
   if (!board || !filters) return;
   const counts = {
     total: state.runs.length,
-    active: state.runs.filter((run) => runStatusGroup(run) === "active").length,
-    attention: state.runs.filter((run) => runStatusGroup(run) === "attention").length,
-    completed: state.runs.filter((run) => runStatusGroup(run) === "completed").length,
+    active: state.runs.filter((run) => runMissionGroup(run) === "active").length,
+    attention: state.runs.filter((run) => runMissionGroup(run) === "attention").length,
+    completed: state.runs.filter((run) => runMissionGroup(run) === "completed").length,
     council: state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:")).length,
   };
   board.innerHTML = [
@@ -3404,6 +3455,9 @@ function submitHomeTask(event) {
     showToast("Enter a mission first.");
     return;
   }
+  state.workflowStage = "running";
+  state.workflowStageLabel = text;
+  renderWorkflowStageRail();
   $("chat-input").value = text;
   $("chat-agent").value = $("home-agent").value;
   $("chat-new-session").checked = true;

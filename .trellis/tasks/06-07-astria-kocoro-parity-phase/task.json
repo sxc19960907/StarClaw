@@ -22,7 +22,8 @@
     "06-07-workflow-recipes-launcher",
     "06-07-mission-control-run-board",
     "06-07-workflow-brief-context",
-    "06-07-workspace-session-hub"
+    "06-07-workspace-session-hub",
+    "06-07-workflow-stage-continuity"
   ],
   "parent": null,
   "relatedFiles": [
@@ -31,6 +32,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, and Workspace Session Hub are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, and workflow stage continuity are complete.",
   "meta": {}
 }
