@@ -333,9 +333,13 @@ async function boot(page) {
   await page.locator("#workflow-recipes").getByRole("button", { name: /代码评审/ }).click();
   const reviewPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
   assert(reviewPrompt.includes("Review the current working tree"), "code review recipe should prefill home prompt");
+  await page.locator("#workflow-brief").getByText("一份按严重程度排序的评审报告").waitFor();
+  await page.locator("#workflow-brief").getByText("当前 git diff").waitFor();
   await page.locator("#workflow-recipes").getByRole("button", { name: /文件理解/ }).click();
+  await page.locator("#workflow-brief").getByText("把本地文件内容整理成可引用上下文").waitFor();
+  await page.locator("#workflow-brief").getByRole("button", { name: "打开文件星舱" }).waitFor();
   await page.locator("#home-mode-route", { hasText: "打开文件星舱" }).waitFor();
-  await page.locator("#home-mode-route").click();
+  await page.locator("#workflow-brief").getByRole("button", { name: "打开文件星舱" }).click();
   await page.locator("#panel-intake.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();

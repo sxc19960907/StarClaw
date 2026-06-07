@@ -36,6 +36,37 @@ Batched session sidebar improvements: live debounced search, clear search action
 [OK] **Completed**
 
 
+## Session 116: Workflow Brief Context
+
+**Date**: 2026-06-07
+**Task**: Workflow brief context
+**Branch**: `main`
+
+### Summary
+
+Turned Home workflow recipes into visible Astria work briefs. Selecting a recipe now shows the expected outcome, useful context orbit, next checks, and a route-aware action when the workflow belongs to another panel.
+
+### Main Changes
+
+- Added a compact workflow brief surface under the recipe grid.
+- Extended recipe metadata with outcome, context, and checklist fields.
+- Added route-aware actions inside the brief for File Intake, MCP, Inbox, and Memory workflows.
+- Kept existing prompt prefill and Home mode behavior.
+- Extended core Web UI smoke to verify brief content and route action.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 115: Mission Control Run Board
 
 **Date**: 2026-06-07

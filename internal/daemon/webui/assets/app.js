@@ -139,12 +139,18 @@ const workflowRecipes = {
     status: "Review",
     description: "检查当前改动的风险、回归点和测试缺口。",
     prompt: "Review the current working tree like a senior engineer. Lead with concrete findings, include file/line references where possible, and call out missing tests or risky behavior.",
+    outcome: "一份按严重程度排序的评审报告，包含文件位置、行为风险和测试缺口。",
+    context: ["当前 git diff", "相关测试输出", "高风险改动路径"],
+    checklist: ["先列 findings", "标明残余风险", "建议最小验证命令"],
   },
   "feature-plan": {
     title: "功能规划",
     status: "Plan",
     description: "把一个产品想法拆成 PRD、设计和可验证实施步骤。",
     prompt: "Turn this feature idea into a concise PRD, technical design, implementation plan, and validation checklist. Keep the scope shippable and aligned with the current codebase.",
+    outcome: "一份可落地的 PRD、设计边界、实施顺序和验收清单。",
+    context: ["目标用户", "现有代码路径", "非目标范围"],
+    checklist: ["定义验收标准", "识别复用点", "拆成可提交切片"],
   },
   "file-intake": {
     title: "文件理解",
@@ -152,12 +158,18 @@ const workflowRecipes = {
     description: "先进入 File Intake 读取文档或归档，再把结果送入任务。",
     prompt: "Use File Intake to inspect the relevant local document or archive, then summarize the important content and propose the next action.",
     panel: "intake",
+    outcome: "把本地文件内容整理成可引用上下文，再决定是否进入 Chat 或 run。",
+    context: ["文件路径", "读取模式", "提取出的关键段落"],
+    checklist: ["选择 intake mode", "审查结果摘要", "发送到下一步任务"],
   },
   "research-brief": {
     title: "调研简报",
     status: "Research",
     description: "生成带证据链的调研结论和行动建议。",
     prompt: "Prepare a research brief for this topic. Separate facts, assumptions, tradeoffs, and recommended next steps. Include sources if external research is needed.",
+    outcome: "一份区分事实、假设、取舍和建议的证据链简报。",
+    context: ["研究问题", "可信来源", "时间敏感点"],
+    checklist: ["确认是否需要联网", "记录来源", "输出建议路径"],
   },
   "mcp-setup": {
     title: "工具接入",
@@ -165,6 +177,9 @@ const workflowRecipes = {
     description: "规划新的 MCP dock，检查配置，并测试连接。",
     prompt: "Help set up an MCP server for this workflow. Identify the server command or URL, required env keys, safety considerations, and a test plan.",
     panel: "mcp",
+    outcome: "一个可审查的 MCP 接入方案，包含命令、环境变量、安全边界和测试。",
+    context: ["server command 或 URL", "env keys", "工具权限范围"],
+    checklist: ["补齐配置", "运行连接测试", "记录失败处理"],
   },
   "inbox-triage": {
     title: "任务分拣",
@@ -172,6 +187,9 @@ const workflowRecipes = {
     description: "审核外部渠道任务，决定拒绝、重试或转成运行。",
     prompt: "Triage the pending Inbox items. Identify which should become runs, which need more context, and which should be rejected.",
     panel: "inbox",
+    outcome: "把外部任务分成可运行、需补充、应拒绝三类，并保留处理轨迹。",
+    context: ["待处理 inbox 项", "来源渠道", "缺失上下文"],
+    checklist: ["审查来源", "决定处理动作", "转成可追踪 run"],
   },
   "memory-update": {
     title: "记忆更新",
@@ -179,6 +197,9 @@ const workflowRecipes = {
     description: "从最近工作中提炼决策、偏好、命令和风险。",
     prompt: "Draft a memory update from recent work. Categorize decisions, preferences, commands, architecture notes, people, and risks. Do not write memory without review.",
     panel: "memory",
+    outcome: "一组经过分类的记忆候选，等待审核后再写入项目记忆。",
+    context: ["最近会话", "决策和偏好", "风险或命令"],
+    checklist: ["分类候选", "检查重复和冲突", "审核后再写入"],
   },
 };
 
@@ -437,6 +458,7 @@ function runHomeAction(name) {
   if (!action) return;
   state.homeMode = name;
   renderHomeMode();
+  renderWorkflowBrief("");
   if (name === "council") {
     $("council-goal").value = action.prompt || "";
     switchPanel("council");
@@ -455,9 +477,45 @@ function selectWorkflowRecipe(id) {
   state.homeMode = `recipe:${id}`;
   $("home-task-input").value = recipe.prompt || "";
   renderHomeMode();
+  renderWorkflowBrief(id);
   switchPanel("home");
   $("home-task-input").focus();
   showToast(`${recipe.title} workflow ready.`);
+}
+
+function renderWorkflowBrief(id) {
+  const brief = $("workflow-brief");
+  if (!brief) return;
+  const recipe = workflowRecipes[id];
+  if (!recipe) {
+    brief.innerHTML = `<div>
+      <span class="board-kicker">Workflow brief</span>
+      <strong>选择一个工作流，Astria 会生成可执行简报。</strong>
+    </div>
+    <p>简报会把目标、上下文材料、关联面板和下一步检查点放在同一个工作包里。</p>`;
+    return;
+  }
+  const context = Array.isArray(recipe.context) ? recipe.context : [];
+  const checklist = Array.isArray(recipe.checklist) ? recipe.checklist : [];
+  const routeLabel = recipe.panel === "mcp" ? "打开星港" : recipe.panel === "memory" ? "打开星图" : recipe.panel === "council" ? "打开议会" : recipe.panel === "intake" ? "打开文件星舱" : recipe.panel === "inbox" ? "打开收件箱" : "打开关联面板";
+  brief.innerHTML = `<div class="workflow-brief-head">
+      <div>
+        <span class="board-kicker">${escapeHTML(recipe.status || "Workflow")}</span>
+        <strong>${escapeHTML(recipe.title || "Workflow brief")}</strong>
+      </div>
+      ${recipe.panel ? `<button type="button" data-panel="${escapeHTML(recipe.panel)}">${escapeHTML(routeLabel)}</button>` : ""}
+    </div>
+    <p>${escapeHTML(recipe.outcome || recipe.description || "")}</p>
+    <div class="workflow-brief-grid">
+      <div>
+        <span>Context orbit</span>
+        <ul>${context.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}</ul>
+      </div>
+      <div>
+        <span>Next checks</span>
+        <ul>${checklist.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}</ul>
+      </div>
+    </div>`;
 }
 
 function renderHomeMode() {

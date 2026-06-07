@@ -20,7 +20,8 @@
   "subtasks": [],
   "children": [
     "06-07-workflow-recipes-launcher",
-    "06-07-mission-control-run-board"
+    "06-07-mission-control-run-board",
+    "06-07-workflow-brief-context"
   ],
   "parent": null,
   "relatedFiles": [
@@ -29,6 +30,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes and Mission Control are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, and workflow briefs are complete.",
   "meta": {}
 }

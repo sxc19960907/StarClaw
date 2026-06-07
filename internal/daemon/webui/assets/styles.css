@@ -704,6 +704,11 @@ textarea:focus {
   background: #fff;
 }
 
+.recipe-grid button:focus-visible {
+  outline: 2px solid rgba(49, 92, 255, 0.28);
+  outline-offset: 2px;
+}
+
 .recipe-grid span {
   color: var(--accent);
   font-size: 11px;
@@ -720,6 +725,86 @@ textarea:focus {
 }
 
 .recipe-grid small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.workflow-brief {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(49, 92, 255, 0.07), transparent 38%),
+    rgba(255, 255, 255, 0.76);
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(23, 25, 35, 0.04);
+}
+
+.workflow-brief > div:first-child,
+.workflow-brief-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflow-brief strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.workflow-brief p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.workflow-brief button {
+  min-height: 32px;
+  border-color: rgba(49, 92, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(49, 92, 255, 0.07);
+  color: var(--accent);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.workflow-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workflow-brief-grid > div {
+  min-width: 0;
+  border: 1px solid rgba(23, 25, 35, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.66);
+  padding: 11px;
+}
+
+.workflow-brief-grid span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.workflow-brief-grid ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 17px;
+}
+
+.workflow-brief-grid li {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
@@ -2380,6 +2465,7 @@ textarea:focus {
   .mission-board,
   .constellation-cards,
   .recipe-grid,
+  .workflow-brief-grid,
   .two-column {
     grid-template-columns: 1fr;
   }
