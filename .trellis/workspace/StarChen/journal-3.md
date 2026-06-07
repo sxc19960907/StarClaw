@@ -151,6 +151,29 @@ Added a Home Approval Center that centralizes approvals, permission risk, diagno
 [OK] **Completed**
 
 
+## Session 115: Prompt Suggestion Dock
+
+**Date**: 2026-06-07
+**Task**: Prompt suggestion dock
+**Branch**: `main`
+
+### Summary
+
+Added a Home Prompt Suggestion Dock inspired by Kocoro prompt suggestions. It derives deterministic next prompts from runs, sessions, approvals, diagnostics, memory warnings, MCP state, inbox items, file intake, and selected workflow state, then seeds the Home mission composer.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 114: MCP Capability Inspector
 
 **Date**: 2026-06-07

@@ -1,0 +1,31 @@
+{
+  "id": "06-07-prompt-suggestion-dock",
+  "name": "06-07-prompt-suggestion-dock",
+  "title": "Prompt suggestion dock",
+  "description": "Add a Home prompt suggestion dock inspired by Kocoro prompt suggestions, deriving next prompts from current workspace state.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Home Prompt Suggestion Dock",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Home now includes a Prompt Suggestion Dock that deterministically derives next prompts from runs, sessions, approvals, diagnostics, memory, MCP, inbox, file intake, and selected workflow state.",
+  "meta": {}
+}

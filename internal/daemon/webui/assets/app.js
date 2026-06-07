@@ -643,6 +643,7 @@ function selectWorkflowRecipe(id) {
   renderWorkflowBrief(id);
   renderWorkflowStageRail();
   renderFocusBrief();
+  renderPromptSuggestionDock();
   switchPanel("home");
   $("home-task-input").focus();
   showToast(`${recipe.title} workflow ready.`);
@@ -661,6 +662,7 @@ function selectWorkflowStrategy(id) {
   renderStrategyMatrix();
   renderWorkflowStageRail();
   renderFocusBrief();
+  renderPromptSuggestionDock();
   switchPanel("home");
   $("home-task-input").focus();
   showToast(`${strategy.title} strategy ready.`);
@@ -1203,6 +1205,7 @@ function renderHomeActivity() {
   renderWorkspaceHub();
   renderKnowledgeCuration();
   renderToolDockInspector();
+  renderPromptSuggestionDock();
   renderWorkflowStageRail();
   renderFocusBrief();
   renderApprovalCenter();
@@ -1242,6 +1245,7 @@ function renderHomeDockedTools() {
   renderWorkspaceHub();
   renderKnowledgeCuration();
   renderToolDockInspector();
+  renderPromptSuggestionDock();
   renderFocusBrief();
   renderWorkspaceHealthStrip();
   renderApprovalCenter();
@@ -1464,6 +1468,140 @@ function renderToolDockInspector() {
     <span>${escapeHTML(item.label)}</span>
     <strong>${escapeHTML(item.title)}</strong>
     <small>${escapeHTML(item.detail)}</small>
+  </button>`).join("");
+}
+
+function promptSuggestionItems() {
+  const items = [];
+  const pendingApprovals = state.approvals.size;
+  const failedRun = state.runs.find((run) => runHealthGroup(run) === "failed");
+  const runningRun = state.runs.find((run) => runHealthGroup(run) === "running");
+  const latestRun = state.runs[0];
+  const latestSession = state.sessions[0];
+  const pendingInbox = state.inboxItems.filter((item) => String(item.status || "pending").toLowerCase() === "pending");
+  const diagnosticsStatus = state.diagnostics?.status || "";
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const mcpServers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  const enabledMCP = mcpServers.filter((server) => !server.disabled).length;
+  const recipe = state.homeMode.startsWith("recipe:")
+    ? workflowRecipes[state.homeMode.slice("recipe:".length)]
+    : null;
+  const strategy = workflowStrategies[state.workflowStrategy] || workflowStrategies.direct;
+
+  if (pendingApprovals) {
+    items.push({
+      tone: "attention",
+      label: "Approval",
+      title: `${pendingApprovals} request${pendingApprovals === 1 ? "" : "s"} waiting`,
+      reason: "Resolve human gates before launching more work.",
+      prompt: "Review the pending approval requests. For each one, explain the risk, the requested action, whether to approve or deny, and the safest follow-up.",
+    });
+  }
+  if (failedRun) {
+    items.push({
+      tone: "attention",
+      label: "Recovery",
+      title: failedRun.prompt || failedRun.id || "Failed run",
+      reason: "Turn the failed run into a concrete repair plan.",
+      prompt: `Analyze the failed run and propose the smallest safe recovery plan.\n\nRun: ${failedRun.id || "unknown"}\nPrompt: ${failedRun.prompt || ""}\nStatus: ${failedRun.status || "failed"}`,
+    });
+  } else if (runningRun) {
+    items.push({
+      tone: "active",
+      label: "Monitor",
+      title: runningRun.prompt || runningRun.id || "Active run",
+      reason: "Check whether the current mission needs intervention.",
+      prompt: `Review the active run and summarize current progress, risks, and the next operator decision.\n\nRun: ${runningRun.id || "unknown"}\nPrompt: ${runningRun.prompt || ""}`,
+    });
+  } else if (latestRun) {
+    items.push({
+      tone: "ready",
+      label: "Follow-up",
+      title: latestRun.prompt || latestRun.id || "Latest run",
+      reason: "Use the last result as the next working context.",
+      prompt: `Continue from the latest run. Summarize what was achieved, what remains uncertain, and the next concrete action.\n\nRun: ${latestRun.id || "unknown"}\nPrompt: ${latestRun.prompt || ""}\nStatus: ${latestRun.status || "unknown"}`,
+    });
+  }
+  if (memoryWarnings.length) {
+    items.push({
+      tone: "attention",
+      label: "Memory",
+      title: `${memoryWarnings.length} memory warning${memoryWarnings.length === 1 ? "" : "s"}`,
+      reason: "Clean durable context before depending on it.",
+      prompt: "Review memory taxonomy warnings and produce a safe memory cleanup plan. Do not write durable memory until the changes are reviewed.",
+    });
+  } else if (latestSession) {
+    items.push({
+      tone: "ready",
+      label: "Session",
+      title: latestSession.title || latestSession.id || "Recent session",
+      reason: "Resume from the freshest conversation context.",
+      prompt: `Resume the recent session and identify the next useful task.\n\nSession: ${latestSession.id || "unknown"}\nMessages: ${latestSession.msg_count ?? 0}`,
+    });
+  }
+  if (pendingInbox.length) {
+    items.push({
+      tone: "active",
+      label: "Inbox",
+      title: `${pendingInbox.length} inbound item${pendingInbox.length === 1 ? "" : "s"}`,
+      reason: "Convert external asks into reviewed work.",
+      prompt: "Triage pending inbox items. Group them into run now, needs context, and reject, then propose the next reviewed action.",
+    });
+  }
+  if (diagnosticsStatus && !["ok", "ready", "healthy"].includes(String(diagnosticsStatus).toLowerCase())) {
+    items.push({
+      tone: "attention",
+      label: "Readiness",
+      title: "Diagnostics need review",
+      reason: state.diagnostics?.summary || "Runtime readiness is not fully clear.",
+      prompt: "Review daemon diagnostics and list the smallest setup or configuration fixes needed before the next mission.",
+    });
+  }
+  if (!enabledMCP && state.config) {
+    items.push({
+      tone: "",
+      label: "Tools",
+      title: "Plan first MCP dock",
+      reason: "Tool-heavy workflows need a configured dock.",
+      prompt: "Suggest the first MCP dock for this workspace. Include the command or URL, required env keys, safety considerations, and a connection test plan.",
+    });
+  }
+  if (state.intakeResult) {
+    items.push({
+      tone: "ready",
+      label: "Files",
+      title: state.intakeResult.path || "Intake result",
+      reason: "Use extracted local context in the next task.",
+      prompt: `Summarize this file intake result and turn it into a concrete next action.\n\nPath: ${state.intakeResult.path || ""}\nMode: ${state.intakeResult.mode || ""}\n\n${String(state.intakeResult.content || "").slice(0, 1200)}`,
+    });
+  }
+  if (recipe) {
+    items.push({
+      tone: "active",
+      label: "Workflow",
+      title: recipe.title || "Selected workflow",
+      reason: recipe.outcome || recipe.description || "Continue the selected workflow.",
+      prompt: recipe.prompt || "Continue the selected Astria workflow and define the next check.",
+    });
+  } else {
+    items.push({
+      tone: "clear",
+      label: "Default",
+      title: `${strategy.title || "Quick Run"} next prompt`,
+      reason: strategy.outcome || strategy.description || "Start from the current strategy.",
+      prompt: strategy.prompt || "Continue the current Astria mission. Review the workspace state, identify the next useful action, and explain the validation needed.",
+    });
+  }
+  return items.slice(0, 6);
+}
+
+function renderPromptSuggestionDock() {
+  const target = $("prompt-suggestion-dock");
+  if (!target) return;
+  target.innerHTML = promptSuggestionItems().map((item) => `<button type="button" class="prompt-suggestion-item ${escapeHTML(item.tone || "")}" data-home-prompt="${escapeHTML(item.prompt || "")}">
+    <span>${escapeHTML(item.label)}</span>
+    <strong>${escapeHTML(item.title)}</strong>
+    <small>${escapeHTML(item.reason)}</small>
   </button>`).join("");
 }
 
@@ -1796,6 +1934,7 @@ function renderMemoryMapPreview() {
   setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
   renderWorkspaceHealthStrip();
   renderKnowledgeCuration();
+  renderPromptSuggestionDock();
   renderApprovalCenter();
   renderReviewQueue();
   const overview = $("memory-overview");
@@ -1961,6 +2100,7 @@ async function loadDiagnostics() {
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
     renderWorkspaceHealthStrip();
+    renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
     if ($("chat-output").querySelector(".empty-thread")) renderEmptyThread();
@@ -2000,6 +2140,7 @@ async function loadDiagnostics() {
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
   }
@@ -2039,6 +2180,7 @@ async function loadConfig() {
     renderConfigForm();
     renderMCPStarport();
     renderToolDockInspector();
+    renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
   } catch (error) {
@@ -2048,6 +2190,7 @@ async function loadConfig() {
     $("config-save-state").textContent = error.message;
     renderMCPStarport();
     renderToolDockInspector();
+    renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
   }
@@ -2477,6 +2620,7 @@ function renderInbox() {
   setText("manage-inbox-count", `${pending} pending`);
   setText("home-inbox-count", pending);
   renderManageCount();
+  renderPromptSuggestionDock();
   renderApprovalCenter();
   renderReviewQueue();
   setText("inbox-summary", state.inboxItems.length ? `${pending} pending · ${failed} failed · ${completed} completed` : "No inbound tasks yet.");
@@ -3398,6 +3542,7 @@ async function loadSessions(query = "") {
       renderMemoryMapPreview();
       renderWorkspaceHub();
       renderKnowledgeCuration();
+      renderPromptSuggestionDock();
       renderFocusBrief();
       return;
     }
@@ -3418,12 +3563,14 @@ async function loadSessions(query = "") {
     renderMemoryMapPreview();
     renderWorkspaceHub();
     renderKnowledgeCuration();
+    renderPromptSuggestionDock();
     renderFocusBrief();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
     renderWorkspaceHub();
     renderKnowledgeCuration();
+    renderPromptSuggestionDock();
     renderFocusBrief();
   }
 }
@@ -4743,6 +4890,7 @@ renderFileIntake();
 renderWorkspaceHub();
 renderKnowledgeCuration();
 renderToolDockInspector();
+renderPromptSuggestionDock();
 renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();

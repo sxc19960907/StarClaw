@@ -1314,6 +1314,92 @@ textarea:focus {
     rgba(49, 92, 255, 0.05);
 }
 
+.prompt-suggestion-dock {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.prompt-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.prompt-suggestion-item {
+  min-width: 0;
+  min-height: 108px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 90% 14%, rgba(49, 92, 255, 0.1), transparent 23%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.68));
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(23, 25, 35, 0.035);
+}
+
+.prompt-suggestion-item:hover {
+  border-color: rgba(49, 92, 255, 0.24);
+  background: #fff;
+}
+
+.prompt-suggestion-item span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.prompt-suggestion-item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-suggestion-item small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.prompt-suggestion-item.ready {
+  border-color: rgba(22, 125, 104, 0.2);
+  background:
+    radial-gradient(circle at 90% 14%, rgba(22, 125, 104, 0.13), transparent 23%),
+    rgba(22, 125, 104, 0.06);
+}
+
+.prompt-suggestion-item.active {
+  border-color: rgba(49, 92, 255, 0.22);
+  background:
+    radial-gradient(circle at 90% 14%, rgba(49, 92, 255, 0.14), transparent 23%),
+    rgba(49, 92, 255, 0.06);
+}
+
+.prompt-suggestion-item.attention {
+  border-color: rgba(214, 123, 42, 0.24);
+  background:
+    radial-gradient(circle at 90% 14%, rgba(214, 123, 42, 0.14), transparent 23%),
+    rgba(214, 123, 42, 0.08);
+}
+
+.prompt-suggestion-item.clear {
+  border-color: rgba(49, 92, 255, 0.18);
+  background:
+    radial-gradient(circle at 90% 14%, rgba(49, 92, 255, 0.12), transparent 23%),
+    rgba(49, 92, 255, 0.05);
+}
+
 .focus-brief {
   width: min(1034px, 100%);
   display: grid;
@@ -3339,6 +3425,7 @@ textarea:focus {
   .workspace-hub-grid,
   .knowledge-curation-grid,
   .tool-dock-grid,
+  .prompt-suggestion-grid,
   .approval-center-grid,
   .review-queue-list,
   .workspace-health-grid,

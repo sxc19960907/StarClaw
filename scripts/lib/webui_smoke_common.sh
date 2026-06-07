@@ -347,6 +347,9 @@ async function boot(page) {
   await page.locator("#panel-runs.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await page.locator("#prompt-suggestion-dock").getByRole("button", { name: /Research Brief next prompt|Default/ }).click();
+  const suggestionPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
+  assert(suggestionPrompt.includes("Prepare a research brief"), "prompt suggestion should seed home prompt");
   await page.locator("#workflow-recipes").getByRole("button", { name: /代码评审/ }).click();
   const reviewPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
   assert(reviewPrompt.includes("Review the current working tree"), "code review recipe should prefill home prompt");
@@ -398,7 +401,7 @@ async function boot(page) {
     await page.screenshot({ path: homeScreenshot, fullPage: true });
     assert(fs.existsSync(homeScreenshot), "home screenshot was not written");
   }
-  await page.getByRole("button", { name: "Chat" }).click();
+  await page.getByRole("button", { name: "Chat", exact: true }).click();
   await page.locator("#panel-chat").waitFor();
   await page.getByPlaceholder("Message Astria").waitFor();
   await page.getByRole("button", { name: "Send" }).waitFor();
