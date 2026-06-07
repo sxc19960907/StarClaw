@@ -1201,6 +1201,7 @@ function renderHomeActivity() {
   setText("home-orbit-count", state.runs.length);
   renderHomeLatestRun();
   renderWorkspaceHub();
+  renderKnowledgeCuration();
   renderWorkflowStageRail();
   renderFocusBrief();
   renderApprovalCenter();
@@ -1238,6 +1239,7 @@ function renderHomeDockedTools() {
   setText("home-inbox-count", (inboxStatusCounts().pending || 0));
   setText("home-intake-count", state.intakeResult ? "ready" : "local");
   renderWorkspaceHub();
+  renderKnowledgeCuration();
   renderFocusBrief();
   renderWorkspaceHealthStrip();
   renderApprovalCenter();
@@ -1308,6 +1310,90 @@ function renderWorkspaceHub() {
         : `data-panel="${escapeHTML(item.panel)}"`;
     return `<button type="button" class="workspace-hub-card ${escapeHTML(item.tone)}" ${actionAttr}>
       <span>${escapeHTML(item.kicker)}</span>
+      <strong>${escapeHTML(item.title)}</strong>
+      <small>${escapeHTML(item.detail)}</small>
+    </button>`;
+  }).join("");
+}
+
+function knowledgeCurationItems() {
+  const items = [];
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const favoriteSession = state.sessions.find((session) => session.favorite) || state.sessions[0];
+  const completedRun = state.runs.find((run) => runHealthGroup(run) === "completed") || state.runs[0];
+  if (memoryWarnings.length) {
+    items.push({
+      tone: "attention",
+      label: "Warnings",
+      title: `${memoryWarnings.length} taxonomy warning${memoryWarnings.length === 1 ? "" : "s"}`,
+      detail: String(memoryWarnings[0] || "Review memory taxonomy before adding more context."),
+      panel: "memory",
+    });
+  }
+  if (memoryFacts.length) {
+    const fact = memoryFacts[0];
+    items.push({
+      tone: "ready",
+      label: "Facts",
+      title: `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"}`,
+      detail: fact?.text || "Review classified project knowledge.",
+      panel: "memory",
+    });
+  }
+  if (memoryEntries.length) {
+    const primary = memoryEntries.find((entry) => entry.primary) || memoryEntries[0];
+    items.push({
+      tone: "ready",
+      label: "Sources",
+      title: `${memoryEntries.length} memory source${memoryEntries.length === 1 ? "" : "s"}`,
+      detail: primary?.name ? `${primary.name} · ${formatBytes(primary.size || 0)}` : "Open Memory Map to inspect sources.",
+      panel: "memory",
+    });
+  }
+  if (favoriteSession) {
+    items.push({
+      tone: favoriteSession.favorite ? "ready" : "",
+      label: favoriteSession.favorite ? "Favorite session" : "Recent session",
+      title: favoriteSession.title || favoriteSession.id || "Session",
+      detail: `${favoriteSession.msg_count ?? 0} messages ready for curation.`,
+      sessionID: favoriteSession.id || "",
+    });
+  }
+  if (completedRun) {
+    items.push({
+      tone: runHealthGroup(completedRun) === "failed" ? "attention" : "active",
+      label: runHealthGroup(completedRun) === "completed" ? "Completed run" : "Recent run",
+      title: completedRun.prompt || completedRun.id || "Run",
+      detail: `${completedRun.status || "unknown"} · ${completedRun.agent || "default"}`,
+      runID: completedRun.id || "",
+    });
+  }
+  if (!items.length) {
+    items.push({
+      tone: "clear",
+      label: "Low context",
+      title: "暂无知识候选",
+      detail: "Run a task, favorite a session, or open Memory Capture to create reviewable context.",
+      panel: "memory",
+    });
+  }
+  return items.slice(0, 6);
+}
+
+function renderKnowledgeCuration() {
+  const target = $("knowledge-curation-grid");
+  if (!target) return;
+  const items = knowledgeCurationItems();
+  target.innerHTML = items.map((item) => {
+    const actionAttr = item.sessionID
+      ? `data-session-resume="${escapeHTML(item.sessionID)}"`
+      : item.runID
+        ? `data-run-open="${escapeHTML(item.runID)}"`
+        : `data-panel="${escapeHTML(item.panel || "memory")}"`;
+    return `<button type="button" class="knowledge-curation-item ${escapeHTML(item.tone || "")}" ${actionAttr}>
+      <span>${escapeHTML(item.label)}</span>
       <strong>${escapeHTML(item.title)}</strong>
       <small>${escapeHTML(item.detail)}</small>
     </button>`;
@@ -1642,6 +1728,7 @@ function renderMemoryMapPreview() {
   renderManageCount();
   setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
   renderWorkspaceHealthStrip();
+  renderKnowledgeCuration();
   renderApprovalCenter();
   renderReviewQueue();
   const overview = $("memory-overview");
@@ -3241,6 +3328,7 @@ async function loadSessions(query = "") {
       renderEmpty(list, query ? "No matching sessions." : "No sessions saved.");
       renderMemoryMapPreview();
       renderWorkspaceHub();
+      renderKnowledgeCuration();
       renderFocusBrief();
       return;
     }
@@ -3260,11 +3348,13 @@ async function loadSessions(query = "") {
     updateActiveSessionLabel();
     renderMemoryMapPreview();
     renderWorkspaceHub();
+    renderKnowledgeCuration();
     renderFocusBrief();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
     renderWorkspaceHub();
+    renderKnowledgeCuration();
     renderFocusBrief();
   }
 }
@@ -4582,6 +4672,7 @@ renderHomeMode();
 renderStrategyMatrix();
 renderFileIntake();
 renderWorkspaceHub();
+renderKnowledgeCuration();
 renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();

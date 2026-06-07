@@ -1,0 +1,31 @@
+{
+  "id": "06-07-knowledge-curation-console",
+  "name": "06-07-knowledge-curation-console",
+  "title": "Knowledge curation console",
+  "description": "Add an Astria knowledge curation console that turns runs, sessions, memory facts, and warnings into reviewable long-term context actions.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria Home Knowledge Curation Console",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-07",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Home now includes a Knowledge Curation console that aggregates memory warnings, facts, sources, sessions, and runs into reviewable context actions.",
+  "meta": {}
+}

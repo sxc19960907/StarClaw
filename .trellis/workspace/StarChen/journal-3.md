@@ -151,6 +151,29 @@ Added a Home Approval Center that centralizes approvals, permission risk, diagno
 [OK] **Completed**
 
 
+## Session 113: Knowledge Curation Console
+
+**Date**: 2026-06-07
+**Task**: Knowledge curation console
+**Branch**: `main`
+
+### Summary
+
+Added a Home Knowledge Curation console that aggregates memory warnings, facts, sources, sessions, and runs into reviewable long-term context actions.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 107: Focus Brief Current Mission
 
 **Date**: 2026-06-07

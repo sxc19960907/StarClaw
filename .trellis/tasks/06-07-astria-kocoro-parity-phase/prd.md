@@ -28,6 +28,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-06-07-strategy-matrix-workflow-modes` | Add an Astria Strategy Matrix for choosing Kocoro/Shannon-style execution modes before launch. |
 | P1 | `06-07-06-07-run-timeline-time-travel` | Add a Mission Control Time Travel timeline for replay-like run review. |
 | P1 | `06-07-06-07-approval-center-control-console` | Add an Approval Center for human-in-the-loop risks, recovery, and policy actions. |
+| P1 | `06-07-06-07-knowledge-curation-console` | Add a Knowledge Curation console for reviewable long-term memory candidates. |
 
 ## Acceptance Criteria
 
