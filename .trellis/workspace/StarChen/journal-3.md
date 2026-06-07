@@ -36,6 +36,29 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 108: Workspace Health Strip
+
+**Date**: 2026-06-07
+**Task**: Workspace health strip
+**Branch**: `main`
+
+### Summary
+
+Added a Home Workspace Health Strip for diagnostics, permissions, MCP, and memory readiness.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 107: Focus Brief Current Mission
 
 **Date**: 2026-06-07

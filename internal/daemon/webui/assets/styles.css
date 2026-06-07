@@ -1098,6 +1098,69 @@ textarea:focus {
   font-weight: 700;
 }
 
+.workspace-health {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workspace-health-item {
+  min-width: 0;
+  min-height: 82px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 11px;
+  text-align: left;
+}
+
+.workspace-health-item span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.workspace-health-item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-health-item small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-health-item.ready {
+  border-color: rgba(22, 125, 104, 0.2);
+  background: rgba(22, 125, 104, 0.06);
+}
+
+.workspace-health-item.warning {
+  border-color: rgba(214, 123, 42, 0.22);
+  background: rgba(214, 123, 42, 0.08);
+}
+
+.workspace-health-item.attention {
+  border-color: rgba(164, 61, 58, 0.22);
+  background: rgba(164, 61, 58, 0.07);
+}
+
 .constellation-cards {
   width: min(1064px, 100%);
   display: grid;
@@ -2779,6 +2842,7 @@ textarea:focus {
   .constellation-cards,
   .recipe-grid,
   .workspace-hub-grid,
+  .workspace-health-grid,
   .workflow-brief-grid,
   .two-column {
     grid-template-columns: 1fr;

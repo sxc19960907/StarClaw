@@ -26,7 +26,8 @@
     "06-07-workflow-stage-continuity",
     "06-07-command-center-palette",
     "06-07-recent-work-resume-rail",
-    "06-07-focus-brief-current-mission"
+    "06-07-focus-brief-current-mission",
+    "06-07-workspace-health-strip"
   ],
   "parent": null,
   "relatedFiles": [
@@ -35,6 +36,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, and Focus Brief are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, and Workspace Health Strip are complete.",
   "meta": {}
 }

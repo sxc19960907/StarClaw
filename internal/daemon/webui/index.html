@@ -273,6 +273,19 @@
               <p>选择工作流或恢复最近工作后，这里会汇总阶段、会话、运行和下一步动作。</p>
             </div>
 
+            <div class="workspace-health" aria-label="Workspace health strip">
+              <div class="section-heading compact">
+                <span>Workspace Health</span>
+                <strong>运行准备状态</strong>
+              </div>
+              <div class="workspace-health-grid" id="workspace-health-strip">
+                <button type="button" data-panel="diagnostics"><span>Diagnostics</span><strong>Checking</strong><small>Runtime readiness</small></button>
+                <button type="button" data-panel="permissions"><span>Permissions</span><strong>Policy</strong><small>Tool guardrails</small></button>
+                <button type="button" data-panel="mcp"><span>MCP</span><strong>Docks</strong><small>Tool connections</small></button>
+                <button type="button" data-panel="memory"><span>Memory</span><strong>Context</strong><small>Durable facts</small></button>
+              </div>
+            </div>
+
             <div class="constellation-cards">
               <button class="constellation-card" type="button" data-panel="memory">
                 <span>Memory Map</span>

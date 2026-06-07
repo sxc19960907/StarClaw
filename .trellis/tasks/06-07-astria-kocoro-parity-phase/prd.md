@@ -23,6 +23,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-command-center-palette` | Add an app-level Command Center for workflows, panel jumps, and workspace actions. |
 | P1 | `06-07-recent-work-resume-rail` | Make recent sessions and runs resumable from Command Center and Home Workspace Hub. |
 | P1 | `06-07-focus-brief-current-mission` | Add a Home Focus Brief that summarizes current mission context and next action. |
+| P1 | `06-07-workspace-health-strip` | Add a Home readiness strip for diagnostics, permissions, MCP, and memory health. |
 
 ## Acceptance Criteria
 

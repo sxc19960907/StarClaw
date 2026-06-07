@@ -731,6 +731,52 @@ function renderFocusBrief() {
     </div>`;
 }
 
+function renderWorkspaceHealthStrip() {
+  const strip = $("workspace-health-strip");
+  if (!strip) return;
+  const diagnosticsStatus = state.diagnostics?.status || "unknown";
+  const permissionsConfigured = state.permissions?.configured === true;
+  const mcpServers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  const enabledMCP = mcpServers.filter((server) => !server.disabled).length;
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const items = [
+    {
+      panel: "diagnostics",
+      tone: diagnosticsStatus === "ready" ? "ready" : diagnosticsStatus === "warning" ? "warning" : diagnosticsStatus === "unknown" ? "" : "attention",
+      label: "Diagnostics",
+      value: statusLabel(diagnosticsStatus),
+      detail: state.diagnostics?.summary || "Runtime readiness",
+    },
+    {
+      panel: "permissions",
+      tone: permissionsConfigured ? "ready" : "warning",
+      label: "Permissions",
+      value: permissionsConfigured ? "Configured" : "Defaults",
+      detail: permissionsConfigured ? "Explicit tool policy" : "Built-in guardrails",
+    },
+    {
+      panel: "mcp",
+      tone: enabledMCP ? "ready" : mcpServers.length ? "warning" : "",
+      label: "MCP",
+      value: enabledMCP ? `${enabledMCP} enabled` : mcpServers.length ? "Disabled" : "No docks",
+      detail: "Tool connections",
+    },
+    {
+      panel: "memory",
+      tone: memoryWarnings.length ? "attention" : memoryFacts.length ? "ready" : "",
+      label: "Memory",
+      value: memoryWarnings.length ? `${memoryWarnings.length} warnings` : memoryFacts.length ? `${memoryFacts.length} facts` : "Preview",
+      detail: memoryWarnings.length ? "Review taxonomy" : "Durable context",
+    },
+  ];
+  strip.innerHTML = items.map((item) => `<button type="button" class="workspace-health-item ${escapeHTML(item.tone)}" data-panel="${escapeHTML(item.panel)}">
+    <span>${escapeHTML(item.label)}</span>
+    <strong>${escapeHTML(item.value)}</strong>
+    <small>${escapeHTML(item.detail)}</small>
+  </button>`).join("");
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   const source = new EventSource("/events");
@@ -835,6 +881,7 @@ function renderHomeDockedTools() {
   setText("home-intake-count", state.intakeResult ? "ready" : "local");
   renderWorkspaceHub();
   renderFocusBrief();
+  renderWorkspaceHealthStrip();
 }
 
 function renderWorkspaceHub() {
@@ -1234,6 +1281,7 @@ function renderMemoryMapPreview() {
   setText("manage-memory-count", `${count} ${count === 1 ? "source" : "sources"}`);
   renderManageCount();
   setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
+  renderWorkspaceHealthStrip();
   const overview = $("memory-overview");
   if (overview) {
     overview.innerHTML = `<strong>${escapeHTML(memoryFacts.length ? `${memoryFacts.length} facts` : memoryEntries.length ? `${memoryEntries.length} memory files` : count ? "Sources ready" : "Preview")}</strong><span>${escapeHTML(memoryWarnings.length ? `${memoryWarnings.length} taxonomy warning${memoryWarnings.length === 1 ? "" : "s"} need review before adding more memory.` : state.memory?.memory_dir || (count ? "Draft reviewable memory from recent work before writing MEMORY.md." : "Favorite sessions or complete runs to create stronger memory candidates."))}</span>`;
@@ -1396,6 +1444,7 @@ async function loadDiagnostics() {
     summary.textContent = diagnostics.summary || "Runtime readiness checks.";
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
+    renderWorkspaceHealthStrip();
     if ($("chat-output").querySelector(".empty-thread")) renderEmptyThread();
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
     const launchRows = diagnosticsLaunchRows(diagnostics);
@@ -1432,6 +1481,7 @@ async function loadDiagnostics() {
     overview.innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
+    renderWorkspaceHealthStrip();
   }
 }
 
@@ -1555,6 +1605,7 @@ async function loadPermissions() {
     state.permissions = data.permissions || {};
     fillPermissionsForm();
     renderPermissions();
+    renderWorkspaceHealthStrip();
   } catch (error) {
     state.permissions = null;
     setText("settings-permissions-state", "Error");
@@ -1562,6 +1613,7 @@ async function loadPermissions() {
     $("permissions-save-state").textContent = "Error";
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
+    renderWorkspaceHealthStrip();
   }
 }
 
@@ -4076,5 +4128,6 @@ renderHomeMode();
 renderFileIntake();
 renderWorkspaceHub();
 renderFocusBrief();
+renderWorkspaceHealthStrip();
 connectEventStream();
 refreshAll();
