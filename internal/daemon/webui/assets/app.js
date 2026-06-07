@@ -33,6 +33,7 @@ const state = {
   approvals: new Map(),
   eventSource: null,
   homeMode: "general",
+  workflowStrategy: "direct",
   workflowStage: "draft",
   workflowStageLabel: "General mission",
   memoryCategory: "all",
@@ -202,6 +203,69 @@ const workflowRecipes = {
     outcome: "一组经过分类的记忆候选，等待审核后再写入项目记忆。",
     context: ["最近会话", "决策和偏好", "风险或命令"],
     checklist: ["分类候选", "检查重复和冲突", "审核后再写入"],
+  },
+};
+
+const workflowStrategies = {
+  direct: {
+    title: "Quick Run",
+    status: "Fast",
+    description: "最短路径进入本地执行，适合范围清楚、风险较低的任务。",
+    prompt: "Execute this task directly in the current workspace. Keep the scope tight, report the changed files, and run the relevant validation.",
+    panel: "runs",
+    stageLabel: "Quick local execution",
+    outcome: "Astria 直接推进任务，并在运行记录中保留结果。",
+    checks: ["确认范围", "执行最小改动", "验证并汇报"],
+  },
+  research: {
+    title: "Research Brief",
+    status: "Deep",
+    description: "先做证据链、方案取舍和上下文归纳，再进入执行。",
+    prompt: "Prepare a research brief before implementation. Separate facts, assumptions, options, tradeoffs, and recommended next steps.",
+    panel: "runs",
+    stageLabel: "Research before execution",
+    outcome: "先形成可审查的研究简报，减少盲目执行。",
+    checks: ["列出证据", "标注假设", "给出建议路径"],
+  },
+  council: {
+    title: "Agent Council",
+    status: "Swarm",
+    description: "把复杂任务拆给规划、调研和评审角色，再合并成执行方案。",
+    prompt: "Coordinate this task through multiple named agents. Ask planner, researcher, and reviewer roles for input, then synthesize a concrete plan.",
+    panel: "council",
+    stageLabel: "Council strategy",
+    outcome: "多智能体先分工评估，再收敛到一个可执行方案。",
+    checks: ["拆分角色", "合并观点", "保留评审意见"],
+  },
+  guarded: {
+    title: "Human Approval",
+    status: "Gate",
+    description: "高风险命令、文件写入或外部动作先进入人工确认路径。",
+    prompt: "Plan this task with explicit approval gates. Identify risky commands, file writes, network calls, and rollback points before acting.",
+    panel: "permissions",
+    stageLabel: "Guarded approval path",
+    outcome: "先标记风险动作和回滚点，再推进需要授权的步骤。",
+    checks: ["识别风险", "设置审批点", "准备回滚"],
+  },
+  memory: {
+    title: "Memory Capture",
+    status: "Recall",
+    description: "先从最近工作中提炼项目事实、偏好和风险，再继续任务。",
+    prompt: "Draft a memory capture before continuing. Extract decisions, preferences, commands, risks, and project facts without writing durable memory until reviewed.",
+    panel: "memory",
+    stageLabel: "Memory capture strategy",
+    outcome: "把上下文沉淀成可审核记忆，降低后续重复解释。",
+    checks: ["提炼事实", "检查冲突", "审核后写入"],
+  },
+  tooling: {
+    title: "MCP Tooling",
+    status: "Tools",
+    description: "先检查 MCP dock、外部工具和连接状态，再启动工具密集任务。",
+    prompt: "Review the required tools for this task. Check MCP docks, missing environment keys, safety boundaries, and a minimal connection test plan.",
+    panel: "mcp",
+    stageLabel: "Tooling readiness",
+    outcome: "先确认工具 dock 和权限边界，再进入执行。",
+    checks: ["检查 dock", "确认 env", "测试连接"],
   },
 };
 
@@ -584,6 +648,24 @@ function selectWorkflowRecipe(id) {
   showToast(`${recipe.title} workflow ready.`);
 }
 
+function selectWorkflowStrategy(id) {
+  const strategy = workflowStrategies[id];
+  if (!strategy) return;
+  state.workflowStrategy = id;
+  state.homeMode = `strategy:${id}`;
+  state.workflowStage = "draft";
+  state.workflowStageLabel = strategy.stageLabel || strategy.title || "Strategy draft";
+  $("home-task-input").value = strategy.prompt || "";
+  renderHomeMode();
+  renderWorkflowBrief("");
+  renderStrategyMatrix();
+  renderWorkflowStageRail();
+  renderFocusBrief();
+  switchPanel("home");
+  $("home-task-input").focus();
+  showToast(`${strategy.title} strategy ready.`);
+}
+
 function renderWorkflowBrief(id) {
   const brief = $("workflow-brief");
   if (!brief) return;
@@ -619,9 +701,40 @@ function renderWorkflowBrief(id) {
     </div>`;
 }
 
+function renderStrategyMatrix() {
+  const matrix = $("strategy-matrix");
+  if (!matrix) return;
+  matrix.innerHTML = Object.entries(workflowStrategies).map(([id, strategy]) => {
+    const active = state.workflowStrategy === id;
+    return `<button type="button" class="strategy-card ${active ? "active" : ""}" data-strategy="${escapeHTML(id)}">
+      <span>${escapeHTML(strategy.status || "Strategy")}</span>
+      <strong>${escapeHTML(strategy.title || id)}</strong>
+      <small>${escapeHTML(strategy.description || "")}</small>
+    </button>`;
+  }).join("");
+  const brief = $("strategy-brief");
+  if (!brief) return;
+  const strategy = workflowStrategies[state.workflowStrategy] || workflowStrategies.direct;
+  const checks = Array.isArray(strategy.checks) ? strategy.checks : [];
+  const routeLabel = strategy.panel === "mcp" ? "打开星港" : strategy.panel === "memory" ? "打开星图" : strategy.panel === "council" ? "打开议会" : strategy.panel === "permissions" ? "打开权限" : strategy.panel === "runs" ? "打开运行" : "打开面板";
+  brief.innerHTML = `<div class="strategy-brief-head">
+      <div>
+        <span class="board-kicker">${escapeHTML(strategy.status || "Strategy")}</span>
+        <strong>${escapeHTML(strategy.title || "Strategy")}</strong>
+      </div>
+      ${strategy.panel ? `<button type="button" data-panel="${escapeHTML(strategy.panel)}">${escapeHTML(routeLabel)}</button>` : ""}
+    </div>
+    <p>${escapeHTML(strategy.outcome || strategy.description || "")}</p>
+    <div class="strategy-checks">
+      ${checks.map((check) => `<span>${escapeHTML(check)}</span>`).join("")}
+    </div>`;
+}
+
 function renderHomeMode() {
   const action = state.homeMode.startsWith("recipe:")
     ? workflowRecipes[state.homeMode.slice("recipe:".length)]
+    : state.homeMode.startsWith("strategy:")
+      ? workflowStrategies[state.homeMode.slice("strategy:".length)]
     : homeActions[state.homeMode];
   const mode = action || {
     title: "General mission",
@@ -636,7 +749,7 @@ function renderHomeMode() {
   if (mode.panel) {
     route.hidden = false;
     route.dataset.panel = mode.panel;
-    route.textContent = mode.panel === "mcp" ? "打开星港" : mode.panel === "memory" ? "打开星图" : mode.panel === "council" ? "打开议会" : mode.panel === "intake" ? "打开文件星舱" : mode.panel === "inbox" ? "打开收件箱" : "打开面板";
+    route.textContent = mode.panel === "mcp" ? "打开星港" : mode.panel === "memory" ? "打开星图" : mode.panel === "council" ? "打开议会" : mode.panel === "intake" ? "打开文件星舱" : mode.panel === "inbox" ? "打开收件箱" : mode.panel === "permissions" ? "打开权限" : mode.panel === "runs" ? "打开运行" : "打开面板";
   } else {
     route.hidden = true;
     delete route.dataset.panel;
@@ -695,14 +808,15 @@ function renderFocusBrief() {
   const recipe = state.homeMode.startsWith("recipe:")
     ? workflowRecipes[state.homeMode.slice("recipe:".length)]
     : null;
+  const strategy = workflowStrategies[state.workflowStrategy] || workflowStrategies.direct;
   const latestSession = state.sessions[0];
   const latestRun = state.runs[0];
-  const title = recipe?.title || stage.label || "General mission";
+  const title = recipe?.title || stage.label || strategy.title || "General mission";
   const context = latestRun
     ? `${latestRun.status || "unknown"} run · ${latestRun.agent || "default"}`
     : latestSession
       ? `${latestSession.msg_count ?? 0} message session`
-      : "No recent work yet";
+      : `${strategy.title || "Strategy"} · No recent work yet`;
   const next = stage.stage === "memory"
     ? "Review memory candidates"
     : stage.stage === "review"
@@ -721,6 +835,7 @@ function renderFocusBrief() {
     </div>
     <div class="focus-brief-grid">
       <span>Context</span><strong>${escapeHTML(context)}</strong>
+      <span>Strategy</span><strong>${escapeHTML(strategy.title || "Quick Run")}</strong>
       <span>Session</span><strong>${escapeHTML(latestSession?.title || latestSession?.id || "No session")}</strong>
       <span>Run</span><strong>${escapeHTML(latestRun?.prompt || latestRun?.id || "No run")}</strong>
     </div>
@@ -4066,6 +4181,12 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const strategy = event.target.closest("[data-strategy]");
+  if (strategy) {
+    selectWorkflowStrategy(strategy.dataset.strategy);
+    return;
+  }
+
   const recipe = event.target.closest("[data-recipe]");
   if (recipe) {
     selectWorkflowRecipe(recipe.dataset.recipe);
@@ -4268,6 +4389,7 @@ $("session-search-clear").addEventListener("click", () => {
 });
 
 renderHomeMode();
+renderStrategyMatrix();
 renderFileIntake();
 renderWorkspaceHub();
 renderFocusBrief();

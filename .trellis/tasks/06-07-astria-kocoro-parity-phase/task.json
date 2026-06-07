@@ -28,7 +28,8 @@
     "06-07-recent-work-resume-rail",
     "06-07-focus-brief-current-mission",
     "06-07-workspace-health-strip",
-    "06-07-06-07-review-queue-next-actions"
+    "06-07-06-07-review-queue-next-actions",
+    "06-07-06-07-strategy-matrix-workflow-modes"
   ],
   "parent": null,
   "relatedFiles": [
@@ -37,6 +38,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, and Review Queue are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, and Strategy Matrix are complete.",
   "meta": {}
 }

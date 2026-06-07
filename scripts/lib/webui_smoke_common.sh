@@ -338,6 +338,15 @@ async function boot(page) {
   await page.getByLabel("Command search").fill("review");
   await page.locator("#command-center-list").getByRole("button", { name: /代码评审/ }).click();
   await page.locator("#panel-home.active").waitFor();
+  await page.locator("#strategy-matrix").getByRole("button", { name: /Research Brief/ }).click();
+  const strategyPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
+  assert(strategyPrompt.includes("Prepare a research brief"), "research strategy should prefill home prompt");
+  await page.locator("#strategy-brief .strategy-brief-head").getByText("Research Brief", { exact: true }).waitFor();
+  await page.locator("#focus-brief").getByText("Strategy", { exact: true }).waitFor();
+  await page.locator("#strategy-brief").getByRole("button", { name: "打开运行" }).click();
+  await page.locator("#panel-runs.active").waitFor();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.locator("#panel-home.active").waitFor();
   await page.locator("#workflow-recipes").getByRole("button", { name: /代码评审/ }).click();
   const reviewPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
   assert(reviewPrompt.includes("Review the current working tree"), "code review recipe should prefill home prompt");

@@ -702,6 +702,138 @@ textarea:focus {
   background: #fff;
 }
 
+.strategy-matrix {
+  width: min(1034px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.strategy-card {
+  position: relative;
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(49, 92, 255, 0.12), transparent 22%),
+    rgba(255, 255, 255, 0.74);
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(23, 25, 35, 0.035);
+}
+
+.strategy-card::after {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(49, 92, 255, 0.34);
+  box-shadow: -18px -22px 0 rgba(22, 125, 104, 0.22);
+  content: "";
+}
+
+.strategy-card:hover,
+.strategy-card.active {
+  border-color: rgba(49, 92, 255, 0.28);
+  background:
+    radial-gradient(circle at 88% 18%, rgba(49, 92, 255, 0.16), transparent 24%),
+    #fff;
+}
+
+.strategy-card.active {
+  box-shadow: inset 0 0 0 1px rgba(49, 92, 255, 0.14), 0 10px 22px rgba(23, 25, 35, 0.045);
+}
+
+.strategy-card span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.strategy-card strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategy-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.strategy-brief {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(22, 125, 104, 0.08), transparent 36%),
+    rgba(255, 255, 255, 0.72);
+  padding: 13px;
+}
+
+.strategy-brief-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.strategy-brief strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.strategy-brief p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.strategy-brief button {
+  min-height: 32px;
+  border-color: rgba(49, 92, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(49, 92, 255, 0.07);
+  color: var(--accent);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.strategy-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.strategy-checks span {
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--muted);
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .workflow-recipes {
   width: min(1034px, 100%);
   display: grid;
@@ -2924,6 +3056,7 @@ textarea:focus {
   .activity-strip,
   .mission-board,
   .constellation-cards,
+  .strategy-grid,
   .recipe-grid,
   .workspace-hub-grid,
   .review-queue-list,

@@ -82,6 +82,29 @@ Added a Home Review Queue that aggregates actionable items from runs, inbox, mem
 [OK] **Completed**
 
 
+## Session 110: Strategy Matrix Workflow Modes
+
+**Date**: 2026-06-07
+**Task**: Strategy matrix workflow modes
+**Branch**: `main`
+
+### Summary
+
+Added a Home Strategy Matrix for Quick Run, Research Brief, Agent Council, Human Approval, Memory Capture, and MCP Tooling modes.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 107: Focus Brief Current Mission
 
 **Date**: 2026-06-07

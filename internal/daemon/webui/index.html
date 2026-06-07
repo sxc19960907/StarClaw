@@ -190,6 +190,28 @@
               <button type="button" data-home-action="mcp">MCP</button>
             </div>
 
+            <div class="strategy-matrix" aria-label="Strategy matrix">
+              <div class="section-heading compact">
+                <span>Strategy Matrix</span>
+                <strong>选择执行策略</strong>
+              </div>
+              <div class="strategy-grid" id="strategy-matrix">
+                <button type="button" data-strategy="direct"><span>Fast</span><strong>Quick Run</strong><small>直接进入本地执行。</small></button>
+                <button type="button" data-strategy="research"><span>Deep</span><strong>Research Brief</strong><small>先形成证据链和判断。</small></button>
+                <button type="button" data-strategy="council"><span>Swarm</span><strong>Agent Council</strong><small>拆给多智能体协作。</small></button>
+                <button type="button" data-strategy="guarded"><span>Gate</span><strong>Human Approval</strong><small>高风险动作先排队审查。</small></button>
+                <button type="button" data-strategy="memory"><span>Recall</span><strong>Memory Capture</strong><small>先沉淀上下文再继续。</small></button>
+                <button type="button" data-strategy="tooling"><span>Tools</span><strong>MCP Tooling</strong><small>检查工具 dock 和能力。</small></button>
+              </div>
+              <div class="strategy-brief" id="strategy-brief" aria-live="polite">
+                <div>
+                  <span class="board-kicker">Strategy</span>
+                  <strong>默认使用 Quick Run。</strong>
+                </div>
+                <p>策略会决定 Astria 如何组织上下文、审批、工具和多智能体协作。</p>
+              </div>
+            </div>
+
             <div class="workflow-recipes" aria-label="Workflow recipes">
               <div class="section-heading compact">
                 <span>Workflow Recipes</span>
