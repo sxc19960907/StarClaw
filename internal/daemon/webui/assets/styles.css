@@ -1885,6 +1885,78 @@ textarea:focus {
   font-weight: 500;
 }
 
+.mission-control-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mission-control-card {
+  min-height: 76px;
+  display: grid;
+  gap: 4px;
+  border-color: rgba(23, 25, 35, 0.08);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+  text-align: left;
+}
+
+.mission-control-card:hover {
+  border-color: rgba(49, 92, 255, 0.22);
+}
+
+.mission-control-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mission-control-card strong {
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.mission-control-card small {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.mission-control-card.active {
+  background: linear-gradient(90deg, rgba(49, 92, 255, 0.06), transparent), var(--surface);
+}
+
+.mission-control-card.attention {
+  background: #fff8ef;
+}
+
+.mission-control-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+
+.mission-control-filters button {
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.mission-control-filters button.active {
+  border-color: rgba(49, 92, 255, 0.28);
+  background: rgba(49, 92, 255, 0.08);
+  color: var(--accent);
+}
+
+.mission-control-filters span {
+  color: var(--faint);
+}
+
 .run-status.completed {
   color: var(--ok);
   border-color: rgba(22, 125, 104, 0.28);
@@ -2313,6 +2385,10 @@ textarea:focus {
   }
 
   .tool-orbit-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mission-control-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

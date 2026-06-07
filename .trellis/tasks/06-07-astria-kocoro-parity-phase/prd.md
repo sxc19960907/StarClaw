@@ -16,6 +16,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | Priority | Child Task | Purpose |
 |---|---|---|
 | P1 | `06-07-workflow-recipes-launcher` | Add guided Home recipes that prefill common Astria workflows and route users into the right panel or run. |
+| P1 | `06-07-mission-control-run-board` | Upgrade Runs into a Mission Control board with status summaries and filters. |
 
 ## Acceptance Criteria
 

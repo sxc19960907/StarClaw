@@ -864,6 +864,12 @@ async function runRuns(page) {
   await page.getByRole("button", { name: "Refresh data" }).click();
   await page.getByRole("button", { name: "Runs" }).click();
   await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
+  await page.locator("#mission-control-board").getByText("Completed").waitFor();
+  await page.locator("#mission-control-filters").getByRole("button", { name: /Completed/ }).click();
+  await page.locator("#mission-control-filters").getByRole("button", { name: /Completed/ }).evaluate((el) => {
+    if (!el.classList.contains("active")) throw new Error("completed run filter should be active");
+  });
+  await page.locator("#mission-control-filters").getByRole("button", { name: /All/ }).click();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
   await page.route(`**/runs/${runID}`, async (route) => {
     await route.fulfill({

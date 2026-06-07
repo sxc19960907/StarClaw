@@ -35,6 +35,7 @@ const state = {
   homeMode: "general",
   memoryCategory: "all",
   editingMCPServer: "",
+  runFilter: "all",
 };
 
 const views = {
@@ -2563,11 +2564,17 @@ async function loadRuns() {
 
 function renderRunsList() {
   const list = $("runs-list");
+  renderMissionControl();
   if (!state.runs.length) {
     renderEmpty(list, "No runs recorded yet.");
     return;
   }
-  list.innerHTML = state.runs.map((run) => {
+  const runs = filteredRuns();
+  if (!runs.length) {
+    renderEmpty(list, "No runs match this Mission Control filter.");
+    return;
+  }
+  list.innerHTML = runs.map((run) => {
     const active = run.id === state.activeRunID ? " active" : "";
     const agent = run.agent || "default";
     const session = run.session_id || "no session";
@@ -2582,6 +2589,57 @@ function renderRunsList() {
       </div>
     </article>`;
   }).join("");
+}
+
+function runStatusGroup(run) {
+  const status = String(run?.status || "").toLowerCase();
+  if (status === "running" || status === "queued" || status === "pending") return "active";
+  if (status === "error" || status === "failed" || status === "cancelled" || status === "canceled") return "attention";
+  if (status === "completed" || status === "done" || status === "success") return "completed";
+  return "attention";
+}
+
+function filteredRuns() {
+  switch (state.runFilter) {
+    case "active":
+    case "attention":
+    case "completed":
+      return state.runs.filter((run) => runStatusGroup(run) === state.runFilter);
+    case "council":
+      return state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:"));
+    default:
+      return state.runs;
+  }
+}
+
+function renderMissionControl() {
+  const board = $("mission-control-board");
+  const filters = $("mission-control-filters");
+  if (!board || !filters) return;
+  const counts = {
+    total: state.runs.length,
+    active: state.runs.filter((run) => runStatusGroup(run) === "active").length,
+    attention: state.runs.filter((run) => runStatusGroup(run) === "attention").length,
+    completed: state.runs.filter((run) => runStatusGroup(run) === "completed").length,
+    council: state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:")).length,
+  };
+  board.innerHTML = [
+    ["active", "Active", counts.active, "Running or queued work"],
+    ["attention", "Needs attention", counts.attention, "Failed, cancelled, or unknown"],
+    ["completed", "Completed", counts.completed, "Finished missions"],
+    ["total", "Total", counts.total, "All recorded runs"],
+  ].map(([key, label, value, hint]) => `<button type="button" class="mission-control-card ${escapeHTML(key)}" data-run-filter="${escapeHTML(key === "total" ? "all" : key)}">
+      <span>${escapeHTML(label)}</span>
+      <strong>${escapeHTML(String(value))}</strong>
+      <small>${escapeHTML(hint)}</small>
+    </button>`).join("");
+  filters.innerHTML = [
+    ["all", "All", counts.total],
+    ["active", "Active", counts.active],
+    ["attention", "Attention", counts.attention],
+    ["completed", "Completed", counts.completed],
+    ["council", "Council", counts.council],
+  ].map(([key, label, count]) => `<button type="button" class="${state.runFilter === key ? "active" : ""}" data-run-filter="${escapeHTML(key)}">${escapeHTML(label)} <span>${escapeHTML(String(count))}</span></button>`).join("");
 }
 
 async function selectRun(runID) {
@@ -3486,6 +3544,13 @@ document.addEventListener("click", (event) => {
   const runSummaryRun = event.target.closest("[data-run-summary-run]");
   if (runSummaryRun) {
     selectRun(runSummaryRun.dataset.runSummaryRun);
+    return;
+  }
+
+  const runFilter = event.target.closest("[data-run-filter]");
+  if (runFilter) {
+    state.runFilter = runFilter.dataset.runFilter || "all";
+    renderRunsList();
     return;
   }
 

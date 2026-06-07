@@ -36,6 +36,36 @@ Batched session sidebar improvements: live debounced search, clear search action
 [OK] **Completed**
 
 
+## Session 115: Mission Control Run Board
+
+**Date**: 2026-06-07
+**Task**: Mission Control run board
+**Branch**: `main`
+
+### Summary
+
+Upgraded Runs into an Astria Mission Control surface so recent work can be scanned by operational status instead of only as a flat list.
+
+### Main Changes
+
+- Added Mission Control summary cards for active, attention, completed, and total runs.
+- Added quick filters for all, active, attention, completed, and council handoffs.
+- Kept existing run detail, copy, rerun, open session, and timeline behavior intact.
+- Extended core Web UI smoke to verify the Completed filter.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `go test ./internal/daemon`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 114: Workflow Recipes Launcher
 
 **Date**: 2026-06-07
