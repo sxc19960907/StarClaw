@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 130
+- **Total Sessions**: 131
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1600 | Active |
+| `journal-3.md` | ~1633 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 131 | 2026-06-08 | Provider stream watchdog parity | `e67c78e` | `main` |
 | 130 | 2026-06-08 | Daemon SSE event vocabulary parity | `32d1fc9` | `main` |
 | 129 | 2026-06-08 | OpenAI gateway streaming parity | `347a137` | `main` |
 | 128 | 2026-06-08 | Session sync privacy batcher | `1fb408a` | `main` |

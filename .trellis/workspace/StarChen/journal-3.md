@@ -1598,3 +1598,36 @@ Aligned POST /message SSE vocabulary with Kocoro-compatible session_started, too
 ### Next Steps
 
 - None - task complete
+
+
+## Session 131: Provider stream watchdog parity
+
+**Date**: 2026-06-08
+**Task**: Provider stream watchdog parity
+**Branch**: `main`
+
+### Summary
+
+Added provider stream idle timeout parity with configurable agent.stream_idle_timeout_secs, timeout-aware OpenAI/Anthropic stream parsers, provider wiring for Anthropic/OpenAI/Ollama, no-retry handling for ErrStreamIdleTimeout, and regression tests including explicit zero disable semantics.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e67c78e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
