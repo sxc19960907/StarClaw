@@ -1565,3 +1565,36 @@ Started Phase11 streaming hardening and completed the OpenAI-compatible gateway 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 130: Daemon SSE event vocabulary parity
+
+**Date**: 2026-06-08
+**Task**: Daemon SSE event vocabulary parity
+**Branch**: `main`
+
+### Summary
+
+Aligned POST /message SSE vocabulary with Kocoro-compatible session_started, tool, delta, assistant_text, and usage events while preserving StarClaw legacy text/tool_call/tool_result/preamble events.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `32d1fc9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
