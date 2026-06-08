@@ -1069,3 +1069,36 @@ Added optional local JSON persistence for daemon RunStore, recovery tests for ru
 ### Next Steps
 
 - None - task complete
+
+
+## Session 115: Durable workflow step state
+
+**Date**: 2026-06-08
+**Task**: Durable workflow step state
+**Branch**: `main`
+
+### Summary
+
+Added durable per-run workflow step state with upsert/transition APIs, persisted recovery, redacted step metadata/events, aggregate metrics coverage, and backend spec guidance for future replay and pause/resume work.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d17def6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
