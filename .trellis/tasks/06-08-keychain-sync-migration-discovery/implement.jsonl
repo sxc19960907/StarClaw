@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for StarClaw conventions."}
+{"file":".trellis/spec/backend/permissions.md","reason":"Permission and approval invariants for future credentialed or data-moving tools."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Testing and safety standards for future backend work."}
+{"file":".trellis/research/kocoro-native-tool-parity-phase9-plan.md","reason":"Parent Phase 9 Kocoro comparison and child-task context."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Discovery artifact and future plan produced by this task."}

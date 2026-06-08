@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for review."}
+{"file":".trellis/spec/backend/permissions.md","reason":"Review privacy, approval, and sensitive path constraints."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Review validation and no-runtime-code-change expectation."}
+{"file":".trellis/research/kocoro-native-tool-parity-phase9-plan.md","reason":"Review continuity with Phase 9 parent plan."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Primary artifact to validate for Kocoro evidence and next-plan quality."}

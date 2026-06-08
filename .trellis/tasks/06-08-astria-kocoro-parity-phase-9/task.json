@@ -23,7 +23,8 @@
     "06-08-calendar-native-tool-boundary",
     "06-08-browser-handoff-lease-depth",
     "06-08-terminal-workspace-tool-depth",
-    "06-08-image-tool-provider-boundary"
+    "06-08-image-tool-provider-boundary",
+    "06-08-keychain-sync-migration-discovery"
   ],
   "parent": null,
   "relatedFiles": [],
