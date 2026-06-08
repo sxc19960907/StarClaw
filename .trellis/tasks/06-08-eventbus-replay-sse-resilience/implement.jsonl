@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend quality and package guidance for daemon/EventBus changes."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Testing, timers, streaming parser, and minimal dependency guidelines."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Error handling conventions for daemon HTTP and helper changes."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Avoid duplicate SSE/EventBus helper logic."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"EventBus -> HTTP SSE -> Web UI state flow crosses backend/frontend boundary."}
+{"file":".trellis/tasks/archive/2026-06/06-08-astria-kocoro-parity-phase-11/final-gap-review.md","reason":"Source evidence for Phase12 scope and Kocoro gap prioritization."}

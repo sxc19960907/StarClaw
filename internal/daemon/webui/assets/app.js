@@ -62,6 +62,12 @@ const state = {
   toolDetails: new Map(),
   approvals: new Map(),
   eventSource: null,
+  eventStream: {
+    lastEventID: "",
+    status: "idle",
+    reconnects: 0,
+    reconnecting: false,
+  },
   homeMode: "general",
   workflowStrategy: "direct",
   workflowStage: "draft",
@@ -1183,19 +1189,36 @@ function renderApprovalCenter() {
 
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
+  state.eventStream.status = "connecting";
   const source = new EventSource("/events");
   state.eventSource = source;
+  const trackEventStreamID = (event) => {
+    if (event.lastEventId) {
+      state.eventStream.lastEventID = event.lastEventId;
+    }
+  };
   source.addEventListener("approval_needed", (event) => {
+    trackEventStreamID(event);
     renderApprovalCard(parseEventData(event.data));
   });
   source.addEventListener("approval_resolved", (event) => {
+    trackEventStreamID(event);
     markApprovalResolved(parseEventData(event.data));
   });
   source.onerror = () => {
+    state.eventStream.status = "reconnecting";
+    state.eventStream.reconnecting = true;
     $("daemon-pill").textContent = "Reconnecting";
     $("daemon-pill").className = "bad";
   };
   source.onopen = () => {
+    if (state.eventStream.reconnecting) {
+      state.eventStream.reconnects += 1;
+      state.eventStream.status = "recovered";
+      state.eventStream.reconnecting = false;
+    } else {
+      state.eventStream.status = "running";
+    }
     if ($("daemon-pill").textContent === "Reconnecting") {
       $("daemon-pill").textContent = "Running";
       $("daemon-pill").className = "ok";

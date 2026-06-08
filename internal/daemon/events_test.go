@@ -139,3 +139,49 @@ func TestEventBusAssignsIDsAndReplaysSinceCursor(t *testing.T) {
 		t.Fatalf("replayed = %#v, want second and third", replayed)
 	}
 }
+
+func TestEventBusSubscribeWithReplayReturnsMissedThenLive(t *testing.T) {
+	bus := NewEventBus()
+	bus.Publish(Event{Type: "first", Data: "one"})
+	bus.Publish(Event{Type: "second", Data: "two"})
+
+	replayed, ch := bus.SubscribeWithReplay("replay-live", "1")
+	defer bus.Unsubscribe("replay-live")
+	if len(replayed) != 1 || replayed[0].ID != "2" || replayed[0].Type != "second" {
+		t.Fatalf("replayed = %#v, want second id=2", replayed)
+	}
+
+	bus.Publish(Event{Type: "third", Data: "three"})
+	select {
+	case evt := <-ch:
+		if evt.ID != "3" || evt.Type != "third" {
+			t.Fatalf("live event = %#v, want third id=3", evt)
+		}
+	default:
+		t.Fatal("expected live event after subscribe-with-replay")
+	}
+
+	select {
+	case evt := <-ch:
+		t.Fatalf("unexpected duplicate event after replay/live boundary: %#v", evt)
+	default:
+	}
+}
+
+func TestEventBusSubscribeWithReplayInvalidCursorReplaysHistory(t *testing.T) {
+	bus := NewEventBus()
+	bus.Publish(Event{Type: "first", Data: "one"})
+	bus.Publish(Event{Type: "second", Data: "two"})
+
+	replayed, ch := bus.SubscribeWithReplay("invalid-cursor", "not-a-number")
+	defer bus.Unsubscribe("invalid-cursor")
+	if len(replayed) != 2 || replayed[0].ID != "1" || replayed[1].ID != "2" {
+		t.Fatalf("replayed = %#v, want full history for invalid cursor", replayed)
+	}
+
+	select {
+	case evt := <-ch:
+		t.Fatalf("subscriber channel should not receive replayed history: %#v", evt)
+	default:
+	}
+}

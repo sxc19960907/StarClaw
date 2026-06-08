@@ -190,6 +190,18 @@ func (b *EventBus) Subscribe(id string) <-chan Event {
 	return ch
 }
 
+// SubscribeWithReplay atomically registers a subscriber and returns buffered
+// events whose numeric ID is greater than lastID. Invalid cursors replay all
+// buffered history, matching EventsSince.
+func (b *EventBus) SubscribeWithReplay(id string, lastID string) ([]Event, <-chan Event) {
+	ch := make(chan Event, b.bufferSize)
+	b.mu.Lock()
+	b.subscribers[id] = ch
+	events := b.eventsSinceLocked(lastID)
+	b.mu.Unlock()
+	return events, ch
+}
+
 // Unsubscribe removes a subscriber. No further events will be sent to the
 // subscriber's channel. The channel is not closed.
 func (b *EventBus) Unsubscribe(id string) {
@@ -227,6 +239,10 @@ func (b *EventBus) Publish(evt Event) {
 func (b *EventBus) EventsSince(lastID string) []Event {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+	return b.eventsSinceLocked(lastID)
+}
+
+func (b *EventBus) eventsSinceLocked(lastID string) []Event {
 	cursor, err := strconv.ParseInt(strings.TrimSpace(lastID), 10, 64)
 	if err != nil {
 		cursor = 0

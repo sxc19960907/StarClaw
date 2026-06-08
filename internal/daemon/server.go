@@ -628,14 +628,14 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 
 	id := generateRequestID()
-	ch := s.eventBus.Subscribe(id)
-	defer s.eventBus.Unsubscribe(id)
-
 	lastEventID := strings.TrimSpace(r.URL.Query().Get("last_event_id"))
 	if lastEventID == "" {
 		lastEventID = strings.TrimSpace(r.Header.Get("Last-Event-ID"))
 	}
-	for _, evt := range s.eventBus.EventsSince(lastEventID) {
+	replay, ch := s.eventBus.SubscribeWithReplay(id, lastEventID)
+	defer s.eventBus.Unsubscribe(id)
+
+	for _, evt := range replay {
 		writeSSEEvent(w, evt)
 		flusher.Flush()
 	}

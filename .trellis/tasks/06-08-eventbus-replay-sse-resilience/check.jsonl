@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend quality gate for daemon/EventBus changes."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Required test and streaming regression checks."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Review daemon HTTP and helper errors for project conventions."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Check reuse of existing SSE parsing, EventBus, and Web UI state patterns."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Verify EventBus/SSE/Web UI data flow consistency."}

@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	mcpproto "github.com/mark3labs/mcp-go/mcp"
 	"github.com/starclaw/starclaw/internal/agent"
@@ -50,6 +51,18 @@ func newTestServerDeps(t *testing.T) *ServerDeps {
 		LLMClient:       &mockLLMClient{t: t},
 		Registry:        agent.NewToolRegistry(),
 	}
+}
+
+func waitUntil(t *testing.T, timeout time.Duration, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if cond() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("condition not met before timeout")
 }
 
 func readSSEEvents(t *testing.T, body io.Reader, want int) []Event {
@@ -241,6 +254,52 @@ func TestHandleEventsReplaysFromLastEventIDHeader(t *testing.T) {
 	cancel()
 	if len(events) != 1 || events[0].ID != "2" || events[0].Type != "missed" {
 		t.Fatalf("events = %#v, want missed id=2", events)
+	}
+}
+
+func TestHandleEventsReplaysThenStreamsLiveWithoutDuplicate(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.eventBus.Publish(Event{Type: "old", Data: `{"n":1}`})
+	s.eventBus.Publish(Event{Type: "missed", Data: `{"n":2}`})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/events?last_event_id=1", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /events: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	eventsCh := make(chan []Event, 1)
+	go func() {
+		eventsCh <- readSSEEvents(t, resp.Body, 2)
+	}()
+
+	waitUntil(t, time.Second, func() bool {
+		s.eventBus.mu.RLock()
+		defer s.eventBus.mu.RUnlock()
+		return len(s.eventBus.subscribers) == 1
+	})
+	s.eventBus.Publish(Event{Type: "live", Data: `{"n":3}`})
+
+	var events []Event
+	select {
+	case events = <-eventsCh:
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for replay and live SSE events")
+	}
+	cancel()
+	if len(events) != 2 {
+		t.Fatalf("events = %#v, want 2", events)
+	}
+	if events[0].ID != "2" || events[0].Type != "missed" || events[1].ID != "3" || events[1].Type != "live" {
+		t.Fatalf("events = %#v, want missed id=2 then live id=3", events)
 	}
 }
 
