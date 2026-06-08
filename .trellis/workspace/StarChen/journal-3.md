@@ -1432,3 +1432,36 @@ Updated user-facing docs for current StarClaw/Astria runtime capabilities: Astri
 ### Next Steps
 
 - None - task complete
+
+
+## Session 126: Phase 5 Kocoro gap audit
+
+**Date**: 2026-06-08
+**Task**: Phase 5 Kocoro gap audit
+**Branch**: `main`
+
+### Summary
+
+Added a local-evidence Phase 5 Kocoro/Shannon gap audit, confirmed the five platform alignment slices are complete at the local platform level, and recommended Phase 6 focus on OpenAI-compatible streaming/tools plus agent orchestration.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c37c565` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
