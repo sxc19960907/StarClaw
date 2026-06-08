@@ -1631,3 +1631,36 @@ Added provider stream idle timeout parity with configurable agent.stream_idle_ti
 ### Next Steps
 
 - None - task complete
+
+
+## Session 132: Phase11 streaming parity closeout
+
+**Date**: 2026-06-08
+**Task**: Phase11 streaming parity closeout
+**Branch**: `main`
+
+### Summary
+
+Completed Web UI delta consumption parity by consuming Kocoro-compatible SSE aliases in Astria Web UI, suppressing duplicate legacy+alias stream text, and covering the contract with daemon Web UI tests. Archived the Web UI child and Phase11 parent after recording final Kocoro gap review. Phase11 closes basic streaming parity; next recommended phase is daemon lifecycle, EventBus replay, and client reconnect resilience.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c09daa0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
