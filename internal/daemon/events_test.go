@@ -119,3 +119,23 @@ func TestEventBusSubscribeSameIDReplaces(t *testing.T) {
 		t.Error("new subscriber did not receive event")
 	}
 }
+
+func TestEventBusAssignsIDsAndReplaysSinceCursor(t *testing.T) {
+	bus := NewEventBus()
+	bus.Publish(Event{Type: "first", Data: "one"})
+	bus.Publish(Event{Type: "second", Data: "two"})
+	bus.Publish(Event{Type: "third", Data: "three"})
+
+	all := bus.EventsSince("")
+	if len(all) != 3 {
+		t.Fatalf("all events = %d, want 3", len(all))
+	}
+	if all[0].ID != "1" || all[1].ID != "2" || all[2].ID != "3" {
+		t.Fatalf("event IDs = %#v, want 1/2/3", all)
+	}
+
+	replayed := bus.EventsSince("1")
+	if len(replayed) != 2 || replayed[0].Type != "second" || replayed[1].Type != "third" {
+		t.Fatalf("replayed = %#v, want second and third", replayed)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -620,13 +621,22 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	ch := s.eventBus.Subscribe(id)
 	defer s.eventBus.Unsubscribe(id)
 
+	lastEventID := strings.TrimSpace(r.URL.Query().Get("last_event_id"))
+	if lastEventID == "" {
+		lastEventID = strings.TrimSpace(r.Header.Get("Last-Event-ID"))
+	}
+	for _, evt := range s.eventBus.EventsSince(lastEventID) {
+		writeSSEEvent(w, evt)
+		flusher.Flush()
+	}
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case evt := <-ch:
-			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", evt.Type, evt.Data)
+			writeSSEEvent(w, evt)
 			flusher.Flush()
 		case <-ticker.C:
 			_, _ = fmt.Fprintf(w, ": keepalive\n\n")
@@ -635,6 +645,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func writeSSEEvent(w io.Writer, evt Event) {
+	if evt.ID != "" {
+		_, _ = fmt.Fprintf(w, "id: %s\n", evt.ID)
+	}
+	_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", evt.Type, evt.Data)
 }
 
 // ---------------------------------------------------------------------------

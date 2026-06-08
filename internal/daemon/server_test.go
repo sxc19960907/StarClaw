@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"archive/zip"
+	"bufio"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -49,6 +50,43 @@ func newTestServerDeps(t *testing.T) *ServerDeps {
 		LLMClient:       &mockLLMClient{t: t},
 		Registry:        agent.NewToolRegistry(),
 	}
+}
+
+func readSSEEvents(t *testing.T, body io.Reader, want int) []Event {
+	t.Helper()
+	scanner := bufio.NewScanner(body)
+	events := make([]Event, 0, want)
+	current := Event{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			if current.Type != "" || current.Data != "" {
+				events = append(events, current)
+				if len(events) == want {
+					return events
+				}
+				current = Event{}
+			}
+			continue
+		}
+		field, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		value = strings.TrimPrefix(value, " ")
+		switch field {
+		case "id":
+			current.ID = value
+		case "event":
+			current.Type = value
+		case "data":
+			current.Data = value
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("read SSE events: %v", err)
+	}
+	return events
 }
 
 func registerTestRuntimeHandle(t *testing.T, s *Server, runID string) {
@@ -143,6 +181,66 @@ func TestHandleStatus(t *testing.T) {
 	}
 	if _, ok := desktopRPC["sock_path"]; ok {
 		t.Errorf("desktop_rpc status must not expose sock_path")
+	}
+}
+
+func TestHandleEventsReplaysFromQueryCursor(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.eventBus.Publish(Event{Type: "old", Data: `{"n":1}`})
+	s.eventBus.Publish(Event{Type: "missed", Data: `{"n":2}`})
+	s.eventBus.Publish(Event{Type: "latest", Data: `{"n":3}`})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/events?last_event_id=1", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /events: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if got := resp.Header.Get("Content-Type"); !strings.Contains(got, "text/event-stream") {
+		t.Fatalf("content-type = %q, want text/event-stream", got)
+	}
+
+	events := readSSEEvents(t, resp.Body, 2)
+	cancel()
+	if len(events) != 2 {
+		t.Fatalf("events = %#v, want 2", events)
+	}
+	if events[0].ID != "2" || events[0].Type != "missed" || events[1].ID != "3" || events[1].Type != "latest" {
+		t.Fatalf("events = %#v, want missed id=2 and latest id=3", events)
+	}
+}
+
+func TestHandleEventsReplaysFromLastEventIDHeader(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.eventBus.Publish(Event{Type: "old", Data: `{"n":1}`})
+	s.eventBus.Publish(Event{Type: "missed", Data: `{"n":2}`})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/events", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Last-Event-ID", "1")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /events: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	events := readSSEEvents(t, resp.Body, 1)
+	cancel()
+	if len(events) != 1 || events[0].ID != "2" || events[0].Type != "missed" {
+		t.Fatalf("events = %#v, want missed id=2", events)
 	}
 }
 

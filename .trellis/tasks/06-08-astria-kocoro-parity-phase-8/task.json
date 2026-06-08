@@ -21,7 +21,8 @@
   "children": [
     "06-08-openai-compatible-streaming-deltas",
     "06-08-ws-controller-cloud-lifecycle",
-    "06-08-streaming-runtime-edge-cases"
+    "06-08-streaming-runtime-edge-cases",
+    "06-08-sse-reconnect-idle-watchdog"
   ],
   "parent": null,
   "relatedFiles": [],

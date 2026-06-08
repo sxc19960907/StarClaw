@@ -1,0 +1,4 @@
+{"file":".trellis/research/kocoro-local-comparison-phase8-plan.md","reason":"Documents the Kocoro SSE reconnect and idle watchdog gap."}
+{"file":".trellis/tasks/06-08-astria-kocoro-parity-phase-8/prd.md","reason":"Parent Phase 8 local-first scope and child ordering."}
+{"file":".trellis/spec/backend/index.md","reason":"Backend pre-development checklist and linked coding guidelines."}
+{"file":".trellis/spec/guides/index.md","reason":"Shared reuse and cross-layer thinking guide index."}

@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,7 @@ const (
 
 // Event is a daemon lifecycle event pushed to SSE subscribers.
 type Event struct {
+	ID   string `json:"id,omitempty"`
 	Type string `json:"type"`
 	Data string `json:"data"`
 }
@@ -162,13 +164,19 @@ type EventBus struct {
 	mu          sync.RWMutex
 	subscribers map[string]chan Event
 	bufferSize  int
+	history     []Event
+	nextID      int64
+	historySize int
 }
+
+const defaultEventBusHistorySize = 256
 
 // NewEventBus creates a new EventBus.
 func NewEventBus() *EventBus {
 	return &EventBus{
 		subscribers: make(map[string]chan Event),
 		bufferSize:  64,
+		historySize: defaultEventBusHistorySize,
 	}
 }
 
@@ -193,8 +201,17 @@ func (b *EventBus) Unsubscribe(id string) {
 // Publish sends an event to all subscribers. Non-blocking: if a subscriber's
 // buffer is full, the event is dropped for that subscriber.
 func (b *EventBus) Publish(evt Event) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+	b.mu.Lock()
+	if evt.ID == "" {
+		b.nextID++
+		evt.ID = fmt.Sprintf("%d", b.nextID)
+	}
+	if b.historySize > 0 {
+		b.history = append(b.history, evt)
+		for len(b.history) > b.historySize {
+			b.history = b.history[1:]
+		}
+	}
 	for _, ch := range b.subscribers {
 		select {
 		case ch <- evt:
@@ -202,4 +219,24 @@ func (b *EventBus) Publish(evt Event) {
 			// subscriber too slow, drop
 		}
 	}
+	b.mu.Unlock()
+}
+
+// EventsSince returns buffered events whose numeric ID is greater than lastID.
+// Invalid cursors return the full buffered history.
+func (b *EventBus) EventsSince(lastID string) []Event {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	cursor, err := strconv.ParseInt(strings.TrimSpace(lastID), 10, 64)
+	if err != nil {
+		cursor = 0
+	}
+	events := make([]Event, 0, len(b.history))
+	for _, evt := range b.history {
+		id, err := strconv.ParseInt(evt.ID, 10, 64)
+		if err != nil || id > cursor {
+			events = append(events, evt)
+		}
+	}
+	return events
 }

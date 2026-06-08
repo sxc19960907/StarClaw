@@ -1,0 +1,4 @@
+{"file":".trellis/research/kocoro-local-comparison-phase8-plan.md","reason":"Verification should confirm this task only closes the SSE reconnect/watchdog gap."}
+{"file":".trellis/tasks/archive/2026-06/06-08-sse-reconnect-idle-watchdog/prd.md","reason":"Acceptance criteria for reconnect/watchdog behavior."}
+{"file":".trellis/tasks/archive/2026-06/06-08-sse-reconnect-idle-watchdog/design.md","reason":"Expected client/server SSE contracts."}
+{"file":".trellis/spec/backend/index.md","reason":"Backend testing and quality expectations."}

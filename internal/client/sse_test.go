@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -312,6 +313,113 @@ func TestSSEClientCancelDuringReconnectDelay(t *testing.T) {
 	}
 
 	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("expected channel to close after cancellation")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("channel did not close promptly during reconnect delay")
+	}
+}
+
+func TestSSEClientConnectWithOptionsReconnectsWithLastEventID(t *testing.T) {
+	var conns int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&conns, 1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		if n == 1 {
+			_, _ = fmt.Fprintf(w, "id: 5\nevent: started\ndata: first\n\n")
+			if flusher != nil {
+				flusher.Flush()
+			}
+			<-r.Context().Done()
+			return
+		}
+		if got := r.Header.Get("Last-Event-ID"); got != "5" {
+			t.Errorf("Last-Event-ID = %q, want 5", got)
+		}
+		_, _ = fmt.Fprintf(w, "id: 6\nevent: completed\ndata: second\n\n")
+	}))
+	defer srv.Close()
+
+	client := NewSSEClient(srv.URL, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	ch, err := client.ConnectWithOptions(ctx, srv.URL+"/events", SSEConnectOptions{
+		IdleTimeout:          30 * time.Millisecond,
+		MaxReconnects:        2,
+		ReconnectBackoffBase: time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("ConnectWithOptions failed: %v", err)
+	}
+
+	var events []SSEEvent
+	for evt := range ch {
+		events = append(events, evt)
+	}
+	if atomic.LoadInt32(&conns) != 2 {
+		t.Fatalf("connections = %d, want 2", conns)
+	}
+	if len(events) != 2 {
+		t.Fatalf("events = %#v, want 2", events)
+	}
+	if events[0].ID != "5" || events[0].Type != "started" || events[1].ID != "6" || events[1].Type != "completed" {
+		t.Fatalf("events = %#v, want started id=5 then completed id=6", events)
+	}
+}
+
+func TestSSEClientConnectWithOptionsIdleTimeoutReconnectBudgetExhausted(t *testing.T) {
+	var conns int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&conns, 1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	client := NewSSEClient(srv.URL, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	ch, err := client.ConnectWithOptions(ctx, srv.URL+"/events", SSEConnectOptions{
+		IdleTimeout:          20 * time.Millisecond,
+		MaxReconnects:        2,
+		ReconnectBackoffBase: time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("ConnectWithOptions failed: %v", err)
+	}
+	for range ch {
+	}
+	if got := atomic.LoadInt32(&conns); got != 3 {
+		t.Fatalf("connections = %d, want 3 (initial + 2 reconnects)", got)
+	}
+}
+
+func TestSSEClientConnectWithOptionsCancelDuringReconnectDelay(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := NewSSEClient(srv.URL, "")
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := client.ConnectWithOptions(ctx, srv.URL+"/events", SSEConnectOptions{
+		MaxReconnects:        5,
+		ReconnectBackoffBase: time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("ConnectWithOptions failed: %v", err)
+	}
+	time.Sleep(20 * time.Millisecond)
 	cancel()
 
 	select {
