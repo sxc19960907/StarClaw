@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Verify tool implementation follows backend guidance."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Verify tool files are organized consistently."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify Desktop RPC and validation errors map correctly."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Verify read-only and approval-required calendar tools are classified safely."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify required tests and quality gates pass."}
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Verify work matches the Phase 9 plan."}
+{"file": ".trellis/tasks/archive/2026-06/06-08-desktop-rpc-calendar-protocol/prd.md", "reason": "Verify this task builds on the completed protocol foundation."}

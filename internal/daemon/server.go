@@ -23,6 +23,7 @@ import (
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/skills"
+	"github.com/starclaw/starclaw/internal/tools"
 	"gopkg.in/yaml.v3"
 )
 
@@ -54,7 +55,7 @@ type Server struct {
 
 // NewServer creates a new Server.
 func NewServer(port int, deps *ServerDeps, version string) *Server {
-	return &Server{
+	s := &Server{
 		port:            port,
 		deps:            deps,
 		version:         version,
@@ -72,6 +73,10 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		cloudLifecycle:  NewCloudLifecycleController(context.Background(), nil),
 		desktopRPC:      desktop_rpc.NewBroker(),
 	}
+	if deps != nil {
+		tools.RegisterCalendarTools(deps.Registry, s.desktopRPC)
+	}
+	return s
 }
 
 // Port returns the server's port number.

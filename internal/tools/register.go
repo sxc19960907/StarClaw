@@ -3,6 +3,7 @@ package tools
 import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/daemon/desktop_rpc"
 	"github.com/starclaw/starclaw/internal/mcp"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
@@ -103,6 +104,18 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	}
 
 	return reg
+}
+
+// RegisterCalendarTools registers Desktop-RPC-backed calendar tools when a
+// local Desktop broker is available. No-op for nil registries or brokers so
+// CLI/TUI registries do not expose unavailable calendar tools.
+func RegisterCalendarTools(reg *agent.ToolRegistry, broker *desktop_rpc.Broker) {
+	if reg == nil || broker == nil {
+		return
+	}
+	for _, tool := range NewCalendarTools(broker) {
+		reg.Register(tool)
+	}
 }
 
 // RegisterVersionTool registers the version tool with the build version.
