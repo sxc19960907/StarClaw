@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/tools"
 )
 
 // mockLLMClient implements client.LLMClient for testing.
@@ -35,6 +37,24 @@ type captureLLMClient struct {
 	tools        []client.ToolDef
 	maxTokens    int
 	opts         *client.ChatOptions
+}
+
+type browserLeaseLLMClient struct {
+	calls int
+}
+
+func (c *browserLeaseLLMClient) Chat(_ context.Context, _ string, _ []client.Message, _ []client.ToolDef, _ int, _ *client.ChatOptions) (*client.Response, error) {
+	c.calls++
+	if c.calls == 1 {
+		return &client.Response{
+			ToolUses: []client.ToolUse{{
+				ID:    "toolu_browser",
+				Name:  "browser",
+				Input: json.RawMessage(`{"action":"status"}`),
+			}},
+		}, nil
+	}
+	return &client.Response{Content: "done"}, nil
 }
 
 func (c *captureLLMClient) Chat(_ context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
@@ -150,6 +170,34 @@ func TestRunAgent_DefaultAgent(t *testing.T) {
 	sessionFile := filepath.Join(deps.StarclawDir, "sessions", resp.SessionID+".json")
 	if _, err := os.Stat(sessionFile); err != nil {
 		t.Errorf("expected session file at %s: %v", sessionFile, err)
+	}
+}
+
+func TestRunAgentReleasesBrowserLease(t *testing.T) {
+	ctx := context.Background()
+	browser := &tools.BrowserTool{}
+	registry := agent.NewToolRegistry()
+	registry.Register(browser)
+	llm := &browserLeaseLLMClient{}
+
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		AgentsDir:   t.TempDir(),
+		LLMClient:   llm,
+		Registry:    registry,
+	}
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "browser status"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.Error != "" {
+		t.Fatalf("response error = %q", resp.Error)
+	}
+	if got := tools.BrowserOwnerActiveCount(browser); got != 0 {
+		t.Fatalf("browser owner count after run = %d, want 0", got)
+	}
+	if got := tools.GlobalBrowserTrackerActiveCountForTest(); got != 0 {
+		t.Fatalf("global browser active count = %d, want 0", got)
 	}
 }
 

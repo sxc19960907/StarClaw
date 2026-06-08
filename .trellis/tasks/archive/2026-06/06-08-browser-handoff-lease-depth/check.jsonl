@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Verify backend/tool runtime guidance."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify cleanup callback errors are handled deliberately."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify concurrency and test coverage expectations."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify cross-layer runtime implications are accounted for."}
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Verify implementation matches Phase 9 browser plan."}

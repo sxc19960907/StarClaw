@@ -11,6 +11,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/session"
+	"github.com/starclaw/starclaw/internal/tools"
 )
 
 // RunAgent executes an agent turn based on the request.
@@ -38,6 +39,8 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	if deps.Registry == nil {
 		return RunAgentResponse{}, fmt.Errorf("registry not configured in deps")
 	}
+	ctx = tools.WithBrowserUseLease(ctx)
+	defer tools.BrowserUseLeaseFrom(ctx).ReleaseOnly()
 
 	// --- Agent resolution ---
 	agentName := strings.TrimSpace(req.Agent)

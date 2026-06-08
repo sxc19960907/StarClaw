@@ -20,7 +20,8 @@
   "subtasks": [],
   "children": [
     "06-08-desktop-rpc-calendar-protocol",
-    "06-08-calendar-native-tool-boundary"
+    "06-08-calendar-native-tool-boundary",
+    "06-08-browser-handoff-lease-depth"
   ],
   "parent": null,
   "relatedFiles": [],

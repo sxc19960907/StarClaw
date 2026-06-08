@@ -8,12 +8,17 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/starclaw/starclaw/internal/agent"
 )
 
 // BrowserTool opens URLs in the default browser and retrieves page titles.
-type BrowserTool struct{}
+type BrowserTool struct {
+	mu             sync.Mutex
+	deprecated     bool
+	cleanupCallCnt int
+}
 
 type browserArgs struct {
 	Action string `json:"action"`
@@ -68,6 +73,8 @@ func (t *BrowserTool) Info() agent.ToolInfo {
 
 // Run executes the browser tool.
 func (t *BrowserTool) Run(ctx context.Context, argsJSON string) (agent.ToolResult, error) {
+	MarkBrowserUsed(ctx, t)
+
 	var args browserArgs
 	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
 		return agent.ToolResult{
@@ -104,6 +111,31 @@ func (t *BrowserTool) Run(ctx context.Context, argsJSON string) (agent.ToolResul
 			IsError: true,
 		}, nil
 	}
+}
+
+func (t *BrowserTool) MarkDeprecated() {
+	t.mu.Lock()
+	t.deprecated = true
+	t.mu.Unlock()
+}
+
+func (t *BrowserTool) IsDeprecated() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.deprecated
+}
+
+func (t *BrowserTool) CleanupForHandoff() error {
+	t.mu.Lock()
+	t.cleanupCallCnt++
+	t.mu.Unlock()
+	return nil
+}
+
+func (t *BrowserTool) CleanupCalledForTest() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.cleanupCallCnt
 }
 
 // RequiresApproval returns false for navigate (opening a URL is low-risk),

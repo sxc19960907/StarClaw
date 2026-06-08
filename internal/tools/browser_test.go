@@ -57,6 +57,26 @@ func TestBrowserTool_InvalidArgs(t *testing.T) {
 	}
 }
 
+func TestBrowserToolMarksLeaseOnRun(t *testing.T) {
+	tool := &BrowserTool{}
+	ctx := WithBrowserUseLease(context.Background())
+	lease := BrowserUseLeaseFrom(ctx)
+	result, err := tool.Run(ctx, `{invalid json}`)
+	if err != nil {
+		t.Fatalf("Run should not return error, got %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("invalid JSON should still return a tool error")
+	}
+	if got := BrowserOwnerActiveCount(tool); got != 1 {
+		t.Fatalf("owner count = %d, want 1", got)
+	}
+	lease.ReleaseOnly()
+	if got := BrowserOwnerActiveCount(tool); got != 0 {
+		t.Fatalf("owner count after release = %d, want 0", got)
+	}
+}
+
 func TestBrowserTool_UnknownAction(t *testing.T) {
 	tool := &BrowserTool{}
 	result, err := tool.Run(context.Background(), `{"action":"unknown"}`)
