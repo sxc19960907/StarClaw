@@ -696,6 +696,20 @@ async function runAgents(page) {
   assert(createdRosterMetrics.includes("ALLOW\n2"), `agent roster should show two allowed tools, got ${JSON.stringify(createdRosterMetrics)}`);
   assert(createdRosterMetrics.includes("DENY\n1"), `agent roster should show one denied tool, got ${JSON.stringify(createdRosterMetrics)}`);
   assert(createdRosterMetrics.includes("COMMANDS\n1"), `agent roster should show one command, got ${JSON.stringify(createdRosterMetrics)}`);
+  await rosterCard.getByRole("button", { name: "Chat", exact: true }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator("#chat-agent").inputValue() === "smoke-agent", "roster chat action should select smoke-agent");
+  assert((await page.locator("#chat-input").inputValue()).includes("Continue as smoke-agent"), "roster chat action should draft a prompt");
+  await openManagePanel(page, "Agents");
+  await rosterCard.getByRole("button", { name: "Test", exact: true }).click();
+  await page.locator("#panel-agents.active").waitFor();
+  assert(await page.locator("#agent-test-agent").inputValue() === "smoke-agent", "roster test action should select smoke-agent");
+  assert((await page.locator("#agent-test-prompt").inputValue()).includes("Test smoke-agent"), "roster test action should draft a test prompt");
+  await rosterCard.getByRole("button", { name: "Council", exact: true }).click();
+  await page.locator("#panel-council.active").waitFor();
+  assert(await page.locator("#council-agent").inputValue() === "smoke-agent", "roster council action should select smoke-agent");
+  assert((await page.locator("#council-goal").inputValue()).includes("Use smoke-agent as the lead agent"), "roster council action should draft a council goal");
+  await openManagePanel(page, "Agents");
   const createdDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
   );

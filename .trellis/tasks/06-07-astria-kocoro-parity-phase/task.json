@@ -36,7 +36,8 @@
     "06-07-06-07-mcp-capability-inspector",
     "06-07-06-07-prompt-suggestion-dock",
     "06-07-06-07-run-follow-up-suggestions",
-    "06-08-06-07-agent-capability-roster"
+    "06-08-06-07-agent-capability-roster",
+    "06-08-06-08-agent-launch-actions"
   ],
   "parent": null,
   "relatedFiles": [
@@ -48,6 +49,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, Run Time Travel, Approval Center, Knowledge Curation, Tool Dock Inspector, Prompt Suggestion Dock, Run Follow-up Suggestions, and Agent Capability Roster are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, Run Time Travel, Approval Center, Knowledge Curation, Tool Dock Inspector, Prompt Suggestion Dock, Run Follow-up Suggestions, Agent Capability Roster, and Agent Launch Actions are complete.",
   "meta": {}
 }

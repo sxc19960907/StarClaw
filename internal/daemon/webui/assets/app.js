@@ -3062,7 +3062,12 @@ function renderAgentCapabilityRoster() {
         <span>${summary.autoApprove ? "Approval bypass" : "Approval gated"}</span>
         <span>${summary.heartbeatEvery ? "Heartbeat scheduled" : "No heartbeat"}</span>
       </div>
-      <div class="row-actions"><button type="button" data-agent-detail="${escapeHTML(summary.name)}">Edit profile</button></div>
+      <div class="row-actions">
+        <button type="button" data-agent-launch-chat="${escapeHTML(summary.name)}">Chat</button>
+        <button type="button" data-agent-launch-test="${escapeHTML(summary.name)}">Test</button>
+        <button type="button" data-agent-launch-council="${escapeHTML(summary.name)}">Council</button>
+        <button type="button" data-agent-detail="${escapeHTML(summary.name)}">Edit profile</button>
+      </div>
     </article>`;
   }).join("");
 }
@@ -3306,6 +3311,36 @@ function testCurrentAgent() {
   $("agent-test-prompt").focus();
   $("agent-test-state").textContent = `Ready to test ${name}`;
   showToast(`Ready to test ${name}.`);
+}
+
+function prepareAgentChat(name) {
+  if (!name) return;
+  startNewChat();
+  $("chat-agent").value = name;
+  $("chat-input").value = `Continue as ${name}. Review the current Astria workspace context, identify the next useful action, and call out any risks before changing files.`;
+  $("chat-input").focus();
+  showToast(`Chat drafted for ${name}.`);
+}
+
+function prepareAgentTest(name) {
+  if (!name) return;
+  if (!confirmDiscardAgentChanges()) return;
+  $("agent-test-agent").value = name;
+  $("agent-test-prompt").value = `Test ${name}: introduce your operating role, summarize your configured strengths, and propose one concrete next step.`;
+  $("agent-test-state").textContent = `Ready to test ${name}`;
+  switchPanel("agents");
+  $("agent-test-prompt").focus();
+  showToast(`Test drafted for ${name}.`);
+}
+
+function prepareAgentCouncil(name) {
+  if (!name) return;
+  $("council-agent").value = name;
+  $("council-goal").value = `Use ${name} as the lead agent. Split the current Astria task into planner, researcher, and reviewer perspectives, then synthesize a concrete next action.`;
+  $("council-state").textContent = `Ready with ${name}`;
+  switchPanel("council");
+  $("council-goal").focus();
+  showToast(`Council drafted for ${name}.`);
 }
 
 async function submitAgent(event) {
@@ -4888,6 +4923,24 @@ document.addEventListener("click", (event) => {
   const runDetailRerun = event.target.closest("[data-run-detail-rerun]");
   if (runDetailRerun) {
     rerunCurrentRun();
+    return;
+  }
+
+  const agentLaunchChat = event.target.closest("[data-agent-launch-chat]");
+  if (agentLaunchChat) {
+    prepareAgentChat(agentLaunchChat.dataset.agentLaunchChat);
+    return;
+  }
+
+  const agentLaunchTest = event.target.closest("[data-agent-launch-test]");
+  if (agentLaunchTest) {
+    prepareAgentTest(agentLaunchTest.dataset.agentLaunchTest);
+    return;
+  }
+
+  const agentLaunchCouncil = event.target.closest("[data-agent-launch-council]");
+  if (agentLaunchCouncil) {
+    prepareAgentCouncil(agentLaunchCouncil.dataset.agentLaunchCouncil);
     return;
   }
 

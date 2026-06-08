@@ -1,0 +1,29 @@
+{
+  "id": "06-08-agent-launch-actions",
+  "name": "06-08-agent-launch-actions",
+  "title": "Agent launch actions",
+  "description": "Add direct Chat, Test, and Council launch actions to the Agents capability roster.",
+  "status": "done",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/assets/app.js",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Completed: roster cards now draft Chat, Agent Test Runner, and Agent Council flows for the selected named agent without starting network work automatically; agents smoke verifies all launch actions.",
+  "meta": {}
+}
