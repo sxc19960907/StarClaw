@@ -7533,7 +7533,7 @@ function appendToolEvent(data, eventType) {
     ...previous,
     ...data,
     args: data.args ?? previous.args,
-    content: data.content ?? previous.content,
+    content: data.content ?? data.preview ?? previous.content,
     status: data.status || previous.status || (eventType === "tool_call" ? "running" : "completed"),
   };
   state.toolDetails.set(tool, detail);
@@ -7722,7 +7722,7 @@ function chatStreamRenderer(assistantMessage) {
       appendAssistantText(assistantMessage, text);
     },
     appendEvent(eventType, data) {
-      if (eventType === "tool_call" || eventType === "tool_result") {
+      if (eventType === "tool_call" || eventType === "tool_result" || eventType === "tool") {
         appendToolEvent(data, eventType);
       }
     },
@@ -7753,6 +7753,7 @@ async function streamMessage(payload, renderer, signal) {
   const decoder = new TextDecoder();
   let buffer = "";
   let doneResult = null;
+  const streamState = newStreamEventState();
 
   while (true) {
     const { value, done } = await reader.read();
@@ -7761,27 +7762,66 @@ async function streamMessage(payload, renderer, signal) {
     const events = buffer.split("\n\n");
     buffer = events.pop() || "";
     for (const rawEvent of events) {
-      doneResult = handleSSEEvent(rawEvent, renderer, doneResult);
+      doneResult = handleSSEEvent(rawEvent, renderer, doneResult, streamState);
     }
   }
   if (buffer.trim()) {
-    doneResult = handleSSEEvent(buffer, renderer, doneResult);
+    doneResult = handleSSEEvent(buffer, renderer, doneResult, streamState);
   }
   return doneResult;
 }
 
-function handleSSEEvent(rawEvent, renderer, doneResult) {
+function newStreamEventState() {
+  return {
+    lastAssistantText: null,
+    lastAssistantTextType: "",
+  };
+}
+
+function shouldAppendStreamText(streamState, eventType, text) {
+  if (!text) return false;
+  const previous = streamState.lastAssistantText;
+  const previousType = streamState.lastAssistantTextType;
+  streamState.lastAssistantText = text;
+  streamState.lastAssistantTextType = eventType;
+  if (eventType === "delta" && previousType === "text" && previous === text) return false;
+  if (eventType === "assistant_text" && previousType === "preamble" && previous === text) return false;
+  return true;
+}
+
+function streamTextForEvent(eventType, data) {
+  switch (eventType) {
+    case "text":
+      return data.text || "";
+    case "delta":
+      return data.text || data.delta || "";
+    case "preamble":
+      return data.preamble || "";
+    case "assistant_text":
+      return data.text || data.preamble || "";
+    default:
+      return "";
+  }
+}
+
+function handleSSEEvent(rawEvent, renderer, doneResult, streamState = newStreamEventState()) {
   const parsed = parseSSE(rawEvent);
   if (!parsed) return doneResult;
   const data = parseEventData(parsed.data);
   switch (parsed.event) {
     case "text":
-      renderer.appendText?.(data.text || "");
-      break;
+    case "delta":
     case "preamble":
-      renderer.appendText?.(data.preamble || "");
+    case "assistant_text": {
+      const text = streamTextForEvent(parsed.event, data);
+      if (shouldAppendStreamText(streamState, parsed.event, text)) {
+        renderer.appendText?.(text);
+      }
       break;
+    }
+    case "session_started":
     case "usage":
+    case "tool":
     case "tool_call":
     case "tool_result":
       renderer.appendEvent?.(parsed.event, data);

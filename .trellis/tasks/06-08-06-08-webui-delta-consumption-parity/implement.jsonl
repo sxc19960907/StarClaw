@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/index.md","reason":"Daemon/Web UI assets live under backend package boundaries."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Regression test and streaming parser quality expectations."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Ensure stream handling does not expose sensitive payloads in logs."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"SSE event vocabulary crosses daemon response and Web UI rendering layers."}
+{"file":".trellis/tasks/archive/2026-06/06-08-daemon-sse-event-vocabulary-parity/design.md","reason":"Prior child established dual-emission SSE vocabulary."}
+{"file":".trellis/tasks/06-08-astria-kocoro-parity-phase-11/prd.md","reason":"Parent streaming hardening scope and constraints."}

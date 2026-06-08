@@ -21,7 +21,8 @@
   "children": [
     "06-08-openai-gateway-streaming-parity",
     "06-08-daemon-sse-event-vocabulary-parity",
-    "06-08-06-08-provider-stream-watchdog-parity"
+    "06-08-06-08-provider-stream-watchdog-parity",
+    "06-08-06-08-webui-delta-consumption-parity"
   ],
   "parent": null,
   "relatedFiles": [],

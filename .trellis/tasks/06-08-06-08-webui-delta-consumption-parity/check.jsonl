@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend/Web UI quality gate index."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Streaming parser regression standards."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Check no sensitive stream payload logging is added."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Verify daemon SSE aliases reach Web UI rendering behavior."}
+{"file":".trellis/tasks/06-08-06-08-webui-delta-consumption-parity/prd.md","reason":"Acceptance criteria for final check."}

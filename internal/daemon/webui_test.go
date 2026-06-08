@@ -153,6 +153,46 @@ func TestWebUITraceAndRecoveryRenderersSanitizePayloads(t *testing.T) {
 	}
 }
 
+func TestWebUIConsumesKocoroCompatibleSSEVocabulary(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	script, err := fetchWebUIAsset(t, ts.URL+"/app/assets/app.js")
+	if err != nil {
+		t.Fatalf("fetch app.js: %v", err)
+	}
+	for _, want := range []string{
+		"function newStreamEventState()",
+		"function shouldAppendStreamText(streamState, eventType, text)",
+		`eventType === "delta" && previousType === "text" && previous === text`,
+		`eventType === "assistant_text" && previousType === "preamble" && previous === text`,
+		"function streamTextForEvent(eventType, data)",
+		`case "delta":`,
+		`case "assistant_text":`,
+		`case "session_started":`,
+		`case "tool":`,
+		`data.text || data.delta || ""`,
+		`data.text || data.preamble || ""`,
+		`content: data.content ?? data.preview ?? previous.content`,
+		`eventType === "tool_call" || eventType === "tool_result" || eventType === "tool"`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("app.js missing Kocoro-compatible SSE marker %q", want)
+		}
+	}
+	for _, forbidden := range []string{
+		`case "delta":
+      renderer.appendText?.(data.text || "");`,
+		`case "assistant_text":
+      renderer.appendText?.(data.text || "");`,
+	} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("app.js contains duplicate-prone SSE handler %q", forbidden)
+		}
+	}
+}
+
 func TestWebUIPhase5RuntimeLayoutAndNavigationHooks(t *testing.T) {
 	s := newTestServer(t, newTestServerDeps(t))
 	ts := httptest.NewServer(s.Handler())
