@@ -13,32 +13,14 @@ Validate the main Astria runtime path end to end across Home/Chat launch, run hi
 
 ## Acceptance Criteria
 
-- [ ] Smoke path launches a run through local daemon/UI-compatible API and verifies it appears in `/runs`.
-- [ ] Smoke path verifies budget/routing/fallback fields remain renderable when present.
-- [ ] Smoke path covers workflow control responses for cancel, pause/resume, and replay approval boundaries.
-- [ ] Smoke path verifies trace/recovery UI hooks are present and tolerate recovered run state.
-- [ ] Targeted daemon/Web UI tests and full `go test ./...` pass after fixes.
+- [x] Smoke path launches a run through local daemon/UI-compatible API and verifies it appears in `/runs`.
+- [x] Smoke path verifies budget/routing/fallback fields remain renderable when present.
+- [x] Smoke path covers workflow control responses for cancel, pause/resume, and replay approval boundaries.
+- [x] Smoke path verifies trace/recovery UI hooks are present and tolerate recovered run state.
+- [x] Targeted daemon/Web UI tests and full `go test ./...` pass after fixes.
 
 ## Non-Goals
 
 - No new runtime semantics.
 - No real external LLM or cloud dependency.
 - No broad UI redesign.
-
-## Goal
-
-TBD.
-
-## Requirements
-
-- TBD
-
-## Acceptance Criteria
-
-- [ ] TBD
-
-## Notes
-
-- Keep `prd.md` focused on requirements, constraints, and acceptance criteria.
-- Lightweight tasks can remain PRD-only.
-- For complex tasks, add `design.md` for technical design and `implement.md` for execution planning before `task.py start`.

@@ -1406,12 +1406,14 @@ async function runRuns(page) {
   await page.getByRole("button", { name: "Runs", exact: true }).click();
   await page.locator("#panel-runs").getByRole("heading", { name: "Runs" }).waitFor();
   await page.locator("#mission-control-board").getByText("Completed").waitFor();
+  await page.locator("#mission-control-board").getByText("Recovered").waitFor();
   await page.locator("#mission-control-filters").getByRole("button", { name: /Completed/ }).click();
   await page.locator("#mission-control-filters").getByRole("button", { name: /Completed/ }).evaluate((el) => {
     if (!el.classList.contains("active")) throw new Error("completed run filter should be active");
   });
   await page.locator("#mission-control-filters").getByRole("button", { name: /All/ }).click();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
+  const now = new Date().toISOString();
   await page.route(`**/runs/${runID}`, async (route) => {
     await route.fulfill({
       status: 200,
@@ -1423,21 +1425,133 @@ async function runRuns(page) {
         channel: "http",
         prompt: "webui smoke session",
         session_id: sessionID,
-        started_at: new Date().toISOString(),
-        ended_at: new Date().toISOString(),
+        started_at: now,
+        ended_at: now,
         usage: { input_tokens: 7, output_tokens: 8 },
+        budget_status: {
+          status: "ok",
+          input_tokens: 7,
+          output_tokens: 8,
+          total_tokens: 15,
+          detail: "within smoke budget",
+        },
+        routing: {
+          complexity: "simple",
+          route: "fast",
+          model_tier: "small",
+          reason: "smoke route",
+        },
+        fallback: {
+          reason: "provider_error",
+          route: "local",
+          model_tier: "small",
+          detail: "smoke fallback available",
+        },
+        control: [
+          { action: "replay", status: "approval_required", reason: "review smoke replay", at: now },
+          { action: "pause", status: "paused", reason: "inspect smoke pause", at: now },
+          { action: "resume", status: "resumed", reason: "continue smoke run", at: now },
+        ],
+        steps: [
+          {
+            id: "replay-approval",
+            title: "Replay approval",
+            status: "waiting_approval",
+            sequence: 1,
+            updated_at: now,
+            metadata: { source_run_id: runID },
+          },
+          {
+            id: "runtime-pause",
+            title: "Runtime pause",
+            status: "completed",
+            sequence: 2,
+            updated_at: now,
+            metadata: { runtime_status: "resumed" },
+          },
+        ],
         request: { text: "webui smoke session", new_session: true, request_id: runID },
         response: {
           session_id: sessionID,
           messages: ["summary smoke response"],
-          usage: { input_tokens: 7, output_tokens: 8 },
+          usage: { input_tokens: 7, output_tokens: 8, total_tokens: 15 },
+          budget_status: {
+            status: "ok",
+            input_tokens: 7,
+            output_tokens: 8,
+            total_tokens: 15,
+            detail: "within smoke budget",
+          },
+          routing: {
+            complexity: "simple",
+            route: "fast",
+            model_tier: "small",
+            reason: "smoke route",
+          },
+          fallback: {
+            reason: "provider_error",
+            route: "local",
+            model_tier: "small",
+            detail: "smoke fallback available",
+          },
         },
         events: [
-          { type: "preamble", at: new Date().toISOString(), data: { preamble: "planning smoke run" } },
-          { type: "tool_call", at: new Date().toISOString(), data: { tool: "grep", args: JSON.stringify({ pattern: "smoke" }), status: "running" } },
-          { type: "tool_result", at: new Date().toISOString(), data: { tool: "grep", content: "smoke result", status: "completed", is_error: false } },
-          { type: "usage", at: new Date().toISOString(), data: { input_tokens: 7, output_tokens: 8 } },
-          { type: "text", at: new Date().toISOString(), data: { text: "summary smoke response" } },
+          { type: "preamble", at: now, data: { preamble: "planning smoke run" } },
+          { type: "tool_call", at: now, data: { tool: "grep", args: JSON.stringify({ pattern: "smoke" }), status: "running" } },
+          { type: "tool_result", at: now, data: { tool: "grep", content: "smoke result", status: "completed", is_error: false } },
+          { type: "usage", at: now, data: { input_tokens: 7, output_tokens: 8 } },
+          { type: "budget_status", at: now, data: { status: "ok", input_tokens: 7, output_tokens: 8, total_tokens: 15 } },
+          { type: "routing_selected", at: now, data: { complexity: "simple", route: "fast", model_tier: "small", reason: "smoke route" } },
+          { type: "fallback_decision", at: now, data: { reason: "provider_error", route: "local", model_tier: "small", detail: "smoke fallback available" } },
+          { type: "text", at: now, data: { text: "summary smoke response" } },
+        ],
+        structured_events: [
+          { schema_version: "2026-06-08", id: `${runID}-000001`, run_id: runID, type: "run_started", phase: "start", at: now, data: { channel: "http" } },
+          { schema_version: "2026-06-08", id: `${runID}-000002`, run_id: runID, type: "budget_status", phase: "budget", at: now, data: { status: "ok", total_tokens: 15 } },
+          { schema_version: "2026-06-08", id: `${runID}-000003`, run_id: runID, type: "control_decision", phase: "control", at: now, data: { action: "replay", status: "approval_required" } },
+        ],
+      }),
+    });
+  });
+  await page.route(`**/runs/${runID}/trace`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        trace: [
+          {
+            schema_version: "2026-06-08",
+            trace_id: runID,
+            span_id: `${runID}-000001`,
+            run_id: runID,
+            event_id: `${runID}-000001`,
+            name: "run_started",
+            phase: "start",
+            timestamp: now,
+            attributes: { channel: "http" },
+          },
+          {
+            schema_version: "2026-06-08",
+            trace_id: runID,
+            span_id: `${runID}-000002`,
+            run_id: runID,
+            event_id: `${runID}-000002`,
+            name: "budget_status",
+            phase: "budget",
+            timestamp: now,
+            attributes: { status: "ok", total_tokens: 15 },
+          },
+          {
+            schema_version: "2026-06-08",
+            trace_id: runID,
+            span_id: `${runID}-000003`,
+            run_id: runID,
+            event_id: `${runID}-000003`,
+            name: "control_decision",
+            phase: "control",
+            timestamp: now,
+            attributes: { action: "replay", status: "approval_required" },
+          },
         ],
       }),
     });
@@ -1447,6 +1561,18 @@ async function runRuns(page) {
   await page.locator("#run-detail").getByText("Status").waitFor();
   assert(await page.locator("#run-detail").getByText("webui smoke session").count() >= 1, "run detail missing prompt");
   assert(await page.locator("#run-detail").getByText(sessionID).count() >= 1, "run detail missing session id");
+  await page.locator("#run-detail").getByText("Runtime Recovery").waitFor();
+  await page.locator("#run-detail").getByText("Current daemon state").waitFor();
+  await page.locator("#run-detail").getByText("Waiting for replay approval").waitFor();
+  await page.locator("#run-detail").getByRole("heading", { name: "Workflow Steps" }).waitFor();
+  await page.locator("#run-detail .runtime-table").getByText("Replay approval", { exact: true }).waitFor();
+  await page.locator("#run-detail .runtime-table").getByText("Runtime pause", { exact: true }).waitFor();
+  await page.locator("#run-detail").getByText("Control History").waitFor();
+  await page.locator("#run-detail").getByText("review smoke replay").waitFor();
+  await page.locator("#run-detail").getByText("continue smoke run").waitFor();
+  await page.locator("#run-detail").getByRole("heading", { name: "Trace" }).waitFor();
+  assert(await page.locator("#run-detail").getByText("budget_status").count() >= 1, "run detail missing budget trace/event");
+  assert(await page.locator("#run-detail").getByText("control_decision").count() >= 1, "run detail missing control trace/event");
   await page.locator("#run-detail").getByText("Time Travel").waitFor();
   await page.locator("#run-detail .run-milestone").getByText("Run completed").waitFor();
   await page.locator("#run-detail .run-milestone").getByText("Prompt locked").waitFor();
@@ -1459,6 +1585,8 @@ async function runRuns(page) {
   assert(await page.evaluate(() => navigator.clipboard.readText()) === "smoke result", "tool result copy should copy grouped tool result");
   await page.locator("#run-detail").getByText("planning smoke run").waitFor();
   assert(await page.locator("#run-detail").getByText("input_tokens").count() >= 1, "run detail missing usage event");
+  await page.locator("#run-detail").getByText("smoke route").waitFor();
+  await page.locator("#run-detail").getByText("smoke fallback available").waitFor();
   await page.locator("#run-detail").getByRole("button", { name: "Copy prompt" }).click();
   await page.getByText("Prompt copied.").waitFor();
   assert(await page.evaluate(() => navigator.clipboard.readText()) === "webui smoke session", "copy prompt should copy run prompt");
@@ -1493,6 +1621,7 @@ async function runRuns(page) {
   await page.locator("#panel-chat.active").waitFor();
   assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "open session should select run session");
   await page.unroute(`**/runs/${runID}`);
+  await page.unroute(`**/runs/${runID}/trace`);
   await page.locator(`#sessions-list [data-session-id="${sessionID}"]`).waitFor();
   await page.locator(`#sessions-list [data-session-id="${sessionID}"]`).getByRole("button", { name: "Copy ID" }).click();
   await page.getByText("Session ID copied.").waitFor();
