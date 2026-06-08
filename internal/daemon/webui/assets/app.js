@@ -12,6 +12,7 @@ const state = {
   currentRunDetail: null,
   currentCouncilRun: null,
   selectedComparisonLane: "",
+  selectedDeliveryLane: "",
   diagnostics: null,
   config: null,
   permissions: null,
@@ -53,6 +54,7 @@ const views = {
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
+  delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
   intake: ["文件星舱", "Inspect local documents and archives before a run."],
   schedules: ["定时任务", "Create and manage cron-based local tasks."],
@@ -1213,6 +1215,7 @@ function renderHomeActivity() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderProactiveDeliveryBoard();
 }
 
 function renderHomeLatestRun() {
@@ -1254,6 +1257,7 @@ function renderHomeDockedTools() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderProactiveDeliveryBoard();
 }
 
 function renderWorkspaceHub() {
@@ -1762,14 +1766,166 @@ function draftComparisonToChat(id) {
   showToast("Comparison drafted to chat.");
 }
 
+function deliveryLanes() {
+  const enabledSchedules = state.schedules.filter((schedule) => schedule.enabled !== false);
+  const scheduledRuns = state.runs.filter((run) => String(run.channel || "").includes("schedule") || String(run.source || "").includes("schedule"));
+  const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed");
+  const providers = Array.isArray(state.inboxProviders) ? state.inboxProviders : [];
+  const pendingInbox = state.inboxItems.filter((item) => item.status === "pending");
+  const diagnosticsStatus = String(state.diagnostics?.status || "unknown").toLowerCase();
+  const readyDiagnostics = ["ok", "ready", "healthy"].includes(diagnosticsStatus);
+  return [
+    {
+      id: "scheduled-work",
+      source: "Schedules",
+      panel: "schedules",
+      title: "Scheduled work",
+      metric: `${enabledSchedules.length}/${state.schedules.length} active`,
+      evidence: [
+        enabledSchedules[0] ? `Next active prompt: ${enabledSchedules[0].prompt || "Untitled schedule"}` : "No active schedule configured",
+        state.schedules.length ? `${state.schedules.length} configured schedule${state.schedules.length === 1 ? "" : "s"}` : "Create a cron plan before expecting proactive work",
+        enabledSchedules[0]?.cron ? `Cron: ${enabledSchedules[0].cron}` : "Cron cadence not set",
+      ],
+      risk: enabledSchedules.length ? "Scheduled prompts still need clear delivery or review expectations." : "No proactive work will run until a schedule exists.",
+      action: enabledSchedules.length ? "Review active cadence and delivery target." : "Draft the first scheduled delivery plan.",
+      prompt: `Plan proactive Astria delivery from schedules.\n\nActive schedules: ${enabledSchedules.length}\nConfigured schedules: ${state.schedules.length}\nFirst prompt: ${enabledSchedules[0]?.prompt || "none"}\n\nDefine cadence, expected output, destination channel, and validation.`,
+    },
+    {
+      id: "delivery-runs",
+      source: "Runs",
+      panel: "runs",
+      title: "Recent outbound runs",
+      metric: `${scheduledRuns.length} scheduled`,
+      evidence: [
+        scheduledRuns[0] ? `Latest scheduled run: ${scheduledRuns[0].status || "unknown"}` : "No scheduled run history captured",
+        failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"} need recovery` : "No failed runs in the current list",
+        state.runs[0] ? `Latest run: ${state.runs[0].prompt || state.runs[0].id}` : "Run history is empty",
+      ],
+      risk: failedRuns.length ? "Delivery confidence is low until failures are triaged." : "Recent runs should still be reviewed before external delivery.",
+      action: failedRuns.length ? "Draft recovery notes for failed outbound work." : "Draft an outbound summary from recent runs.",
+      prompt: `Review proactive delivery run history.\n\nScheduled runs: ${scheduledRuns.length}\nFailed runs: ${failedRuns.length}\nLatest run: ${state.runs[0]?.prompt || "none"}\n\nDecide what is safe to deliver and what needs retry or review.`,
+    },
+    {
+      id: "channel-readiness",
+      source: "Channels",
+      panel: "inbox",
+      title: "Channel readiness",
+      metric: `${providers.length} provider${providers.length === 1 ? "" : "s"}`,
+      evidence: [
+        providers.length ? `Providers: ${providers.map((provider) => provider.name || provider.id).filter(Boolean).join(", ")}` : "No channel provider listed",
+        pendingInbox.length ? `${pendingInbox.length} inbound item${pendingInbox.length === 1 ? "" : "s"} waiting` : "No pending inbound items",
+        "Outbound delivery should mirror reviewed inbound channel policy",
+      ],
+      risk: providers.length ? "Channel state is visible, but outbound delivery still needs explicit approval." : "No visible channel means proactive output stays local.",
+      action: providers.length ? "Draft channel-specific delivery copy." : "Draft channel setup requirements.",
+      prompt: `Prepare proactive Astria channel delivery.\n\nProviders: ${providers.map((provider) => provider.name || provider.id).filter(Boolean).join(", ") || "none"}\nPending inbox items: ${pendingInbox.length}\n\nWrite the delivery target, approval gate, message shape, and rollback path.`,
+    },
+    {
+      id: "delivery-recovery",
+      source: "Readiness",
+      panel: readyDiagnostics ? "delivery" : "diagnostics",
+      title: "Recovery and guardrails",
+      metric: readyDiagnostics ? "ready" : "review",
+      evidence: [
+        `Diagnostics: ${state.diagnostics?.status || "unknown"}`,
+        state.diagnostics?.summary || "Diagnostics summary unavailable",
+        state.permissions?.configured === true ? "Permissions configured" : "Using default permissions",
+      ],
+      risk: readyDiagnostics ? "Ready state still needs an approval boundary before external posting." : "Runtime readiness may block reliable scheduled delivery.",
+      action: readyDiagnostics ? "Draft the approval checklist." : "Open diagnostics and repair blockers.",
+      prompt: `Create a proactive delivery recovery checklist.\n\nDiagnostics: ${state.diagnostics?.status || "unknown"}\nSummary: ${state.diagnostics?.summary || ""}\nPermissions configured: ${state.permissions?.configured === true}\n\nList blockers, approval gates, retry rules, and verification.`,
+    },
+  ];
+}
+
+function renderProactiveDeliveryBoard() {
+  const lanes = deliveryLanes();
+  setText("nav-delivery-count", lanes.length);
+  setText("manage-delivery-count", `${lanes.length} lane${lanes.length === 1 ? "" : "s"}`);
+  setText("delivery-summary", `${lanes.length} proactive delivery lane${lanes.length === 1 ? "" : "s"} across schedules, runs, channels, and readiness.`);
+  const list = $("delivery-lanes");
+  if (!list) return;
+  if (!state.selectedDeliveryLane || !lanes.some((lane) => lane.id === state.selectedDeliveryLane)) {
+    state.selectedDeliveryLane = lanes[0]?.id || "";
+  }
+  list.innerHTML = lanes.map((lane) => `<article class="delivery-lane ${lane.id === state.selectedDeliveryLane ? "active" : ""}" data-delivery-lane="${escapeHTML(lane.id)}">
+    <div class="row-item-title"><span>${escapeHTML(lane.source)}</span><span class="tag">${escapeHTML(lane.metric)}</span></div>
+    <strong>${escapeHTML(lane.title)}</strong>
+    <p>${escapeHTML(lane.action)}</p>
+    <div class="delivery-evidence">
+      ${lane.evidence.slice(0, 3).map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
+    </div>
+    <div class="row-actions">
+      <button type="button" data-delivery-select="${escapeHTML(lane.id)}">Delivery brief</button>
+      <button type="button" data-delivery-draft="${escapeHTML(lane.id)}">Draft delivery</button>
+      <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderDeliveryDetail(lanes.find((lane) => lane.id === state.selectedDeliveryLane) || lanes[0]);
+}
+
+function renderDeliveryDetail(lane) {
+  const target = $("delivery-detail");
+  if (!target) return;
+  if (!lane) {
+    target.innerHTML = `<div class="empty-state">Select a delivery lane.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(lane.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Source</span><strong>${escapeHTML(lane.source)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(lane.metric)}</strong>
+        <span>Route</span><strong>${escapeHTML(lane.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Evidence</h3>
+      <div class="delivery-evidence detail">
+        ${lane.evidence.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Risk</h3>
+      <p>${escapeHTML(lane.risk)}</p>
+      <h3>Next action</h3>
+      <p>${escapeHTML(lane.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-delivery-draft="${escapeHTML(lane.id)}">Draft delivery</button>
+        <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function deliveryLaneByID(id) {
+  return deliveryLanes().find((lane) => lane.id === id) || null;
+}
+
+function draftDeliveryToChat(id) {
+  const lane = deliveryLaneByID(id);
+  if (!lane) return;
+  $("chat-input").value = `${lane.prompt}\n\nReturn a concise delivery brief with destination, approval gate, expected artifact, and verification.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Delivery brief drafted to chat.");
+}
+
 function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
   const compareCount = comparisonCandidates().length;
+  const deliveryCount = deliveryLanes().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
   setText("nav-compare-count", compareCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + compareCount + 1);
+  setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
+  setText("nav-delivery-count", deliveryCount);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + compareCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -2263,6 +2419,7 @@ async function loadDiagnostics() {
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
+    renderProactiveDeliveryBoard();
     if ($("chat-output").querySelector(".empty-thread")) renderEmptyThread();
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
     const launchRows = diagnosticsLaunchRows(diagnostics);
@@ -2303,6 +2460,7 @@ async function loadDiagnostics() {
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
+    renderProactiveDeliveryBoard();
   }
 }
 
@@ -2343,6 +2501,7 @@ async function loadConfig() {
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
+    renderProactiveDeliveryBoard();
   } catch (error) {
     state.config = null;
     setText("settings-config-state", "Error");
@@ -2353,6 +2512,7 @@ async function loadConfig() {
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
+    renderProactiveDeliveryBoard();
   }
 }
 
@@ -2437,6 +2597,7 @@ async function loadPermissions() {
     renderWorkspaceHealthStrip();
     renderApprovalCenter();
     renderReviewQueue();
+    renderProactiveDeliveryBoard();
   } catch (error) {
     state.permissions = null;
     setText("settings-permissions-state", "Error");
@@ -2447,6 +2608,7 @@ async function loadPermissions() {
     renderWorkspaceHealthStrip();
     renderApprovalCenter();
     renderReviewQueue();
+    renderProactiveDeliveryBoard();
   }
 }
 
@@ -2854,10 +3016,12 @@ async function loadInbox() {
     const data = await api("/inbox");
     state.inboxItems = Array.isArray(data.items) ? data.items : [];
     renderInbox();
+    renderProactiveDeliveryBoard();
   } catch (error) {
     state.inboxItems = [];
     setText("inbox-state", "Error");
     renderError(list, error.message);
+    renderProactiveDeliveryBoard();
   }
 }
 
@@ -2867,9 +3031,11 @@ async function loadInboxProviders() {
     const data = await api("/inbox/providers");
     state.inboxProviders = Array.isArray(data.providers) ? data.providers : [];
     renderInboxProviders();
+    renderProactiveDeliveryBoard();
   } catch (error) {
     state.inboxProviders = [];
     renderError(list, error.message);
+    renderProactiveDeliveryBoard();
   }
 }
 
@@ -4094,6 +4260,7 @@ async function loadSchedules() {
     setText("nav-schedules-count", state.schedules.length);
     renderManageCount();
     renderHomeDockedTools();
+    renderProactiveDeliveryBoard();
     if (!state.schedules.length) {
       renderEmpty(list, "No schedules configured.");
       return;
@@ -4125,6 +4292,7 @@ async function loadRuns() {
     renderAgentContinuityDigest();
     renderRunsList();
     renderComparisonWorkbench();
+    renderProactiveDeliveryBoard();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
       renderRunDetail(null);
@@ -4136,6 +4304,7 @@ async function loadRuns() {
     renderMemoryMapPreview();
     renderAgentContinuityDigest();
     renderComparisonWorkbench();
+    renderProactiveDeliveryBoard();
     renderError(list, error.message);
   }
 }
@@ -5138,6 +5307,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const deliverySelect = event.target.closest("[data-delivery-select]");
+  if (deliverySelect) {
+    state.selectedDeliveryLane = deliverySelect.dataset.deliverySelect || "";
+    renderProactiveDeliveryBoard();
+    return;
+  }
+
+  const deliveryDraft = event.target.closest("[data-delivery-draft]");
+  if (deliveryDraft) {
+    draftDeliveryToChat(deliveryDraft.dataset.deliveryDraft);
+    return;
+  }
+
+  const deliveryLane = event.target.closest("[data-delivery-lane]");
+  if (deliveryLane && !event.target.closest("button")) {
+    state.selectedDeliveryLane = deliveryLane.dataset.deliveryLane || "";
+    renderProactiveDeliveryBoard();
+    return;
+  }
+
   const action = event.target.closest("[data-action]");
   if (action?.dataset.action === "mcp-new") {
     beginMCPCreate();
@@ -5527,5 +5716,6 @@ renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
+renderProactiveDeliveryBoard();
 connectEventStream();
 refreshAll();

@@ -36,6 +36,29 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 117: Proactive Delivery Board
+
+**Date**: 2026-06-08
+**Task**: Proactive delivery board
+**Branch**: `main`
+
+### Summary
+
+Added a Proactive Delivery Board that monitors scheduled work, recent outbound runs, channel readiness, and recovery guardrails. Each lane shows readiness evidence, risk, next action, Chat draft, and source routing.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 116: Comparison Workbench
 
 **Date**: 2026-06-08

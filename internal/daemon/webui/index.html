@@ -43,6 +43,10 @@
               <span><span class="nav-icon" aria-hidden="true">◈</span>比较</span>
               <small id="nav-compare-count">0</small>
             </button>
+            <button class="nav-item" data-panel="delivery" aria-label="Delivery">
+              <span><span class="nav-icon" aria-hidden="true">⇢</span>投递</span>
+              <small id="nav-delivery-count">0</small>
+            </button>
             <button class="nav-item" data-panel="inbox" aria-label="Inbox">
               <span><span class="nav-icon" aria-hidden="true">◫</span>收件箱</span>
               <small id="nav-inbox-count">0</small>
@@ -586,6 +590,11 @@
                 <strong id="manage-compare-count">0 lanes</strong>
                 <small>Compare runs, agents, memory, and council evidence before choosing a path.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="delivery">
+                <span>Proactive Delivery</span>
+                <strong id="manage-delivery-count">0 lanes</strong>
+                <small>Monitor schedules, outbound runs, channels, and recovery steps.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="inbox">
                 <span>Inbox</span>
                 <strong id="manage-inbox-count">0 pending</strong>
@@ -952,6 +961,27 @@
             </div>
             <div class="comparison-detail" id="comparison-detail">
               <div class="empty-state">Select a comparison lane.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-delivery" aria-labelledby="delivery-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="delivery-heading">Proactive Delivery</h2>
+              <p id="delivery-summary">Monitor scheduled work, outbound runs, and channel readiness.</p>
+            </div>
+            <div class="delivery-lanes" id="delivery-lanes">
+              <div class="empty-state">No delivery lanes yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Delivery Brief</h2>
+              <p>Plan proactive work before it runs or reaches a channel.</p>
+            </div>
+            <div class="delivery-detail" id="delivery-detail">
+              <div class="empty-state">Select a delivery lane.</div>
             </div>
           </aside>
         </section>
