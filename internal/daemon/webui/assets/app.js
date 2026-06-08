@@ -14,6 +14,7 @@ const state = {
   selectedComparisonLane: "",
   selectedPromptVariant: "",
   selectedDeliveryLane: "",
+  selectedSourceRow: "",
   promptLabGoal: "",
   diagnostics: null,
   config: null,
@@ -54,6 +55,7 @@ const views = {
   skills: ["技能", "Review installed skills exposed to Astria."],
   mcp: ["MCP 星港", "Inspect configured MCP servers and docking readiness."],
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
+  sources: ["来源登记", "Inspect freshness and reliability for knowledge sources."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
@@ -1218,6 +1220,7 @@ function renderHomeActivity() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderSourceRegistry();
   renderPromptExperimentLab();
   renderProactiveDeliveryBoard();
 }
@@ -1261,6 +1264,7 @@ function renderHomeDockedTools() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderSourceRegistry();
   renderPromptExperimentLab();
   renderProactiveDeliveryBoard();
 }
@@ -2062,17 +2066,20 @@ function draftDeliveryToChat(id) {
 function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const sourceCount = sourceRegistryRows().length;
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
   const deliveryCount = deliveryLanes().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
+  setText("manage-sources-count", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
+  setText("nav-sources-count", sourceCount);
   setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
   setText("nav-compare-count", compareCount);
   setText("manage-promptlab-count", `${promptVariantCount} variant${promptVariantCount === 1 ? "" : "s"}`);
   setText("nav-promptlab-count", promptVariantCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -2355,6 +2362,7 @@ async function submitFileIntake(event) {
     state.intakeResult = result;
     $("intake-state").textContent = result.is_error ? "Error" : "Ready";
     renderFileIntake();
+    renderSourceRegistry();
     showToast(result.is_error ? "File intake returned an error." : "File intake ready.");
   } catch (error) {
     $("intake-state").textContent = "Error";
@@ -2455,6 +2463,144 @@ function renderMemoryMapPreview() {
     return;
   }
   list.innerHTML = cards.join("");
+}
+
+function sourceRegistryRows() {
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const favoriteSessions = state.sessions.filter((session) => session.favorite);
+  const latestRun = state.runs[0];
+  const latestCouncil = state.councilRuns[0];
+  const intake = state.intakeResult;
+  return [
+    {
+      id: "memory",
+      type: "Memory",
+      title: "Reviewed memory",
+      panel: "memory",
+      evidence: memoryEntries.length + memoryFacts.length,
+      freshness: memoryEntries[0]?.modified ? formatTimestamp(memoryEntries[0].modified) : "No memory file",
+      reliability: memoryFacts.length ? "classified facts" : memoryEntries.length ? "file-backed" : "needs seed",
+      action: memoryFacts.length ? "Audit categories and stale facts." : "Draft a first reviewed memory source.",
+      prompt: `Audit Astria memory sources.\n\nMemory files: ${memoryEntries.length}\nClassified facts: ${memoryFacts.length}\nWarnings: ${(state.memory?.warnings || []).length}\n\nIdentify stale, duplicate, or missing durable facts and propose a maintenance action.`,
+    },
+    {
+      id: "sessions",
+      type: "Sessions",
+      title: "Favorite sessions",
+      panel: "memory",
+      evidence: favoriteSessions.length,
+      freshness: favoriteSessions[0]?.updated_at ? formatTimestamp(favoriteSessions[0].updated_at) : favoriteSessions[0]?.id || "No favorite session",
+      reliability: favoriteSessions.length ? "operator selected" : "needs favorite",
+      action: favoriteSessions.length ? "Convert useful favorites into memory." : "Favorite a session before trusting it as a source.",
+      prompt: `Review favorite sessions as Astria knowledge sources.\n\nFavorites: ${favoriteSessions.map((session) => session.title || session.id).join(", ") || "none"}\n\nChoose what should become durable memory and what should remain ephemeral.`,
+    },
+    {
+      id: "runs",
+      type: "Runs",
+      title: "Execution evidence",
+      panel: "runs",
+      evidence: state.runs.length,
+      freshness: latestRun?.started_at ? formatTimestamp(latestRun.started_at) : "No runs",
+      reliability: latestRun ? `${latestRun.status || "unknown"} latest` : "needs execution",
+      action: latestRun ? "Promote stable run outcomes into memory." : "Run a baseline task before citing execution evidence.",
+      prompt: `Review recent runs as knowledge sources.\n\nLatest run: ${latestRun?.prompt || "none"}\nStatus: ${latestRun?.status || "unknown"}\nRun count: ${state.runs.length}\n\nIdentify which outcomes are reliable enough to cite in future prompts.`,
+    },
+    {
+      id: "intake",
+      type: "File Intake",
+      title: intake?.path || "Local file evidence",
+      panel: "intake",
+      evidence: intake && !intake.is_error ? 1 : 0,
+      freshness: intake?.mode || "No intake result",
+      reliability: intake?.is_error ? "error" : intake ? "read-only sample" : "needs file",
+      action: intake ? "Summarize source limits before using it." : "Inspect a file to seed source-grounded knowledge.",
+      prompt: `Review file intake as an Astria source.\n\nPath: ${intake?.path || "none"}\nMode: ${intake?.mode || "none"}\nError: ${Boolean(intake?.is_error)}\n\nState what can be trusted, what is incomplete, and what should be re-read.`,
+    },
+    {
+      id: "council",
+      type: "Council",
+      title: latestCouncil?.goal || "Council synthesis",
+      panel: "council",
+      evidence: latestCouncil ? 1 + (latestCouncil.roles || []).length : 0,
+      freshness: latestCouncil?.created_at ? formatTimestamp(latestCouncil.created_at) : "No council run",
+      reliability: latestCouncil?.synthesis ? "multi-role synthesis" : "needs review",
+      action: latestCouncil ? "Check whether synthesis should become memory." : "Run council before citing reviewed judgment.",
+      prompt: `Review council output as a knowledge source.\n\nGoal: ${latestCouncil?.goal || "none"}\nRoles: ${(latestCouncil?.roles || []).map((role) => role.role).join(", ") || "none"}\n\nDecide which conclusions are durable and which need another review.`,
+    },
+  ];
+}
+
+function renderSourceRegistry() {
+  const rows = sourceRegistryRows();
+  setText("nav-sources-count", rows.length);
+  setText("manage-sources-count", `${rows.length} source${rows.length === 1 ? "" : "s"}`);
+  setText("sources-summary", `${rows.length} source lane${rows.length === 1 ? "" : "s"} tracking freshness, reliability, and maintenance.`);
+  const list = $("source-registry-list");
+  if (!list) return;
+  if (!state.selectedSourceRow || !rows.some((row) => row.id === state.selectedSourceRow)) {
+    state.selectedSourceRow = rows[0]?.id || "";
+  }
+  list.innerHTML = rows.map((row) => `<article class="source-row ${row.id === state.selectedSourceRow ? "active" : ""}" data-source-row="${escapeHTML(row.id)}">
+    <div class="row-item-title"><span>${escapeHTML(row.type)}</span><span class="tag">${escapeHTML(String(row.evidence))}</span></div>
+    <strong>${escapeHTML(row.title)}</strong>
+    <div class="source-grid">
+      <span>Freshness</span><strong>${escapeHTML(row.freshness)}</strong>
+      <span>Reliability</span><strong>${escapeHTML(row.reliability)}</strong>
+      <span>Action</span><strong>${escapeHTML(row.action)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-source-select="${escapeHTML(row.id)}">Source brief</button>
+      <button type="button" data-source-draft="${escapeHTML(row.id)}">Draft maintenance</button>
+      <button type="button" data-panel="${escapeHTML(row.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderSourceRegistryDetail(rows.find((row) => row.id === state.selectedSourceRow) || rows[0]);
+}
+
+function renderSourceRegistryDetail(row) {
+  const target = $("source-registry-detail");
+  if (!target) return;
+  if (!row) {
+    target.innerHTML = `<div class="empty-state">Select a source row.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(row.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(row.type)}</strong>
+        <span>Evidence</span><strong>${escapeHTML(String(row.evidence))}</strong>
+        <span>Route</span><strong>${escapeHTML(row.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Reliability</h3>
+      <p>${escapeHTML(row.reliability)}</p>
+      <h3>Maintenance</h3>
+      <p>${escapeHTML(row.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-source-draft="${escapeHTML(row.id)}">Draft maintenance</button>
+        <button type="button" data-panel="${escapeHTML(row.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function sourceRowByID(id) {
+  return sourceRegistryRows().find((row) => row.id === id) || null;
+}
+
+function draftSourceMaintenanceToChat(id) {
+  const row = sourceRowByID(id);
+  if (!row) return;
+  $("chat-input").value = `${row.prompt}\n\nReturn a concise source maintenance brief with freshness, reliability, citations to inspect, and next action.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Source maintenance drafted to chat.");
 }
 
 function renderMemoryTaxonomyBar(categories) {
@@ -2763,6 +2909,7 @@ async function loadMemory() {
   try {
     state.memory = await api("/memory");
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
@@ -2771,6 +2918,7 @@ async function loadMemory() {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
@@ -2795,6 +2943,7 @@ async function submitMemoryCandidate(event) {
     $("memory-candidate").value = "";
     $("memory-save-state").textContent = "Saved";
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     showToast("Memory approved.");
@@ -2810,6 +2959,7 @@ async function deleteMemoryEntry(name) {
   try {
     state.memory = await api(`/memory/${encodeURIComponent(name)}`, { method: "DELETE" });
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     showToast("Memory entry deleted.");
@@ -2902,6 +3052,7 @@ async function loadCouncilRuns() {
     const data = await api("/council");
     state.councilRuns = Array.isArray(data.runs) ? data.runs : [];
     renderCouncilRuns();
+    renderSourceRegistry();
     renderComparisonWorkbench();
   } catch (error) {
     state.councilRuns = [];
@@ -2909,6 +3060,7 @@ async function loadCouncilRuns() {
     setText("council-state", "Error");
     renderError(list, error.message);
     renderComparisonWorkbench();
+    renderSourceRegistry();
   }
 }
 
@@ -4365,6 +4517,7 @@ async function loadSessions(query = "") {
     if (!state.sessions.length) {
       renderEmpty(list, query ? "No matching sessions." : "No sessions saved.");
       renderMemoryMapPreview();
+      renderSourceRegistry();
       renderWorkspaceHub();
       renderKnowledgeCuration();
       renderPromptSuggestionDock();
@@ -4387,6 +4540,7 @@ async function loadSessions(query = "") {
     </article>`).join("");
     updateActiveSessionLabel();
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderWorkspaceHub();
     renderKnowledgeCuration();
     renderPromptSuggestionDock();
@@ -4395,6 +4549,7 @@ async function loadSessions(query = "") {
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderWorkspaceHub();
     renderKnowledgeCuration();
     renderPromptSuggestionDock();
@@ -4441,6 +4596,7 @@ async function loadRuns() {
     $("runs-count").textContent = state.runs.length;
     renderHomeActivity();
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderAgentContinuityDigest();
     renderRunsList();
     renderComparisonWorkbench();
@@ -4455,6 +4611,7 @@ async function loadRuns() {
     $("runs-count").textContent = "0";
     renderHomeActivity();
     renderMemoryMapPreview();
+    renderSourceRegistry();
     renderAgentContinuityDigest();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
@@ -5501,6 +5658,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const sourceSelect = event.target.closest("[data-source-select]");
+  if (sourceSelect) {
+    state.selectedSourceRow = sourceSelect.dataset.sourceSelect || "";
+    renderSourceRegistry();
+    return;
+  }
+
+  const sourceDraft = event.target.closest("[data-source-draft]");
+  if (sourceDraft) {
+    draftSourceMaintenanceToChat(sourceDraft.dataset.sourceDraft);
+    return;
+  }
+
+  const sourceRow = event.target.closest("[data-source-row]");
+  if (sourceRow && !event.target.closest("button")) {
+    state.selectedSourceRow = sourceRow.dataset.sourceRow || "";
+    renderSourceRegistry();
+    return;
+  }
+
   const action = event.target.closest("[data-action]");
   if (action?.dataset.action === "mcp-new") {
     beginMCPCreate();
@@ -5523,6 +5700,7 @@ document.addEventListener("click", (event) => {
   if (memoryCategory) {
     state.memoryCategory = memoryCategory.dataset.memoryCategory || "all";
     renderMemoryMapPreview();
+    renderSourceRegistry();
     return;
   }
 
@@ -5873,7 +6051,7 @@ $("session-search-form").addEventListener("submit", (event) => {
 });
 const debouncedSessionSearch = debounce(() => loadSessions($("session-search").value.trim()));
 $("session-search").addEventListener("input", debouncedSessionSearch);
-$("session-search-clear").addEventListener("click", () => {
+  $("session-search-clear").addEventListener("click", () => {
   $("session-search").value = "";
   loadSessions();
   $("session-search").focus();
@@ -5886,6 +6064,7 @@ $("promptlab-goal").addEventListener("input", (event) => {
 renderHomeMode();
 renderStrategyMatrix();
 renderFileIntake();
+renderSourceRegistry();
 renderWorkspaceHub();
 renderKnowledgeCuration();
 renderToolDockInspector();

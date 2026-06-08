@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Embedded daemon Web UI constraints: static assets, same-origin daemon APIs, and no frontend build pipeline."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared project thinking guidance for scoped UI/data-flow changes."}

@@ -6,6 +6,28 @@
 ---
 
 
+## Session 119: Knowledge Source Registry
+
+**Date**: 2026-06-08
+**Task**: Knowledge source registry
+**Branch**: `main`
+
+### Summary
+
+Added an Astria Source Registry panel that tracks memory, sessions, runs, file intake, and council as knowledge sources with evidence counts, freshness, reliability posture, source routing, and maintenance prompts.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
 
 ## Session 105: Astria Command Center
 

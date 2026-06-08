@@ -43,7 +43,8 @@
     "06-08-council-stage-workflow",
     "06-08-comparison-workbench",
     "06-08-proactive-delivery-board",
-    "06-08-prompt-experiment-lab"
+    "06-08-prompt-experiment-lab",
+    "06-08-knowledge-source-registry"
   ],
   "parent": null,
   "relatedFiles": [
@@ -55,6 +56,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, Run Time Travel, Approval Center, Knowledge Curation, Tool Dock Inspector, Prompt Suggestion Dock, Run Follow-up Suggestions, Agent Capability Roster, Agent Launch Actions, Agent Command Launcher, Agent Continuity Digest, Council Stage Workflow, Comparison Workbench, Proactive Delivery Board, and Prompt Experiment Lab are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; workflow recipes, Mission Control, workflow briefs, Workspace Session Hub, workflow stage continuity, Command Center, Recent Work resume, Focus Brief, Workspace Health Strip, Review Queue, Strategy Matrix, Run Time Travel, Approval Center, Knowledge Curation, Tool Dock Inspector, Prompt Suggestion Dock, Run Follow-up Suggestions, Agent Capability Roster, Agent Launch Actions, Agent Command Launcher, Agent Continuity Digest, Council Stage Workflow, Comparison Workbench, Proactive Delivery Board, Prompt Experiment Lab, and Knowledge Source Registry are complete.",
   "meta": {}
 }

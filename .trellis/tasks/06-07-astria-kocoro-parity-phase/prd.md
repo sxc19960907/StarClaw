@@ -40,6 +40,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-08-comparison-workbench` | Add a side-by-side workbench for comparing runs, agents, memory, and council evidence. |
 | P1 | `06-08-proactive-delivery-board` | Add a proactive delivery board for schedules, outbound runs, channels, and recovery readiness. |
 | P1 | `06-08-prompt-experiment-lab` | Add a Prompt Lab for direct, evidence-first, council, and delivery-ready prompt variants. |
+| P1 | `06-08-knowledge-source-registry` | Add a Source Registry for freshness, reliability, and maintenance of Astria knowledge sources. |
 
 ## Acceptance Criteria
 

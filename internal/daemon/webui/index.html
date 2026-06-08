@@ -94,6 +94,10 @@
               <span><span class="nav-icon" aria-hidden="true">✶</span>记忆星图</span>
               <small id="nav-memory-count">0</small>
             </button>
+            <button class="nav-item" data-panel="sources" aria-label="Source Registry">
+              <span><span class="nav-icon" aria-hidden="true">⋱</span>来源登记</span>
+              <small id="nav-sources-count">0</small>
+            </button>
             <button class="nav-item" data-panel="council" aria-label="Agent Council">
               <span><span class="nav-icon" aria-hidden="true">✷</span>智能体议会</span>
               <small id="nav-council-count">0</small>
@@ -584,6 +588,11 @@
                 <strong id="manage-memory-count">0 sources</strong>
                 <small>Draft reviewable memory from sessions and runs.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="sources">
+                <span>Source Registry</span>
+                <strong id="manage-sources-count">0 sources</strong>
+                <small>Review freshness, reliability, and maintenance actions for knowledge sources.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="council">
                 <span>Agent Council</span>
                 <strong id="manage-council-count">0 reviews</strong>
@@ -912,6 +921,27 @@
             <div class="inline-actions">
               <button type="button" class="primary-button" data-home-action="memory">Draft memory map</button>
               <button type="button" data-panel="chat">Open chat</button>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-sources" aria-labelledby="sources-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="sources-heading">Source Registry</h2>
+              <p id="sources-summary">Track freshness, reliability, and maintenance actions for Astria knowledge.</p>
+            </div>
+            <div class="source-registry-list" id="source-registry-list">
+              <div class="empty-state">No knowledge sources yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Source Brief</h2>
+              <p>Inspect where a source came from before using it as durable context.</p>
+            </div>
+            <div class="source-registry-detail" id="source-registry-detail">
+              <div class="empty-state">Select a source row.</div>
             </div>
           </aside>
         </section>
