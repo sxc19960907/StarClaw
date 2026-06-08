@@ -937,3 +937,36 @@ Added run control endpoint, preserved /cancel compatibility, recorded control de
 ### Next Steps
 
 - None - task complete
+
+
+## Session 111: Astria stellar workbench UI language
+
+**Date**: 2026-06-08
+**Task**: Astria stellar workbench UI language
+**Branch**: `main`
+
+### Summary
+
+Documented Astria stellar UI grammar, unified Home/Run Quality/Budget/Snapshot workbench cards, updated smoke heading checks, and validated with Web UI smoke screenshots.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e510afb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
