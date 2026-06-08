@@ -208,6 +208,8 @@ func TestWebUITracksEventStreamReplayRecoveryState(t *testing.T) {
 		`status: "idle"`,
 		"reconnects: 0",
 		"reconnecting: false",
+		`lastRecoveredAt: ""`,
+		"refreshingRuns: false",
 		`state.eventStream.status = "connecting"`,
 		"const trackEventStreamID = (event) => {",
 		"event.lastEventId",
@@ -217,10 +219,60 @@ func TestWebUITracksEventStreamReplayRecoveryState(t *testing.T) {
 		"state.eventStream.reconnects += 1",
 		`state.eventStream.status = "recovered"`,
 		"state.eventStream.reconnecting = false",
+		"state.eventStream.lastRecoveredAt = new Date().toISOString()",
+		"refreshRunsAfterEventStreamRecovery()",
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("app.js missing event stream recovery marker %q", want)
 		}
+	}
+}
+
+func TestWebUIConsumesRunLifecycleRecoveryEvents(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	script, err := fetchWebUIAsset(t, ts.URL+"/app/assets/app.js")
+	if err != nil {
+		t.Fatalf("fetch app.js: %v", err)
+	}
+	for _, want := range []string{
+		`source.addEventListener("run_started"`,
+		`source.addEventListener("run_completed"`,
+		`source.addEventListener("run_error"`,
+		`handleRunLifecycleEvent("run_started", parseEventData(event.data))`,
+		`handleRunLifecycleEvent("run_completed", parseEventData(event.data))`,
+		`handleRunLifecycleEvent("run_error", parseEventData(event.data))`,
+		"function handleRunLifecycleEvent(eventType, eventPayload)",
+		"function lifecycleRunSummary(eventType, eventPayload)",
+		"function safeLifecyclePayload(eventPayload)",
+		`recovery_source: "event_stream"`,
+		"function upsertRecoveredRun(run)",
+		"renderRunDependentViews()",
+		"function refreshRunsAfterEventStreamRecovery()",
+		"if (state.eventStream.refreshingRuns) return;",
+		"await loadRuns()",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("app.js missing lifecycle recovery marker %q", want)
+		}
+	}
+	for _, forbidden := range []string{
+		"eventPayload.prompt",
+		"eventPayload.text",
+		"eventPayload.content",
+		"eventPayload.delta",
+		"eventPayload.request",
+		"eventPayload.response",
+		"eventPayload.args",
+	} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("app.js directly consumes unsafe lifecycle payload key %q", forbidden)
+		}
+	}
+	if !strings.Contains(script, `"run_id", "id", "status", "agent", "channel", "source", "session_id", "started_at", "ended_at", "usage", "error"`) {
+		t.Fatalf("app.js missing lifecycle payload allowlist")
 	}
 }
 

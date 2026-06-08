@@ -67,6 +67,8 @@ const state = {
     status: "idle",
     reconnects: 0,
     reconnecting: false,
+    lastRecoveredAt: "",
+    refreshingRuns: false,
   },
   homeMode: "general",
   workflowStrategy: "direct",
@@ -1205,6 +1207,18 @@ function connectEventStream() {
     trackEventStreamID(event);
     markApprovalResolved(parseEventData(event.data));
   });
+  source.addEventListener("run_started", (event) => {
+    trackEventStreamID(event);
+    handleRunLifecycleEvent("run_started", parseEventData(event.data));
+  });
+  source.addEventListener("run_completed", (event) => {
+    trackEventStreamID(event);
+    handleRunLifecycleEvent("run_completed", parseEventData(event.data));
+  });
+  source.addEventListener("run_error", (event) => {
+    trackEventStreamID(event);
+    handleRunLifecycleEvent("run_error", parseEventData(event.data));
+  });
   source.onerror = () => {
     state.eventStream.status = "reconnecting";
     state.eventStream.reconnecting = true;
@@ -1216,6 +1230,8 @@ function connectEventStream() {
       state.eventStream.reconnects += 1;
       state.eventStream.status = "recovered";
       state.eventStream.reconnecting = false;
+      state.eventStream.lastRecoveredAt = new Date().toISOString();
+      refreshRunsAfterEventStreamRecovery();
     } else {
       state.eventStream.status = "running";
     }
@@ -6861,22 +6877,7 @@ async function loadRuns() {
     const data = await api("/runs");
     state.runs = data.runs || [];
     $("runs-count").textContent = state.runs.length;
-    renderHomeActivity();
-    renderMemoryMapPreview();
-    renderSourceRegistry();
-    renderKnowledgeReconciliation();
-    renderAgentContinuityDigest();
-    renderRunsList();
-    renderComparisonWorkbench();
-    renderRunQualityScorecard();
-    renderPromptExperimentLab();
-    renderReuseGallery();
-    renderResultLibrary();
-    renderPlaybookLibrary();
-    renderStarterKitLauncher();
-    renderSharePackBuilder();
-    renderWorkspaceSnapshotPlanner();
-    renderProactiveDeliveryBoard();
+    renderRunDependentViews();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
       renderRunDetail(null);
@@ -6884,22 +6885,103 @@ async function loadRuns() {
   } catch (error) {
     state.runs = [];
     $("runs-count").textContent = "0";
-    renderHomeActivity();
-    renderMemoryMapPreview();
-    renderSourceRegistry();
-    renderKnowledgeReconciliation();
-    renderAgentContinuityDigest();
-    renderComparisonWorkbench();
-    renderRunQualityScorecard();
-    renderPromptExperimentLab();
-    renderReuseGallery();
-    renderResultLibrary();
-    renderPlaybookLibrary();
-    renderStarterKitLauncher();
-    renderSharePackBuilder();
-    renderWorkspaceSnapshotPlanner();
-    renderProactiveDeliveryBoard();
+    renderRunDependentViews({ skipRunsList: true });
     renderError(list, error.message);
+  }
+}
+
+function renderRunDependentViews(options = {}) {
+  renderHomeActivity();
+  renderMemoryMapPreview();
+  renderSourceRegistry();
+  renderKnowledgeReconciliation();
+  renderAgentContinuityDigest();
+  if (!options.skipRunsList) {
+    renderRunsList();
+  }
+  renderComparisonWorkbench();
+  renderRunQualityScorecard();
+  renderPromptExperimentLab();
+  renderReuseGallery();
+  renderResultLibrary();
+  renderPlaybookLibrary();
+  renderStarterKitLauncher();
+  renderSharePackBuilder();
+  renderWorkspaceSnapshotPlanner();
+  renderProactiveDeliveryBoard();
+}
+
+function handleRunLifecycleEvent(eventType, eventPayload) {
+  const run = lifecycleRunSummary(eventType, eventPayload);
+  if (!run) return;
+  upsertRecoveredRun(run);
+  if (state.activeRunID && state.activeRunID === run.id) {
+    selectRun(run.id);
+  }
+}
+
+function lifecycleRunSummary(eventType, eventPayload) {
+  const safe = safeLifecyclePayload(eventPayload);
+  const id = safe.run_id || safe.id || "";
+  if (!id) return null;
+  const status = lifecycleRunStatus(eventType, safe.status);
+  const run = {
+    id,
+    status,
+    recovered: true,
+    recovery_source: "event_stream",
+  };
+  for (const [sourceKey, targetKey] of [
+    ["agent", "agent"],
+    ["channel", "channel"],
+    ["source", "source"],
+    ["session_id", "session_id"],
+    ["started_at", "started_at"],
+    ["ended_at", "ended_at"],
+    ["usage", "usage"],
+  ]) {
+    if (safe[sourceKey] !== undefined && safe[sourceKey] !== "") {
+      run[targetKey] = safe[sourceKey];
+    }
+  }
+  if (safe.error) {
+    run.error = safe.error;
+  }
+  return run;
+}
+
+function lifecycleRunStatus(eventType, status) {
+  if (status) return String(status);
+  if (eventType === "run_started") return "running";
+  if (eventType === "run_completed") return "completed";
+  if (eventType === "run_error") return "error";
+  return "unknown";
+}
+
+function safeLifecyclePayload(eventPayload) {
+  if (!eventPayload || typeof eventPayload !== "object") return {};
+  const allowedKeys = new Set(["run_id", "id", "status", "agent", "channel", "source", "session_id", "started_at", "ended_at", "usage", "error"]);
+  return Object.fromEntries(Object.entries(eventPayload).filter(([key]) => allowedKeys.has(key)));
+}
+
+function upsertRecoveredRun(run) {
+  const index = state.runs.findIndex((item) => item.id === run.id);
+  if (index >= 0) {
+    state.runs[index] = { ...state.runs[index], ...run };
+  } else {
+    state.runs = [run, ...state.runs];
+  }
+  $("runs-count").textContent = state.runs.length;
+  renderRunDependentViews();
+}
+
+async function refreshRunsAfterEventStreamRecovery() {
+  if (state.eventStream.refreshingRuns) return;
+  state.eventStream.refreshingRuns = true;
+  try {
+    await loadRuns();
+  } finally {
+    state.eventStream.refreshingRuns = false;
   }
 }
 
