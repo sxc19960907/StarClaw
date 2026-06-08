@@ -1,0 +1,31 @@
+{
+  "id": "prompt-experiment-lab",
+  "name": "prompt-experiment-lab",
+  "title": "Prompt experiment lab",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Added Prompt Lab panel with direct, evidence-first, council-reviewed, and delivery-ready prompt variants plus Chat draft and source routing actions.",
+  "meta": {}
+}

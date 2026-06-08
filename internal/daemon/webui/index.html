@@ -43,6 +43,10 @@
               <span><span class="nav-icon" aria-hidden="true">◈</span>比较</span>
               <small id="nav-compare-count">0</small>
             </button>
+            <button class="nav-item" data-panel="promptlab" aria-label="Prompt Lab">
+              <span><span class="nav-icon" aria-hidden="true">✦</span>实验</span>
+              <small id="nav-promptlab-count">0</small>
+            </button>
             <button class="nav-item" data-panel="delivery" aria-label="Delivery">
               <span><span class="nav-icon" aria-hidden="true">⇢</span>投递</span>
               <small id="nav-delivery-count">0</small>
@@ -590,6 +594,11 @@
                 <strong id="manage-compare-count">0 lanes</strong>
                 <small>Compare runs, agents, memory, and council evidence before choosing a path.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="promptlab">
+                <span>Prompt Lab</span>
+                <strong id="manage-promptlab-count">0 variants</strong>
+                <small>Test prompt variants across agents, evidence, council, and delivery paths.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="delivery">
                 <span>Proactive Delivery</span>
                 <strong id="manage-delivery-count">0 lanes</strong>
@@ -961,6 +970,31 @@
             </div>
             <div class="comparison-detail" id="comparison-detail">
               <div class="empty-state">Select a comparison lane.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-promptlab" aria-labelledby="promptlab-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="promptlab-heading">Prompt Lab</h2>
+              <p id="promptlab-summary">Turn one goal into testable prompt variants.</p>
+            </div>
+            <label class="prompt-lab-goal">
+              Experiment goal
+              <textarea id="promptlab-goal" rows="4" aria-label="Prompt lab goal" placeholder="Describe the goal to test across variants"></textarea>
+            </label>
+            <div class="prompt-lab-variants" id="promptlab-variants">
+              <div class="empty-state">No prompt variants yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Variant Brief</h2>
+              <p>Compare prompt shape, agent fit, context source, and evaluation criteria.</p>
+            </div>
+            <div class="prompt-lab-detail" id="promptlab-detail">
+              <div class="empty-state">Select a prompt variant.</div>
             </div>
           </aside>
         </section>

@@ -36,6 +36,29 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 118: Prompt Experiment Lab
+
+**Date**: 2026-06-08
+**Task**: Prompt experiment lab
+**Branch**: `main`
+
+### Summary
+
+Added a Prompt Lab that turns one goal into direct, evidence-first, council-reviewed, and delivery-ready variants. Each variant shows agent fit, context source, risk, evaluation criteria, Chat draft, and source routing.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 117: Proactive Delivery Board
 
 **Date**: 2026-06-08

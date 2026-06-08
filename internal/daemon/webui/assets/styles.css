@@ -3356,6 +3356,71 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.prompt-lab-goal {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.prompt-lab-variants {
+  display: grid;
+  gap: 10px;
+}
+
+.prompt-variant {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.prompt-variant.active {
+  border-color: rgba(49, 92, 255, 0.28);
+  background:
+    linear-gradient(90deg, rgba(49, 92, 255, 0.08), transparent 54%),
+    rgba(255, 255, 255, 0.76);
+}
+
+.prompt-variant strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-variant p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.prompt-variant-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.prompt-variant-meta span {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.prompt-lab-detail {
+  margin-top: 16px;
+}
+
 .delivery-lanes {
   display: grid;
   gap: 10px;

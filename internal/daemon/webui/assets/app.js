@@ -12,7 +12,9 @@ const state = {
   currentRunDetail: null,
   currentCouncilRun: null,
   selectedComparisonLane: "",
+  selectedPromptVariant: "",
   selectedDeliveryLane: "",
+  promptLabGoal: "",
   diagnostics: null,
   config: null,
   permissions: null,
@@ -54,6 +56,7 @@ const views = {
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
+  promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
   intake: ["文件星舱", "Inspect local documents and archives before a run."],
@@ -1215,6 +1218,7 @@ function renderHomeActivity() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderPromptExperimentLab();
   renderProactiveDeliveryBoard();
 }
 
@@ -1257,6 +1261,7 @@ function renderHomeDockedTools() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderPromptExperimentLab();
   renderProactiveDeliveryBoard();
 }
 
@@ -1766,6 +1771,145 @@ function draftComparisonToChat(id) {
   showToast("Comparison drafted to chat.");
 }
 
+function promptLabGoal() {
+  const field = $("promptlab-goal");
+  return (field?.value || state.promptLabGoal || state.workflowStageLabel || state.runs[0]?.prompt || "").trim();
+}
+
+function promptLabVariants() {
+  const goal = promptLabGoal() || "Define the next Astria task and validation plan.";
+  const agent = state.agents[0]?.name || "default";
+  const latestRun = state.runs[0];
+  const latestCouncil = state.councilRuns[0];
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const compare = comparisonCandidates();
+  const delivery = deliveryLanes();
+  return [
+    {
+      id: "direct",
+      label: "Direct",
+      title: "Direct execution",
+      panel: "chat",
+      agent,
+      context: "Current goal",
+      source: "Chat",
+      risk: "Fast path; weaker if the goal needs evidence or review first.",
+      evaluation: "Success means one concrete implementation step, explicit validation, and no broad scope drift.",
+      prompt: `Execute this Astria goal directly.\n\nGoal: ${goal}\n\nReturn the smallest useful implementation step, explain the validation command, and call out any risk before editing.`,
+    },
+    {
+      id: "evidence",
+      label: "Evidence",
+      title: "Evidence-first experiment",
+      panel: "compare",
+      agent,
+      context: `${state.runs.length} runs, ${memoryCount} memory items`,
+      source: "Comparison Workbench",
+      risk: "Slower path; best when stale context or hidden regressions are likely.",
+      evaluation: "Success means the answer cites run, memory, or comparison evidence before recommending action.",
+      prompt: `Run an evidence-first Astria prompt experiment.\n\nGoal: ${goal}\nLatest run: ${latestRun?.prompt || "none"}\nComparison lanes: ${compare.map((lane) => lane.source).join(", ")}\nMemory items: ${memoryCount}\n\nUse the evidence to choose one next action and explain why alternatives are weaker.`,
+    },
+    {
+      id: "council",
+      label: "Council",
+      title: "Council-reviewed variant",
+      panel: "council",
+      agent,
+      context: latestCouncil?.goal || "Planner/researcher/reviewer roles",
+      source: "Agent Council",
+      risk: "Adds review overhead; best when tradeoffs or coordination matter.",
+      evaluation: "Success means planner, researcher, and reviewer perspectives produce a single handoff.",
+      prompt: `Prepare a council-reviewed prompt variant.\n\nGoal: ${goal}\nExisting council goal: ${latestCouncil?.goal || "none"}\n\nSplit the goal into planner, researcher, and reviewer concerns, then synthesize the next concrete Astria action.`,
+    },
+    {
+      id: "delivery",
+      label: "Delivery",
+      title: "Delivery-ready variant",
+      panel: "delivery",
+      agent,
+      context: `${state.schedules.length} schedules, ${state.inboxProviders.length} channels`,
+      source: "Proactive Delivery",
+      risk: "Requires approval boundary before any external channel delivery.",
+      evaluation: "Success means the prompt produces destination, approval gate, artifact, and verification.",
+      prompt: `Create a delivery-ready Astria prompt variant.\n\nGoal: ${goal}\nDelivery lanes: ${delivery.map((lane) => lane.source).join(", ")}\n\nReturn the message shape, destination assumption, approval gate, and validation checklist.`,
+    },
+  ];
+}
+
+function renderPromptExperimentLab() {
+  const variants = promptLabVariants();
+  setText("nav-promptlab-count", variants.length);
+  setText("manage-promptlab-count", `${variants.length} variant${variants.length === 1 ? "" : "s"}`);
+  setText("promptlab-summary", `${variants.length} prompt variant${variants.length === 1 ? "" : "s"} across direct, evidence, council, and delivery paths.`);
+  const list = $("promptlab-variants");
+  if (!list) return;
+  if (!state.selectedPromptVariant || !variants.some((variant) => variant.id === state.selectedPromptVariant)) {
+    state.selectedPromptVariant = variants[0]?.id || "";
+  }
+  list.innerHTML = variants.map((variant) => `<article class="prompt-variant ${variant.id === state.selectedPromptVariant ? "active" : ""}" data-prompt-variant="${escapeHTML(variant.id)}">
+    <div class="row-item-title"><span>${escapeHTML(variant.label)}</span><span class="tag">${escapeHTML(variant.agent)}</span></div>
+    <strong>${escapeHTML(variant.title)}</strong>
+    <p>${escapeHTML(variant.evaluation)}</p>
+    <div class="prompt-variant-meta">
+      <span>Context: ${escapeHTML(variant.context)}</span>
+      <span>Source: ${escapeHTML(variant.source)}</span>
+      <span>Risk: ${escapeHTML(variant.risk)}</span>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-prompt-variant-select="${escapeHTML(variant.id)}">Variant brief</button>
+      <button type="button" data-prompt-variant-draft="${escapeHTML(variant.id)}">Draft variant</button>
+      <button type="button" data-panel="${escapeHTML(variant.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderPromptVariantDetail(variants.find((variant) => variant.id === state.selectedPromptVariant) || variants[0]);
+}
+
+function renderPromptVariantDetail(variant) {
+  const target = $("promptlab-detail");
+  if (!target) return;
+  if (!variant) {
+    target.innerHTML = `<div class="empty-state">Select a prompt variant.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(variant.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Agent</span><strong>${escapeHTML(variant.agent)}</strong>
+        <span>Context</span><strong>${escapeHTML(variant.context)}</strong>
+        <span>Source</span><strong>${escapeHTML(variant.source)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Evaluation</h3>
+      <p>${escapeHTML(variant.evaluation)}</p>
+      <h3>Risk</h3>
+      <p>${escapeHTML(variant.risk)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-prompt-variant-draft="${escapeHTML(variant.id)}">Draft variant</button>
+        <button type="button" data-panel="${escapeHTML(variant.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function promptVariantByID(id) {
+  return promptLabVariants().find((variant) => variant.id === id) || null;
+}
+
+function draftPromptVariantToChat(id) {
+  const variant = promptVariantByID(id);
+  if (!variant) return;
+  $("chat-input").value = variant.prompt;
+  $("chat-agent").value = variant.agent === "default" ? "" : variant.agent;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Prompt variant drafted to chat.");
+}
+
 function deliveryLanes() {
   const enabledSchedules = state.schedules.filter((schedule) => schedule.enabled !== false);
   const scheduledRuns = state.runs.filter((run) => String(run.channel || "").includes("schedule") || String(run.source || "").includes("schedule"));
@@ -1919,13 +2063,16 @@ function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
   const compareCount = comparisonCandidates().length;
+  const promptVariantCount = promptLabVariants().length;
   const deliveryCount = deliveryLanes().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
   setText("nav-compare-count", compareCount);
+  setText("manage-promptlab-count", `${promptVariantCount} variant${promptVariantCount === 1 ? "" : "s"}`);
+  setText("nav-promptlab-count", promptVariantCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + compareCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -2619,6 +2766,7 @@ async function loadMemory() {
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
@@ -2626,6 +2774,7 @@ async function loadMemory() {
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
     showToast(error.message);
   }
 }
@@ -2647,6 +2796,7 @@ async function submitMemoryCandidate(event) {
     $("memory-save-state").textContent = "Saved";
     renderMemoryMapPreview();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
     showToast("Memory approved.");
   } catch (error) {
     $("memory-save-state").textContent = "Error";
@@ -2661,6 +2811,7 @@ async function deleteMemoryEntry(name) {
     state.memory = await api(`/memory/${encodeURIComponent(name)}`, { method: "DELETE" });
     renderMemoryMapPreview();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
     showToast("Memory entry deleted.");
   } catch (error) {
     showToast(error.message);
@@ -3442,6 +3593,7 @@ async function loadAgents() {
     renderAgentContinuityDigest();
     renderAgentCapabilityRoster();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
       return;
@@ -4292,6 +4444,7 @@ async function loadRuns() {
     renderAgentContinuityDigest();
     renderRunsList();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
     renderProactiveDeliveryBoard();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -4304,6 +4457,7 @@ async function loadRuns() {
     renderMemoryMapPreview();
     renderAgentContinuityDigest();
     renderComparisonWorkbench();
+    renderPromptExperimentLab();
     renderProactiveDeliveryBoard();
     renderError(list, error.message);
   }
@@ -5307,6 +5461,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const promptVariantSelect = event.target.closest("[data-prompt-variant-select]");
+  if (promptVariantSelect) {
+    state.selectedPromptVariant = promptVariantSelect.dataset.promptVariantSelect || "";
+    renderPromptExperimentLab();
+    return;
+  }
+
+  const promptVariantDraft = event.target.closest("[data-prompt-variant-draft]");
+  if (promptVariantDraft) {
+    draftPromptVariantToChat(promptVariantDraft.dataset.promptVariantDraft);
+    return;
+  }
+
+  const promptVariant = event.target.closest("[data-prompt-variant]");
+  if (promptVariant && !event.target.closest("button")) {
+    state.selectedPromptVariant = promptVariant.dataset.promptVariant || "";
+    renderPromptExperimentLab();
+    return;
+  }
+
   const deliverySelect = event.target.closest("[data-delivery-select]");
   if (deliverySelect) {
     state.selectedDeliveryLane = deliverySelect.dataset.deliverySelect || "";
@@ -5704,6 +5878,10 @@ $("session-search-clear").addEventListener("click", () => {
   loadSessions();
   $("session-search").focus();
 });
+$("promptlab-goal").addEventListener("input", (event) => {
+  state.promptLabGoal = event.target.value;
+  renderPromptExperimentLab();
+});
 
 renderHomeMode();
 renderStrategyMatrix();
@@ -5716,6 +5894,7 @@ renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
+renderPromptExperimentLab();
 renderProactiveDeliveryBoard();
 connectEventStream();
 refreshAll();
