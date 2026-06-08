@@ -1333,3 +1333,36 @@ Added an integration daemon smoke covering OpenAI-compatible chat completions th
 ### Next Steps
 
 - None - task complete
+
+
+## Session 123: Phase 5 secret leakage regression
+
+**Date**: 2026-06-08
+**Task**: Phase 5 secret leakage regression
+**Branch**: `main`
+
+### Summary
+
+Added cross-surface secret leakage regression coverage and fixes for structured events, metrics, trace read/export, run summaries, workflow-step recovery metadata, diagnostics/doctor output, and Web UI trace/recovery rendering. Revalidated targeted daemon/cmd tests, task manifest validation, and diff whitespace checks before commit.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e5fd3e9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
