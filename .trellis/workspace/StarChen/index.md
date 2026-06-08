@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 135
-- **Last Active**: 2026-06-08
+- **Total Sessions**: 136
+- **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1767 | Active |
+| `journal-3.md` | ~1801 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 136 | 2026-06-09 | Event contract documentation | `e5d0d02`, `b17ac78` | `main` |
 | 135 | 2026-06-08 | WebUI live recovery | `8cd3dc5`, `808b3b7` | `main` |
 | 134 | 2026-06-08 | Run session lifecycle events | `17ce4ec`, `a3d6e9e` | `main` |
 | 133 | 2026-06-08 | EventBus replay SSE resilience | `c8fd217` | `main` |

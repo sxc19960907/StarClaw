@@ -1765,3 +1765,37 @@ Implemented Astria Web UI recovery from replayable run lifecycle events, includi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 136: Event contract documentation
+
+**Date**: 2026-06-09
+**Task**: Event contract documentation
+**Branch**: `main`
+
+### Summary
+
+Documented StarClaw daemon event contracts for /events replay, /message streaming aliases, lifecycle payloads, redaction boundaries, Kocoro compatibility, and linked the contract from README with static verification.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e5d0d02` | (see git log) |
+| `b17ac78` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
