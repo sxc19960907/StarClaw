@@ -1,8 +1,12 @@
 package daemon
 
 import (
+	"bufio"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -66,6 +70,166 @@ func TestHandleOpenAIChatCompletions(t *testing.T) {
 	if !strings.Contains(run.Request.Text, "system: Keep answers terse.") ||
 		!strings.Contains(run.Request.Text, "hello") {
 		t.Fatalf("run prompt missing expected chat content: %q", run.Request.Text)
+	}
+}
+
+func TestPhase5APIObservabilitySmoke(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	const (
+		runID      = "phase5-api-smoke"
+		promptText = "phase5 secret prompt body"
+	)
+
+	body := `{
+		"model":"phase5-local-model",
+		"request_id":"phase5-api-smoke",
+		"user":"phase5-user",
+		"messages":[
+			{"role":"system","content":"Keep observability aggregate-safe."},
+			{"role":"user","content":"phase5 secret prompt body"}
+		]
+	}`
+	var completion openAIChatCompletionResponse
+	postJSON(t, ts.URL+"/v1/chat/completions", body, http.StatusOK, &completion)
+	if completion.ID != "chatcmpl-"+runID {
+		t.Fatalf("id = %q, want chatcmpl-%s", completion.ID, runID)
+	}
+	if completion.Object != openAIChatCompletionObject {
+		t.Fatalf("object = %q, want %q", completion.Object, openAIChatCompletionObject)
+	}
+	if completion.Model != "phase5-local-model" {
+		t.Fatalf("model = %q, want phase5-local-model", completion.Model)
+	}
+	if completion.RunID != runID {
+		t.Fatalf("starclaw_run_id = %q, want %s", completion.RunID, runID)
+	}
+	if len(completion.Choices) != 1 || completion.Choices[0].Message.Role != "assistant" || completion.Choices[0].FinishReason != "stop" {
+		t.Fatalf("choices = %#v, want one stopped assistant message", completion.Choices)
+	}
+	if completion.Usage.PromptTokens != 10 || completion.Usage.CompletionTokens != 20 || completion.Usage.TotalTokens != 30 {
+		t.Fatalf("usage = %+v, want 10/20/30", completion.Usage)
+	}
+
+	var run RunRecord
+	getJSON(t, ts.URL+"/runs/"+runID, http.StatusOK, &run)
+	if run.ID != runID || run.Request.Source != "openai-compatible" || run.Channel != ChannelHTTP {
+		t.Fatalf("run = %#v, want OpenAI-compatible HTTP run %s", run, runID)
+	}
+	if run.Request.Sender != "phase5-user" {
+		t.Fatalf("run sender = %q, want phase5-user", run.Request.Sender)
+	}
+	if len(run.StructuredEvents) == 0 {
+		t.Fatal("expected structured events")
+	}
+	if run.Usage["input_tokens"] != 10 || run.Usage["output_tokens"] != 20 || run.Usage["total_tokens"] != 30 {
+		t.Fatalf("run usage = %#v, want 10/20/30", run.Usage)
+	}
+
+	var metrics struct {
+		Metrics map[string]any `json:"metrics"`
+	}
+	getJSON(t, ts.URL+"/metrics", http.StatusOK, &metrics)
+	if metrics.Metrics["schema_version"] != structuredEventSchemaVersion {
+		t.Fatalf("metrics schema = %v, want %s", metrics.Metrics["schema_version"], structuredEventSchemaVersion)
+	}
+	if metrics.Metrics["runs_total"].(float64) < 1 {
+		t.Fatalf("runs_total = %v, want at least 1", metrics.Metrics["runs_total"])
+	}
+	assertJSONDoesNotContain(t, metrics, promptText, "metrics")
+
+	var traceResp struct {
+		Trace []TraceExportRecord `json:"trace"`
+	}
+	getJSON(t, ts.URL+"/runs/"+runID+"/trace", http.StatusOK, &traceResp)
+	if len(traceResp.Trace) == 0 {
+		t.Fatal("expected trace records")
+	}
+	for idx, record := range traceResp.Trace {
+		if record.SchemaVersion != structuredEventSchemaVersion ||
+			record.TraceID != runID ||
+			record.RunID != runID ||
+			record.EventID == "" ||
+			record.Name == "" ||
+			record.Phase == "" ||
+			record.Timestamp.IsZero() {
+			t.Fatalf("trace record %d = %#v, want OTel-ready fields", idx, record)
+		}
+	}
+	assertJSONDoesNotContain(t, traceResp, promptText, "trace response")
+
+	exportPath := filepath.Join(t.TempDir(), "phase5-traces.jsonl")
+	var exportResp struct {
+		Path   string `json:"path"`
+		Events int    `json:"events"`
+	}
+	getJSON(t, ts.URL+"/traces/export?path="+exportPath, http.StatusOK, &exportResp)
+	if exportResp.Path != exportPath || exportResp.Events < len(traceResp.Trace) {
+		t.Fatalf("export response = %#v, want path and at least %d events", exportResp, len(traceResp.Trace))
+	}
+	data, err := os.ReadFile(exportPath)
+	if err != nil {
+		t.Fatalf("read trace export: %v", err)
+	}
+	if strings.Contains(string(data), promptText) {
+		t.Fatalf("trace export leaked prompt: %s", data)
+	}
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	lineCount := 0
+	for scanner.Scan() {
+		lineCount++
+		var record TraceExportRecord
+		if err := json.Unmarshal(scanner.Bytes(), &record); err != nil {
+			t.Fatalf("decode trace export line %d: %v", lineCount, err)
+		}
+		if record.SchemaVersion != structuredEventSchemaVersion || record.TraceID == "" || record.EventID == "" || record.Name == "" || record.Phase == "" || record.Timestamp.IsZero() {
+			t.Fatalf("export record %d = %#v, want OTel-ready fields", lineCount, record)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("scan trace export: %v", err)
+	}
+	if lineCount == 0 {
+		t.Fatal("expected exported trace records")
+	}
+
+	var control struct {
+		Status string `json:"status"`
+		Action string `json:"action"`
+		Replay struct {
+			RequiresApproval bool           `json:"requires_approval"`
+			Request          map[string]any `json:"request"`
+		} `json:"replay"`
+	}
+	postJSON(t, ts.URL+"/runs/"+runID+"/control", `{"action":"replay","approved":false}`, http.StatusOK, &control)
+	if control.Status != "approval_required" || control.Action != "replay" || !control.Replay.RequiresApproval {
+		t.Fatalf("control response = %#v, want replay approval requirement", control)
+	}
+	if control.Replay.Request["text_redacted"] != true || control.Replay.Request["source"] != "openai-compatible" {
+		t.Fatalf("replay request = %#v, want redacted OpenAI-compatible request", control.Replay.Request)
+	}
+	assertJSONDoesNotContain(t, control, promptText, "control response")
+
+	var controlledRun RunRecord
+	getJSON(t, ts.URL+"/runs/"+runID, http.StatusOK, &controlledRun)
+	if len(controlledRun.Control) != 1 || controlledRun.Control[0].Action != "replay" || controlledRun.Control[0].Status != "approval_required" {
+		t.Fatalf("control decisions = %#v, want replay approval_required", controlledRun.Control)
+	}
+	if len(controlledRun.Steps) != 1 || controlledRun.Steps[0].ID != "replay-approval" || controlledRun.Steps[0].Status != WorkflowStepWaitingApproval {
+		t.Fatalf("workflow steps = %#v, want waiting replay approval", controlledRun.Steps)
+	}
+}
+
+func assertJSONDoesNotContain(t *testing.T, value any, forbidden, label string) {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("marshal %s: %v", label, err)
+	}
+	if strings.Contains(string(encoded), forbidden) {
+		t.Fatalf("%s leaked %q: %s", label, forbidden, encoded)
 	}
 }
 

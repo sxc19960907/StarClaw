@@ -13,32 +13,14 @@ Validate local daemon API compatibility and observability surfaces together: Ope
 
 ## Acceptance Criteria
 
-- [ ] OpenAI-compatible request produces a valid local completion envelope and run record.
-- [ ] Metrics include aggregate-safe counts without prompt/provider payload leakage.
-- [ ] Trace read/export writes valid JSONL records and preserves redaction.
-- [ ] Workflow control API responses remain compatible with run-store control metadata.
-- [ ] Targeted daemon tests and full `go test ./...` pass after fixes.
+- [x] OpenAI-compatible request produces a valid local completion envelope and run record.
+- [x] Metrics include aggregate-safe counts without prompt/provider payload leakage.
+- [x] Trace read/export writes valid JSONL records and preserves redaction.
+- [x] Workflow control API responses remain compatible with run-store control metadata.
+- [x] Targeted daemon tests and full `go test ./...` pass after fixes.
 
 ## Non-Goals
 
 - No full OpenAI API feature parity beyond currently scoped gateway behavior.
 - No remote trace upload.
 - No cloud account integration.
-
-## Goal
-
-TBD.
-
-## Requirements
-
-- TBD
-
-## Acceptance Criteria
-
-- [ ] TBD
-
-## Notes
-
-- Keep `prd.md` focused on requirements, constraints, and acceptance criteria.
-- Lightweight tasks can remain PRD-only.
-- For complex tasks, add `design.md` for technical design and `implement.md` for execution planning before `task.py start`.

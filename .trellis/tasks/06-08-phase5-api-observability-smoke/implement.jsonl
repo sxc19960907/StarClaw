@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"OpenAI-compatible gateway, structured observability, trace export, and workflow control contracts."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"API smoke should preserve contextual error behavior."}
+{"file":".trellis/spec/backend/permissions.md","reason":"Replay/control smoke must preserve approval boundaries."}
