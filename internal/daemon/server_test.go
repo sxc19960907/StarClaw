@@ -820,6 +820,10 @@ func TestSSEEventHandlerToolPayloads(t *testing.T) {
 	if toolCall["args"] != `{"path":"README.md"}` {
 		t.Fatalf("tool_call args = %#v", toolCall["args"])
 	}
+	toolRunning := decodeSSEEventData(t, rec.Body.String(), "tool")
+	if toolRunning["tool"] != "file_read" || toolRunning["status"] != "running" || toolRunning["args"] != `{"path":"README.md"}` {
+		t.Fatalf("tool running alias = %#v", toolRunning)
+	}
 
 	toolResult := decodeSSEEventData(t, rec.Body.String(), "tool_result")
 	if toolResult["tool"] != "file_read" {
@@ -837,6 +841,20 @@ func TestSSEEventHandlerToolPayloads(t *testing.T) {
 	if toolResult["error_category"] != string(agent.ErrCategoryPermission) {
 		t.Fatalf("tool_result error_category = %#v, want %q", toolResult["error_category"], agent.ErrCategoryPermission)
 	}
+	toolEvents := decodeSSEEvents(t, rec.Body.String(), "tool")
+	if len(toolEvents) != 2 {
+		t.Fatalf("tool alias event count = %d, want 2; stream:\n%s", len(toolEvents), rec.Body.String())
+	}
+	toolCompleted := toolEvents[1]
+	if toolCompleted["tool"] != "file_read" || toolCompleted["status"] != "error" || toolCompleted["is_error"] != true {
+		t.Fatalf("tool completed alias = %#v", toolCompleted)
+	}
+	if toolCompleted["preview"] != "read failed" {
+		t.Fatalf("tool completed preview = %#v, want read failed", toolCompleted["preview"])
+	}
+	if toolCompleted["error_category"] != string(agent.ErrCategoryPermission) {
+		t.Fatalf("tool completed error_category = %#v, want %q", toolCompleted["error_category"], agent.ErrCategoryPermission)
+	}
 }
 
 func TestSSEEventHandlerStreamsDeltasAsTextWithoutFinalDuplicate(t *testing.T) {
@@ -847,15 +865,96 @@ func TestSSEEventHandlerStreamsDeltasAsTextWithoutFinalDuplicate(t *testing.T) {
 	h.OnStreamDelta("world")
 	h.OnText("hello world")
 
-	events := decodeSSEEvents(t, rec.Body.String(), "text")
-	if len(events) != 2 {
-		t.Fatalf("text event count = %d, want 2; stream:\n%s", len(events), rec.Body.String())
+	textEvents := decodeSSEEvents(t, rec.Body.String(), "text")
+	if len(textEvents) != 2 {
+		t.Fatalf("text event count = %d, want 2; stream:\n%s", len(textEvents), rec.Body.String())
 	}
-	if events[0]["text"] != "hello " {
-		t.Fatalf("first delta text = %#v, want hello ", events[0]["text"])
+	if textEvents[0]["text"] != "hello " {
+		t.Fatalf("first delta text = %#v, want hello ", textEvents[0]["text"])
 	}
-	if events[1]["text"] != "world" {
-		t.Fatalf("second delta text = %#v, want world", events[1]["text"])
+	if textEvents[1]["text"] != "world" {
+		t.Fatalf("second delta text = %#v, want world", textEvents[1]["text"])
+	}
+	deltaEvents := decodeSSEEvents(t, rec.Body.String(), "delta")
+	if len(deltaEvents) != 2 {
+		t.Fatalf("delta event count = %d, want 2; stream:\n%s", len(deltaEvents), rec.Body.String())
+	}
+	if deltaEvents[0]["text"] != "hello " || deltaEvents[1]["text"] != "world" {
+		t.Fatalf("delta events = %#v", deltaEvents)
+	}
+}
+
+func TestSSEEventHandlerKocoroCompatibleMetadataEvents(t *testing.T) {
+	rec := httptest.NewRecorder()
+	h := &sseEventHandler{w: rec, flusher: rec}
+
+	h.SetSessionID("sess-123")
+	h.SetSessionID("")
+	h.OnPreamble("checking state")
+	h.OnUsage(client.Usage{InputTokens: 10, OutputTokens: 20})
+
+	sessionStarted := decodeSSEEventData(t, rec.Body.String(), "session_started")
+	if sessionStarted["session_id"] != "sess-123" {
+		t.Fatalf("session_started = %#v", sessionStarted)
+	}
+	if got := decodeSSEEvents(t, rec.Body.String(), "session_started"); len(got) != 1 {
+		t.Fatalf("session_started count = %d, want 1; stream:\n%s", len(got), rec.Body.String())
+	}
+
+	preamble := decodeSSEEventData(t, rec.Body.String(), "preamble")
+	if preamble["preamble"] != "checking state" {
+		t.Fatalf("preamble = %#v", preamble)
+	}
+	assistantText := decodeSSEEventData(t, rec.Body.String(), "assistant_text")
+	if assistantText["text"] != "checking state" {
+		t.Fatalf("assistant_text = %#v", assistantText)
+	}
+
+	usage := decodeSSEEventData(t, rec.Body.String(), "usage")
+	if usage["input_tokens"] != float64(10) || usage["output_tokens"] != float64(20) || usage["total_tokens"] != float64(30) {
+		t.Fatalf("usage = %#v", usage)
+	}
+}
+
+func TestHandleMessageSSEEmitsSessionStartedBeforeDone(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/message", strings.NewReader(`{"text":"hello","request_id":"sse-session-started"}`))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /message SSE: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d body = %s", resp.StatusCode, body)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	stream := string(body)
+	sessionIdx := strings.Index(stream, "event: session_started")
+	doneIdx := strings.Index(stream, "event: done")
+	if sessionIdx < 0 {
+		t.Fatalf("stream missing session_started:\n%s", stream)
+	}
+	if doneIdx < 0 {
+		t.Fatalf("stream missing done:\n%s", stream)
+	}
+	if sessionIdx > doneIdx {
+		t.Fatalf("session_started should precede done:\n%s", stream)
+	}
+	sessionStarted := decodeSSEEventData(t, stream, "session_started")
+	if sessionStarted["session_id"] == "" {
+		t.Fatalf("session_started payload = %#v", sessionStarted)
 	}
 }
 

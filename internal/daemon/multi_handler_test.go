@@ -21,6 +21,17 @@ type multiSpy struct {
 	memoryCount int
 }
 
+type sessionIDSpy struct {
+	multiSpy
+	sessionIDs []string
+}
+
+func (s *sessionIDSpy) SetSessionID(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessionIDs = append(s.sessionIDs, id)
+}
+
 func (s *multiSpy) OnToolCall(name, args string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -115,6 +126,23 @@ func TestMultiHandlerFanOut(t *testing.T) {
 		}
 		if s.memoryCount != 1 {
 			t.Errorf("handler %d: expected 1 memory preflight, got %d", i, s.memoryCount)
+		}
+		s.mu.Unlock()
+	}
+}
+
+func TestMultiHandlerSetSessionIDFanOut(t *testing.T) {
+	h1 := &sessionIDSpy{}
+	h2 := &multiSpy{}
+	h3 := &sessionIDSpy{}
+	mh := NewMultiHandler(h1, h2, h3)
+
+	mh.SetSessionID("sess-123")
+
+	for i, s := range []*sessionIDSpy{h1, h3} {
+		s.mu.Lock()
+		if len(s.sessionIDs) != 1 || s.sessionIDs[0] != "sess-123" {
+			t.Fatalf("handler %d session IDs = %#v, want sess-123", i, s.sessionIDs)
 		}
 		s.mu.Unlock()
 	}

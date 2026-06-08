@@ -1347,10 +1347,27 @@ type sseEventHandler struct {
 	streamedText bool
 }
 
+func (h *sseEventHandler) writeEvent(event string, payload any) {
+	if h.w == nil || event == "" {
+		return
+	}
+	_, _ = fmt.Fprintf(h.w, "event: %s\ndata: %s\n\n", event, mustJSON(payload))
+	if h.flusher != nil {
+		h.flusher.Flush()
+	}
+}
+
+func (h *sseEventHandler) SetSessionID(id string) {
+	if id == "" {
+		return
+	}
+	h.writeEvent("session_started", map[string]string{"session_id": id})
+}
+
 func (h *sseEventHandler) OnToolCall(name string, args string) {
-	data := mustJSON(map[string]string{"tool": name, "status": "running", "args": args})
-	_, _ = fmt.Fprintf(h.w, "event: tool_call\ndata: %s\n\n", data)
-	h.flusher.Flush()
+	data := map[string]string{"tool": name, "status": "running", "args": args}
+	h.writeEvent("tool_call", data)
+	h.writeEvent("tool", data)
 }
 
 func (h *sseEventHandler) OnToolResult(name string, result agent.ToolResult) {
@@ -1358,28 +1375,36 @@ func (h *sseEventHandler) OnToolResult(name string, result agent.ToolResult) {
 	if result.IsError {
 		status = "error"
 	}
-	data := mustJSON(map[string]interface{}{
+	legacy := map[string]interface{}{
 		"tool":           name,
 		"status":         status,
 		"content":        result.Content,
 		"is_error":       result.IsError,
 		"error_category": string(result.ErrorCategory),
+	}
+	h.writeEvent("tool_result", legacy)
+	h.writeEvent("tool", map[string]interface{}{
+		"tool":           name,
+		"status":         status,
+		"is_error":       result.IsError,
+		"preview":        result.Content,
+		"error_category": string(result.ErrorCategory),
 	})
-	_, _ = fmt.Fprintf(h.w, "event: tool_result\ndata: %s\n\n", data)
-	h.flusher.Flush()
 }
 
 func (h *sseEventHandler) OnText(text string) {
 	if h.streamedText {
 		return
 	}
-	data := mustJSON(map[string]string{"text": text})
-	_, _ = fmt.Fprintf(h.w, "event: text\ndata: %s\n\n", data)
-	h.flusher.Flush()
+	h.writeEvent("text", map[string]string{"text": text})
 }
 
 func (h *sseEventHandler) OnUsage(usage client.Usage) {
-	// Usage is reported via the final "done" event; no per-event emission needed.
+	h.writeEvent("usage", map[string]int{
+		"input_tokens":  usage.InputTokens,
+		"output_tokens": usage.OutputTokens,
+		"total_tokens":  usage.InputTokens + usage.OutputTokens,
+	})
 }
 
 func (h *sseEventHandler) OnStreamDelta(delta string) {
@@ -1387,15 +1412,17 @@ func (h *sseEventHandler) OnStreamDelta(delta string) {
 		return
 	}
 	h.streamedText = true
-	data := mustJSON(map[string]string{"text": delta})
-	_, _ = fmt.Fprintf(h.w, "event: text\ndata: %s\n\n", data)
-	h.flusher.Flush()
+	data := map[string]string{"text": delta}
+	h.writeEvent("text", data)
+	h.writeEvent("delta", data)
 }
 
 func (h *sseEventHandler) OnPreamble(preamble string) {
-	data := mustJSON(map[string]string{"preamble": preamble})
-	_, _ = fmt.Fprintf(h.w, "event: preamble\ndata: %s\n\n", data)
-	h.flusher.Flush()
+	if preamble == "" {
+		return
+	}
+	h.writeEvent("preamble", map[string]string{"preamble": preamble})
+	h.writeEvent("assistant_text", map[string]string{"text": preamble})
 }
 
 // ---------------------------------------------------------------------------

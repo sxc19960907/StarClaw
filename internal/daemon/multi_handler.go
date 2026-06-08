@@ -95,6 +95,16 @@ func (m *MultiHandler) OnPreamble(preamble string) {
 	}
 }
 
+func (m *MultiHandler) SetSessionID(id string) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, h := range m.handlers {
+		if setter, ok := h.(interface{ SetSessionID(string) }); ok {
+			setter.SetSessionID(id)
+		}
+	}
+}
+
 func (m *MultiHandler) OnMemoryPreflight(result agent.MemoryPreflightResult) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

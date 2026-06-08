@@ -94,6 +94,9 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	if agentName != "" && sess.Title == "New session" {
 		sess.Title = "Agent: " + agentName
 	}
+	if setter, ok := handler.(interface{ SetSessionID(string) }); ok {
+		setter.SetSessionID(sess.ID)
+	}
 
 	// --- Create and configure agent loop ---
 	loop := agent.NewAgentLoop(deps.LLMClient, registry)
