@@ -1799,3 +1799,36 @@ Documented StarClaw daemon event contracts for /events replay, /message streamin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 137: Phase 12 final gap review
+
+**Date**: 2026-06-09
+**Task**: Phase 12 final gap review
+**Branch**: `main`
+
+### Summary
+
+Recorded Phase12 Kocoro gap review, closed event replay/lifecycle resilience scope, and identified standalone desktop app shell as the next parity phase.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `11e4e3a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
