@@ -1,0 +1,32 @@
+{
+  "id": "run-quality-scorecard",
+  "name": "run-quality-scorecard",
+  "title": "Run quality scorecard",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-2",
+  "relatedFiles": [
+    ".trellis/tasks/06-08-run-quality-scorecard/prd.md",
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Added embedded Astria Run Quality scorecard with completion, retry, evidence, budget, reuse, and delivery quality cards plus Chat drafting and source-panel routing.",
+  "meta": {}
+}

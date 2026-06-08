@@ -749,3 +749,26 @@ Added an embedded Astria Budget Guard planner for local token caps, complexity-b
 ### Status
 
 [OK] **Completed**
+
+
+## Session 128: Run Quality Scorecard
+
+**Date**: 2026-06-08
+**Task**: Run quality scorecard
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Run Quality scorecard that evaluates recent work across latest-run quality, completed output readiness, failure/retry risk, evidence strength, budget posture, reusable output readiness, and delivery readiness. Each card exposes a score, signal, risk, review gate, source route, and Chat draft for evaluating or improving the run before retry, reuse, or delivery.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

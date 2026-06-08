@@ -39,6 +39,10 @@
               <span><span class="nav-icon" aria-hidden="true">◎</span>运行</span>
               <small id="runs-count">0</small>
             </button>
+            <button class="nav-item" data-panel="quality" aria-label="Run Quality">
+              <span><span class="nav-icon" aria-hidden="true">◒</span>质量评估</span>
+              <small id="nav-quality-count">0</small>
+            </button>
             <button class="nav-item" data-panel="compare" aria-label="Compare">
               <span><span class="nav-icon" aria-hidden="true">◈</span>比较</span>
               <small id="nav-compare-count">0</small>
@@ -653,6 +657,11 @@
                 <strong id="manage-compare-count">0 lanes</strong>
                 <small>Compare runs, agents, memory, and council evidence before choosing a path.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="quality">
+                <span>Run Quality</span>
+                <strong id="manage-quality-count">0 cards</strong>
+                <small>Score recent runs by evidence, budget posture, risk, and reusable next action.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="promptlab">
                 <span>Prompt Lab</span>
                 <strong id="manage-promptlab-count">0 variants</strong>
@@ -1130,6 +1139,27 @@
             </form>
             <div class="council-detail" id="council-detail">
               <div class="empty-state">Start or select a council run.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-quality" aria-labelledby="quality-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="quality-heading">Run Quality</h2>
+              <p id="quality-summary">Score recent Astria runs by completion, evidence, budget posture, risk, and reusable next action.</p>
+            </div>
+            <div class="run-quality-grid" id="run-quality-grid">
+              <div class="empty-state">No run quality cards yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Quality Brief</h2>
+              <p>Review signal, risk, evidence gate, route, and next action before retrying or reusing a run.</p>
+            </div>
+            <div class="run-quality-detail" id="run-quality-detail">
+              <div class="empty-state">Select a run quality card.</div>
             </div>
           </aside>
         </section>

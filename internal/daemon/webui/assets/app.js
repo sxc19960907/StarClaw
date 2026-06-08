@@ -12,6 +12,7 @@ const state = {
   currentRunDetail: null,
   currentCouncilRun: null,
   selectedComparisonLane: "",
+  selectedRunQuality: "",
   selectedPromptVariant: "",
   selectedBudgetGuard: "",
   selectedReuseAsset: "",
@@ -81,6 +82,7 @@ const views = {
   reconcile: ["知识校验", "Resolve stale, conflicting, weak, or sensitive knowledge."],
   citation: ["引用校准", "Plan source coverage, citations, and evidence gaps."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
+  quality: ["运行质量", "Score recent runs by evidence, budget posture, risk, and next action."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   budget: ["预算守卫", "Plan token caps, model fallback, complexity routing, and stop rules."],
@@ -1253,6 +1255,7 @@ function renderHomeActivity() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderRunQualityScorecard();
   renderSourceRegistry();
   renderKnowledgeReconciliation();
   renderCitationGroundingPlanner();
@@ -1308,6 +1311,7 @@ function renderHomeDockedTools() {
   renderApprovalCenter();
   renderReviewQueue();
   renderComparisonWorkbench();
+  renderRunQualityScorecard();
   renderSourceRegistry();
   renderKnowledgeReconciliation();
   renderCitationGroundingPlanner();
@@ -1828,6 +1832,218 @@ function draftComparisonToChat(id) {
   switchPanel("chat");
   $("chat-input").focus();
   showToast("Comparison drafted to chat.");
+}
+
+function runQualityScore(run, emphasis = "overall") {
+  if (!run) return 32;
+  const health = runHealthGroup(run);
+  const hasResult = Boolean(formatRunResponse(run.response).trim());
+  const hasPrompt = Boolean(runPrompt(run));
+  const hasUsage = Boolean(run.usage || run.response?.usage);
+  let score = 48;
+  if (health === "completed") score += 24;
+  if (health === "running") score += 8;
+  if (health === "failed") score -= 16;
+  if (hasResult) score += 12;
+  if (hasPrompt) score += 8;
+  if (hasUsage) score += 4;
+  if (run.error) score -= 12;
+  if (emphasis === "evidence" && hasResult) score += 6;
+  if (emphasis === "budget" && hasUsage) score += 8;
+  if (emphasis === "reuse" && health === "completed" && hasResult) score += 8;
+  return Math.max(5, Math.min(98, score));
+}
+
+function runQualityGrade(score) {
+  if (score >= 85) return "A";
+  if (score >= 72) return "B";
+  if (score >= 58) return "C";
+  if (score >= 42) return "D";
+  return "Review";
+}
+
+function runQualityCards() {
+  const latestRun = state.runs[0];
+  const completedRuns = state.runs.filter((run) => runHealthGroup(run) === "completed");
+  const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed");
+  const latestCompleted = completedRuns[0] || latestRun;
+  const latestFailed = failedRuns[0] || latestRun;
+  const sourceCount = sourceRegistryRows().length;
+  const resultCount = resultArchiveEntries().length;
+  const budgetCount = budgetGuardCards().length;
+  const citationCount = citationGroundingCards().length;
+  const shareCount = sharePackCards().length;
+  const deliveryCount = deliveryLanes().length;
+  const latestScore = runQualityScore(latestRun);
+  const completedScore = runQualityScore(latestCompleted, "reuse");
+  const failedScore = failedRuns.length ? Math.max(18, 52 - failedRuns.length * 7) : 76;
+  const evidenceScore = Math.min(96, 42 + sourceCount * 6 + citationCount * 5 + (latestRun ? 12 : 0));
+  const budgetScore = Math.min(94, 44 + budgetCount * 5 + (latestRun?.usage || latestRun?.response?.usage ? 12 : 0));
+  const reuseScore = Math.min(96, 40 + resultCount * 7 + shareCount * 5 + (completedRuns.length ? 12 : 0));
+  const deliveryScore = Math.min(94, 46 + deliveryCount * 6 + (state.schedules.length ? 8 : 0));
+  return [
+    {
+      id: "latest-run",
+      type: "Latest",
+      title: latestRun?.prompt || "Latest run score",
+      panel: "runs",
+      score: latestScore,
+      signal: latestRun ? `${latestRun.status || "unknown"} with ${latestRun.agent || "default"}` : "No run captured yet",
+      risk: latestRun ? (runHealthGroup(latestRun) === "failed" ? "Latest run failed; inspect error and avoid blind rerun." : "Latest run still needs evidence and reuse review before becoming durable.") : "No execution evidence exists.",
+      gate: "Review prompt, result, usage, timeline, and follow-up before continuing.",
+      route: "Open Runs to inspect execution detail.",
+      prompt: `Evaluate the latest Astria run quality.\n\nRun: ${latestRun?.prompt || "none"}\nStatus: ${latestRun?.status || "unknown"}\nAgent: ${latestRun?.agent || "default"}\nScore estimate: ${latestScore}\n\nReturn completion quality, evidence strength, budget posture, risk, and the next action.`,
+    },
+    {
+      id: "completed-output",
+      type: "Completion",
+      title: "Completed output readiness",
+      panel: "results",
+      score: completedScore,
+      signal: `${completedRuns.length} completed run${completedRuns.length === 1 ? "" : "s"}; ${resultCount} result entries`,
+      risk: completedRuns.length ? "Completed does not automatically mean cited, reusable, or accepted." : "No completed run is available for reuse.",
+      gate: "Outcome needs evidence, freshness, acceptance checks, and reusable next route.",
+      route: "Open Result Library to archive or follow up.",
+      prompt: `Evaluate completed Astria output readiness.\n\nCompleted runs: ${completedRuns.length}\nResult archive entries: ${resultCount}\nLatest completed: ${latestCompleted?.prompt || "none"}\nScore estimate: ${completedScore}\n\nDecide whether the output is ready to archive, reuse, share, or needs more validation.`,
+    },
+    {
+      id: "failure-retry",
+      type: "Retry",
+      title: "Failure and retry risk",
+      panel: failedRuns.length ? "budget" : "runs",
+      score: failedScore,
+      signal: failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"}` : "No failed runs in current list",
+      risk: failedRuns.length ? "Repeated failures can waste context and budget without a changed plan." : "Retry risk is low, but stop rules still matter.",
+      gate: "Require root cause, changed prompt/tool route, fallback ladder, and stop condition before retry.",
+      route: failedRuns.length ? "Open Budget Guard for fallback and stop rules." : "Open Runs to inspect baseline history.",
+      prompt: `Evaluate Astria failure and retry risk.\n\nFailed runs: ${failedRuns.length}\nLatest failed: ${latestFailed?.prompt || "none"}\nScore estimate: ${failedScore}\n\nReturn likely failure class, retry risk, changed plan required before retry, fallback route, and stop rule.`,
+    },
+    {
+      id: "evidence-quality",
+      type: "Evidence",
+      title: "Evidence quality score",
+      panel: "citation",
+      score: evidenceScore,
+      signal: `${sourceCount} sources; ${citationCount} citation checks`,
+      risk: "A run can look successful while unsupported claims remain hidden.",
+      gate: "Claims need source coverage, citation freshness, unsupported-claim list, and safe wording.",
+      route: "Open Citation Planner for source coverage and evidence gaps.",
+      prompt: `Evaluate Astria evidence quality for recent work.\n\nSources: ${sourceCount}\nCitation checks: ${citationCount}\nLatest run: ${latestRun?.prompt || "none"}\nScore estimate: ${evidenceScore}\n\nReturn claim coverage, weak evidence, missing citations, freshness risks, and safe wording recommendations.`,
+    },
+    {
+      id: "budget-posture",
+      type: "Budget",
+      title: "Budget and stop-rule posture",
+      panel: "budget",
+      score: budgetScore,
+      signal: `${budgetCount} budget guards; usage ${latestRun?.usage || latestRun?.response?.usage ? "captured" : "not captured"}`,
+      risk: "Long tasks need caps, context trimming, fallback, and explicit stop rules before rerun.",
+      gate: "Budget shape, model route, fallback ladder, and stop condition must be explicit.",
+      route: "Open Budget Guard to plan a cheaper or safer route.",
+      prompt: `Evaluate Astria budget posture for recent work.\n\nBudget guards: ${budgetCount}\nLatest run usage captured: ${Boolean(latestRun?.usage || latestRun?.response?.usage)}\nScore estimate: ${budgetScore}\n\nReturn token/time risk, context trimming plan, model route, fallback ladder, and stop conditions.`,
+    },
+    {
+      id: "reuse-readiness",
+      type: "Reuse",
+      title: "Reusable output readiness",
+      panel: "share",
+      score: reuseScore,
+      signal: `${resultCount} results; ${shareCount} share packs`,
+      risk: "Reusable assets need boundaries; otherwise future sessions inherit stale or private assumptions.",
+      gate: "Reusable output needs summary, evidence, boundaries, acceptance checks, and next action.",
+      route: "Open Share Pack to package reviewed handoff sections.",
+      prompt: `Evaluate Astria reusable output readiness.\n\nResults: ${resultCount}\nShare packs: ${shareCount}\nCompleted runs: ${completedRuns.length}\nScore estimate: ${reuseScore}\n\nReturn what can be reused, what needs redaction, what evidence is missing, and the next starter prompt.`,
+    },
+    {
+      id: "delivery-readiness",
+      type: "Delivery",
+      title: "Delivery readiness score",
+      panel: "delivery",
+      score: deliveryScore,
+      signal: `${deliveryCount} delivery lanes; ${state.schedules.length} schedules`,
+      risk: "Delivery requires approval boundary, destination, artifact, verification, and rollback.",
+      gate: "No external send, schedule, or remote state change without explicit approval.",
+      route: "Open Delivery to review outbound readiness.",
+      prompt: `Evaluate Astria delivery readiness.\n\nDelivery lanes: ${deliveryCount}\nSchedules: ${state.schedules.length}\nLatest run: ${latestRun?.prompt || "none"}\nScore estimate: ${deliveryScore}\n\nReturn destination readiness, approval gate, artifact quality, verification, rollback, and whether delivery should stay local.`,
+    },
+  ];
+}
+
+function renderRunQualityScorecard() {
+  const cards = runQualityCards();
+  setText("nav-quality-count", cards.length);
+  setText("manage-quality-count", `${cards.length} card${cards.length === 1 ? "" : "s"}`);
+  setText("quality-summary", `${cards.length} run quality card${cards.length === 1 ? "" : "s"} across latest run, completion, retry, evidence, budget, reuse, and delivery readiness.`);
+  const list = $("run-quality-grid");
+  if (!list) return;
+  if (!state.selectedRunQuality || !cards.some((card) => card.id === state.selectedRunQuality)) {
+    state.selectedRunQuality = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="run-quality-card ${card.id === state.selectedRunQuality ? "active" : ""}" data-run-quality="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(runQualityGrade(card.score))}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="run-quality-score"><span>${escapeHTML(String(card.score))}</span><small>quality score</small></div>
+    <div class="run-quality-gridline">
+      <span>Signal</span><strong>${escapeHTML(card.signal)}</strong>
+      <span>Risk</span><strong>${escapeHTML(card.risk)}</strong>
+      <span>Gate</span><strong>${escapeHTML(card.gate)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-quality-select="${escapeHTML(card.id)}">Quality brief</button>
+      <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+    </div>
+  </article>`).join("");
+  renderRunQualityDetail(cards.find((card) => card.id === state.selectedRunQuality) || cards[0]);
+}
+
+function renderRunQualityDetail(card) {
+  const target = $("run-quality-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a run quality card.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Score</span><strong>${escapeHTML(`${card.score} (${runQualityGrade(card.score)})`)}</strong>
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Signal</h3>
+      <p>${escapeHTML(card.signal)}</p>
+      <h3>Risk</h3>
+      <p>${escapeHTML(card.risk)}</p>
+      <h3>Review gate</h3>
+      <p>${escapeHTML(card.gate)}</p>
+      <h3>Recommended route</h3>
+      <p>${escapeHTML(card.route)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function runQualityByID(id) {
+  return runQualityCards().find((card) => card.id === id) || null;
+}
+
+function draftRunQualityToChat(id) {
+  const card = runQualityByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a Run Quality review with score rationale, evidence, budget posture, risk, review gate, recommended route, and next action.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Run quality review drafted to chat.");
 }
 
 function promptLabGoal() {
@@ -3682,6 +3898,7 @@ function renderManageCount() {
   const reconcileCount = knowledgeReconciliationItems().length;
   const citationCount = citationGroundingCards().length;
   const compareCount = comparisonCandidates().length;
+  const qualityCount = runQualityCards().length;
   const promptVariantCount = promptLabVariants().length;
   const budgetCount = budgetGuardCards().length;
   const reuseCount = reuseGalleryAssets().length;
@@ -3702,6 +3919,8 @@ function renderManageCount() {
   setText("nav-citation-count", citationCount);
   setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
   setText("nav-compare-count", compareCount);
+  setText("manage-quality-count", `${qualityCount} card${qualityCount === 1 ? "" : "s"}`);
+  setText("nav-quality-count", qualityCount);
   setText("manage-promptlab-count", `${promptVariantCount} variant${promptVariantCount === 1 ? "" : "s"}`);
   setText("nav-promptlab-count", promptVariantCount);
   setText("manage-budget-count", `${budgetCount} guard${budgetCount === 1 ? "" : "s"}`);
@@ -3724,7 +3943,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + budgetCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + snapshotCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + qualityCount + promptVariantCount + budgetCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + snapshotCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -4880,6 +5099,7 @@ async function loadMemory() {
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
@@ -4895,6 +5115,7 @@ async function loadMemory() {
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
@@ -4924,6 +5145,7 @@ async function submitMemoryCandidate(event) {
     renderSourceRegistry();
     renderKnowledgeReconciliation();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
@@ -4946,6 +5168,7 @@ async function deleteMemoryEntry(name) {
     renderSourceRegistry();
     renderKnowledgeReconciliation();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
@@ -6521,6 +6744,7 @@ async function loadSessions(query = "") {
       renderPromptSuggestionDock();
       renderFocusBrief();
       renderComparisonWorkbench();
+      renderRunQualityScorecard();
       renderReuseGallery();
       renderResultLibrary();
       renderWorkspaceSnapshotPlanner();
@@ -6547,6 +6771,7 @@ async function loadSessions(query = "") {
     renderPromptSuggestionDock();
     renderFocusBrief();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderReuseGallery();
     renderResultLibrary();
     renderWorkspaceSnapshotPlanner();
@@ -6559,6 +6784,7 @@ async function loadSessions(query = "") {
     renderPromptSuggestionDock();
     renderFocusBrief();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderReuseGallery();
     renderResultLibrary();
     renderWorkspaceSnapshotPlanner();
@@ -6609,6 +6835,7 @@ async function loadRuns() {
     renderAgentContinuityDigest();
     renderRunsList();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
@@ -6630,6 +6857,7 @@ async function loadRuns() {
     renderKnowledgeReconciliation();
     renderAgentContinuityDigest();
     renderComparisonWorkbench();
+    renderRunQualityScorecard();
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
@@ -7640,6 +7868,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const qualitySelect = event.target.closest("[data-quality-select]");
+  if (qualitySelect) {
+    state.selectedRunQuality = qualitySelect.dataset.qualitySelect || "";
+    renderRunQualityScorecard();
+    return;
+  }
+
+  const qualityDraft = event.target.closest("[data-quality-draft]");
+  if (qualityDraft) {
+    draftRunQualityToChat(qualityDraft.dataset.qualityDraft);
+    return;
+  }
+
+  const runQuality = event.target.closest("[data-run-quality]");
+  if (runQuality && !event.target.closest("button")) {
+    state.selectedRunQuality = runQuality.dataset.runQuality || "";
+    renderRunQualityScorecard();
+    return;
+  }
+
   const promptVariantSelect = event.target.closest("[data-prompt-variant-select]");
   if (promptVariantSelect) {
     state.selectedPromptVariant = promptVariantSelect.dataset.promptVariantSelect || "";
@@ -8398,6 +8646,7 @@ renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
+renderRunQualityScorecard();
 renderPromptExperimentLab();
 renderBudgetGuardPlanner();
 renderReuseGallery();
