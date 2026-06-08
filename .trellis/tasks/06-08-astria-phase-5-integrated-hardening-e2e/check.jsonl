@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Verify embedded UI/API validation remains within local daemon architecture."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify Phase 3/4 platform contracts are tested together."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Verify failure paths are surfaced safely during integration smoke."}
+{"file":".trellis/spec/backend/permissions.md","reason":"Verify replay/workflow smoke does not bypass local approval boundaries."}

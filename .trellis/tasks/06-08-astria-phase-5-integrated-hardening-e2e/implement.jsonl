@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Embedded Web UI, daemon route, and no-build-pipeline validation boundaries."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Runtime budget, API gateway, routing, observability, workflow control, trace export, and Web UI validation contracts."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Integration checks should preserve contextual API and runtime errors."}
+{"file":".trellis/spec/backend/permissions.md","reason":"Workflow control and tool execution smoke must preserve approval and permission boundaries."}
