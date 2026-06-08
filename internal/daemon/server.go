@@ -43,6 +43,8 @@ type Server struct {
 	mailboxStore    *MailboxStore
 	replyRoutes     *ReplyRouteIndex
 	connectionState *ConnectionStateCache
+	systemEvents    *SystemEventStore
+	suggestions     *agent.SuggestionState
 	desktopRPC      *desktop_rpc.Broker
 	desktopListener *desktop_rpc.Listener
 }
@@ -61,6 +63,8 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		mailboxStore:    NewMailboxStore(defaultMailboxCapacity),
 		replyRoutes:     NewReplyRouteIndex(defaultReplyRouteIndexCap),
 		connectionState: NewConnectionStateCache(),
+		systemEvents:    NewSystemEventStore(defaultSystemEventStoreCap),
+		suggestions:     agent.NewSuggestionState(),
 		desktopRPC:      desktop_rpc.NewBroker(),
 	}
 }

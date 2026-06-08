@@ -25,4 +25,20 @@
 
 ## Completion Notes
 
-TBD.
+- Added route-scoped `SystemEventStore` with bounded FIFO, drain, forget, and consecutive context-key collapse.
+- Added agent `SystemEvent` formatting/sanitization helpers.
+- Added agent `SuggestionState` for per-session suggestion set/get/accept/clear lifecycle.
+- Wired daemon `Server` with system event and suggestion stores.
+- Added suggestion endpoints:
+  - `GET /sessions/{id}/suggestion`
+  - `POST /sessions/{id}/suggestion/accept`
+  - `GET /agents/{name}/sessions/{id}/suggestion`
+  - `POST /agents/{name}/sessions/{id}/suggestion/accept`
+- Added unit and handler tests for event store, system event formatting, suggestion state, and suggestion API behavior.
+
+## Validation
+
+- `go test ./internal/agent ./internal/daemon` — passed.
+- `go test ./...` — passed.
+- `git diff --check` — passed.
+- `python3 ./.trellis/scripts/task.py validate .trellis/tasks/06-08-system-event-store-suggestions` — passed.

@@ -87,6 +87,8 @@ func (r *Router) registerAgentRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /agents", r.srv.handleCreateAgent)
 	mux.HandleFunc("PUT /agents/{name}", r.srv.handleUpdateAgent)
 	mux.HandleFunc("DELETE /agents/{name}", r.srv.handleDeleteAgent)
+	mux.HandleFunc("GET /agents/{name}/sessions/{id}/suggestion", r.srv.handleGetSuggestion)
+	mux.HandleFunc("POST /agents/{name}/sessions/{id}/suggestion/accept", r.srv.handleAcceptSuggestion)
 }
 
 func (r *Router) registerSkillRoutes(mux *http.ServeMux) {
@@ -110,6 +112,8 @@ func (r *Router) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /sessions/{id}", r.srv.handlePatchSession)
 	mux.HandleFunc("DELETE /sessions/{id}", r.srv.handleDeleteSession)
 	mux.HandleFunc("GET /sessions/search", r.srv.handleSessionSearch)
+	mux.HandleFunc("GET /sessions/{id}/suggestion", r.srv.handleGetSuggestion)
+	mux.HandleFunc("POST /sessions/{id}/suggestion/accept", r.srv.handleAcceptSuggestion)
 }
 
 func (r *Router) registerMemoryRoutes(mux *http.ServeMux) {
