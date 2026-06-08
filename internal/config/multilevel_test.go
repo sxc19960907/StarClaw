@@ -197,6 +197,43 @@ agent:
 	}
 }
 
+func TestLoadMultiLevel_TokenBudgetOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+api_key: "global-key"
+agent:
+  token_budget:
+    max_input_tokens: 100
+    max_total_tokens: 300
+    hard_stop: true
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+	if cfg.Agent.TokenBudget.MaxInputTokens != 100 {
+		t.Fatalf("MaxInputTokens = %d, want 100", cfg.Agent.TokenBudget.MaxInputTokens)
+	}
+	if cfg.Agent.TokenBudget.MaxTotalTokens != 300 {
+		t.Fatalf("MaxTotalTokens = %d, want 300", cfg.Agent.TokenBudget.MaxTotalTokens)
+	}
+	if !cfg.Agent.TokenBudget.HardStop {
+		t.Fatal("HardStop = false, want true")
+	}
+	if source.Agent != LayerGlobal {
+		t.Fatalf("agent source = %v, want global", source.Agent)
+	}
+}
+
 func TestLoadMultiLevel_EnvOverride(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)

@@ -22,15 +22,24 @@ type AgentToolsFilter struct {
 
 // AgentModelConfig holds per-agent model/iteration overrides.
 type AgentModelConfig struct {
-	Model           *string  `yaml:"model,omitempty" json:"model,omitempty"`
-	MaxIterations   *int     `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
-	Temperature     *float64 `yaml:"temperature,omitempty" json:"temperature,omitempty"`
-	MaxTokens       *int     `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
-	ContextWindow   *int     `yaml:"context_window,omitempty" json:"context_window,omitempty"`
-	Thinking        *bool    `yaml:"thinking,omitempty" json:"thinking,omitempty"`
-	ThinkingMode    *string  `yaml:"thinking_mode,omitempty" json:"thinking_mode,omitempty"`
-	ThinkingBudget  *int     `yaml:"thinking_budget,omitempty" json:"thinking_budget,omitempty"`
-	ReasoningEffort *string  `yaml:"reasoning_effort,omitempty" json:"reasoning_effort,omitempty"`
+	Model           *string                 `yaml:"model,omitempty" json:"model,omitempty"`
+	MaxIterations   *int                    `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
+	Temperature     *float64                `yaml:"temperature,omitempty" json:"temperature,omitempty"`
+	MaxTokens       *int                    `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
+	ContextWindow   *int                    `yaml:"context_window,omitempty" json:"context_window,omitempty"`
+	TokenBudget     *AgentTokenBudgetConfig `yaml:"token_budget,omitempty" json:"token_budget,omitempty"`
+	Thinking        *bool                   `yaml:"thinking,omitempty" json:"thinking,omitempty"`
+	ThinkingMode    *string                 `yaml:"thinking_mode,omitempty" json:"thinking_mode,omitempty"`
+	ThinkingBudget  *int                    `yaml:"thinking_budget,omitempty" json:"thinking_budget,omitempty"`
+	ReasoningEffort *string                 `yaml:"reasoning_effort,omitempty" json:"reasoning_effort,omitempty"`
+}
+
+// AgentTokenBudgetConfig holds optional per-agent token budget overrides.
+type AgentTokenBudgetConfig struct {
+	MaxInputTokens  *int  `yaml:"max_input_tokens,omitempty" json:"max_input_tokens,omitempty"`
+	MaxOutputTokens *int  `yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
+	MaxTotalTokens  *int  `yaml:"max_total_tokens,omitempty" json:"max_total_tokens,omitempty"`
+	HardStop        *bool `yaml:"hard_stop,omitempty" json:"hard_stop,omitempty"`
 }
 
 // AgentConfig is the per-agent config overlay.

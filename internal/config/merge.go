@@ -28,6 +28,20 @@ func MergeAgentConfig(global *Config, ag *agents.Agent) *Config {
 		if ac.Agent.ContextWindow != nil {
 			merged.Agent.ContextWindow = *ac.Agent.ContextWindow
 		}
+		if ac.Agent.TokenBudget != nil {
+			if ac.Agent.TokenBudget.MaxInputTokens != nil {
+				merged.Agent.TokenBudget.MaxInputTokens = *ac.Agent.TokenBudget.MaxInputTokens
+			}
+			if ac.Agent.TokenBudget.MaxOutputTokens != nil {
+				merged.Agent.TokenBudget.MaxOutputTokens = *ac.Agent.TokenBudget.MaxOutputTokens
+			}
+			if ac.Agent.TokenBudget.MaxTotalTokens != nil {
+				merged.Agent.TokenBudget.MaxTotalTokens = *ac.Agent.TokenBudget.MaxTotalTokens
+			}
+			if ac.Agent.TokenBudget.HardStop != nil {
+				merged.Agent.TokenBudget.HardStop = *ac.Agent.TokenBudget.HardStop
+			}
+		}
 		if ac.Agent.Model != nil {
 			merged.Agent.Model = *ac.Agent.Model
 		}

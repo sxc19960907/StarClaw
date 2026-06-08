@@ -1,0 +1,41 @@
+{
+  "id": "astria-kocoro-parity-phase-3",
+  "name": "astria-kocoro-parity-phase-3",
+  "title": "Astria Kocoro parity phase 3",
+  "description": "",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-08-token-budget-enforcement",
+    "06-08-openai-compatible-api-gateway",
+    "06-08-runtime-complexity-routing-fallback",
+    "06-08-structured-events-metrics-tracing",
+    "06-08-workflow-control-api",
+    "06-08-astria-stellar-workbench-ui-language"
+  ],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/tasks/06-08-astria-kocoro-parity-phase-3/prd.md",
+    ".trellis/tasks/06-08-token-budget-enforcement/prd.md",
+    ".trellis/tasks/06-08-openai-compatible-api-gateway/prd.md",
+    ".trellis/tasks/06-08-runtime-complexity-routing-fallback/prd.md",
+    ".trellis/tasks/06-08-structured-events-metrics-tracing/prd.md",
+    ".trellis/tasks/06-08-workflow-control-api/prd.md",
+    ".trellis/tasks/06-08-astria-stellar-workbench-ui-language/prd.md"
+  ],
+  "notes": "Phase 3 is ordered to close Kocoro/Shannon platform gaps before visual polish: token budget enforcement, OpenAI-compatible API gateway, runtime routing/fallback, structured observability, workflow control, then Astria stellar UI language last.",
+  "meta": {}
+}

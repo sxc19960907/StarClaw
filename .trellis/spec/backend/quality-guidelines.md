@@ -153,6 +153,77 @@ if !agentCommandNameRe.MatchString(name) {
 }
 ```
 
+## Scenario: Runtime Token Budget Enforcement
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing local token budget limits, runtime usage tracking, daemon run response/status fields, or run event persistence.
+- Scope: backend runtime only; the budget guard UI can configure or display this state, but enforcement belongs in `internal/agent`.
+
+### 2. Signatures
+
+- Config path: `agent.token_budget`.
+- Fields:
+  - `max_input_tokens`: integer; `0` disables the input limit.
+  - `max_output_tokens`: integer; `0` disables the output limit.
+  - `max_total_tokens`: integer; `0` disables the total limit.
+  - `hard_stop`: boolean; when true, stop before the next model call once a concrete or projected limit is exhausted.
+- Runtime conversion: `agent.TokenBudgetFromAgent(config.AgentConfig) agent.TokenBudget`.
+- Loop API:
+  - `(*AgentLoop).SetTokenBudget(agent.TokenBudget)`
+  - `(*AgentLoop).LastBudgetStatus() agent.TokenBudgetUsage`
+- Daemon response field: `RunAgentResponse.BudgetStatus` serialized as `budget_status`.
+- Run record field: `RunRecord.Budget` serialized as `budget_status`.
+- Run event type: `budget_status`.
+
+### 3. Contracts
+
+- Budget tracking is per run. `AgentLoop.Run` must reset the tracker at run start from the configured budget.
+- Provider usage is authoritative when `client.Response.Usage.InputTokens` or `OutputTokens` is non-zero.
+- Missing provider usage must produce `status="unknown"` and increment `unknown_turns`; do not invent precise totals.
+- Before an initial or follow-up model call, the loop may use `context.EstimateTokens(messages)` plus the next request `max_tokens` as a conservative projection.
+- Hard-stop returns a normal `client.Response` with `StopReason="budget_exhausted"` and a clear content message instead of continuing tool/model loops.
+- Daemon responses and run records surface only counts/status/detail. They must not include prompts, API keys, provider headers, or raw request bodies inside `budget_status`.
+
+### 4. Validation & Error Matrix
+
+- No budget configured -> `LastBudgetStatus().Status == "disabled"` and no daemon `budget_status`.
+- Usage under all configured limits -> `status="ok"`.
+- Usage at or over a configured limit -> `status="exhausted"`.
+- `hard_stop=false` with exhausted budget -> status is exhausted but the loop does not stop early.
+- `hard_stop=true` with exhausted/projected budget -> stop before the next model call.
+- Provider response has zero usage -> `status="unknown"` unless an existing exhausted state already applies.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a tool loop reaches projected total budget and returns a `budget_exhausted` response without issuing another LLM call.
+- Base: a simple one-shot run records provider usage and daemon `budget_status` with `ok`.
+- Bad: code continues a follow-up model call after `max_total_tokens` is exhausted, or reports exact token totals when provider usage was missing.
+
+### 6. Tests Required
+
+- Unit tests for budget decision cases: under budget, at budget, over budget, soft budget, and unknown usage.
+- Agent loop tests proving hard-stop before initial and follow-up model calls.
+- Config tests for global defaults, multi-level overlay, and per-agent pointer overrides.
+- Daemon tests proving `RunAgentResponse` surfaces `budget_status` and run records copy it defensively.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+// Missing usage treated as zero, so the run falsely looks under budget.
+tracker.AddUsage(client.Usage{})
+status := tracker.Status() // ok
+```
+
+#### Correct
+
+```go
+status := tracker.AddUsage(client.Usage{})
+// status.Status == "unknown"; callers know the provider did not return usage.
+```
+
 ---
 
 ## Interface Design

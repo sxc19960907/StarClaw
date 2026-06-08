@@ -95,6 +95,7 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	loop.SetResultTruncation(effectiveCfg.Tools.ResultTruncation)
 	loop.SetConfigDir(deps.StarclawDir)
 	loop.SetContextWindow(effectiveCfg.Agent.ContextWindow)
+	loop.SetTokenBudget(agent.TokenBudgetFromAgent(effectiveCfg.Agent))
 	loop.SetPermissions(effectiveCfg.Permissions)
 	loop.SetThinking(agent.ThinkingConfigFromAgent(effectiveCfg.Agent))
 	loop.SetReasoningEffort(effectiveCfg.Agent.ReasoningEffort)
@@ -126,6 +127,10 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	// --- Build response ---
 	response := RunAgentResponse{
 		SessionID: sess.ID,
+	}
+	budgetStatus := loop.LastBudgetStatus()
+	if budgetStatus.Status != agent.TokenBudgetStatusDisabled {
+		response.BudgetStatus = &budgetStatus
 	}
 	if resp != nil {
 		if resp.Content != "" {

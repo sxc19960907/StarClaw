@@ -17,19 +17,20 @@ type RunEvent struct {
 }
 
 type RunRecord struct {
-	ID        string            `json:"id"`
-	Status    string            `json:"status"`
-	Agent     string            `json:"agent,omitempty"`
-	Channel   string            `json:"channel,omitempty"`
-	Prompt    string            `json:"prompt,omitempty"`
-	SessionID string            `json:"session_id,omitempty"`
-	StartedAt time.Time         `json:"started_at"`
-	EndedAt   *time.Time        `json:"ended_at,omitempty"`
-	Request   RunAgentRequest   `json:"request"`
-	Response  *RunAgentResponse `json:"response,omitempty"`
-	Usage     map[string]int    `json:"usage,omitempty"`
-	Error     string            `json:"error,omitempty"`
-	Events    []RunEvent        `json:"events,omitempty"`
+	ID        string                  `json:"id"`
+	Status    string                  `json:"status"`
+	Agent     string                  `json:"agent,omitempty"`
+	Channel   string                  `json:"channel,omitempty"`
+	Prompt    string                  `json:"prompt,omitempty"`
+	SessionID string                  `json:"session_id,omitempty"`
+	StartedAt time.Time               `json:"started_at"`
+	EndedAt   *time.Time              `json:"ended_at,omitempty"`
+	Request   RunAgentRequest         `json:"request"`
+	Response  *RunAgentResponse       `json:"response,omitempty"`
+	Usage     map[string]int          `json:"usage,omitempty"`
+	Budget    *agent.TokenBudgetUsage `json:"budget_status,omitempty"`
+	Error     string                  `json:"error,omitempty"`
+	Events    []RunEvent              `json:"events,omitempty"`
 }
 
 type RunSummary struct {
@@ -96,6 +97,7 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 	record.Response = &response
 	record.SessionID = response.SessionID
 	record.Usage = response.Usage
+	record.Budget = response.BudgetStatus
 	if err != nil {
 		record.Status = "error"
 		record.Error = err.Error()
@@ -159,6 +161,10 @@ func (s *RunStore) Get(id string) (*RunRecord, bool) {
 			copyRecord.Usage[key] = value
 		}
 	}
+	if record.Budget != nil {
+		budget := *record.Budget
+		copyRecord.Budget = &budget
+	}
 	return &copyRecord, true
 }
 
@@ -194,6 +200,26 @@ func (h *runRecorderHandler) OnUsage(usage client.Usage) {
 		"input_tokens":  usage.InputTokens,
 		"output_tokens": usage.OutputTokens,
 	})
+}
+
+func (h *runRecorderHandler) OnRunStatus(code string, detail string) {
+	h.add(EventRunStatus, map[string]any{"code": code, "detail": detail})
+}
+
+func (h *runRecorderHandler) OnBudgetStatus(status agent.TokenBudgetUsage) {
+	data := map[string]any{
+		"status":        status.Status,
+		"input_tokens":  status.InputTokens,
+		"output_tokens": status.OutputTokens,
+		"total_tokens":  status.TotalTokens,
+	}
+	if status.UnknownTurns > 0 {
+		data["unknown_turns"] = status.UnknownTurns
+	}
+	if status.Detail != "" {
+		data["detail"] = status.Detail
+	}
+	h.add(EventBudgetStatus, data)
 }
 
 func (h *runRecorderHandler) OnStreamDelta(delta string) {

@@ -14,10 +14,12 @@ const (
 	EventError            = "error"
 
 	// BusHandler event types
-	EventToolStatus  = "tool_status"
-	EventPreamble    = "preamble"
-	EventStreamDelta = "stream_delta"
-	EventUsage       = "usage"
+	EventToolStatus   = "tool_status"
+	EventPreamble     = "preamble"
+	EventStreamDelta  = "stream_delta"
+	EventUsage        = "usage"
+	EventRunStatus    = "run_status"
+	EventBudgetStatus = "budget_status"
 
 	// Cloud delegation event types
 	EventCloudDelegateStart    = "cloud_delegate_start"
@@ -33,7 +35,7 @@ type Event struct {
 
 // EventBus is a simple pub/sub bus for daemon events.
 type EventBus struct {
-	mu         sync.RWMutex
+	mu          sync.RWMutex
 	subscribers map[string]chan Event
 	bufferSize  int
 }

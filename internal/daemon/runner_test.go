@@ -303,6 +303,41 @@ tools:
 	}
 }
 
+func TestRunAgent_SurfacesBudgetStatus(t *testing.T) {
+	ctx := context.Background()
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		Config: &config.Config{
+			Agent: config.AgentConfig{
+				MaxIterations: 25,
+				MaxTokens:     8192,
+				TokenBudget: config.TokenBudgetConfig{
+					MaxTotalTokens: 100,
+					HardStop:       true,
+				},
+			},
+			Tools: config.ToolsConfig{ResultTruncation: 30000},
+		},
+		AgentsDir: t.TempDir(),
+		LLMClient: &mockLLMClient{t: t},
+		Registry:  agent.NewToolRegistry(),
+	}
+
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "hello"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.BudgetStatus == nil {
+		t.Fatal("expected budget status")
+	}
+	if resp.BudgetStatus.Status != agent.TokenBudgetStatusOK {
+		t.Fatalf("budget status = %#v, want ok", resp.BudgetStatus)
+	}
+	if resp.BudgetStatus.TotalTokens != 30 {
+		t.Fatalf("total tokens = %d, want 30", resp.BudgetStatus.TotalTokens)
+	}
+}
+
 func TestRunAgent_NamedAgentNotFound(t *testing.T) {
 	ctx := context.Background()
 

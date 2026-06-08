@@ -394,10 +394,15 @@ func TestAgentLoop_RunStatusHandler(t *testing.T) {
 type runStatusRecorder struct {
 	EventHandler
 	statuses []struct{ code, detail string }
+	budgets  []TokenBudgetUsage
 }
 
 func (r *runStatusRecorder) OnRunStatus(code, detail string) {
 	r.statuses = append(r.statuses, struct{ code, detail string }{code, detail})
+}
+
+func (r *runStatusRecorder) OnBudgetStatus(status TokenBudgetUsage) {
+	r.budgets = append(r.budgets, status)
 }
 
 // MockTool for testing

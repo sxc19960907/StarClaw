@@ -200,6 +200,22 @@ func overlayAgent(base, overlay *AgentConfig, source *ConfigSource, layer Config
 		base.ContextWindow = overlay.ContextWindow
 		changed = true
 	}
+	if overlay.TokenBudget.MaxInputTokens != 0 {
+		base.TokenBudget.MaxInputTokens = overlay.TokenBudget.MaxInputTokens
+		changed = true
+	}
+	if overlay.TokenBudget.MaxOutputTokens != 0 {
+		base.TokenBudget.MaxOutputTokens = overlay.TokenBudget.MaxOutputTokens
+		changed = true
+	}
+	if overlay.TokenBudget.MaxTotalTokens != 0 {
+		base.TokenBudget.MaxTotalTokens = overlay.TokenBudget.MaxTotalTokens
+		changed = true
+	}
+	if overlay.TokenBudget.HardStop {
+		base.TokenBudget.HardStop = overlay.TokenBudget.HardStop
+		changed = true
+	}
 	if overlay.ThinkingMode != "" {
 		base.ThinkingMode = overlay.ThinkingMode
 		base.Thinking = true

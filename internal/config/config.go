@@ -40,15 +40,24 @@ type Config struct {
 
 // AgentConfig holds agent-specific settings
 type AgentConfig struct {
-	MaxIterations   int     `mapstructure:"max_iterations" yaml:"max_iterations"`
-	Temperature     float64 `mapstructure:"temperature" yaml:"temperature"`
-	MaxTokens       int     `mapstructure:"max_tokens" yaml:"max_tokens"`
-	ContextWindow   int     `mapstructure:"context_window" yaml:"context_window"`
-	Thinking        bool    `mapstructure:"thinking"         yaml:"thinking"         json:"thinking"`
-	ThinkingMode    string  `mapstructure:"thinking_mode"    yaml:"thinking_mode"    json:"thinking_mode"`
-	ThinkingBudget  int     `mapstructure:"thinking_budget"  yaml:"thinking_budget"  json:"thinking_budget"`
-	ReasoningEffort string  `mapstructure:"reasoning_effort" yaml:"reasoning_effort" json:"reasoning_effort"`
-	Model           string  `mapstructure:"model"            yaml:"model"            json:"model"`
+	MaxIterations   int               `mapstructure:"max_iterations" yaml:"max_iterations"`
+	Temperature     float64           `mapstructure:"temperature" yaml:"temperature"`
+	MaxTokens       int               `mapstructure:"max_tokens" yaml:"max_tokens"`
+	ContextWindow   int               `mapstructure:"context_window" yaml:"context_window"`
+	TokenBudget     TokenBudgetConfig `mapstructure:"token_budget" yaml:"token_budget,omitempty" json:"token_budget,omitempty"`
+	Thinking        bool              `mapstructure:"thinking"         yaml:"thinking"         json:"thinking"`
+	ThinkingMode    string            `mapstructure:"thinking_mode"    yaml:"thinking_mode"    json:"thinking_mode"`
+	ThinkingBudget  int               `mapstructure:"thinking_budget"  yaml:"thinking_budget"  json:"thinking_budget"`
+	ReasoningEffort string            `mapstructure:"reasoning_effort" yaml:"reasoning_effort" json:"reasoning_effort"`
+	Model           string            `mapstructure:"model"            yaml:"model"            json:"model"`
+}
+
+// TokenBudgetConfig configures local per-run token budget enforcement.
+type TokenBudgetConfig struct {
+	MaxInputTokens  int  `mapstructure:"max_input_tokens" yaml:"max_input_tokens,omitempty" json:"max_input_tokens,omitempty"`
+	MaxOutputTokens int  `mapstructure:"max_output_tokens" yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
+	MaxTotalTokens  int  `mapstructure:"max_total_tokens" yaml:"max_total_tokens,omitempty" json:"max_total_tokens,omitempty"`
+	HardStop        bool `mapstructure:"hard_stop" yaml:"hard_stop,omitempty" json:"hard_stop,omitempty"`
 }
 
 // ToolsConfig holds tool-specific settings
@@ -124,6 +133,10 @@ func Load() (*Config, error) {
 	viper.SetDefault("agent.temperature", 0)
 	viper.SetDefault("agent.max_tokens", 8192)
 	viper.SetDefault("agent.context_window", 0) // 0 = auto/disabled
+	viper.SetDefault("agent.token_budget.max_input_tokens", 0)
+	viper.SetDefault("agent.token_budget.max_output_tokens", 0)
+	viper.SetDefault("agent.token_budget.max_total_tokens", 0)
+	viper.SetDefault("agent.token_budget.hard_stop", false)
 	viper.SetDefault("agent.thinking", true)
 	viper.SetDefault("agent.thinking_mode", "adaptive")
 	viper.SetDefault("agent.thinking_budget", 10000)
@@ -245,6 +258,11 @@ agent:
   temperature: 0
   max_tokens: 8192
   context_window: 0  # 0 = disabled, set to e.g. 200000 to enable compaction
+  token_budget:
+    max_input_tokens: 0   # 0 = disabled
+    max_output_tokens: 0  # 0 = disabled
+    max_total_tokens: 0   # 0 = disabled
+    hard_stop: false
   thinking: true
   thinking_mode: "adaptive"  # "adaptive" or "enabled"
   thinking_budget: 10000

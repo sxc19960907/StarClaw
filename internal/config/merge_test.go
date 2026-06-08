@@ -212,6 +212,52 @@ func TestMergeAgentConfig_AdvancedAgentOptions(t *testing.T) {
 	}
 }
 
+func TestMergeAgentConfig_TokenBudgetOverrides(t *testing.T) {
+	global := &Config{
+		Agent: AgentConfig{
+			TokenBudget: TokenBudgetConfig{
+				MaxInputTokens:  100,
+				MaxOutputTokens: 200,
+				MaxTotalTokens:  300,
+				HardStop:        false,
+			},
+		},
+	}
+
+	maxInput := 10
+	maxTotal := 30
+	hardStop := true
+	ag := &agents.Agent{
+		Name: "budgeted",
+		Config: &agents.AgentConfig{
+			Agent: &agents.AgentModelConfig{
+				TokenBudget: &agents.AgentTokenBudgetConfig{
+					MaxInputTokens: &maxInput,
+					MaxTotalTokens: &maxTotal,
+					HardStop:       &hardStop,
+				},
+			},
+		},
+	}
+
+	result := MergeAgentConfig(global, ag)
+	if result.Agent.TokenBudget.MaxInputTokens != 10 {
+		t.Fatalf("MaxInputTokens = %d, want 10", result.Agent.TokenBudget.MaxInputTokens)
+	}
+	if result.Agent.TokenBudget.MaxOutputTokens != 200 {
+		t.Fatalf("MaxOutputTokens = %d, want inherited 200", result.Agent.TokenBudget.MaxOutputTokens)
+	}
+	if result.Agent.TokenBudget.MaxTotalTokens != 30 {
+		t.Fatalf("MaxTotalTokens = %d, want 30", result.Agent.TokenBudget.MaxTotalTokens)
+	}
+	if !result.Agent.TokenBudget.HardStop {
+		t.Fatal("HardStop = false, want true")
+	}
+	if global.Agent.TokenBudget.MaxInputTokens != 100 {
+		t.Fatal("global config should not be modified")
+	}
+}
+
 func TestMergeAgentConfig_EmptyAgentConfig(t *testing.T) {
 	global := &Config{
 		ModelTier: "medium",

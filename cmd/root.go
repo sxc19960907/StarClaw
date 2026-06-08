@@ -162,6 +162,7 @@ func runChat(cfg *config.Config, query string) error {
 	loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 	loop.SetConfigDir(config.StarclawDir())
 	loop.SetContextWindow(cfg.Agent.ContextWindow)
+	loop.SetTokenBudget(agent.TokenBudgetFromAgent(cfg.Agent))
 	loop.SetPermissions(cfg.Permissions)
 	applyAgentOptions(loop, cfg)
 	if cfg.Hooks != nil {
@@ -597,6 +598,7 @@ var interactiveCmd = &cobra.Command{
 		loop.SetResultTruncation(cfg.Tools.ResultTruncation)
 		loop.SetConfigDir(config.StarclawDir())
 		loop.SetContextWindow(cfg.Agent.ContextWindow)
+		loop.SetTokenBudget(agent.TokenBudgetFromAgent(cfg.Agent))
 		loop.SetPermissions(cfg.Permissions)
 		applyAgentOptions(loop, cfg)
 		if cfg.Hooks != nil {

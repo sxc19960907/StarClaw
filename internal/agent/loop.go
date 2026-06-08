@@ -97,6 +97,8 @@ type AgentLoop struct {
 	specificModel   string
 	enableStreaming bool
 	lastRunStatus   RunStatus
+	tokenBudget     TokenBudget
+	budgetTracker   *tokenBudgetTracker
 }
 
 // NewAgentLoop creates a new agent loop
@@ -231,10 +233,24 @@ func (a *AgentLoop) SetEnableStreaming(enable bool) {
 	a.enableStreaming = enable
 }
 
+// SetTokenBudget configures per-run token budget tracking and hard-stop behavior.
+func (a *AgentLoop) SetTokenBudget(budget TokenBudget) {
+	a.tokenBudget = budget
+	a.budgetTracker = newTokenBudgetTracker(budget)
+}
+
 // LastRunStatus returns the status from the most recent Run call.
 // Callers should read it in the same goroutine immediately after Run returns.
 func (a *AgentLoop) LastRunStatus() RunStatus {
 	return a.lastRunStatus
+}
+
+// LastBudgetStatus returns the current budget status from the most recent Run.
+func (a *AgentLoop) LastBudgetStatus() TokenBudgetUsage {
+	if a.budgetTracker == nil {
+		return TokenBudgetUsage{Status: TokenBudgetStatusDisabled}
+	}
+	return a.budgetTracker.Status()
 }
 
 // SpillCleanupFunc returns a function that cleans up spill files for the current session.
@@ -288,6 +304,7 @@ func ThinkingConfigFromAgent(cfg config.AgentConfig) *client.ThinkingConfig {
 func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, error) {
 	// Reset run status
 	a.lastRunStatus = RunStatus{}
+	a.budgetTracker = newTokenBudgetTracker(a.tokenBudget)
 
 	// Inject memory directory into context for memory_append tool
 	if a.memoryDir != "" {
@@ -366,6 +383,13 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 			}
 		}
 
+		if status := a.projectBudgetInput(messages); status.Status == TokenBudgetStatusExhausted {
+			decision := a.enforceTokenBudget(a.maxTokens)
+			if decision.Stop {
+				return a.budgetExhaustedResponse(&client.Response{}, decision.Status), nil
+			}
+		}
+
 		// Call LLM with retry
 		resp, err := a.chatWithRetry(ctx, effectivePrompt, messages, tools, chatOpts)
 		if err != nil {
@@ -384,6 +408,10 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 		}
 
 		// Report usage
+		budgetStatus := a.recordBudgetUsage(resp.Usage)
+		if budgetStatus.Status == TokenBudgetStatusExhausted {
+			a.lastRunStatus = RunStatus{Code: RunStatusBudgetExhausted, Detail: budgetStatus.Detail}
+		}
 		if a.handler != nil {
 			a.handler.OnUsage(resp.Usage)
 		}
@@ -437,6 +465,9 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 		}
 
 		if forceStop {
+			if decision := a.enforceTokenBudget(a.maxTokens); decision.Stop {
+				return a.budgetExhaustedResponse(resp, decision.Status), nil
+			}
 			// Give the LLM one more chance to produce a text-only response
 			continue
 		}
@@ -459,9 +490,81 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 				}
 			}
 		}
+
+		if decision := a.enforceTokenBudget(a.maxTokens); decision.Stop {
+			decision.Status = mergeBudgetDetail(decision.Status, budgetStatus)
+			return a.budgetExhaustedResponse(resp, decision.Status), nil
+		}
 	}
 
 	return nil, fmt.Errorf("reached maximum iterations (%d)", a.maxIter)
+}
+
+func (a *AgentLoop) recordBudgetUsage(usage client.Usage) TokenBudgetUsage {
+	if a.budgetTracker == nil {
+		return TokenBudgetUsage{Status: TokenBudgetStatusDisabled}
+	}
+	status := a.budgetTracker.AddUsage(usage)
+	a.emitBudgetStatus(status)
+	return status
+}
+
+func (a *AgentLoop) projectBudgetInput(messages []client.Message) TokenBudgetUsage {
+	if a.budgetTracker == nil {
+		return TokenBudgetUsage{Status: TokenBudgetStatusDisabled}
+	}
+	status := a.budgetTracker.SetProjectedInput(ctxwin.EstimateTokens(messages))
+	a.emitBudgetStatus(status)
+	return status
+}
+
+func (a *AgentLoop) enforceTokenBudget(projectedOutput int) budgetDecision {
+	if a.budgetTracker == nil {
+		return budgetDecision{Status: TokenBudgetUsage{Status: TokenBudgetStatusDisabled}}
+	}
+	decision := a.budgetTracker.Decision(projectedOutput)
+	if decision.Stop {
+		a.lastRunStatus = RunStatus{Code: RunStatusBudgetExhausted, Detail: decision.Status.Detail}
+		a.emitRunStatus(RunStatusBudgetExhausted, decision.Status.Detail)
+		a.emitBudgetStatus(decision.Status)
+	}
+	return decision
+}
+
+func (a *AgentLoop) emitRunStatus(code, detail string) {
+	if rs, ok := a.handler.(RunStatusHandler); ok {
+		rs.OnRunStatus(code, detail)
+	}
+}
+
+func (a *AgentLoop) emitBudgetStatus(status TokenBudgetUsage) {
+	if bh, ok := a.handler.(BudgetStatusHandler); ok {
+		bh.OnBudgetStatus(status)
+	}
+}
+
+// BudgetStatusHandler is optionally implemented by handlers that surface budget state.
+type BudgetStatusHandler interface {
+	OnBudgetStatus(status TokenBudgetUsage)
+}
+
+func (a *AgentLoop) budgetExhaustedResponse(resp *client.Response, status TokenBudgetUsage) *client.Response {
+	content := "Token budget exhausted; stopping before the next model call."
+	if status.Detail != "" {
+		content = content + " " + status.Detail + "."
+	}
+	return &client.Response{
+		Content:    content,
+		Usage:      resp.Usage,
+		StopReason: RunStatusBudgetExhausted,
+	}
+}
+
+func mergeBudgetDetail(current, previous TokenBudgetUsage) TokenBudgetUsage {
+	if current.Detail == "" {
+		current.Detail = previous.Detail
+	}
+	return current
 }
 
 // buildTools converts registry tools to client ToolDef
