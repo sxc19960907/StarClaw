@@ -120,7 +120,7 @@ starclaw doctor --json
 The daemon exposes local HTTP endpoints for the embedded UI and for local integrations:
 
 - `POST /message` streams a StarClaw run through the normal daemon permission, approval, session, run-store, and event pipeline.
-- `POST /v1/chat/completions` is a local OpenAI-compatible gateway for non-streaming chat completions. It maps messages into a StarClaw run and returns an OpenAI-style completion envelope plus `starclaw_run_id`. Unsupported OpenAI fields such as streaming, tool/function calling, response formats, metadata, and `n > 1` are rejected rather than silently ignored.
+- `POST /v1/chat/completions` is a local OpenAI-compatible gateway for blocking and `stream:true` chat completions. It maps messages into a StarClaw run and returns either an OpenAI-style completion envelope or `chat.completion.chunk` SSE frames plus `starclaw_run_id`. Unsupported OpenAI fields such as tool/function calling, response formats, metadata, and `n > 1` are rejected rather than silently ignored.
 - `GET /runs`, `GET /runs/{id}`, `GET /metrics`, `GET /runs/{id}/trace`, and `GET /traces/export?path=/local/file.jsonl` expose run summaries, aggregate metrics, structured trace records, and explicit local JSONL trace export.
 - `POST /cancel` remains the compatibility cancel route. `POST /runs/{id}/control` accepts `cancel`, `pause`, `resume`, and `replay` actions. Replay is approval-gated and records source/replay metadata; unapproved replay returns a redacted plan without launching a new run.
 

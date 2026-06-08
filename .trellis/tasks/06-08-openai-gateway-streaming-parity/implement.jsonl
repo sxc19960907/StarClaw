@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec index for daemon/API changes."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Daemon route and embedded API conventions."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Error response and wrapping conventions."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Testing and code quality expectations."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"OpenAI gateway data crosses HTTP, daemon run, and client contract boundaries."}
+{"file":".trellis/tasks/06-08-openai-gateway-streaming-parity/design.md","reason":"Task-specific streaming contract and boundary."}

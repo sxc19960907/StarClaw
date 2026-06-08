@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -79,7 +80,11 @@ func TestHandleOpenAIChatCompletions(t *testing.T) {
 }
 
 func TestHandleOpenAIChatCompletionsStreaming(t *testing.T) {
-	s := newTestServer(t, newTestServerDeps(t))
+	deps := newTestServerDeps(t)
+	deps.LLMClient = &openAIStreamingTestClient{
+		deltas: []string{"Hello ", "stream"},
+	}
+	s := newTestServer(t, deps)
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
@@ -112,40 +117,50 @@ func TestHandleOpenAIChatCompletionsStreaming(t *testing.T) {
 		t.Fatalf("read stream: %v", err)
 	}
 	stream := string(data)
-	if !strings.Contains(stream, "data: [DONE]") {
-		t.Fatalf("stream missing DONE:\n%s", stream)
+	if got := countOpenAIDoneSentinels(stream); got != 1 {
+		t.Fatalf("DONE count = %d, want 1:\n%s", got, stream)
 	}
 	chunks := decodeOpenAIStreamChunks(t, stream)
-	if len(chunks) < 3 {
-		t.Fatalf("chunks len = %d, want at least 3: %#v\n%s", len(chunks), chunks, stream)
+	if len(chunks) != 4 {
+		t.Fatalf("chunks len = %d, want role + two deltas + stop: %#v\n%s", len(chunks), chunks, stream)
 	}
-	if chunks[0].Object != openAIChatCompletionChunkObject || chunks[0].Choices[0].Delta["role"] != "assistant" {
+	if chunks[0].Object != openAIChatCompletionChunkObject || firstOpenAIChunkDelta(t, chunks[0])["role"] != "assistant" {
 		t.Fatalf("role chunk = %#v", chunks[0])
 	}
-	foundContent := false
-	foundStop := false
+	if got := openAIChunkContents(chunks); !reflect.DeepEqual(got, []string{"Hello ", "stream"}) {
+		t.Fatalf("content chunks = %#v, want incremental deltas", got)
+	}
+	for _, chunk := range chunks[:len(chunks)-1] {
+		if chunk.Choices[0].FinishReason != nil {
+			t.Fatalf("non-terminal chunk had finish_reason: %#v", chunk)
+		}
+	}
+	if reason := chunks[len(chunks)-1].Choices[0].FinishReason; reason == nil || *reason != "stop" {
+		t.Fatalf("final finish_reason = %v, want stop", reason)
+	}
+	if len(chunks[len(chunks)-1].Choices[0].Delta) != 0 {
+		t.Fatalf("stop chunk delta = %#v, want empty", chunks[len(chunks)-1].Choices[0].Delta)
+	}
 	for _, chunk := range chunks {
 		if chunk.ID != "chatcmpl-oa-stream" || chunk.Model != "request-model" || chunk.RunID != "oa-stream" {
 			t.Fatalf("chunk identity = %#v", chunk)
 		}
-		if chunk.Choices[0].Delta["content"] != "" {
-			foundContent = true
-		}
-		if chunk.Choices[0].FinishReason != nil && *chunk.Choices[0].FinishReason == "stop" {
-			foundStop = true
-		}
-	}
-	if !foundContent {
-		t.Fatalf("stream missing content chunk: %#v", chunks)
-	}
-	if !foundStop {
-		t.Fatalf("stream missing stop chunk: %#v", chunks)
 	}
 
 	var run RunRecord
 	getJSON(t, ts.URL+"/runs/oa-stream", http.StatusOK, &run)
 	if run.ID != "oa-stream" || run.Request.Source != "openai-compatible" || run.Request.Sender != "stream-user" {
 		t.Fatalf("run = %#v", run)
+	}
+	if !run.Request.Streaming {
+		t.Fatalf("run Request.Streaming = false, want true")
+	}
+	stored, ok := s.runStore.Get("oa-stream")
+	if !ok {
+		t.Fatal("stored run not found")
+	}
+	if !stored.Request.EnableStreaming {
+		t.Fatalf("stored Request.EnableStreaming = false, want true")
 	}
 	if len(run.StructuredEvents) == 0 {
 		t.Fatal("expected streaming run structured events")
@@ -167,8 +182,8 @@ func TestOpenAIStreamingHandlerFallbackText(t *testing.T) {
 	if len(contents) != 1 || contents[0] != "fallback final" {
 		t.Fatalf("content chunks = %#v, want fallback final once; stream:\n%s", contents, stream)
 	}
-	if !strings.Contains(stream, "data: [DONE]") {
-		t.Fatalf("stream missing DONE:\n%s", stream)
+	if got := countOpenAIDoneSentinels(stream); got != 1 {
+		t.Fatalf("DONE count = %d, want 1:\n%s", got, stream)
 	}
 }
 
@@ -190,6 +205,9 @@ func TestOpenAIStreamingHandlerSuppressesDuplicateFinalText(t *testing.T) {
 	}
 	if len(contents) != 2 {
 		t.Fatalf("content chunk count = %d, want only two deltas and no final duplicate: %#v\n%s", len(contents), contents, stream)
+	}
+	if got := countOpenAIDoneSentinels(stream); got != 1 {
+		t.Fatalf("DONE count = %d, want 1:\n%s", got, stream)
 	}
 }
 
@@ -230,8 +248,8 @@ func TestHandleOpenAIChatCompletionsStreamingRunError(t *testing.T) {
 	if run.Status != "error" || !strings.Contains(run.Error, "LLM error: synthetic stream failure") {
 		t.Fatalf("run status/error = %q/%q, want error with stream failure", run.Status, run.Error)
 	}
-	if run.Request.Source != "openai-compatible" || !run.Request.EnableStreaming {
-		t.Fatalf("run request source/streaming = %q/%v", run.Request.Source, run.Request.EnableStreaming)
+	if run.Request.Source != "openai-compatible" || !run.Request.Streaming {
+		t.Fatalf("run request source/streaming = %q/%v", run.Request.Source, run.Request.Streaming)
 	}
 }
 
@@ -266,8 +284,8 @@ func TestHandleOpenAIChatCompletionsStreamingResultError(t *testing.T) {
 	if run.Status != "error" || !strings.Contains(run.Error, `failed to load agent "missing-agent"`) {
 		t.Fatalf("run status/error = %q/%q, want missing agent error", run.Status, run.Error)
 	}
-	if run.Request.Agent != "missing-agent" || !run.Request.EnableStreaming {
-		t.Fatalf("run request agent/streaming = %q/%v", run.Request.Agent, run.Request.EnableStreaming)
+	if run.Request.Agent != "missing-agent" || !run.Request.Streaming {
+		t.Fatalf("run request agent/streaming = %q/%v", run.Request.Agent, run.Request.Streaming)
 	}
 }
 
@@ -540,6 +558,24 @@ func openAIChunkContents(chunks []openAIChatCompletionChunk) []string {
 		}
 	}
 	return contents
+}
+
+func firstOpenAIChunkDelta(t *testing.T, chunk openAIChatCompletionChunk) map[string]string {
+	t.Helper()
+	if len(chunk.Choices) != 1 {
+		t.Fatalf("choice count = %d, want 1 in chunk %#v", len(chunk.Choices), chunk)
+	}
+	return chunk.Choices[0].Delta
+}
+
+func countOpenAIDoneSentinels(stream string) int {
+	count := 0
+	for _, block := range strings.Split(stream, "\n\n") {
+		if strings.TrimSpace(block) == "data: [DONE]" {
+			count++
+		}
+	}
+	return count
 }
 
 func hasOpenAIStopChunk(t *testing.T, stream string) bool {

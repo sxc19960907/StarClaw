@@ -27,6 +27,7 @@ type RunAgentRequest struct {
 	Model       string   `json:"model,omitempty"`
 	RequestID   string   `json:"request_id,omitempty"`
 	Attachments []string `json:"attachments,omitempty"`
+	Streaming   bool     `json:"streaming,omitempty"`
 
 	PauseController agent.PauseController `json:"-"`
 	EnableStreaming bool                  `json:"-"`

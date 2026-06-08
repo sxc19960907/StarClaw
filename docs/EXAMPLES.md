@@ -156,10 +156,24 @@ curl -s http://127.0.0.1:7533/v1/chat/completions \
   }' | jq .
 ```
 
+OpenAI-compatible local streaming:
+
+```bash
+curl -N http://127.0.0.1:7533/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "local",
+    "request_id": "example-openai-stream",
+    "stream": true,
+    "messages": [{"role": "user", "content": "Summarize this workspace as bullets."}]
+  }'
+```
+
 Inspect run metadata and aggregate metrics:
 
 ```bash
 curl -s http://127.0.0.1:7533/runs/example-openai-local | jq .
+curl -s http://127.0.0.1:7533/runs/example-openai-stream | jq .
 curl -s http://127.0.0.1:7533/metrics | jq .
 ```
 

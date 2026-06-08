@@ -215,6 +215,11 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 			req.Source = "workflow:" + workflow.Type
 		}
 	}
+	isSSE := strings.Contains(r.Header.Get("Accept"), "text/event-stream")
+	if isSSE {
+		req.EnableStreaming = true
+		req.Streaming = true
+	}
 	s.runStore.Start(req)
 
 	// Create cancellable context for this request.
@@ -225,7 +230,7 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 	defer s.running.Delete(req.RequestID)
 
 	// SSE streaming.
-	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+	if isSSE {
 		s.handleMessageSSE(w, r, req, ctx, workflow)
 		return
 	}

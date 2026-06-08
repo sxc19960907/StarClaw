@@ -147,6 +147,7 @@ func (s *Server) handleOpenAIChatCompletionsStream(w http.ResponseWriter, r *htt
 	w.Header().Set("Connection", "keep-alive")
 
 	runReq.EnableStreaming = true
+	runReq.Streaming = true
 	s.runStore.Start(runReq)
 
 	ctx, cancel := context.WithCancel(r.Context())

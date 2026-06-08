@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend quality gate index."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Required unit/regression test standards."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Ensure streaming/error handling does not log sensitive request bodies."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Verify HTTP stream contract through daemon run-store boundary."}
+{"file":".trellis/tasks/06-08-openai-gateway-streaming-parity/prd.md","reason":"Acceptance criteria for check."}

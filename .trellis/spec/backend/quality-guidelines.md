@@ -249,6 +249,7 @@ status := tracker.AddUsage(client.Usage{})
   - `session_id`: resume an existing StarClaw session.
   - `agent`: run a named StarClaw agent.
   - `user`: copied to `RunAgentRequest.Sender`.
+  - `stream`: when `true`, return OpenAI-style SSE `chat.completion.chunk` frames.
 - Response envelope:
   - `id`: `chatcmpl-<request_id>`.
   - `object`: `chat.completion`.
@@ -259,6 +260,13 @@ status := tracker.AddUsage(client.Usage{})
   - `choices[0].finish_reason`: `stop`.
   - `usage.prompt_tokens`, `completion_tokens`, `total_tokens`: mapped from local usage when available.
   - `starclaw_run_id`: local run id for `/runs/{id}` lookup.
+- Streaming response:
+  - HTTP `Content-Type` includes `text/event-stream`.
+  - First chunk includes `choices[0].delta.role = "assistant"`.
+  - Text deltas use `choices[0].delta.content`.
+  - Final success chunk uses `choices[0].finish_reason = "stop"`.
+  - Success stream ends with exactly one `data: [DONE]`.
+  - Error stream emits an OpenAI-style error frame and must not emit `[DONE]` or a success stop chunk.
 
 ### 3. Contracts
 
@@ -267,7 +275,8 @@ status := tracker.AddUsage(client.Usage{})
 - Supported message roles are `system`, `user`, and `assistant`. `user` content is passed as-is; non-user context is prefixed as `<role>: <content>` in the local prompt.
 - The request `model` may override the effective agent config model through `RunAgentRequest.Model`, but other model parameters are intentionally unsupported unless a future task defines their local contract.
 - Unsupported fields must return an OpenAI-style error envelope with `error.message` and `error.type="invalid_request_error"`; do not silently ignore them.
-- `stream=true`, OpenAI tool/function calling fields, `response_format`, metadata, and `n > 1` are unsupported.
+- OpenAI tool/function calling fields, `response_format`, metadata, and `n > 1` are unsupported.
+- Streaming requests must preserve both the internal runtime streaming flag and a public run metadata flag so `/runs/{id}` can distinguish streaming runs.
 
 ### 4. Validation & Error Matrix
 
@@ -276,7 +285,7 @@ status := tracker.AddUsage(client.Usage{})
 - Empty message content -> HTTP 400.
 - Unsupported role -> HTTP 400.
 - Unknown JSON field -> HTTP 400 naming the unsupported field.
-- `stream=true` -> HTTP 400.
+- `stream=true` -> HTTP 200 SSE stream on success; HTTP 200 SSE error frame for run failures after stream headers are committed.
 - `tools`, `functions`, `function_call`, or `tool_choice` present -> HTTP 400.
 - Local run failure -> OpenAI-style HTTP 500 error envelope.
 
@@ -284,13 +293,14 @@ status := tracker.AddUsage(client.Usage{})
 
 - Good: a minimal chat-completions request returns one assistant choice, usage, and a run id discoverable via `/runs/{id}`.
 - Base: request id omitted; daemon generates one and still returns a valid `chatcmpl-*` id.
-- Bad: accepting `parallel_tool_calls`, `stream`, or `response_format` while doing nothing with them.
+- Bad: accepting `parallel_tool_calls` or `response_format` while doing nothing with them, or returning `[DONE]` after a streaming error frame.
 
 ### 6. Tests Required
 
 - Route registration test for `POST /v1/chat/completions`.
 - Handler success test covering response envelope, usage mapping, run source, sender, and prompt conversion.
 - Validation tests for required fields, unsupported fields, roles, streaming, tool/function fields, and multi-choice requests.
+- Streaming tests covering role chunk ordering, incremental content deltas, exactly one `[DONE]`, stop chunks only on success, and run-store streaming metadata.
 - Runner test proving request model overrides config model via `ChatOptions.SpecificModel`.
 
 ### 7. Wrong vs Correct
