@@ -18,12 +18,13 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 | P1 | `06-08-reuse-gallery` | Add an Astria Reuse Gallery that turns prompts, agents, knowledge sources, and run outcomes into reusable launch assets. |
 | P1 | `06-08-browser-mission-planner` | Add a Browser Mission Planner for reviewed web inspection, screenshot, extraction, form-check, and monitoring mission starters. |
 | P1 | `06-08-data-insight-planner` | Add a Data Insight Planner for reviewed local file, table, metric, and export analysis mission starters. |
+| P1 | `06-08-share-pack-builder` | Add a Share Pack Builder for local reviewed handoff packages that make successful work reusable by future sessions or reviewers. |
 
 ## Acceptance Criteria
 
 - [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
-- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters and turning local data into reviewed insight briefs.
+- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, and packaging work into local handoff packs.
 
 ## Non-Goals
 

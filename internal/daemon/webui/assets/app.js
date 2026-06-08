@@ -14,6 +14,10 @@ const state = {
   selectedComparisonLane: "",
   selectedPromptVariant: "",
   selectedReuseAsset: "",
+  selectedSharePack: "",
+  sharePackName: "",
+  sharePackAudience: "",
+  sharePackIntent: "",
   selectedBrowserMission: "",
   browserTargetURL: "",
   browserMissionGoal: "",
@@ -68,6 +72,7 @@ const views = {
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
+  share: ["交接包", "Package local work into reviewed handoff starters."],
   browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
   data: ["数据洞察", "Plan reviewed data analysis and knowledge capture missions."],
   delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
@@ -1234,6 +1239,7 @@ function renderHomeActivity() {
   renderSourceRegistry();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderSharePackBuilder();
   renderBrowserMissionPlanner();
   renderDataInsightPlanner();
   renderProactiveDeliveryBoard();
@@ -1281,6 +1287,7 @@ function renderHomeDockedTools() {
   renderSourceRegistry();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderSharePackBuilder();
   renderBrowserMissionPlanner();
   renderDataInsightPlanner();
   renderProactiveDeliveryBoard();
@@ -2135,6 +2142,166 @@ function draftReuseAssetToChat(id) {
   showToast("Reusable starter drafted to chat.");
 }
 
+function sharePackContext() {
+  const name = ($("share-pack-name")?.value || state.sharePackName || "").trim();
+  const audience = ($("share-pack-audience")?.value || state.sharePackAudience || "").trim();
+  const intent = ($("share-pack-intent")?.value || state.sharePackIntent || "").trim();
+  const latestRun = state.runs[0];
+  const defaultName = latestRun?.prompt ? `Handoff for ${String(latestRun.prompt).slice(0, 72)}` : "Astria local handoff pack";
+  return {
+    name: name || defaultName,
+    audience: audience || "future Astria session or local reviewer",
+    intent: intent || "Help the recipient reuse the useful context, verify evidence, and continue safely.",
+    hasName: Boolean(name),
+  };
+}
+
+function sharePackCards() {
+  const ctx = sharePackContext();
+  const latestRun = state.runs[0];
+  const latestAgent = state.agents[0]?.name || "default";
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const reuseCount = reuseGalleryAssets().length;
+  const sourceCount = sourceRegistryRows().length;
+  const dataCount = dataInsightCards().length;
+  const artifacts = [
+    `${state.runs.length} runs`,
+    `${state.agents.length} agents`,
+    `${memoryCount} memory entries`,
+    `${reuseCount} reuse assets`,
+    `${sourceCount} sources`,
+  ].join(", ");
+  return [
+    {
+      id: "brief",
+      type: "Mission brief",
+      title: "Executive handoff brief",
+      panel: "runs",
+      evidence: latestRun?.id || "No latest run",
+      readiness: latestRun ? "ready" : "seed",
+      boundary: "Local copyable brief only; do not imply cloud sharing or external permissions.",
+      action: "Draft the overview, scope, and next decision.",
+      prompt: `Build a local Astria share pack mission brief.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nIncluded artifacts: ${artifacts}\nLatest run: ${latestRun?.prompt || "none"}\n\nCreate a concise handoff with objective, what is known, what remains uncertain, who should review it, and the safest next action. Keep it local and copyable; do not claim cloud sharing, account access, or remote permissions.`,
+    },
+    {
+      id: "evidence",
+      type: "Evidence",
+      title: "Evidence bundle checklist",
+      panel: "compare",
+      evidence: `${sourceCount} sources + ${state.runs.length} runs`,
+      readiness: sourceCount || state.runs.length ? "review" : "needs evidence",
+      boundary: "Include source freshness and missing evidence; exclude secrets and private data.",
+      action: "Draft an evidence table and verification checklist.",
+      prompt: `Build a local Astria evidence bundle checklist.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nIncluded artifacts: ${artifacts}\n\nList the evidence that should be included, where each item came from, freshness or reliability concerns, missing proof, and verification steps. Redact secrets and private data before anything is copied outside the local workspace.`,
+    },
+    {
+      id: "prompt",
+      type: "Prompt",
+      title: "Reusable prompt starter",
+      panel: "reuse",
+      evidence: `${reuseCount} reusable assets`,
+      readiness: reuseCount ? "reuse" : "draft",
+      boundary: "Package the prompt pattern, not hidden state or credentials.",
+      action: "Draft a starter prompt that another run can reuse.",
+      prompt: `Build a reusable Astria prompt starter for a share pack.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nLead agent: ${latestAgent}\nReuse assets: ${reuseCount}\n\nExtract the reusable prompt pattern, required context, expected output, review guardrails, and validation commands. Do not include secrets, private paths unless necessary, or assumptions that only this session knows.`,
+    },
+    {
+      id: "knowledge",
+      type: "Knowledge",
+      title: "Memory handoff notes",
+      panel: "memory",
+      evidence: `${memoryCount} memory entries`,
+      readiness: memoryCount ? "curate" : "seed",
+      boundary: "Save only durable facts with source and freshness notes.",
+      action: "Draft memory candidates and expiry notes.",
+      prompt: `Build Astria memory handoff notes for a local share pack.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nMemory entries: ${memoryCount}\nIncluded artifacts: ${artifacts}\n\nIdentify durable facts, decisions, preferences, risks, and stale items. Write memory candidates with evidence, freshness, and why each should or should not be saved.`,
+    },
+    {
+      id: "review",
+      type: "Review",
+      title: "Reviewer acceptance checklist",
+      panel: dataCount ? "data" : "council",
+      evidence: dataCount ? `${dataCount} data lenses` : `${state.councilRuns.length} council runs`,
+      readiness: "gate",
+      boundary: "Require human review before publishing, scheduling, or sending the pack externally.",
+      action: "Draft acceptance criteria and rejection triggers.",
+      prompt: `Build a reviewer acceptance checklist for a local Astria share pack.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nIncluded artifacts: ${artifacts}\n\nDefine acceptance criteria, rejection triggers, required evidence, privacy checks, and follow-up routes. Require explicit approval before publishing, scheduling, or sending this pack outside the local workspace.`,
+    },
+  ];
+}
+
+function renderSharePackBuilder() {
+  const cards = sharePackCards();
+  setText("nav-share-count", cards.length);
+  setText("manage-share-count", `${cards.length} pack${cards.length === 1 ? "" : "s"}`);
+  setText("share-summary", `${cards.length} local share pack card${cards.length === 1 ? "" : "s"} for mission briefs, evidence, prompts, memory, and review gates.`);
+  const list = $("share-pack-cards");
+  if (!list) return;
+  if (!state.selectedSharePack || !cards.some((card) => card.id === state.selectedSharePack)) {
+    state.selectedSharePack = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="share-pack-card ${card.id === state.selectedSharePack ? "active" : ""}" data-share-pack="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="share-pack-grid">
+      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>Boundary</span><strong>${escapeHTML(card.boundary)}</strong>
+      <span>Next action</span><strong>${escapeHTML(card.action)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-share-select="${escapeHTML(card.id)}">Pack brief</button>
+      <button type="button" data-share-draft="${escapeHTML(card.id)}">Draft pack</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderSharePackDetail(cards.find((card) => card.id === state.selectedSharePack) || cards[0]);
+}
+
+function renderSharePackDetail(card) {
+  const target = $("share-pack-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a share pack card.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Boundary</h3>
+      <p>${escapeHTML(card.boundary)}</p>
+      <h3>Next action</h3>
+      <p>${escapeHTML(card.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-share-draft="${escapeHTML(card.id)}">Draft pack</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function sharePackByID(id) {
+  return sharePackCards().find((card) => card.id === id) || null;
+}
+
+function draftSharePackToChat(id) {
+  const card = sharePackByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a local share pack section with package summary, included artifacts, evidence, boundaries, review steps, and reusable next actions.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Share pack drafted to chat.");
+}
+
 function browserMissionContext() {
   const url = ($("browser-target-url")?.value || state.browserTargetURL || "").trim();
   const goal = ($("browser-mission-goal")?.value || state.browserMissionGoal || "").trim();
@@ -2587,6 +2754,7 @@ function renderManageCount() {
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
+  const shareCount = sharePackCards().length;
   const browserCount = browserMissionCards().length;
   const dataCount = dataInsightCards().length;
   const deliveryCount = deliveryLanes().length;
@@ -2599,13 +2767,15 @@ function renderManageCount() {
   setText("nav-promptlab-count", promptVariantCount);
   setText("manage-reuse-count", `${reuseCount} asset${reuseCount === 1 ? "" : "s"}`);
   setText("nav-reuse-count", reuseCount);
+  setText("manage-share-count", `${shareCount} pack${shareCount === 1 ? "" : "s"}`);
+  setText("nav-share-count", shareCount);
   setText("manage-browser-count", `${browserCount} plan${browserCount === 1 ? "" : "s"}`);
   setText("nav-browser-count", browserCount);
   setText("manage-data-count", `${dataCount} lens${dataCount === 1 ? "" : "es"}`);
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + shareCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -6197,6 +6367,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const shareSelect = event.target.closest("[data-share-select]");
+  if (shareSelect) {
+    state.selectedSharePack = shareSelect.dataset.shareSelect || "";
+    renderSharePackBuilder();
+    return;
+  }
+
+  const shareDraft = event.target.closest("[data-share-draft]");
+  if (shareDraft) {
+    draftSharePackToChat(shareDraft.dataset.shareDraft);
+    return;
+  }
+
+  const sharePack = event.target.closest("[data-share-pack]");
+  if (sharePack && !event.target.closest("button")) {
+    state.selectedSharePack = sharePack.dataset.sharePack || "";
+    renderSharePackBuilder();
+    return;
+  }
+
   const browserSelect = event.target.closest("[data-browser-select]");
   if (browserSelect) {
     state.selectedBrowserMission = browserSelect.dataset.browserSelect || "";
@@ -6659,6 +6849,19 @@ $("promptlab-goal").addEventListener("input", (event) => {
   state.promptLabGoal = event.target.value;
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderSharePackBuilder();
+});
+$("share-pack-name").addEventListener("input", (event) => {
+  state.sharePackName = event.target.value;
+  renderSharePackBuilder();
+});
+$("share-pack-audience").addEventListener("input", (event) => {
+  state.sharePackAudience = event.target.value;
+  renderSharePackBuilder();
+});
+$("share-pack-intent").addEventListener("input", (event) => {
+  state.sharePackIntent = event.target.value;
+  renderSharePackBuilder();
 });
 $("browser-target-url").addEventListener("input", (event) => {
   state.browserTargetURL = event.target.value;
@@ -6695,6 +6898,7 @@ renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
 renderPromptExperimentLab();
 renderReuseGallery();
+renderSharePackBuilder();
 renderBrowserMissionPlanner();
 renderDataInsightPlanner();
 renderProactiveDeliveryBoard();

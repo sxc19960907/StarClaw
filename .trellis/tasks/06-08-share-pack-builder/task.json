@@ -1,0 +1,32 @@
+{
+  "id": "share-pack-builder",
+  "name": "share-pack-builder",
+  "title": "Share pack builder",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-2",
+  "relatedFiles": [
+    ".trellis/tasks/06-08-share-pack-builder/prd.md",
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Completed embedded Astria Share Pack Builder for local reviewed handoff packages across mission briefs, evidence, prompts, memory, and review gates. Validated with JS check, daemon tests, Web UI core smoke, and full Go tests.",
+  "meta": {}
+}

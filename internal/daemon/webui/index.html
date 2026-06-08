@@ -51,6 +51,10 @@
               <span><span class="nav-icon" aria-hidden="true">✶</span>复用星库</span>
               <small id="nav-reuse-count">0</small>
             </button>
+            <button class="nav-item" data-panel="share" aria-label="Share Pack">
+              <span><span class="nav-icon" aria-hidden="true">✧</span>交接包</span>
+              <small id="nav-share-count">0</small>
+            </button>
             <button class="nav-item" data-panel="delivery" aria-label="Delivery">
               <span><span class="nav-icon" aria-hidden="true">⇢</span>投递</span>
               <small id="nav-delivery-count">0</small>
@@ -621,6 +625,11 @@
                 <strong id="manage-reuse-count">0 assets</strong>
                 <small>Turn prompts, agents, knowledge, and outcomes into reusable mission starters.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="share">
+                <span>Share Pack</span>
+                <strong id="manage-share-count">0 packs</strong>
+                <small>Package successful local work into reviewed, copyable handoff starters.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="delivery">
                 <span>Proactive Delivery</span>
                 <strong id="manage-delivery-count">0 lanes</strong>
@@ -1069,6 +1078,41 @@
             </div>
             <div class="reuse-gallery-detail" id="reuse-gallery-detail">
               <div class="empty-state">Select a reusable asset.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-share" aria-labelledby="share-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="share-heading">Share Pack</h2>
+              <p id="share-summary">Package successful Astria work into local handoff starters for review, reuse, and follow-up.</p>
+            </div>
+            <div class="share-pack-form">
+              <label>
+                Package name
+                <input id="share-pack-name" aria-label="Share package name" placeholder="release research handoff, support triage pack, or weekly insight brief">
+              </label>
+              <label>
+                Audience
+                <input id="share-pack-audience" aria-label="Share package audience" placeholder="teammate, future session, reviewer, or project owner">
+              </label>
+              <label>
+                Handoff intent
+                <textarea id="share-pack-intent" rows="3" aria-label="Share package intent" placeholder="What should the recipient be able to reuse or verify?"></textarea>
+              </label>
+            </div>
+            <div class="share-pack-cards" id="share-pack-cards">
+              <div class="empty-state">No share pack cards yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Pack Brief</h2>
+              <p>Keep sharing local and reviewable: include evidence, boundaries, source freshness, and next actions.</p>
+            </div>
+            <div class="share-pack-detail" id="share-pack-detail">
+              <div class="empty-state">Select a share pack card.</div>
             </div>
           </aside>
         </section>

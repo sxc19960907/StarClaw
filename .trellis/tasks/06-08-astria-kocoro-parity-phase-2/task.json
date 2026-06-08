@@ -21,7 +21,8 @@
   "children": [
     "06-08-reuse-gallery",
     "06-08-browser-mission-planner",
-    "06-08-data-insight-planner"
+    "06-08-data-insight-planner",
+    "06-08-share-pack-builder"
   ],
   "parent": null,
   "relatedFiles": [
@@ -31,6 +32,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery, Browser Mission Planner, and Data Insight Planner are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery, Browser Mission Planner, Data Insight Planner, and Share Pack Builder are complete.",
   "meta": {}
 }
