@@ -31,6 +31,7 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 	r.registerMemoryRoutes(mux)
 	r.registerCouncilRoutes(mux)
 	r.registerInboxRoutes(mux)
+	r.registerQueueRoutes(mux)
 	r.registerIntakeRoutes(mux)
 	r.registerPermissionRoutes(mux)
 }
@@ -131,6 +132,15 @@ func (r *Router) registerInboxRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /inbox/{id}/approve", r.srv.handleApproveInboxItem)
 	mux.HandleFunc("POST /inbox/{id}/reject", r.srv.handleRejectInboxItem)
 	mux.HandleFunc("POST /inbox/{id}/retry", r.srv.handleRetryInboxItem)
+}
+
+func (r *Router) registerQueueRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /queue", r.srv.handleListQueueMessages)
+	mux.HandleFunc("POST /queue", r.srv.handleCreateQueueMessage)
+	mux.HandleFunc("GET /queue/{id}", r.srv.handleGetQueueMessage)
+	mux.HandleFunc("POST /queue/claim", r.srv.handleClaimQueueMessages)
+	mux.HandleFunc("POST /queue/{id}/ack", r.srv.handleAckQueueMessage)
+	mux.HandleFunc("POST /queue/{id}/release", r.srv.handleReleaseQueueMessage)
 }
 
 func (r *Router) registerIntakeRoutes(mux *http.ServeMux) {

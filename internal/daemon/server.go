@@ -39,6 +39,7 @@ type Server struct {
 	runStore       *RunStore
 	councilStore   *CouncilStore
 	inboxStore     *InboxStore
+	mailboxStore   *MailboxStore
 }
 
 // NewServer creates a new Server.
@@ -52,6 +53,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		runStore:       NewRunStore(defaultRunStoreLimit),
 		councilStore:   NewCouncilStore(defaultCouncilStoreLimit),
 		inboxStore:     NewInboxStore(defaultInboxStoreLimit),
+		mailboxStore:   NewMailboxStore(defaultMailboxCapacity),
 	}
 }
 

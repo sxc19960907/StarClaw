@@ -1,0 +1,8 @@
+{"path":".trellis/tasks/06-08-daemon-mailbox-channel-runtime/prd.md","kind":"task","notes":"Check implementation against every acceptance criterion."}
+{"path":".trellis/tasks/06-08-daemon-mailbox-channel-runtime/design.md","kind":"task","notes":"Verify implemented boundaries match design."}
+{"path":".trellis/tasks/06-08-daemon-mailbox-channel-runtime/implement.md","kind":"task","notes":"Confirm checklist and validation evidence."}
+{"path":"internal/daemon/mailbox.go","kind":"code","notes":"Review store ordering, dedup, capacity, and lifecycle behavior."}
+{"path":"internal/daemon/queue_api.go","kind":"code","notes":"Review API validation, response shape, and safe views."}
+{"path":"internal/daemon/mailbox_test.go","kind":"test","notes":"Unit coverage for mailbox store lifecycle."}
+{"path":"internal/daemon/queue_api_test.go","kind":"test","notes":"HTTP coverage for queue APIs."}
+{"path":".trellis/spec/backend/quality-guidelines.md","kind":"spec","notes":"Check queue contract spec was updated for new API signatures."}

@@ -1015,6 +1015,93 @@ result, err := s.runWorkflowAgent(ctx, req, workflow, handler)
 
 This keeps workflow commands inside the normal daemon execution boundary.
 
+## Scenario: Local Daemon Mailbox Queue
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing local daemon queue/mailbox APIs or worker claim/ack lifecycle.
+- Scope: local in-memory daemon queue runtime. This is not external channel transport, cloud sync, Shannon Cloud replay, or persistent SQLite mailbox storage unless a task explicitly adds persistence.
+
+### 2. Signatures
+
+- Store constructor: `NewMailboxStore(capacity int) *MailboxStore`.
+- Store APIs:
+  - `(*MailboxStore).Enqueue(QueuedMessage) (QueuedMessage, error)`
+  - `(*MailboxStore).List(routeKey string) []QueuedMessage`
+  - `(*MailboxStore).Get(id string) (QueuedMessage, bool)`
+  - `(*MailboxStore).Claim(routeKey string, limit int) ([]QueuedMessage, error)`
+  - `(*MailboxStore).Ack(id, claimID string) bool`
+  - `(*MailboxStore).Release(id, claimID string) bool`
+- HTTP routes:
+  - `POST /queue`
+  - `GET /queue?route_key=<route>`
+  - `GET /queue/{id}`
+  - `POST /queue/claim`
+  - `POST /queue/{id}/ack`
+  - `POST /queue/{id}/release`
+
+### 3. Contracts
+
+- `POST /queue` requires either `route_key` or `session_id`, plus non-empty `text`.
+- If `route_key` is omitted and `session_id` is present, the store may derive `route_key` as `session:<session_id>`.
+- Queue capacity is per route and counts non-acknowledged messages.
+- Ordering is priority ascending, then enqueue time ascending, then stable id order.
+- Dedup is scoped to `route_key + source + external_id`; duplicate enqueue returns the existing message and must not add a second queue item.
+- Claimed messages are not claimable again until released. Acknowledged messages are not claimable again.
+- Release clears the claim and increments attempt so a future worker can see retry count.
+- Public queue views must use sanitized metadata and must not expose provider payloads, tool args/results, secrets, hidden channel credentials, or attachment contents.
+- Existing `/inbox` approval behavior must remain compatible when queue APIs are added.
+
+### 4. Validation & Error Matrix
+
+- Missing route/session -> HTTP 400.
+- Empty text -> HTTP 400.
+- Text over the configured queue text cap -> HTTP 413.
+- Negative or zero priority -> HTTP 400.
+- Route capacity exceeded -> HTTP 503.
+- Unknown queue id -> HTTP 404.
+- Ack/release with wrong or missing claim id -> HTTP 409 or HTTP 400.
+- Duplicate source/external id on same route -> HTTP 200 with `duplicate=true`.
+- Successful new enqueue -> HTTP 202.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a local webhook bridge enqueues a message with `route_key`, `source`, `external_id`, and priority; a worker claims it, processes it, and acks it after successful persistence.
+- Base: `GET /queue` on an empty queue returns an empty message list.
+- Bad: adding external transport credentials to queue metadata, acknowledging before the worker has safely persisted work, or letting a claimed message be claimed by two workers at the same time.
+
+### 6. Tests Required
+
+- Store tests for priority/FIFO ordering, capacity, per-route dedup, defensive snapshots, claim/ack/release, and wrong-claim rejection.
+- HTTP tests for route registration, enqueue success, validation errors, capacity, duplicate enqueue, list/detail, claim, ack, and release.
+- Regression tests proving existing `/inbox`, `/message`, SSE, run-store, workflow command, and metrics behavior remains compatible.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+msg.Metadata["token"] = providerToken
+store.Ack(msg.ID, msg.ClaimID)
+err := session.Save()
+```
+
+This leaks credentials into public queue state and can lose a message if persistence fails after ack.
+
+#### Correct
+
+```go
+claimed, err := store.Claim(routeKey, 1)
+// Worker processes and persists the result first.
+if saveErr == nil {
+    store.Ack(claimed[0].ID, claimed[0].ClaimID)
+} else {
+    store.Release(claimed[0].ID, claimed[0].ClaimID)
+}
+```
+
+This preserves queue ownership and leaves failed work retryable.
+
 ### Small, focused interfaces
 
 ```go
