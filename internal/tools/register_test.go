@@ -48,6 +48,7 @@ func TestRegisterLocalTools(t *testing.T) {
 		"screenshot",
 		"skill",
 		"system_info",
+		"terminal_workspace",
 		"think",
 		"use_skill",
 		"wait",

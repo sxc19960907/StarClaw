@@ -1,0 +1,4 @@
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Phase 9 source plan and local Kocoro parity evidence for terminal workspace tool depth."}
+{"file": ".trellis/tasks/06-08-terminal-workspace-tool-depth/prd.md", "reason": "Task requirements and acceptance criteria."}
+{"file": ".trellis/tasks/06-08-terminal-workspace-tool-depth/design.md", "reason": "Implementation boundaries, tool contract, platform split, and rollback shape."}
+{"file": ".trellis/tasks/06-08-terminal-workspace-tool-depth/implement.md", "reason": "Ordered implementation and validation plan."}

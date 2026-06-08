@@ -66,6 +66,9 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 	// AppleScript tool
 	reg.Register(&AppleScriptTool{})
 
+	// Visible terminal workspace tool
+	reg.Register(NewTerminalWorkspaceTool())
+
 	// macOS Accessibility tool
 	reg.Register(&AccessibilityTool{})
 
