@@ -838,3 +838,36 @@ Added local /v1/chat/completions adapter, OpenAI-style response/error envelopes,
 ### Next Steps
 
 - None - task complete
+
+
+## Session 108: Runtime routing fallback
+
+**Date**: 2026-06-08
+**Task**: Runtime routing fallback
+**Branch**: `main`
+
+### Summary
+
+Added deterministic complexity routing, fallback decisions for provider/budget/repeated failures, daemon response and run-record metadata, tests, and backend code-spec coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4ee5d76` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
