@@ -235,6 +235,7 @@ func (s *Server) handleGetRun(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		RequestID string `json:"request_id"`
+		Reason    string `json:"reason,omitempty"`
 	}
 	if !decodeBody(w, r, &body) {
 		return
@@ -246,10 +247,98 @@ func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
 
 	if cancel, ok := s.running.Load(body.RequestID); ok {
 		cancel.(context.CancelFunc)()
-		writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled"})
+		s.runStore.AddControlDecision(body.RequestID, RunControlDecision{
+			Action: "cancel",
+			Status: "cancelled",
+			Reason: body.Reason,
+		})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled", "run_id": body.RequestID, "action": "cancel"})
 		return
 	}
 	writeError(w, http.StatusNotFound, "request not found")
+}
+
+func (s *Server) handleRunControl(w http.ResponseWriter, r *http.Request) {
+	runID := r.PathValue("id")
+	if runID == "" {
+		writeError(w, http.StatusBadRequest, "run id is required")
+		return
+	}
+
+	var body struct {
+		Action   string `json:"action"`
+		Reason   string `json:"reason,omitempty"`
+		Approved bool   `json:"approved,omitempty"`
+	}
+	if !decodeBody(w, r, &body) {
+		return
+	}
+	action := strings.ToLower(strings.TrimSpace(body.Action))
+	if action == "" {
+		writeError(w, http.StatusBadRequest, "action is required")
+		return
+	}
+
+	switch action {
+	case "cancel":
+		if cancel, ok := s.running.Load(runID); ok {
+			cancel.(context.CancelFunc)()
+			s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "cancelled", Reason: body.Reason})
+			writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled", "run_id": runID, "action": action})
+			return
+		}
+		if _, ok := s.runStore.Get(runID); ok {
+			s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "not_running", Reason: body.Reason})
+			writeError(w, http.StatusConflict, "run is not active")
+			return
+		}
+		writeError(w, http.StatusNotFound, "run not found")
+	case "pause", "resume":
+		if _, ok := s.runStore.Get(runID); !ok {
+			writeError(w, http.StatusNotFound, "run not found")
+			return
+		}
+		s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "unsupported", Reason: body.Reason})
+		writeError(w, http.StatusConflict, action+" is not supported for this runtime")
+	case "replay":
+		record, ok := s.runStore.Get(runID)
+		if !ok {
+			writeError(w, http.StatusNotFound, "run not found")
+			return
+		}
+		s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "approval_required", Reason: body.Reason})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status": "approval_required",
+			"run_id": runID,
+			"action": action,
+			"replay": map[string]any{
+				"source_run_id":     runID,
+				"requires_approval": true,
+				"approved":          body.Approved,
+				"reason":            "Replay can repeat tool calls or external effects.",
+				"request":           replayControlRequest(record.Request),
+			},
+		})
+	default:
+		writeError(w, http.StatusBadRequest, "unsupported action")
+	}
+}
+
+func replayControlRequest(req RunAgentRequest) map[string]any {
+	out := map[string]any{
+		"text_redacted": true,
+		"channel":       req.Channel,
+	}
+	if req.Agent != "" {
+		out["agent"] = req.Agent
+	}
+	if req.SessionID != "" {
+		out["session_id"] = req.SessionID
+	}
+	if req.Source != "" {
+		out["source"] = req.Source
+	}
+	return out
 }
 
 func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {

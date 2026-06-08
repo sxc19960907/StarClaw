@@ -14,11 +14,11 @@ Add workflow control APIs for pause, resume, cancel, and replay so long-running 
 
 ## Acceptance Criteria
 
-- [ ] Control API contract is documented in PRD/design before implementation.
-- [ ] Cancel endpoint is test-covered and remains compatible with current stop behavior.
-- [ ] Replay requires explicit approval boundary for tool calls or external effects.
-- [ ] Run/event metadata reflects cancel/replay decisions.
-- [ ] Existing run smoke tests continue to pass.
+- [x] Control API contract is documented in PRD/design before implementation.
+- [x] Cancel endpoint is test-covered and remains compatible with current stop behavior.
+- [x] Replay requires explicit approval boundary for tool calls or external effects.
+- [x] Run/event metadata reflects cancel/replay decisions.
+- [x] Existing run smoke tests continue to pass.
 
 ## Notes
 

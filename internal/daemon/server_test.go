@@ -1863,6 +1863,7 @@ func TestHandleCancel(t *testing.T) {
 	// Register a fake running request.
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx
+	s.runStore.Start(RunAgentRequest{RequestID: "test-request-1", Channel: ChannelHTTP})
 	s.running.Store("test-request-1", cancel)
 
 	ts := httptest.NewServer(s.Handler())
@@ -1879,6 +1880,196 @@ func TestHandleCancel(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+	record, ok := s.runStore.Get("test-request-1")
+	if !ok {
+		t.Fatal("expected run record")
+	}
+	if record.Status != "cancelled" {
+		t.Fatalf("run status = %q, want cancelled", record.Status)
+	}
+	if len(record.Control) != 1 || record.Control[0].Action != "cancel" || record.Control[0].Status != "cancelled" {
+		t.Fatalf("control decisions = %#v, want cancelled cancel decision", record.Control)
+	}
+}
+
+func TestHandleRunControlCancel(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	_ = ctx
+	s.runStore.Start(RunAgentRequest{RequestID: "control-cancel", Channel: ChannelHTTP})
+	s.running.Store("control-cancel", cancel)
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"action":"cancel","reason":"operator stop"}`
+	resp, err := http.Post(ts.URL+"/runs/control-cancel/control", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /runs/{id}/control: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	record, ok := s.runStore.Get("control-cancel")
+	if !ok {
+		t.Fatal("expected run record")
+	}
+	if record.Status != "cancelled" {
+		t.Fatalf("run status = %q, want cancelled", record.Status)
+	}
+	if len(record.StructuredEvents) < 2 {
+		t.Fatalf("structured events = %d, want control event", len(record.StructuredEvents))
+	}
+	last := record.StructuredEvents[len(record.StructuredEvents)-1]
+	if last.Type != "control_decision" || last.Phase != "control" {
+		t.Fatalf("last structured event = %#v, want control_decision/control", last)
+	}
+}
+
+func TestHandleRunControlPauseResumeStaged(t *testing.T) {
+	for _, action := range []string{"pause", "resume"} {
+		t.Run(action, func(t *testing.T) {
+			s := newTestServer(t, newTestServerDeps(t))
+			s.runStore.Start(RunAgentRequest{RequestID: "control-" + action, Channel: ChannelHTTP})
+			ts := httptest.NewServer(s.Handler())
+			defer ts.Close()
+
+			body := `{"action":"` + action + `"}`
+			resp, err := http.Post(ts.URL+"/runs/control-"+action+"/control", "application/json", strings.NewReader(body))
+			if err != nil {
+				t.Fatalf("POST /runs/{id}/control: %v", err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			if resp.StatusCode != http.StatusConflict {
+				t.Fatalf("status = %d, want 409", resp.StatusCode)
+			}
+			record, ok := s.runStore.Get("control-" + action)
+			if !ok {
+				t.Fatal("expected run record")
+			}
+			if len(record.Control) != 1 || record.Control[0].Action != action || record.Control[0].Status != "unsupported" {
+				t.Fatalf("control decisions = %#v, want unsupported %s", record.Control, action)
+			}
+		})
+	}
+}
+
+func TestHandleRunControlReplayRequiresApproval(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{
+		RequestID: "control-replay",
+		Text:      "repeat this sensitive prompt",
+		Agent:     "helper",
+		Channel:   ChannelHTTP,
+		SessionID: "sess-1",
+		Source:    "test",
+	})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"action":"replay","approved":false}`
+	resp, err := http.Post(ts.URL+"/runs/control-replay/control", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /runs/{id}/control: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var got struct {
+		Status string `json:"status"`
+		Action string `json:"action"`
+		Replay struct {
+			RequiresApproval bool           `json:"requires_approval"`
+			Request          map[string]any `json:"request"`
+		} `json:"replay"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.Status != "approval_required" || got.Action != "replay" || !got.Replay.RequiresApproval {
+		t.Fatalf("response = %#v, want approval-required replay", got)
+	}
+	if got.Replay.Request["text_redacted"] != true {
+		t.Fatalf("replay request = %#v, want redacted text", got.Replay.Request)
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal response: %v", err)
+	}
+	if strings.Contains(string(encoded), "repeat this sensitive prompt") {
+		t.Fatalf("replay response leaked prompt: %s", encoded)
+	}
+	record, ok := s.runStore.Get("control-replay")
+	if !ok {
+		t.Fatal("expected run record")
+	}
+	if len(record.Control) != 1 || record.Control[0].Action != "replay" || record.Control[0].Status != "approval_required" {
+		t.Fatalf("control decisions = %#v, want replay approval_required", record.Control)
+	}
+}
+
+func TestHandleRunControlValidation(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "control-validation", Channel: ChannelHTTP})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	for _, tc := range []struct {
+		name       string
+		path       string
+		body       string
+		wantStatus int
+	}{
+		{"missing action", "/runs/control-validation/control", `{}`, http.StatusBadRequest},
+		{"unsupported action", "/runs/control-validation/control", `{"action":"delete"}`, http.StatusBadRequest},
+		{"missing run", "/runs/missing-run/control", `{"action":"replay"}`, http.StatusNotFound},
+		{"inactive cancel", "/runs/control-validation/control", `{"action":"cancel"}`, http.StatusConflict},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := http.Post(ts.URL+tc.path, "application/json", strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatalf("POST %s: %v", tc.path, err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			if resp.StatusCode != tc.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.wantStatus)
+			}
+		})
+	}
+}
+
+func TestRunStoreCompletePreservesCancelledStatus(t *testing.T) {
+	store := NewRunStore(10)
+	store.Start(RunAgentRequest{RequestID: "cancelled-run", Channel: ChannelHTTP})
+	if !store.AddControlDecision("cancelled-run", RunControlDecision{Action: "cancel", Status: "cancelled"}) {
+		t.Fatal("expected control decision to be recorded")
+	}
+
+	store.Complete("cancelled-run", RunAgentResponse{
+		SessionID: "sess",
+		Usage:     map[string]int{"input_tokens": 1, "output_tokens": 2},
+	}, context.Canceled)
+
+	record, ok := store.Get("cancelled-run")
+	if !ok {
+		t.Fatal("expected run record")
+	}
+	if record.Status != "cancelled" {
+		t.Fatalf("run status = %q, want cancelled", record.Status)
+	}
+	if record.Response == nil {
+		t.Fatal("expected response metadata to still be captured")
 	}
 }
 

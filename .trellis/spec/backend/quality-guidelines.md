@@ -401,6 +401,89 @@ store.AddEvent(id, EventToolCall, map[string]any{"args": rawArgsJSON})
 s.addStructuredEventLocked(id, EventToolCall, map[string]any{"args": rawArgsJSON})
 ```
 
+## Scenario: Workflow Control API
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing daemon APIs that control active or historical runs, including cancel, pause, resume, replay, or run-state inspection.
+- Scope: local daemon workflow control. This must preserve existing Web UI stop behavior and must not bypass run records, approval boundaries, or structured observability.
+
+### 2. Signatures
+
+- Compatibility route: `POST /cancel`.
+- Run control route: `POST /runs/{id}/control`.
+- Request shape:
+  ```json
+  {
+    "action": "cancel",
+    "reason": "operator stop",
+    "approved": false
+  }
+  ```
+- Supported action values:
+  - `cancel`
+  - `pause`
+  - `resume`
+  - `replay`
+- Run metadata type: `RunControlDecision`.
+- Run record field: `RunRecord.Control`, serialized as `control`.
+- Structured event type: `control_decision`.
+
+### 3. Contracts
+
+- `POST /cancel` remains compatible with existing callers that send `request_id`.
+- `POST /runs/{id}/control` is the canonical per-run control surface for new callers.
+- `cancel` must call the active run cancel function when the run is active and record a `cancelled` control decision.
+- `pause` and `resume` return HTTP `409` until runtime support exists. Do not simulate pause/resume by mutating run status alone.
+- `replay` returns an approval-required replay plan only. It must not launch a new run or repeat tool calls in this slice.
+- Replay plans must redact prompt text by default and must not include tool arguments, raw provider payloads, or external-delivery side effects.
+- Control decisions must be visible on `GET /runs/{id}` and as structured `control_decision` events.
+
+### 4. Validation & Error Matrix
+
+- Missing `request_id` on `POST /cancel` -> HTTP `400`.
+- Unknown request id on `POST /cancel` -> HTTP `404`.
+- Missing `action` on `POST /runs/{id}/control` -> HTTP `400`.
+- Unknown action -> HTTP `400`.
+- Missing run -> HTTP `404`.
+- Cancel for a known but inactive run -> HTTP `409`.
+- Pause/resume for a known run -> HTTP `409`.
+- Replay for a known run -> HTTP `200` with `status="approval_required"`.
+
+### 5. Good/Base/Bad Cases
+
+- Good: current Web UI stop button still posts to `/cancel`, active context is cancelled, run detail records the decision, and structured events record `control_decision`.
+- Base: `POST /runs/{id}/control` with `replay` returns a redacted approval-required plan for the stored run.
+- Bad: replay immediately calls `runAgent`, repeats tool calls, or returns the original prompt body.
+
+### 6. Tests Required
+
+- Route registration test for `POST /runs/{id}/control`.
+- Cancel handler test preserving `POST /cancel` compatibility and recording run metadata.
+- Run control cancel test covering metadata and structured control event.
+- Pause/resume tests proving staged `409` behavior.
+- Replay test proving approval-required response and prompt redaction.
+- Validation tests for missing action, unknown action, missing run, and inactive cancel.
+- Existing run smoke tests must continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+// Replays immediately and may repeat destructive tool calls.
+result, err := s.runAgent(ctx, record.Request, handler)
+```
+
+#### Correct
+
+```go
+writeJSON(w, http.StatusOK, map[string]any{
+    "status": "approval_required",
+    "replay": replayPlan,
+})
+```
+
 ## Scenario: Runtime Complexity Routing and Fallback
 
 ### 1. Scope / Trigger

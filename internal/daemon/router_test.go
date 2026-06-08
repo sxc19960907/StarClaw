@@ -34,6 +34,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		{"POST", "/message"},
 		{"POST", "/v1/chat/completions"},
 		{"POST", "/cancel"},
+		{"POST", "/runs/test-run/control"},
 		{"POST", "/shutdown"},
 
 		// Schedule

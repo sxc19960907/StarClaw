@@ -16,6 +16,13 @@ type RunEvent struct {
 	Data map[string]any `json:"data"`
 }
 
+type RunControlDecision struct {
+	Action string    `json:"action"`
+	Status string    `json:"status"`
+	Reason string    `json:"reason,omitempty"`
+	At     time.Time `json:"at"`
+}
+
 type RunRecord struct {
 	ID               string                     `json:"id"`
 	Status           string                     `json:"status"`
@@ -34,6 +41,7 @@ type RunRecord struct {
 	Error            string                     `json:"error,omitempty"`
 	Events           []RunEvent                 `json:"events,omitempty"`
 	StructuredEvents []StructuredRunEvent       `json:"structured_events,omitempty"`
+	Control          []RunControlDecision       `json:"control,omitempty"`
 }
 
 type RunSummary struct {
@@ -111,6 +119,9 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 	record.Budget = response.BudgetStatus
 	record.Routing = response.Routing
 	record.Fallback = response.Fallback
+	if record.Status == "cancelled" {
+		return
+	}
 	if response.BudgetStatus != nil {
 		s.addStructuredEventLocked(id, "budget_status", map[string]any{
 			"status":        response.BudgetStatus.Status,
@@ -167,6 +178,30 @@ func (s *RunStore) AddEvent(id, eventType string, data map[string]any) {
 	s.addStructuredEventLocked(id, eventType, data)
 }
 
+func (s *RunStore) AddControlDecision(id string, decision RunControlDecision) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record := s.records[id]
+	if record == nil {
+		return false
+	}
+	if decision.At.IsZero() {
+		decision.At = time.Now()
+	}
+	record.Control = append(record.Control, decision)
+	if decision.Status == "cancelled" {
+		record.Status = "cancelled"
+		now := decision.At
+		record.EndedAt = &now
+	}
+	s.addStructuredEventLocked(id, "control_decision", map[string]any{
+		"action": decision.Action,
+		"status": decision.Status,
+		"reason": decision.Reason,
+	})
+	return true
+}
+
 func (s *RunStore) List() []RunSummary {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -203,6 +238,9 @@ func (s *RunStore) Get(id string) (*RunRecord, bool) {
 	}
 	if record.StructuredEvents != nil {
 		copyRecord.StructuredEvents = append([]StructuredRunEvent(nil), record.StructuredEvents...)
+	}
+	if record.Control != nil {
+		copyRecord.Control = append([]RunControlDecision(nil), record.Control...)
 	}
 	if record.Usage != nil {
 		copyRecord.Usage = make(map[string]int, len(record.Usage))

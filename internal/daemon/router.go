@@ -62,6 +62,7 @@ func (r *Router) registerMessageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /events", r.srv.handleEvents)
 	mux.HandleFunc("GET /runs", r.srv.handleRuns)
 	mux.HandleFunc("GET /runs/{id}", r.srv.handleGetRun)
+	mux.HandleFunc("POST /runs/{id}/control", r.srv.handleRunControl)
 }
 
 func (r *Router) registerOpenAIRoutes(mux *http.ServeMux) {

@@ -78,6 +78,8 @@ func eventPhase(eventType string) string {
 		return "routing"
 	case "fallback_decision":
 		return "fallback"
+	case "control_decision":
+		return "control"
 	case "run_completed", "run_error":
 		return "end"
 	default:
