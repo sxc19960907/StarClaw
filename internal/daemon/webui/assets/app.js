@@ -1979,7 +1979,7 @@ function renderRunQualityScorecard() {
   if (!state.selectedRunQuality || !cards.some((card) => card.id === state.selectedRunQuality)) {
     state.selectedRunQuality = cards[0]?.id || "";
   }
-  list.innerHTML = cards.map((card) => `<article class="run-quality-card ${card.id === state.selectedRunQuality ? "active" : ""}" data-run-quality="${escapeHTML(card.id)}">
+  list.innerHTML = cards.map((card) => `<article class="run-quality-card ${card.id === state.selectedRunQuality ? "active" : ""}" data-lane="Q" data-run-quality="${escapeHTML(card.id)}">
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(runQualityGrade(card.score))}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="run-quality-score"><span>${escapeHTML(String(card.score))}</span><small>quality score</small></div>
@@ -2293,7 +2293,7 @@ function renderBudgetGuardPlanner() {
   if (!state.selectedBudgetGuard || !cards.some((card) => card.id === state.selectedBudgetGuard)) {
     state.selectedBudgetGuard = cards[0]?.id || "";
   }
-  list.innerHTML = cards.map((card) => `<article class="budget-guard-card ${card.id === state.selectedBudgetGuard ? "active" : ""}" data-budget-guard="${escapeHTML(card.id)}">
+  list.innerHTML = cards.map((card) => `<article class="budget-guard-card ${card.id === state.selectedBudgetGuard ? "active" : ""}" data-lane="B" data-budget-guard="${escapeHTML(card.id)}">
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.panel)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="budget-guard-gridline">
@@ -3380,7 +3380,7 @@ function renderWorkspaceSnapshotPlanner() {
   if (!state.selectedWorkspaceSnapshot || !cards.some((card) => card.id === state.selectedWorkspaceSnapshot)) {
     state.selectedWorkspaceSnapshot = cards[0]?.id || "";
   }
-  list.innerHTML = cards.map((card) => `<article class="workspace-snapshot-card ${card.id === state.selectedWorkspaceSnapshot ? "active" : ""}" data-workspace-snapshot="${escapeHTML(card.id)}">
+  list.innerHTML = cards.map((card) => `<article class="workspace-snapshot-card ${card.id === state.selectedWorkspaceSnapshot ? "active" : ""}" data-lane="S" data-workspace-snapshot="${escapeHTML(card.id)}">
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.panel)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="workspace-snapshot-gridline">

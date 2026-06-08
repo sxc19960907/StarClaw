@@ -328,7 +328,7 @@ async function fulfillIfUnhandled(route, options) {
 
 async function boot(page) {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Hiya, welcome to Astria" }).waitFor();
+  await page.getByRole("heading", { name: "Astria Stellar Workbench" }).waitFor();
   await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").waitFor();
   await page.getByRole("button", { name: "Open Command Center" }).click();
   await page.getByLabel("Command search").fill("memory");

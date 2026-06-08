@@ -14,11 +14,11 @@ Polish the Astria Web UI into a stronger project-specific stellar workbench lang
 
 ## Acceptance Criteria
 
-- [ ] UI language spec documents Astria-specific visual patterns and color grammar.
-- [ ] Home, Run Quality, Budget Guard, and Workspace Snapshot share the same stellar workbench design system.
-- [ ] Existing smoke tests pass and screenshots show no text overlap on desktop smoke viewport.
-- [ ] No external asset or build pipeline is introduced.
-- [ ] This task starts only after the preceding hard parity tasks have been addressed or explicitly deferred.
+- [x] UI language spec documents Astria-specific visual patterns and color grammar.
+- [x] Home, Run Quality, Budget Guard, and Workspace Snapshot share the same stellar workbench design system.
+- [x] Existing smoke tests pass and screenshots show no text overlap on desktop smoke viewport.
+- [x] No external asset or build pipeline is introduced.
+- [x] This task starts only after the preceding hard parity tasks have been addressed or explicitly deferred.
 
 ## Notes
 
