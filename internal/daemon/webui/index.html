@@ -51,6 +51,10 @@
               <span><span class="nav-icon" aria-hidden="true">✶</span>复用星库</span>
               <small id="nav-reuse-count">0</small>
             </button>
+            <button class="nav-item" data-panel="results" aria-label="Result Library">
+              <span><span class="nav-icon" aria-hidden="true">☉</span>结果星库</span>
+              <small id="nav-results-count">0</small>
+            </button>
             <button class="nav-item" data-panel="starter" aria-label="Starter Kits">
               <span><span class="nav-icon" aria-hidden="true">⋆</span>启动套件</span>
               <small id="nav-starter-count">0</small>
@@ -638,6 +642,11 @@
                 <strong id="manage-reuse-count">0 assets</strong>
                 <small>Turn prompts, agents, knowledge, and outcomes into reusable mission starters.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="results">
+                <span>Result Library</span>
+                <strong id="manage-results-count">0 results</strong>
+                <small>Archive completed briefs, evidence bundles, and reusable outputs for follow-up.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="starter">
                 <span>Starter Kits</span>
                 <strong id="manage-starter-count">0 kits</strong>
@@ -1131,6 +1140,27 @@
             </div>
             <div class="reuse-gallery-detail" id="reuse-gallery-detail">
               <div class="empty-state">Select a reusable asset.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-results" aria-labelledby="results-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="results-heading">Result Library</h2>
+              <p id="results-summary">Saved local outcomes, evidence briefs, and reusable reports from Astria work.</p>
+            </div>
+            <div class="result-library-grid" id="result-library-grid">
+              <div class="empty-state">No archived results yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Result Brief</h2>
+              <p>Review what was produced, where it came from, how fresh it is, and how to reuse it.</p>
+            </div>
+            <div class="result-library-detail" id="result-library-detail">
+              <div class="empty-state">Select an archived result.</div>
             </div>
           </aside>
         </section>

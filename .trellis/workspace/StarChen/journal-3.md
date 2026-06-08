@@ -634,3 +634,26 @@ Added an Agents Capability Roster that surfaces each named agent's model, reason
 ### Status
 
 [OK] **Completed**
+
+
+## Session 123: Result Library Report Archive
+
+**Date**: 2026-06-08
+**Task**: Result library report archive
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Result Library that archives saved local outcomes across run reports, handoff packs, data insight briefs, citation briefs, reusable outputs, and council synthesis. Each result has a reviewable detail brief with source, evidence, freshness, reuse path, and next action, plus buttons to draft a follow-up into Chat or route back to the source panel.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

@@ -14,6 +14,7 @@ const state = {
   selectedComparisonLane: "",
   selectedPromptVariant: "",
   selectedReuseAsset: "",
+  selectedResultArchive: "",
   selectedStarterKit: "",
   selectedSharePack: "",
   sharePackName: "",
@@ -78,6 +79,7 @@ const views = {
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
+  results: ["结果星库", "Review saved reports, evidence briefs, and reusable outcomes."],
   starter: ["启动套件", "Launch from prebuilt Astria workflow kits."],
   share: ["交接包", "Package local work into reviewed handoff starters."],
   browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
@@ -1247,6 +1249,7 @@ function renderHomeActivity() {
   renderCitationGroundingPlanner();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderResultLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
   renderBrowserMissionPlanner();
@@ -1297,6 +1300,7 @@ function renderHomeDockedTools() {
   renderCitationGroundingPlanner();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderResultLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
   renderBrowserMissionPlanner();
@@ -2153,6 +2157,207 @@ function draftReuseAssetToChat(id) {
   showToast("Reusable starter drafted to chat.");
 }
 
+function resultArchiveEntries() {
+  const entries = [];
+  const latestRun = state.runs[0];
+  const completedRun = state.runs.find((run) => runHealthGroup(run) === "completed") || latestRun;
+  const latestCouncil = state.councilRuns[0];
+  const shareCards = sharePackCards();
+  const dataCards = dataInsightCards();
+  const citationCards = citationGroundingCards();
+  const reuseAssets = reuseGalleryAssets();
+
+  if (completedRun) {
+    entries.push({
+      id: `run-report-${completedRun.id || "latest"}`,
+      type: "Run report",
+      title: completedRun.prompt || completedRun.id || "Latest Astria run",
+      source: completedRun.agent || "default agent",
+      panel: "runs",
+      evidence: completedRun.id || "local run record",
+      review: completedRun.status || "unknown",
+      freshness: completedRun.created_at || completedRun.updated_at || "recent local run",
+      reuse: "Use the completed run as a reviewed starting point instead of restarting from a blank prompt.",
+      action: "Summarize reusable output, unresolved risks, and the next validated action.",
+      prompt: `Open an Astria result archive follow-up for a completed run.\n\nResult: ${completedRun.prompt || completedRun.id || "Latest run"}\nRun id: ${completedRun.id || "unknown"}\nStatus: ${completedRun.status || "unknown"}\nAgent: ${completedRun.agent || "default"}\n\nExtract what was produced, what evidence supports it, what remains unresolved, and the best next mission starter.`,
+    });
+  } else {
+    entries.push({
+      id: "run-report-seed",
+      type: "Run report",
+      title: "First completed result",
+      source: "Runs",
+      panel: "runs",
+      evidence: "no completed run yet",
+      review: "seed",
+      freshness: "waiting for run",
+      reuse: "Completed runs will appear here as local reports.",
+      action: "Launch a mission, then archive the result for reuse.",
+      prompt: "Plan the first Astria result worth saving. Define the target output, evidence needed, review gate, and how the result should be reused later.",
+    });
+  }
+
+  if (shareCards[0]) {
+    const card = shareCards[0];
+    entries.push({
+      id: `share-result-${card.id}`,
+      type: "Handoff pack",
+      title: card.title,
+      source: "Share Pack",
+      panel: "share",
+      evidence: card.evidence,
+      review: card.readiness,
+      freshness: "local handoff context",
+      reuse: card.action,
+      action: "Turn the handoff pack into a follow-up mission or reviewer checklist.",
+      prompt: `${card.prompt}\n\nArchive review: identify the durable result, evidence included, boundaries, freshness notes, and the next reusable launch path.`,
+    });
+  }
+
+  if (dataCards[1] || dataCards[0]) {
+    const card = dataCards[1] || dataCards[0];
+    entries.push({
+      id: `data-result-${card.id}`,
+      type: "Insight brief",
+      title: card.title,
+      source: "Data Planner",
+      panel: "data",
+      evidence: card.evidence,
+      review: card.readiness,
+      freshness: "depends on source extract date",
+      reuse: "Save findings as reviewable memory or a reusable analysis pattern.",
+      action: card.action,
+      prompt: `${card.prompt}\n\nArchive review: produce a saved insight brief with observed findings, source limits, freshness date, reusable memory candidates, and follow-up analysis.`,
+    });
+  }
+
+  if (citationCards[0]) {
+    const card = citationCards[0];
+    entries.push({
+      id: `citation-result-${card.id}`,
+      type: "Citation brief",
+      title: card.title,
+      source: "Citation Planner",
+      panel: "citation",
+      evidence: card.evidence,
+      review: card.readiness,
+      freshness: "source dates required",
+      reuse: "Carry the claim map and evidence gaps into the next answer or handoff.",
+      action: "Resolve unsupported claims before treating the result as final.",
+      prompt: `${card.prompt}\n\nArchive review: save the claim map, accepted citations, missing evidence, source freshness risks, and safe wording for reuse.`,
+    });
+  }
+
+  if (reuseAssets[0]) {
+    const asset = reuseAssets[0];
+    entries.push({
+      id: `reuse-result-${asset.id}`,
+      type: "Reusable output",
+      title: asset.title,
+      source: "Reuse Gallery",
+      panel: "reuse",
+      evidence: asset.evidence,
+      review: asset.readiness,
+      freshness: "pattern review",
+      reuse: asset.reuse,
+      action: asset.action,
+      prompt: `${asset.prompt}\n\nArchive review: decide whether this result should become a reusable starter, what context it requires, and how to validate it next time.`,
+    });
+  }
+
+  if (latestCouncil) {
+    entries.push({
+      id: `council-result-${latestCouncil.id || "latest"}`,
+      type: "Council synthesis",
+      title: latestCouncil.goal || "Council synthesis",
+      source: "Agent Council",
+      panel: "council",
+      evidence: `${(latestCouncil.roles || []).length} role briefs`,
+      review: latestCouncil.synthesis ? "synthesized" : "review",
+      freshness: "current council run",
+      reuse: latestCouncil.synthesis || "Use the role split as a reviewed decision starter.",
+      action: "Convert the synthesis into one executable next step.",
+      prompt: `Archive this Astria council result.\n\nGoal: ${latestCouncil.goal || "none"}\nRoles: ${(latestCouncil.roles || []).map((role) => role.role).join(", ") || "none"}\nSynthesis:\n${latestCouncil.synthesis || ""}\n\nReturn a saved result brief with decision, evidence, dissent or uncertainty, and the next action.`,
+    });
+  }
+
+  return entries.slice(0, 8);
+}
+
+function renderResultLibrary() {
+  const entries = resultArchiveEntries();
+  setText("nav-results-count", entries.length);
+  setText("manage-results-count", `${entries.length} result${entries.length === 1 ? "" : "s"}`);
+  setText("results-summary", `${entries.length} archived result${entries.length === 1 ? "" : "s"} from runs, handoffs, insight briefs, citations, reusable outputs, and council synthesis.`);
+  const list = $("result-library-grid");
+  if (!list) return;
+  if (!state.selectedResultArchive || !entries.some((entry) => entry.id === state.selectedResultArchive)) {
+    state.selectedResultArchive = entries[0]?.id || "";
+  }
+  list.innerHTML = entries.map((entry) => `<article class="result-library-card ${entry.id === state.selectedResultArchive ? "active" : ""}" data-result-archive="${escapeHTML(entry.id)}">
+    <div class="row-item-title"><span>${escapeHTML(entry.type)}</span><span class="tag">${escapeHTML(entry.review)}</span></div>
+    <strong>${escapeHTML(entry.title)}</strong>
+    <div class="result-library-gridline">
+      <span>Source</span><strong>${escapeHTML(entry.source)}</strong>
+      <span>Evidence</span><strong>${escapeHTML(entry.evidence)}</strong>
+      <span>Reuse path</span><strong>${escapeHTML(entry.reuse)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-result-select="${escapeHTML(entry.id)}">Result brief</button>
+      <button type="button" data-result-draft="${escapeHTML(entry.id)}">Draft follow-up</button>
+      <button type="button" data-panel="${escapeHTML(entry.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderResultLibraryDetail(entries.find((entry) => entry.id === state.selectedResultArchive) || entries[0]);
+}
+
+function renderResultLibraryDetail(entry) {
+  const target = $("result-library-detail");
+  if (!target) return;
+  if (!entry) {
+    target.innerHTML = `<div class="empty-state">Select an archived result.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(entry.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(entry.type)}</strong>
+        <span>Review</span><strong>${escapeHTML(entry.review)}</strong>
+        <span>Route</span><strong>${escapeHTML(entry.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Freshness</h3>
+      <p>${escapeHTML(entry.freshness)}</p>
+      <h3>Reuse path</h3>
+      <p>${escapeHTML(entry.reuse)}</p>
+      <h3>Next action</h3>
+      <p>${escapeHTML(entry.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-result-draft="${escapeHTML(entry.id)}">Draft follow-up</button>
+        <button type="button" data-panel="${escapeHTML(entry.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function resultArchiveByID(id) {
+  return resultArchiveEntries().find((entry) => entry.id === id) || null;
+}
+
+function draftResultArchiveToChat(id) {
+  const entry = resultArchiveByID(id);
+  if (!entry) return;
+  $("chat-input").value = `${entry.prompt}\n\nReturn a result archive follow-up with saved outcome, source evidence, freshness, reuse path, open risks, and next Astria route.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Result follow-up drafted to chat.");
+}
+
 function starterKits() {
   const agentCount = state.agents.length;
   const sourceCount = sourceRegistryRows().length;
@@ -2923,6 +3128,7 @@ function renderManageCount() {
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
+  const resultsCount = resultArchiveEntries().length;
   const starterCount = starterKits().length;
   const shareCount = sharePackCards().length;
   const browserCount = browserMissionCards().length;
@@ -2939,6 +3145,8 @@ function renderManageCount() {
   setText("nav-promptlab-count", promptVariantCount);
   setText("manage-reuse-count", `${reuseCount} asset${reuseCount === 1 ? "" : "s"}`);
   setText("nav-reuse-count", reuseCount);
+  setText("manage-results-count", `${resultsCount} result${resultsCount === 1 ? "" : "s"}`);
+  setText("nav-results-count", resultsCount);
   setText("manage-starter-count", `${starterCount} kit${starterCount === 1 ? "" : "s"}`);
   setText("nav-starter-count", starterCount);
   setText("manage-share-count", `${shareCount} pack${shareCount === 1 ? "" : "s"}`);
@@ -2949,7 +3157,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -3933,6 +4141,7 @@ async function loadMemory() {
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderResultLibrary();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
@@ -3943,6 +4152,7 @@ async function loadMemory() {
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderResultLibrary();
     showToast(error.message);
   }
 }
@@ -3967,6 +4177,7 @@ async function submitMemoryCandidate(event) {
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderResultLibrary();
     showToast("Memory approved.");
   } catch (error) {
     $("memory-save-state").textContent = "Error";
@@ -3984,6 +4195,7 @@ async function deleteMemoryEntry(name) {
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderResultLibrary();
     showToast("Memory entry deleted.");
   } catch (error) {
     showToast(error.message);
@@ -4077,6 +4289,7 @@ async function loadCouncilRuns() {
     renderSourceRegistry();
     renderComparisonWorkbench();
     renderReuseGallery();
+    renderResultLibrary();
   } catch (error) {
     state.councilRuns = [];
     state.currentCouncilRun = null;
@@ -4085,6 +4298,7 @@ async function loadCouncilRuns() {
     renderComparisonWorkbench();
     renderSourceRegistry();
     renderReuseGallery();
+    renderResultLibrary();
   }
 }
 
@@ -5631,6 +5845,7 @@ async function loadRuns() {
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderResultLibrary();
     renderProactiveDeliveryBoard();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -5646,6 +5861,7 @@ async function loadRuns() {
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderResultLibrary();
     renderProactiveDeliveryBoard();
     renderError(list, error.message);
   }
@@ -6689,6 +6905,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const resultSelect = event.target.closest("[data-result-select]");
+  if (resultSelect) {
+    state.selectedResultArchive = resultSelect.dataset.resultSelect || "";
+    renderResultLibrary();
+    return;
+  }
+
+  const resultDraft = event.target.closest("[data-result-draft]");
+  if (resultDraft) {
+    draftResultArchiveToChat(resultDraft.dataset.resultDraft);
+    return;
+  }
+
+  const resultArchive = event.target.closest("[data-result-archive]");
+  if (resultArchive && !event.target.closest("button")) {
+    state.selectedResultArchive = resultArchive.dataset.resultArchive || "";
+    renderResultLibrary();
+    return;
+  }
+
   const starterSelect = event.target.closest("[data-starter-select]");
   if (starterSelect) {
     state.selectedStarterKit = starterSelect.dataset.starterSelect || "";
@@ -7211,20 +7447,24 @@ $("promptlab-goal").addEventListener("input", (event) => {
   state.promptLabGoal = event.target.value;
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderResultLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
 });
 $("share-pack-name").addEventListener("input", (event) => {
   state.sharePackName = event.target.value;
   renderSharePackBuilder();
+  renderResultLibrary();
 });
 $("share-pack-audience").addEventListener("input", (event) => {
   state.sharePackAudience = event.target.value;
   renderSharePackBuilder();
+  renderResultLibrary();
 });
 $("share-pack-intent").addEventListener("input", (event) => {
   state.sharePackIntent = event.target.value;
   renderSharePackBuilder();
+  renderResultLibrary();
 });
 $("browser-target-url").addEventListener("input", (event) => {
   state.browserTargetURL = event.target.value;
@@ -7237,26 +7477,32 @@ $("browser-mission-goal").addEventListener("input", (event) => {
 $("data-source-descriptor").addEventListener("input", (event) => {
   state.dataSourceDescriptor = event.target.value;
   renderDataInsightPlanner();
+  renderResultLibrary();
 });
 $("data-analysis-question").addEventListener("input", (event) => {
   state.dataAnalysisQuestion = event.target.value;
   renderDataInsightPlanner();
+  renderResultLibrary();
 });
 $("data-output-format").addEventListener("input", (event) => {
   state.dataOutputFormat = event.target.value;
   renderDataInsightPlanner();
+  renderResultLibrary();
 });
 $("citation-claim-scope").addEventListener("input", (event) => {
   state.citationClaimScope = event.target.value;
   renderCitationGroundingPlanner();
+  renderResultLibrary();
 });
 $("citation-source-posture").addEventListener("input", (event) => {
   state.citationSourcePosture = event.target.value;
   renderCitationGroundingPlanner();
+  renderResultLibrary();
 });
 $("citation-evidence-level").addEventListener("input", (event) => {
   state.citationEvidenceLevel = event.target.value;
   renderCitationGroundingPlanner();
+  renderResultLibrary();
 });
 
 renderHomeMode();
@@ -7274,6 +7520,7 @@ renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
 renderPromptExperimentLab();
 renderReuseGallery();
+renderResultLibrary();
 renderStarterKitLauncher();
 renderSharePackBuilder();
 renderBrowserMissionPlanner();

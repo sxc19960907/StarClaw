@@ -21,12 +21,13 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 | P1 | `06-08-share-pack-builder` | Add a Share Pack Builder for local reviewed handoff packages that make successful work reusable by future sessions or reviewers. |
 | P1 | `06-08-starter-kit-launcher` | Add a Starter Kit Launcher for prebuilt local workflows that map common tasks to prompts, routes, evidence gates, and reusable outputs. |
 | P1 | `06-08-citation-grounding-planner` | Add a Citation Grounding Planner for source coverage, claim maps, quote capture, freshness checks, and evidence gap escalation. |
+| P1 | `06-08-result-library-report-archive` | Add a Result Library that archives completed reports, evidence briefs, insight summaries, citation briefs, reusable outputs, and council synthesis for follow-up. |
 
 ## Acceptance Criteria
 
 - [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
-- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, and planning reliable citations.
+- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, and archiving saved results for follow-up.
 
 ## Non-Goals
 

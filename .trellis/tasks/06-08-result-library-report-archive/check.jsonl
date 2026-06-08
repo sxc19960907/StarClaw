@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Verify the result archive remains inside the embedded daemon Web UI architecture."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify JavaScript syntax, Web UI smoke coverage, and Go test expectations."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify reuse patterns and cross-panel consistency were considered."}
