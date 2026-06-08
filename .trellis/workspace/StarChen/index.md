@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 119
+- **Total Sessions**: 120
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1236 | Active |
+| `journal-3.md` | ~1269 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 120 | 2026-06-08 | Astria Phase 4 runtime durability and replay | `d985c1f` | `main` |
 | 119 | 2026-06-08 | Runtime recovery UI | `faee572` | `main` |
 | 118 | 2026-06-08 | Observability trace export | `fe659e9` | `main` |
 | 117 | 2026-06-08 | Runtime pause resume support | `a6814a2` | `main` |

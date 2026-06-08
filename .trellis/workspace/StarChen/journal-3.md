@@ -1234,3 +1234,36 @@ Added Mission Control recovery visibility for durable runs, replay approval stat
 ### Next Steps
 
 - None - task complete
+
+
+## Session 120: Astria Phase 4 runtime durability and replay
+
+**Date**: 2026-06-08
+**Task**: Astria Phase 4 runtime durability and replay
+**Branch**: `main`
+
+### Summary
+
+Closed the Phase 4 parent plan after completing six child slices: durable run persistence, workflow step state, safe replay boundaries, runtime pause/resume, local trace export, and Mission Control recovery UI.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d985c1f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
