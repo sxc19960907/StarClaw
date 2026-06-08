@@ -31,11 +31,13 @@ type RunAgentRequest struct {
 
 // RunAgentResponse is the result of an agent execution.
 type RunAgentResponse struct {
-	SessionID    string                  `json:"session_id"`
-	Messages     []string                `json:"messages,omitempty"`
-	Usage        map[string]int          `json:"usage,omitempty"`
-	BudgetStatus *agent.TokenBudgetUsage `json:"budget_status,omitempty"`
-	Error        string                  `json:"error,omitempty"`
+	SessionID    string                     `json:"session_id"`
+	Messages     []string                   `json:"messages,omitempty"`
+	Usage        map[string]int             `json:"usage,omitempty"`
+	BudgetStatus *agent.TokenBudgetUsage    `json:"budget_status,omitempty"`
+	Routing      *agent.RouteRecommendation `json:"routing,omitempty"`
+	Fallback     *agent.FallbackDecision    `json:"fallback,omitempty"`
+	Error        string                     `json:"error,omitempty"`
 }
 
 // ServerDeps aggregates all dependencies the daemon server needs.

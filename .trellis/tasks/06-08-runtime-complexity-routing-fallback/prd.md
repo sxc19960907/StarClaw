@@ -14,11 +14,11 @@ Add runtime complexity routing and model fallback so Astria can choose an execut
 
 ## Acceptance Criteria
 
-- [ ] Complexity classifier has tests for simple, evidence-heavy, council-worthy, delivery-sensitive, and budget-constrained prompts.
-- [ ] Runtime can produce a route/model recommendation without executing a paid call.
-- [ ] Fallback decisions are test-covered for provider error, budget exhaustion, and repeated failure.
-- [ ] Run metadata exposes selected route/fallback reason where applicable.
-- [ ] Existing runs and Web UI behavior remain compatible.
+- [x] Complexity classifier has tests for simple, evidence-heavy, council-worthy, delivery-sensitive, and budget-constrained prompts.
+- [x] Runtime can produce a route/model recommendation without executing a paid call.
+- [x] Fallback decisions are test-covered for provider error, budget exhaustion, and repeated failure.
+- [x] Run metadata exposes selected route/fallback reason where applicable.
+- [x] Existing runs and Web UI behavior remain compatible.
 
 ## Notes
 

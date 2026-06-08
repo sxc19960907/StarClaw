@@ -313,6 +313,78 @@ result, err := s.runAgent(ctx, RunAgentRequest{
 }, handler)
 ```
 
+## Scenario: Runtime Complexity Routing and Fallback
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing deterministic route/model recommendations, fallback decisions, or daemon run metadata for runtime routing.
+- Scope: backend runtime only. Classification must be local and deterministic; it must not issue provider calls or tool calls.
+
+### 2. Signatures
+
+- Classifier input: `agent.RoutingInput`.
+- Classifier output: `agent.RouteRecommendation`.
+- Fallback input: `agent.FallbackInput`.
+- Fallback output: `*agent.FallbackDecision`.
+- Daemon response fields:
+  - `RunAgentResponse.Routing` serialized as `routing`.
+  - `RunAgentResponse.Fallback` serialized as `fallback`.
+- Run record fields:
+  - `RunRecord.Routing` serialized as `routing`.
+  - `RunRecord.Fallback` serialized as `fallback`.
+
+### 3. Contracts
+
+- `RecommendRoute` must be pure and deterministic from local signals: prompt text, requested tools, token budget, and local failure counts.
+- Route recommendations are advisory metadata. They must not bypass permissions, approval, session handling, or existing `RunAgent` execution.
+- Budget-constrained routes take precedence when a hard token budget is configured.
+- Delivery-sensitive prompts must be routed to a review-oriented route; do not auto-deliver externally.
+- `RecommendFallback` must expose the reason for provider errors, budget exhaustion, and repeated same-class failures.
+- `RunStore.Get` must defensively copy routing and fallback pointers, as it does for other pointer metadata.
+
+### 4. Validation & Error Matrix
+
+- Simple prompt -> direct route, small model tier.
+- Evidence-heavy prompt or evidence tools -> research route, medium model tier.
+- Council/tradeoff prompt -> council route, high model tier.
+- External delivery/risk prompt -> delivery review route, medium model tier.
+- Hard token budget -> budget guard route, small model tier.
+- Provider error -> provider-error fallback.
+- Budget exhausted -> budget-exhausted fallback.
+- Repeated failures >= 2 -> repeated-failure fallback.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a run response includes routing metadata before any remote provider call is needed.
+- Base: no fallback is returned for a successful run without budget exhaustion.
+- Bad: classifier calls an LLM, executes a tool, or silently routes external delivery to direct execution.
+
+### 6. Tests Required
+
+- Classifier unit tests for simple, evidence-heavy, council-worthy, delivery-sensitive, budget-constrained, and tool-requested evidence prompts.
+- Fallback unit tests for provider error, budget exhaustion, repeated failure, and no-fallback cases.
+- Daemon tests proving run responses expose routing and budget fallback metadata.
+- Existing daemon and full project tests must pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+resp, err := llm.Chat(ctx, "", []client.Message{{Role: "user", Content: prompt}}, nil, 256, nil)
+```
+
+This makes classification paid, non-deterministic, and dependent on provider availability.
+
+#### Correct
+
+```go
+routing := agent.RecommendRoute(agent.RoutingInput{
+    Prompt: prompt,
+    TokenBudget: budget,
+})
+```
+
 ---
 
 ## Interface Design

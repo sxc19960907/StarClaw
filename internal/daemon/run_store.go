@@ -17,20 +17,22 @@ type RunEvent struct {
 }
 
 type RunRecord struct {
-	ID        string                  `json:"id"`
-	Status    string                  `json:"status"`
-	Agent     string                  `json:"agent,omitempty"`
-	Channel   string                  `json:"channel,omitempty"`
-	Prompt    string                  `json:"prompt,omitempty"`
-	SessionID string                  `json:"session_id,omitempty"`
-	StartedAt time.Time               `json:"started_at"`
-	EndedAt   *time.Time              `json:"ended_at,omitempty"`
-	Request   RunAgentRequest         `json:"request"`
-	Response  *RunAgentResponse       `json:"response,omitempty"`
-	Usage     map[string]int          `json:"usage,omitempty"`
-	Budget    *agent.TokenBudgetUsage `json:"budget_status,omitempty"`
-	Error     string                  `json:"error,omitempty"`
-	Events    []RunEvent              `json:"events,omitempty"`
+	ID        string                     `json:"id"`
+	Status    string                     `json:"status"`
+	Agent     string                     `json:"agent,omitempty"`
+	Channel   string                     `json:"channel,omitempty"`
+	Prompt    string                     `json:"prompt,omitempty"`
+	SessionID string                     `json:"session_id,omitempty"`
+	StartedAt time.Time                  `json:"started_at"`
+	EndedAt   *time.Time                 `json:"ended_at,omitempty"`
+	Request   RunAgentRequest            `json:"request"`
+	Response  *RunAgentResponse          `json:"response,omitempty"`
+	Usage     map[string]int             `json:"usage,omitempty"`
+	Budget    *agent.TokenBudgetUsage    `json:"budget_status,omitempty"`
+	Routing   *agent.RouteRecommendation `json:"routing,omitempty"`
+	Fallback  *agent.FallbackDecision    `json:"fallback,omitempty"`
+	Error     string                     `json:"error,omitempty"`
+	Events    []RunEvent                 `json:"events,omitempty"`
 }
 
 type RunSummary struct {
@@ -98,6 +100,8 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 	record.SessionID = response.SessionID
 	record.Usage = response.Usage
 	record.Budget = response.BudgetStatus
+	record.Routing = response.Routing
+	record.Fallback = response.Fallback
 	if err != nil {
 		record.Status = "error"
 		record.Error = err.Error()
@@ -164,6 +168,14 @@ func (s *RunStore) Get(id string) (*RunRecord, bool) {
 	if record.Budget != nil {
 		budget := *record.Budget
 		copyRecord.Budget = &budget
+	}
+	if record.Routing != nil {
+		routing := *record.Routing
+		copyRecord.Routing = &routing
+	}
+	if record.Fallback != nil {
+		fallback := *record.Fallback
+		copyRecord.Fallback = &fallback
 	}
 	return &copyRecord, true
 }

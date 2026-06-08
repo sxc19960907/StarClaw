@@ -371,6 +371,78 @@ func TestRunAgent_SurfacesBudgetStatus(t *testing.T) {
 	}
 }
 
+func TestRunAgent_SurfacesRoutingMetadata(t *testing.T) {
+	ctx := context.Background()
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		Config: &config.Config{
+			Agent: config.AgentConfig{
+				MaxIterations: 25,
+				MaxTokens:     8192,
+			},
+			Tools: config.ToolsConfig{ResultTruncation: 30000},
+		},
+		AgentsDir: t.TempDir(),
+		LLMClient: &mockLLMClient{t: t},
+		Registry:  agent.NewToolRegistry(),
+	}
+
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "Research and cite sources for this claim"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.Routing == nil {
+		t.Fatal("expected routing metadata")
+	}
+	if resp.Routing.Complexity != agent.ComplexityEvidenceHeavy {
+		t.Fatalf("complexity = %q, want evidence_heavy", resp.Routing.Complexity)
+	}
+	if resp.Routing.Route != agent.RouteResearch {
+		t.Fatalf("route = %q, want research", resp.Routing.Route)
+	}
+	if resp.Fallback != nil {
+		t.Fatalf("fallback = %#v, want nil", resp.Fallback)
+	}
+}
+
+func TestRunAgent_BudgetExhaustionFallback(t *testing.T) {
+	ctx := context.Background()
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		Config: &config.Config{
+			Agent: config.AgentConfig{
+				MaxIterations: 25,
+				MaxTokens:     8192,
+				TokenBudget: config.TokenBudgetConfig{
+					MaxInputTokens: 1,
+					HardStop:       true,
+				},
+			},
+			Tools: config.ToolsConfig{ResultTruncation: 30000},
+		},
+		AgentsDir: t.TempDir(),
+		LLMClient: &mockLLMClient{t: t},
+		Registry:  agent.NewToolRegistry(),
+	}
+
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "This prompt should exceed the tiny input budget"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.BudgetStatus == nil || resp.BudgetStatus.Status != agent.TokenBudgetStatusExhausted {
+		t.Fatalf("budget status = %#v, want exhausted", resp.BudgetStatus)
+	}
+	if resp.Fallback == nil {
+		t.Fatal("expected fallback metadata")
+	}
+	if resp.Fallback.Reason != agent.FallbackBudgetExhausted {
+		t.Fatalf("fallback reason = %q, want budget_exhausted", resp.Fallback.Reason)
+	}
+	if resp.Fallback.Route != agent.RouteBudget {
+		t.Fatalf("fallback route = %q, want budget_guard", resp.Fallback.Route)
+	}
+}
+
 func TestRunAgent_NamedAgentNotFound(t *testing.T) {
 	ctx := context.Background()
 

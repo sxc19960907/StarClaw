@@ -51,6 +51,10 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	}
 	effectiveCfg := effectiveRunConfig(deps, agentCfg)
 	registry := filteredRegistry(deps.Registry, effectiveCfg.Tools)
+	routing := agent.RecommendRoute(agent.RoutingInput{
+		Prompt:      req.Text,
+		TokenBudget: agent.TokenBudgetFromAgent(effectiveCfg.Agent),
+	})
 
 	// --- Session setup ---
 	sessionsDir := sessionsDirFor(deps, agentName)
@@ -131,6 +135,7 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	// --- Build response ---
 	response := RunAgentResponse{
 		SessionID: sess.ID,
+		Routing:   &routing,
 	}
 	budgetStatus := loop.LastBudgetStatus()
 	if budgetStatus.Status != agent.TokenBudgetStatusDisabled {
@@ -151,6 +156,11 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	if runErr != nil {
 		response.Error = runErr.Error()
 	}
+	response.Fallback = agent.RecommendFallback(agent.FallbackInput{
+		ProviderError: runErr,
+		BudgetStatus:  budgetStatus,
+		CurrentRoute:  routing.Route,
+	})
 
 	return response, nil
 }
