@@ -13,6 +13,7 @@ const state = {
   currentCouncilRun: null,
   selectedComparisonLane: "",
   selectedPromptVariant: "",
+  selectedReuseAsset: "",
   selectedDeliveryLane: "",
   selectedSourceRow: "",
   promptLabGoal: "",
@@ -59,6 +60,7 @@ const views = {
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
+  reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
   delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
   intake: ["文件星舱", "Inspect local documents and archives before a run."],
@@ -1222,6 +1224,7 @@ function renderHomeActivity() {
   renderComparisonWorkbench();
   renderSourceRegistry();
   renderPromptExperimentLab();
+  renderReuseGallery();
   renderProactiveDeliveryBoard();
 }
 
@@ -1266,6 +1269,7 @@ function renderHomeDockedTools() {
   renderComparisonWorkbench();
   renderSourceRegistry();
   renderPromptExperimentLab();
+  renderReuseGallery();
   renderProactiveDeliveryBoard();
 }
 
@@ -1914,6 +1918,210 @@ function draftPromptVariantToChat(id) {
   showToast("Prompt variant drafted to chat.");
 }
 
+function reuseGalleryAssets() {
+  const assets = [];
+  const variants = promptLabVariants();
+  const sources = sourceRegistryRows();
+  const commandAssets = state.agents.flatMap((agent) => {
+    const commands = agent.Commands || agent.commands || {};
+    return Object.entries(commands).slice(0, 2).map(([name, body]) => ({
+      agent,
+      name,
+      body,
+    }));
+  });
+  const latestRun = state.runs[0];
+  const completedRun = state.runs.find((run) => runHealthGroup(run) === "completed") || latestRun;
+  const latestCouncil = state.councilRuns[0];
+
+  variants.slice(0, 2).forEach((variant) => {
+    assets.push({
+      id: `prompt-${variant.id}`,
+      kind: "Prompt",
+      title: variant.title,
+      panel: "promptlab",
+      readiness: variant.context,
+      evidence: variant.source,
+      reuse: variant.evaluation,
+      action: "Start a new mission from this prompt shape.",
+      prompt: `Reuse this Astria prompt asset as the starting point for a new mission.\n\nAsset: ${variant.title}\nSource: ${variant.source}\nAgent: ${variant.agent}\nEvaluation: ${variant.evaluation}\n\nPrompt:\n${variant.prompt}`,
+    });
+  });
+
+  if (state.agents[0]) {
+    const agent = state.agents[0];
+    const summary = agentCapabilitySummary(agent);
+    assets.push({
+      id: `agent-${summary.name}`,
+      kind: "Agent",
+      title: summary.name,
+      panel: "agents",
+      readiness: `${summary.allow.length} tools, ${summary.deny.length} blocked`,
+      evidence: summary.model,
+      reuse: summary.description,
+      action: "Launch with this profile and carry its operating constraints forward.",
+      prompt: `Reuse this Astria agent profile for the next mission.\n\nAgent: ${summary.name}\nModel: ${summary.model}\nReasoning: ${summary.reasoning}\nTools allowed: ${summary.allow.join(", ") || "default"}\nAuto approve: ${summary.autoApprove}\n\nDescribe the mission, choose whether this profile fits, and call out any safety constraint before acting.`,
+    });
+  } else {
+    assets.push({
+      id: "agent-default",
+      kind: "Agent",
+      title: "Default agent starter",
+      panel: "agents",
+      readiness: "default",
+      evidence: "no named profile",
+      reuse: "Use the default daemon agent until a named profile exists.",
+      action: "Draft a focused role before creating a reusable profile.",
+      prompt: "Create a reusable Astria agent profile for this workspace. Include role, model expectations, tool boundaries, memory needs, and one saved command.",
+    });
+  }
+
+  commandAssets.slice(0, 2).forEach((command) => {
+    const agentName = normalizeName(command.agent);
+    assets.push({
+      id: `command-${agentName}-${command.name}`,
+      kind: "Command",
+      title: `/${command.name}`,
+      panel: "agents",
+      readiness: agentName,
+      evidence: "saved command",
+      reuse: String(command.body || "").slice(0, 150) || "Saved command body",
+      action: "Draft this saved command into Chat with its agent profile.",
+      prompt: `Reuse this saved Astria command.\n\nAgent: ${agentName}\nCommand: /${command.name}\n\n${String(command.body || "")}`,
+      agent: agentName,
+    });
+  });
+
+  sources.slice(0, 2).forEach((source) => {
+    assets.push({
+      id: `source-${source.id}`,
+      kind: "Knowledge",
+      title: source.title,
+      panel: source.panel,
+      readiness: source.reliability,
+      evidence: `${source.evidence} evidence`,
+      reuse: source.action,
+      action: "Ground the next mission in this source before launching.",
+      prompt: `Reuse this Astria knowledge source as mission context.\n\nSource: ${source.title}\nType: ${source.type}\nFreshness: ${source.freshness}\nReliability: ${source.reliability}\nEvidence: ${source.evidence}\n\nDraft the next task using only what this source can reliably support.`,
+    });
+  });
+
+  if (completedRun) {
+    assets.push({
+      id: `run-${completedRun.id || "latest"}`,
+      kind: "Outcome",
+      title: completedRun.prompt || completedRun.id || "Latest run outcome",
+      panel: "runs",
+      readiness: completedRun.status || "unknown",
+      evidence: completedRun.agent || "default",
+      reuse: "Continue from a concrete execution result instead of restarting from scratch.",
+      action: "Turn this run into the next mission starter.",
+      prompt: `Reuse this Astria run outcome as the next starting point.\n\nRun: ${completedRun.id || "unknown"}\nStatus: ${completedRun.status || "unknown"}\nAgent: ${completedRun.agent || "default"}\nPrompt: ${completedRun.prompt || ""}\n\nSummarize what can be reused, what remains uncertain, and the next concrete action with validation.`,
+    });
+  }
+
+  if (latestCouncil) {
+    assets.push({
+      id: `council-${latestCouncil.id || "latest"}`,
+      kind: "Council",
+      title: latestCouncil.goal || "Council synthesis",
+      panel: "council",
+      readiness: latestCouncil.synthesis ? "synthesized" : "review",
+      evidence: `${(latestCouncil.roles || []).length} roles`,
+      reuse: latestCouncil.synthesis || "Planner, researcher, and reviewer context can seed the next handoff.",
+      action: "Reuse the reviewed synthesis as a mission brief.",
+      prompt: `Reuse this Astria council result as the next mission brief.\n\nGoal: ${latestCouncil.goal || "none"}\nRoles: ${(latestCouncil.roles || []).map((role) => role.role).join(", ") || "none"}\nSynthesis:\n${latestCouncil.synthesis || ""}\n\nTurn the synthesis into one executable next step and validation plan.`,
+    });
+  } else {
+    assets.push({
+      id: "council-starter",
+      kind: "Council",
+      title: "Council review starter",
+      panel: "council",
+      readiness: "seed",
+      evidence: "planner/researcher/reviewer",
+      reuse: "Use multi-role review when a reusable decision needs stronger evidence.",
+      action: "Draft a council-ready mission brief.",
+      prompt: "Create a reusable council mission brief. Split the work into planner, researcher, and reviewer concerns, then define the synthesis criteria.",
+    });
+  }
+
+  return assets.slice(0, 8);
+}
+
+function renderReuseGallery() {
+  const assets = reuseGalleryAssets();
+  setText("nav-reuse-count", assets.length);
+  setText("manage-reuse-count", `${assets.length} asset${assets.length === 1 ? "" : "s"}`);
+  setText("reuse-summary", `${assets.length} reusable asset${assets.length === 1 ? "" : "s"} from prompts, agents, knowledge, outcomes, and council review.`);
+  const list = $("reuse-gallery-assets");
+  if (!list) return;
+  if (!state.selectedReuseAsset || !assets.some((asset) => asset.id === state.selectedReuseAsset)) {
+    state.selectedReuseAsset = assets[0]?.id || "";
+  }
+  list.innerHTML = assets.map((asset) => `<article class="reuse-asset ${asset.id === state.selectedReuseAsset ? "active" : ""}" data-reuse-asset="${escapeHTML(asset.id)}">
+    <div class="row-item-title"><span>${escapeHTML(asset.kind)}</span><span class="tag">${escapeHTML(asset.readiness)}</span></div>
+    <strong>${escapeHTML(asset.title)}</strong>
+    <div class="reuse-grid">
+      <span>Evidence</span><strong>${escapeHTML(asset.evidence)}</strong>
+      <span>Reuse value</span><strong>${escapeHTML(asset.reuse)}</strong>
+      <span>Next action</span><strong>${escapeHTML(asset.action)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-reuse-select="${escapeHTML(asset.id)}">Asset brief</button>
+      <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">Draft starter</button>
+      <button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderReuseAssetDetail(assets.find((asset) => asset.id === state.selectedReuseAsset) || assets[0]);
+}
+
+function renderReuseAssetDetail(asset) {
+  const target = $("reuse-gallery-detail");
+  if (!target) return;
+  if (!asset) {
+    target.innerHTML = `<div class="empty-state">Select a reusable asset.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(asset.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Kind</span><strong>${escapeHTML(asset.kind)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(asset.readiness)}</strong>
+        <span>Route</span><strong>${escapeHTML(asset.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Reuse value</h3>
+      <p>${escapeHTML(asset.reuse)}</p>
+      <h3>Next action</h3>
+      <p>${escapeHTML(asset.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">Draft starter</button>
+        <button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function reuseAssetByID(id) {
+  return reuseGalleryAssets().find((asset) => asset.id === id) || null;
+}
+
+function draftReuseAssetToChat(id) {
+  const asset = reuseAssetByID(id);
+  if (!asset) return;
+  $("chat-input").value = `${asset.prompt}\n\nReturn a reusable mission starter with objective, context to carry forward, launch path, and validation.`;
+  if (asset.agent) $("chat-agent").value = asset.agent;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Reusable starter drafted to chat.");
+}
+
 function deliveryLanes() {
   const enabledSchedules = state.schedules.filter((schedule) => schedule.enabled !== false);
   const scheduledRuns = state.runs.filter((run) => String(run.channel || "").includes("schedule") || String(run.source || "").includes("schedule"));
@@ -2069,6 +2277,7 @@ function renderManageCount() {
   const sourceCount = sourceRegistryRows().length;
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
+  const reuseCount = reuseGalleryAssets().length;
   const deliveryCount = deliveryLanes().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-sources-count", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
@@ -2077,9 +2286,11 @@ function renderManageCount() {
   setText("nav-compare-count", compareCount);
   setText("manage-promptlab-count", `${promptVariantCount} variant${promptVariantCount === 1 ? "" : "s"}`);
   setText("nav-promptlab-count", promptVariantCount);
+  setText("manage-reuse-count", `${reuseCount} asset${reuseCount === 1 ? "" : "s"}`);
+  setText("nav-reuse-count", reuseCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -2914,6 +3125,7 @@ async function loadMemory() {
     renderHomeDockedTools();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
@@ -2923,6 +3135,7 @@ async function loadMemory() {
     renderHomeDockedTools();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
     showToast(error.message);
   }
 }
@@ -2946,6 +3159,7 @@ async function submitMemoryCandidate(event) {
     renderSourceRegistry();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
     showToast("Memory approved.");
   } catch (error) {
     $("memory-save-state").textContent = "Error";
@@ -2962,6 +3176,7 @@ async function deleteMemoryEntry(name) {
     renderSourceRegistry();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
     showToast("Memory entry deleted.");
   } catch (error) {
     showToast(error.message);
@@ -3054,6 +3269,7 @@ async function loadCouncilRuns() {
     renderCouncilRuns();
     renderSourceRegistry();
     renderComparisonWorkbench();
+    renderReuseGallery();
   } catch (error) {
     state.councilRuns = [];
     state.currentCouncilRun = null;
@@ -3061,6 +3277,7 @@ async function loadCouncilRuns() {
     renderError(list, error.message);
     renderComparisonWorkbench();
     renderSourceRegistry();
+    renderReuseGallery();
   }
 }
 
@@ -3746,6 +3963,7 @@ async function loadAgents() {
     renderAgentCapabilityRoster();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
       return;
@@ -3764,6 +3982,7 @@ async function loadAgents() {
     if ($("agent-continuity-digest")) renderError($("agent-continuity-digest"), error.message);
     if (roster) renderError(roster, error.message);
     renderComparisonWorkbench();
+    renderReuseGallery();
   }
 }
 
@@ -4523,6 +4742,7 @@ async function loadSessions(query = "") {
       renderPromptSuggestionDock();
       renderFocusBrief();
       renderComparisonWorkbench();
+      renderReuseGallery();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
@@ -4546,6 +4766,7 @@ async function loadSessions(query = "") {
     renderPromptSuggestionDock();
     renderFocusBrief();
     renderComparisonWorkbench();
+    renderReuseGallery();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
@@ -4555,6 +4776,7 @@ async function loadSessions(query = "") {
     renderPromptSuggestionDock();
     renderFocusBrief();
     renderComparisonWorkbench();
+    renderReuseGallery();
   }
 }
 
@@ -4601,6 +4823,7 @@ async function loadRuns() {
     renderRunsList();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
     renderProactiveDeliveryBoard();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -4615,6 +4838,7 @@ async function loadRuns() {
     renderAgentContinuityDigest();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
+    renderReuseGallery();
     renderProactiveDeliveryBoard();
     renderError(list, error.message);
   }
@@ -5638,6 +5862,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const reuseSelect = event.target.closest("[data-reuse-select]");
+  if (reuseSelect) {
+    state.selectedReuseAsset = reuseSelect.dataset.reuseSelect || "";
+    renderReuseGallery();
+    return;
+  }
+
+  const reuseDraft = event.target.closest("[data-reuse-draft]");
+  if (reuseDraft) {
+    draftReuseAssetToChat(reuseDraft.dataset.reuseDraft);
+    return;
+  }
+
+  const reuseAsset = event.target.closest("[data-reuse-asset]");
+  if (reuseAsset && !event.target.closest("button")) {
+    state.selectedReuseAsset = reuseAsset.dataset.reuseAsset || "";
+    renderReuseGallery();
+    return;
+  }
+
   const deliverySelect = event.target.closest("[data-delivery-select]");
   if (deliverySelect) {
     state.selectedDeliveryLane = deliverySelect.dataset.deliverySelect || "";
@@ -6059,6 +6303,7 @@ $("session-search").addEventListener("input", debouncedSessionSearch);
 $("promptlab-goal").addEventListener("input", (event) => {
   state.promptLabGoal = event.target.value;
   renderPromptExperimentLab();
+  renderReuseGallery();
 });
 
 renderHomeMode();
@@ -6074,6 +6319,7 @@ renderApprovalCenter();
 renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
 renderPromptExperimentLab();
+renderReuseGallery();
 renderProactiveDeliveryBoard();
 connectEventStream();
 refreshAll();

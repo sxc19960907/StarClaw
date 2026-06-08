@@ -6,6 +6,29 @@
 ---
 
 
+## Session 120: Reuse Gallery
+
+**Date**: 2026-06-08
+**Task**: Reuse gallery
+**Branch**: `main`
+
+### Summary
+
+Added an Astria Reuse Gallery that turns prompt variants, agent profiles, saved commands, knowledge sources, run outcomes, and council review into reusable mission starters with Chat drafts and source routing.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 119: Knowledge Source Registry
 
 **Date**: 2026-06-08

@@ -1,0 +1,34 @@
+{
+  "id": "astria-kocoro-parity-phase-2",
+  "name": "astria-kocoro-parity-phase-2",
+  "title": "Astria Kocoro parity phase 2",
+  "description": "",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-08-reuse-gallery"
+  ],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/tasks/06-08-astria-kocoro-parity-phase-2/prd.md",
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery is complete as the first phase 2 child.",
+  "meta": {}
+}
