@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend spec index for daemon protocol work."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Guidance for package organization and tests."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Guidance for typed error handling and boundary behavior."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend quality and test expectations."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Thinking guide index for cross-layer and reuse checks."}
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Phase 9 source plan and Kocoro parity evidence."}
