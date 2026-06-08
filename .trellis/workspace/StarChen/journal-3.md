@@ -1664,3 +1664,36 @@ Completed Web UI delta consumption parity by consuming Kocoro-compatible SSE ali
 ### Next Steps
 
 - None - task complete
+
+
+## Session 133: EventBus replay SSE resilience
+
+**Date**: 2026-06-08
+**Task**: EventBus replay SSE resilience
+**Branch**: `main`
+
+### Summary
+
+Started Phase12 from the Phase11 Kocoro gap review and implemented the first child: atomic EventBus subscribe-with-replay, /events replay/live ordering hardening, Astria EventSource recovery state tracking, and focused backend/Web UI contract tests. Validation passed with task context validation, focused daemon tests, internal/daemon tests, and go test ./....
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c8fd217` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
