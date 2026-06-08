@@ -2294,11 +2294,13 @@ async function loadMemory() {
   try {
     state.memory = await api("/memory");
     renderMemoryMapPreview();
+    renderAgentContinuityDigest();
     renderHomeDockedTools();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
     renderMemoryMapPreview();
+    renderAgentContinuityDigest();
     renderHomeDockedTools();
     showToast(error.message);
   }
@@ -2346,6 +2348,22 @@ function draftMemoryCandidate(source) {
   renderMemoryCandidatePreview();
   switchPanel("memory");
   $("memory-candidate").focus();
+}
+
+function draftAgentMemoryCandidate(name) {
+  if (!name) return;
+  const summary = agentCapabilitySummary(state.agents.find((agent) => normalizeName(agent) === name) || { name });
+  const runs = runsForAgent(name);
+  const latest = runs[0] || null;
+  $("memory-candidate").value = [
+    `- Agent ${name}: ${summary.description}`,
+    `- Agent ${name} continuity: ${runs.length} recorded run${runs.length === 1 ? "" : "s"}; latest status ${latest?.status || "none"}.`,
+    `- Agent ${name} next memory review: ${agentContinuityHint(summary, runs)}`,
+  ].join("\n");
+  renderMemoryCandidatePreview();
+  switchPanel("memory");
+  $("memory-candidate").focus();
+  showToast(`Memory draft prepared for ${name}.`);
 }
 
 function renderMemoryCandidatePreview() {
@@ -2980,6 +2998,7 @@ async function loadAgents() {
     renderManageCount();
     renderHomeDockedTools();
     updateAgentSelects();
+    renderAgentContinuityDigest();
     renderAgentCapabilityRoster();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
@@ -2996,6 +3015,7 @@ async function loadAgents() {
     }).join("");
   } catch (error) {
     renderError(list, error.message);
+    if ($("agent-continuity-digest")) renderError($("agent-continuity-digest"), error.message);
     if (roster) renderError(roster, error.message);
   }
 }
@@ -3025,6 +3045,63 @@ function agentCapabilitySummary(agent) {
     commandNames: agentInfoList(agent.CommandNames || agent.command_names || Object.keys(commands)),
     hasMemory: (agent.HasMemory ?? agent.has_memory ?? Boolean(agent.Memory || agent.memory)) === true,
   };
+}
+
+function runsForAgent(name) {
+  return state.runs.filter((run) => String(run?.agent || "") === name);
+}
+
+function latestAgentRun(name) {
+  return runsForAgent(name)[0] || null;
+}
+
+function agentContinuityHint(summary, runs) {
+  const latest = runs[0];
+  if (!runs.length) return "No recorded runs yet. Start with a focused test or first mission.";
+  if (!summary.hasMemory) return "Profile memory is empty. Capture durable role context before complex work.";
+  if (runMissionGroup(latest) === "attention") return "Latest run needs review before this agent continues.";
+  if (!summary.commandCount) return "No custom commands yet. Add repeatable prompts for this agent.";
+  return "Ready to continue from recent work with existing memory and commands.";
+}
+
+function renderAgentContinuityDigest() {
+  const target = $("agent-continuity-digest");
+  if (!target) return;
+  if (!state.agents.length) {
+    renderEmpty(target, "No agent continuity to summarize yet.");
+    return;
+  }
+  target.innerHTML = state.agents.map((agent) => {
+    const summary = agentCapabilitySummary(agent);
+    const runs = runsForAgent(summary.name);
+    const latest = runs[0] || null;
+    const latestStatus = latest ? (latest.status || "unknown") : "none";
+    const latestPrompt = latest ? (runPrompt(latest) || latest.id || "Latest run") : "No runs recorded";
+    const latestAction = latest ? `<button type="button" data-agent-open-run="${escapeHTML(latest.id)}">Open latest run</button>` : "";
+    const memoryLabel = summary.hasMemory ? "Profile memory" : "Memory gap";
+    const hint = agentContinuityHint(summary, runs);
+    return `<article class="agent-continuity-card ${escapeHTML(runMissionGroup(latest || {}))}">
+      <div class="agent-continuity-head">
+        <div>
+          <strong>${escapeHTML(summary.name)}</strong>
+          <span>${escapeHTML(summary.description)}</span>
+        </div>
+        <span class="tag">${escapeHTML(latestStatus)}</span>
+      </div>
+      <div class="agent-continuity-metrics">
+        <div><span>Runs</span><strong>${runs.length}</strong></div>
+        <div><span>Memory</span><strong>${escapeHTML(memoryLabel)}</strong></div>
+        <div><span>Commands</span><strong>${summary.commandCount}</strong></div>
+      </div>
+      <p>${escapeHTML(hint)}</p>
+      <small>${escapeHTML(latestPrompt)}</small>
+      <div class="row-actions">
+        <button type="button" data-agent-continue="${escapeHTML(summary.name)}">Continue</button>
+        <button type="button" data-agent-memory-draft="${escapeHTML(summary.name)}">Draft memory</button>
+        ${latestAction}
+      </div>
+    </article>`;
+  }).join("");
 }
 
 function renderAgentCapabilityRoster() {
@@ -3327,6 +3404,27 @@ function prepareAgentChat(name) {
   $("chat-input").value = `Continue as ${name}. Review the current Astria workspace context, identify the next useful action, and call out any risks before changing files.`;
   $("chat-input").focus();
   showToast(`Chat drafted for ${name}.`);
+}
+
+function continueAgentFromDigest(name) {
+  if (!name) return;
+  const summary = agentCapabilitySummary(state.agents.find((agent) => normalizeName(agent) === name) || { name });
+  const runs = runsForAgent(name);
+  const latest = runs[0] || null;
+  startNewChat();
+  $("chat-agent").value = name;
+  $("chat-input").value = [
+    `Continue as ${name} with your current Astria continuity context.`,
+    "",
+    `Recent runs: ${runs.length}`,
+    `Latest run: ${latest ? `${latest.status || "unknown"} · ${runPrompt(latest) || latest.id}` : "none"}`,
+    `Profile memory: ${summary.hasMemory ? "present" : "missing"}`,
+    `Custom commands: ${summary.commandNames.length ? summary.commandNames.map((command) => `/${command}`).join(", ") : "none"}`,
+    "",
+    "Summarize what context should carry forward, identify the next concrete action, and name any risk that needs review before acting.",
+  ].join("\n");
+  $("chat-input").focus();
+  showToast(`Continuity prompt drafted for ${name}.`);
 }
 
 function prepareAgentTest(name) {
@@ -3744,6 +3842,7 @@ async function loadRuns() {
     $("runs-count").textContent = state.runs.length;
     renderHomeActivity();
     renderMemoryMapPreview();
+    renderAgentContinuityDigest();
     renderRunsList();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -3754,6 +3853,7 @@ async function loadRuns() {
     $("runs-count").textContent = "0";
     renderHomeActivity();
     renderMemoryMapPreview();
+    renderAgentContinuityDigest();
     renderError(list, error.message);
   }
 }
@@ -4956,6 +5056,24 @@ document.addEventListener("click", (event) => {
   const agentLaunchChat = event.target.closest("[data-agent-launch-chat]");
   if (agentLaunchChat) {
     prepareAgentChat(agentLaunchChat.dataset.agentLaunchChat);
+    return;
+  }
+
+  const agentContinue = event.target.closest("[data-agent-continue]");
+  if (agentContinue) {
+    continueAgentFromDigest(agentContinue.dataset.agentContinue);
+    return;
+  }
+
+  const agentMemoryDraft = event.target.closest("[data-agent-memory-draft]");
+  if (agentMemoryDraft) {
+    draftAgentMemoryCandidate(agentMemoryDraft.dataset.agentMemoryDraft);
+    return;
+  }
+
+  const agentOpenRun = event.target.closest("[data-agent-open-run]");
+  if (agentOpenRun) {
+    selectRun(agentOpenRun.dataset.agentOpenRun);
     return;
   }
 

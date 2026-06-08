@@ -2423,18 +2423,21 @@ textarea:focus {
   background: var(--surface);
 }
 
+.agent-continuity,
 .agent-roster {
   display: grid;
   gap: 10px;
   margin: 14px 0;
 }
 
+.agent-continuity-grid,
 .agent-roster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 10px;
 }
 
+.agent-continuity-card,
 .agent-roster-card {
   position: relative;
   display: grid;
@@ -2449,6 +2452,21 @@ textarea:focus {
   box-shadow: 0 10px 22px rgba(23, 25, 35, 0.045);
 }
 
+.agent-continuity-card {
+  background:
+    radial-gradient(circle at 8% 14%, rgba(239, 79, 122, 0.11), transparent 20%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(246, 245, 242, 0.86));
+}
+
+.agent-continuity-card.attention {
+  border-color: rgba(167, 112, 35, 0.22);
+}
+
+.agent-continuity-card.completed {
+  border-color: rgba(22, 125, 104, 0.18);
+}
+
+.agent-continuity-head,
 .agent-roster-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -2456,6 +2474,12 @@ textarea:focus {
   gap: 9px;
 }
 
+.agent-continuity-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.agent-continuity-head strong,
+.agent-continuity-head span,
 .agent-roster-head strong,
 .agent-roster-head small {
   display: block;
@@ -2464,10 +2488,12 @@ textarea:focus {
   white-space: nowrap;
 }
 
+.agent-continuity-head strong,
 .agent-roster-head strong {
   font-size: 14px;
 }
 
+.agent-continuity-head span,
 .agent-roster-head small {
   margin-top: 2px;
   color: var(--muted);
@@ -2483,12 +2509,14 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(49, 92, 255, 0.1), 0 0 16px rgba(49, 92, 255, 0.38);
 }
 
+.agent-continuity-metrics,
 .agent-roster-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
 
+.agent-continuity-metrics div,
 .agent-roster-metrics div {
   min-width: 0;
   border: 1px solid rgba(23, 25, 35, 0.07);
@@ -2497,6 +2525,8 @@ textarea:focus {
   padding: 7px;
 }
 
+.agent-continuity-metrics span,
+.agent-continuity-metrics strong,
 .agent-roster-metrics span,
 .agent-roster-metrics strong {
   display: block;
@@ -2505,6 +2535,7 @@ textarea:focus {
   white-space: nowrap;
 }
 
+.agent-continuity-metrics span,
 .agent-roster-metrics span {
   color: var(--faint);
   font-size: 10px;
@@ -2512,10 +2543,25 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+.agent-continuity-metrics strong,
 .agent-roster-metrics strong {
   margin-top: 2px;
   color: var(--text);
   font-size: 12px;
+}
+
+.agent-continuity-card p,
+.agent-continuity-card small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.agent-continuity-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-roster-tags {

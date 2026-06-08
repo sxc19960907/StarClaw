@@ -36,6 +36,28 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 117: Agent Continuity Digest
+
+**Date**: 2026-06-08
+**Task**: Agent continuity digest
+**Branch**: `main`
+
+### Summary
+
+Added an Agent Continuity Digest above the capability roster. Each named agent now shows recent run continuity, memory posture, command count, latest run prompt, and next-step guidance with actions to continue, draft memory, or open the latest run.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `./scripts/smoke_webui_agents.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 116: Agent Command Launcher
 
 **Date**: 2026-06-08

@@ -684,6 +684,64 @@ async function runAgents(page) {
   await saveAgentButton.click();
   await page.getByText("Agent saved.").waitFor();
   await page.locator("#agents-list").getByText("smoke-agent").waitFor();
+  const digestCard = page.locator("#agent-continuity-digest .agent-continuity-card").filter({ hasText: "smoke-agent" });
+  await digestCard.getByText("No recorded runs yet.").waitFor();
+  await digestCard.getByText("Profile memory", { exact: true }).waitFor();
+  const createdDigestMetrics = await digestCard.locator(".agent-continuity-metrics").innerText();
+  assert(createdDigestMetrics.includes("RUNS\n0"), `agent digest should show zero runs, got ${JSON.stringify(createdDigestMetrics)}`);
+  assert(createdDigestMetrics.includes("COMMANDS\n1"), `agent digest should show one command, got ${JSON.stringify(createdDigestMetrics)}`);
+  await digestCard.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator("#chat-agent").inputValue() === "smoke-agent", "digest continue should select smoke-agent");
+  const digestContinueDraft = await page.locator("#chat-input").inputValue();
+  assert(digestContinueDraft.includes("Continue as smoke-agent"), "digest continue should draft continuity prompt");
+  assert(digestContinueDraft.includes("Recent runs: 0"), "digest continue should include zero-run continuity context");
+  await openManagePanel(page, "Agents");
+  await digestCard.getByRole("button", { name: "Draft memory", exact: true }).click();
+  await page.locator("#panel-memory.active").waitFor();
+  const memoryDraft = await page.locator("#memory-candidate").inputValue();
+  assert(memoryDraft.includes("Agent smoke-agent"), "digest memory draft should include agent name");
+  assert(memoryDraft.includes("0 recorded runs"), "digest memory draft should include run continuity");
+  await openManagePanel(page, "Agents");
+  const agentContinuityRunID = "run_agent_continuity_smoke";
+  const agentContinuityRun = {
+    id: agentContinuityRunID,
+    status: "completed",
+    agent: "smoke-agent",
+    session_id: "sess_agent_continuity_smoke",
+    started_at: new Date().toISOString(),
+    prompt: "agent continuity smoke prompt",
+    request: { text: "agent continuity smoke prompt", agent: "smoke-agent", request_id: agentContinuityRunID },
+    response: { session_id: "sess_agent_continuity_smoke", messages: ["agent continuity smoke response"], usage: { prompt_tokens: 7, completion_tokens: 8 } },
+  };
+  await page.route("**/runs", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ runs: [agentContinuityRun] }),
+    });
+  });
+  await page.route(`**/runs/${agentContinuityRunID}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(agentContinuityRun),
+    });
+  });
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await digestCard.getByText("agent continuity smoke prompt").waitFor();
+  const refreshedDigestMetrics = await digestCard.locator(".agent-continuity-metrics").innerText();
+  assert(refreshedDigestMetrics.includes("RUNS\n1"), `agent digest should show one run, got ${JSON.stringify(refreshedDigestMetrics)}`);
+  await digestCard.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.locator("#panel-chat.active").waitFor();
+  const digestRunContinueDraft = await page.locator("#chat-input").inputValue();
+  assert(digestRunContinueDraft.includes("Recent runs: 1"), "digest continue should include latest run count");
+  assert(digestRunContinueDraft.includes("agent continuity smoke prompt"), "digest continue should include latest run prompt");
+  await openManagePanel(page, "Agents");
+  await digestCard.getByRole("button", { name: "Open latest run", exact: true }).click();
+  await page.locator("#panel-runs.active").waitFor();
+  await page.waitForFunction((id) => document.querySelector("#run-detail")?.textContent?.includes(id), agentContinuityRunID);
+  await openManagePanel(page, "Agents");
   const rosterCard = page.locator("#agent-capability-roster .agent-roster-card").filter({ hasText: "smoke-agent" });
   await rosterCard.getByText("smoke-model", { exact: true }).waitFor();
   await rosterCard.getByText("low", { exact: true }).waitFor();
