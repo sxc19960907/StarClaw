@@ -1889,6 +1889,7 @@ function runQualityCards() {
       type: "Latest",
       title: latestRun?.prompt || "Latest run score",
       panel: "runs",
+      runID: latestRun?.id || "",
       score: latestScore,
       signal: latestRun ? `${latestRun.status || "unknown"} with ${latestRun.agent || "default"}` : "No run captured yet",
       risk: latestRun ? (runHealthGroup(latestRun) === "failed" ? "Latest run failed; inspect error and avoid blind rerun." : "Latest run still needs evidence and reuse review before becoming durable.") : "No execution evidence exists.",
@@ -1901,6 +1902,7 @@ function runQualityCards() {
       type: "Completion",
       title: "Completed output readiness",
       panel: "results",
+      runID: latestCompleted?.id || "",
       score: completedScore,
       signal: `${completedRuns.length} completed run${completedRuns.length === 1 ? "" : "s"}; ${resultCount} result entries`,
       risk: completedRuns.length ? "Completed does not automatically mean cited, reusable, or accepted." : "No completed run is available for reuse.",
@@ -1913,6 +1915,7 @@ function runQualityCards() {
       type: "Retry",
       title: "Failure and retry risk",
       panel: failedRuns.length ? "budget" : "runs",
+      runID: latestFailed?.id || "",
       score: failedScore,
       signal: failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"}` : "No failed runs in current list",
       risk: failedRuns.length ? "Repeated failures can waste context and budget without a changed plan." : "Retry risk is low, but stop rules still matter.",
@@ -1925,6 +1928,7 @@ function runQualityCards() {
       type: "Evidence",
       title: "Evidence quality score",
       panel: "citation",
+      runID: latestRun?.id || "",
       score: evidenceScore,
       signal: `${sourceCount} sources; ${citationCount} citation checks`,
       risk: "A run can look successful while unsupported claims remain hidden.",
@@ -1937,6 +1941,7 @@ function runQualityCards() {
       type: "Budget",
       title: "Budget and stop-rule posture",
       panel: "budget",
+      runID: latestRun?.id || "",
       score: budgetScore,
       signal: `${budgetCount} budget guards; usage ${latestRun?.usage || latestRun?.response?.usage ? "captured" : "not captured"}`,
       risk: "Long tasks need caps, context trimming, fallback, and explicit stop rules before rerun.",
@@ -1949,6 +1954,7 @@ function runQualityCards() {
       type: "Reuse",
       title: "Reusable output readiness",
       panel: "share",
+      runID: latestCompleted?.id || "",
       score: reuseScore,
       signal: `${resultCount} results; ${shareCount} share packs`,
       risk: "Reusable assets need boundaries; otherwise future sessions inherit stale or private assumptions.",
@@ -1961,6 +1967,7 @@ function runQualityCards() {
       type: "Delivery",
       title: "Delivery readiness score",
       panel: "delivery",
+      runID: latestRun?.id || "",
       score: deliveryScore,
       signal: `${deliveryCount} delivery lanes; ${state.schedules.length} schedules`,
       risk: "Delivery requires approval boundary, destination, artifact, verification, and rollback.",
@@ -1993,7 +2000,7 @@ function renderRunQualityScorecard() {
     <div class="row-actions">
       <button type="button" data-quality-select="${escapeHTML(card.id)}">Quality brief</button>
       <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>`}
     </div>
   </article>`).join("");
   renderRunQualityDetail(cards.find((card) => card.id === state.selectedRunQuality) || cards[0]);
@@ -2026,7 +2033,7 @@ function renderRunQualityDetail(card) {
       <p>${escapeHTML(card.route)}</p>
       <div class="run-detail-actions">
         <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+        ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>`}
       </div>
     </section>
   </div>`;
@@ -2455,6 +2462,7 @@ function reuseGalleryAssets() {
       kind: "Outcome",
       title: completedRun.prompt || completedRun.id || "Latest run outcome",
       panel: "runs",
+      runID: completedRun.id || "",
       readiness: completedRun.status || "unknown",
       evidence: completedRun.agent || "default",
       reuse: "Continue from a concrete execution result instead of restarting from scratch.",
@@ -2513,7 +2521,7 @@ function renderReuseGallery() {
     <div class="row-actions">
       <button type="button" data-reuse-select="${escapeHTML(asset.id)}">Asset brief</button>
       <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">Draft starter</button>
-      <button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>
+      ${asset.runID ? `<button type="button" data-run-open="${escapeHTML(asset.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>`}
     </div>
   </article>`).join("");
   renderReuseAssetDetail(assets.find((asset) => asset.id === state.selectedReuseAsset) || assets[0]);
@@ -2542,7 +2550,7 @@ function renderReuseAssetDetail(asset) {
       <p>${escapeHTML(asset.action)}</p>
       <div class="run-detail-actions">
         <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">Draft starter</button>
-        <button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>
+        ${asset.runID ? `<button type="button" data-run-open="${escapeHTML(asset.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>`}
       </div>
     </section>
   </div>`;
@@ -7074,7 +7082,7 @@ function buildRunTimelineEntries(run) {
       tone: "prompt",
       at: run.started_at,
       title: "Prompt locked",
-      detail: prompt,
+      detail: "Prompt available in the explicit Prompt section.",
     });
   }
   if (sessionID) {
@@ -7101,7 +7109,7 @@ function buildRunTimelineEntries(run) {
       tone: run.error || run.response?.error ? "failed" : "completed",
       at: run.ended_at || run.started_at,
       title: run.error || run.response?.error ? "Run needs review" : "Run finished",
-      detail: run.error || run.response?.error || formatRunResponse(run.response) || run.status || "Completed",
+      detail: run.error || run.response?.error || run.status || "Completed",
     });
   }
   return entries;
@@ -7125,8 +7133,8 @@ function groupRunTimelineEvents(events) {
         at: event.at,
         tool,
         status: data.status || "running",
-        args: data.args || "",
-        result: "",
+        args: data.args ? safeRenderPayload({ args: data.args }) : null,
+        result: null,
         isError: false,
         errorCategory: "",
       };
@@ -7140,20 +7148,20 @@ function groupRunTimelineEvents(events) {
         at: event.at,
         tool,
         status: "",
-        args: "",
-        result: "",
+        args: null,
+        result: null,
         isError: false,
         errorCategory: "",
       };
       if (!openTools.has(tool)) entries.push(entry);
       entry.status = data.status || (data.is_error ? "error" : "completed");
-      entry.result = data.content || "";
+      entry.result = data.content ? safeRenderPayload({ content: data.content }) : null;
       entry.isError = data.is_error === true;
       entry.errorCategory = data.error_category || "";
       openTools.delete(tool);
       continue;
     }
-    entries.push({ kind: event.type || "event", at: event.at, data });
+    entries.push({ kind: event.type || "event", at: event.at, data: safeRenderPayload(data) });
   }
   return entries;
 }
@@ -7197,7 +7205,7 @@ function renderRunTimelineEntry(entry) {
       <strong>${escapeHTML(label)}</strong>
       <span>${escapeHTML(formatTimestamp(entry.at))}</span>
     </div>
-    <pre>${escapeHTML(formatToolPayload(entry.data || {}))}</pre>
+    <pre>${escapeHTML(formatToolPayload(safeRenderPayload(entry.data || {})))}</pre>
   </article>`;
 }
 
@@ -7220,8 +7228,11 @@ function runEventLabel(type) {
 
 function isRecoveredRun(run) {
   if (!run) return false;
-  const status = String(run.status || "").toLowerCase();
-  return status === "running" && run.id !== state.activeRequestID;
+  const steps = run.steps || [];
+  const controls = run.control || [];
+  const hasRecoveryStep = steps.some((step) => step.id === "runtime-recovery" || step.metadata?.recovered === true || step.metadata?.recovery_status);
+  const hasRecoveryControl = controls.some((item) => item.action === "recover" || item.status === "recovered");
+  return hasRecoveryStep || hasRecoveryControl || run.recovered === true;
 }
 
 function replayState(run) {
@@ -7352,7 +7363,7 @@ function runSummaryText(run) {
     `Agent: ${run?.agent || "default"}`,
     `Session: ${runSessionID(run) || "-"}`,
     `Usage: ${formatUsage(usage)}`,
-    `Prompt: ${runPrompt(run) || "-"}`,
+    `Prompt: ${runPrompt(run) ? "[REDACTED: use Copy prompt for local operator review]" : "-"}`,
   ].join("\n");
 }
 

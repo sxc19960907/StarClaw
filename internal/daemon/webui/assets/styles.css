@@ -3184,14 +3184,18 @@ textarea:focus {
 }
 
 .run-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, max-content));
   gap: 8px;
+  align-items: center;
 }
 
 .run-detail-actions button {
+  min-width: 0;
+  justify-content: center;
   border-color: var(--line-strong);
   background: var(--surface);
+  white-space: normal;
 }
 
 .run-detail-section h3 {
@@ -3279,10 +3283,16 @@ textarea:focus {
 }
 
 .runtime-table article > div:first-child {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: baseline;
-  justify-content: space-between;
   gap: 10px;
+}
+
+.runtime-table article > div:first-child strong,
+.runtime-table article > div:first-child span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .runtime-table p {

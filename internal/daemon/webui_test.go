@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -150,4 +151,80 @@ func TestWebUITraceAndRecoveryRenderersSanitizePayloads(t *testing.T) {
 			t.Fatalf("app.js renders unsafe metadata path %q", forbidden)
 		}
 	}
+}
+
+func TestWebUIPhase5RuntimeLayoutAndNavigationHooks(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	script, err := fetchWebUIAsset(t, ts.URL+"/app/assets/app.js")
+	if err != nil {
+		t.Fatalf("fetch app.js: %v", err)
+	}
+	for _, want := range []string{
+		`data-data-insight="${escapeHTML(card.id)}"`,
+		`data-data-select="${escapeHTML(card.id)}"`,
+		`data-data-draft="${escapeHTML(card.id)}"`,
+		`event.target.closest("[data-data-select]")`,
+		`event.target.closest("[data-data-draft]")`,
+		`event.target.closest("[data-data-insight]")`,
+		`renderRunTrace(state.currentRunTrace, state.currentRunTraceError)`,
+		`Trace unavailable: ${escapeHTML(error)}`,
+		`runID: latestRun?.id || ""`,
+		`runID: completedRun.id || ""`,
+		`data-run-open="${escapeHTML(card.runID)}"`,
+		`data-run-open="${escapeHTML(asset.runID)}"`,
+		`Prompt available in the explicit Prompt section.`,
+		`[REDACTED: use Copy prompt for local operator review]`,
+		`step.id === "runtime-recovery"`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("app.js missing Phase 5 hook %q", want)
+		}
+	}
+	for _, forbidden := range []string{
+		`return status === "running" && run.id !== state.activeRequestID;`,
+		`detail: prompt,`,
+		"`Prompt: ${runPrompt(run) || \"-\"}`",
+		`formatToolPayload(entry.data || {})`,
+	} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("app.js still contains unsafe Phase 5 marker %q", forbidden)
+		}
+	}
+
+	styles, err := fetchWebUIAsset(t, ts.URL+"/app/assets/styles.css")
+	if err != nil {
+		t.Fatalf("fetch styles.css: %v", err)
+	}
+	for _, want := range []string{
+		"grid-template-columns: repeat(auto-fit, minmax(118px, max-content));",
+		"white-space: normal;",
+		"grid-template-columns: minmax(0, 1fr) max-content;",
+		"overflow-wrap: anywhere;",
+	} {
+		if !strings.Contains(styles, want) {
+			t.Fatalf("styles.css missing runtime layout guard %q", want)
+		}
+	}
+}
+
+func fetchWebUIAsset(t *testing.T, url string) (string, error) {
+	t.Helper()
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }

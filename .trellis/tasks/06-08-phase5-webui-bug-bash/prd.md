@@ -13,32 +13,14 @@ Fix integration UX issues discovered while validating Phase 3/4 runtime features
 
 ## Acceptance Criteria
 
-- [ ] Runtime/recovery/trace/budget states are readable and do not overlap on common viewport sizes.
-- [ ] Navigation from quality/reuse/share/memory-related cards to runs or chat remains coherent.
-- [ ] Empty/error states appear for failed trace/API calls.
-- [ ] Web UI smoke/static tests cover any added hooks.
-- [ ] `go test ./internal/daemon ./cmd`, `go test ./...`, and `git diff --check` pass after fixes.
+- [x] Runtime/recovery/trace/budget states are readable and do not overlap on common viewport sizes.
+- [x] Navigation from quality/reuse/share/memory-related cards to runs or chat remains coherent.
+- [x] Empty/error states appear for failed trace/API calls.
+- [x] Web UI smoke/static tests cover any added hooks.
+- [x] `go test ./internal/daemon ./cmd`, `go test ./...`, and `git diff --check` pass after fixes.
 
 ## Non-Goals
 
 - No broad visual redesign.
 - No frontend build pipeline.
 - No new backend runtime behavior unless required to fix an integration bug.
-
-## Goal
-
-TBD.
-
-## Requirements
-
-- TBD
-
-## Acceptance Criteria
-
-- [ ] TBD
-
-## Notes
-
-- Keep `prd.md` focused on requirements, constraints, and acceptance criteria.
-- Lightweight tasks can remain PRD-only.
-- For complex tasks, add `design.md` for technical design and `implement.md` for execution planning before `task.py start`.
