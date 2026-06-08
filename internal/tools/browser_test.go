@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"runtime"
 	"strings"
@@ -31,6 +32,10 @@ func TestBrowserTool_Info(t *testing.T) {
 		if _, ok := props[key]; !ok {
 			t.Errorf("Expected '%s' parameter", key)
 		}
+	}
+	action := props["action"].(map[string]any)
+	if !strings.Contains(action["description"].(string), "snapshot") {
+		t.Errorf("action description should mention snapshot, got %q", action["description"])
 	}
 }
 
@@ -119,11 +124,98 @@ func TestBrowserTool_IsReadOnlyCall(t *testing.T) {
 	if !tool.IsReadOnlyCall(`{"action":"get_title"}`) {
 		t.Error("get_title should be read-only")
 	}
+	if !tool.IsReadOnlyCall(`{"action":"status"}`) {
+		t.Error("status should be read-only")
+	}
+	if !tool.IsReadOnlyCall(`{"action":"snapshot"}`) {
+		t.Error("snapshot should be read-only")
+	}
 	if tool.IsReadOnlyCall(`{"action":"navigate","url":"https://example.com"}`) {
 		t.Error("navigate should not be read-only")
 	}
 	if tool.IsReadOnlyCall(`invalid`) {
 		t.Error("invalid JSON should not be read-only")
+	}
+}
+
+func TestBrowserTool_Status(t *testing.T) {
+	tool := &BrowserTool{}
+	result, err := tool.Run(context.Background(), `{"action":"status"}`)
+	if err != nil {
+		t.Fatalf("Run should not return error, got %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("Unexpected error: %s", result.Content)
+	}
+	var status browserStatus
+	if err := json.Unmarshal([]byte(result.Content), &status); err != nil {
+		t.Fatalf("status should be JSON: %v\n%s", err, result.Content)
+	}
+	if status.Platform != runtime.GOOS {
+		t.Fatalf("Platform = %q, want %q", status.Platform, runtime.GOOS)
+	}
+	if len(status.Actions) != len(browserActions) {
+		t.Fatalf("Actions = %#v, want %#v", status.Actions, browserActions)
+	}
+	if len(status.SupportedBrowsers) == 0 {
+		t.Fatal("SupportedBrowsers should not be empty")
+	}
+}
+
+func TestBrowserTool_SnapshotNonDarwin(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("non-darwin behavior")
+	}
+	tool := &BrowserTool{}
+	result, err := tool.Run(context.Background(), `{"action":"snapshot"}`)
+	if err != nil {
+		t.Fatalf("Run should not return error, got %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("snapshot unsupported response should be structured non-error, got: %s", result.Content)
+	}
+	var snap browserSnapshot
+	if err := json.Unmarshal([]byte(result.Content), &snap); err != nil {
+		t.Fatalf("snapshot should be JSON: %v\n%s", err, result.Content)
+	}
+	if snap.Supported {
+		t.Fatal("Snapshot should not be supported on non-macOS")
+	}
+	if snap.Source != "unsupported_platform" {
+		t.Fatalf("Source = %q, want unsupported_platform", snap.Source)
+	}
+}
+
+func TestParseBrowserSnapshotOutput(t *testing.T) {
+	tests := []struct {
+		name string
+		out  string
+		want browserSnapshot
+	}{
+		{
+			name: "browser",
+			out:  "browser\x1fGoogle Chrome\x1fTitle\x1fhttps://example.com\x1fchrome",
+			want: browserSnapshot{Supported: true, Platform: "darwin", Browser: "Google Chrome", Title: "Title", URL: "https://example.com", Source: "chrome"},
+		},
+		{
+			name: "window",
+			out:  "window\x1fFinder\x1fDesktop\x1ffrontmost_window",
+			want: browserSnapshot{Supported: true, Platform: "darwin", FrontmostApp: "Finder", WindowTitle: "Desktop", Source: "frontmost_window"},
+		},
+		{
+			name: "app",
+			out:  "app\x1fFinder\x1ffrontmost_app\x1fNo window title available",
+			want: browserSnapshot{Supported: false, Platform: "darwin", FrontmostApp: "Finder", Source: "frontmost_app", Message: "No window title available"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseBrowserSnapshotOutput(tt.out, "darwin")
+			if got != tt.want {
+				t.Fatalf("got %#v, want %#v", got, tt.want)
+			}
+		})
 	}
 }
 
