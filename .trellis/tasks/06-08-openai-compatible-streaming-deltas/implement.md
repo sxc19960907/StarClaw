@@ -24,4 +24,15 @@
 
 ## Completion Notes
 
-TBD.
+- Allowed `stream=true` on `POST /v1/chat/completions` while keeping OpenAI tool/function fields unsupported.
+- Added OpenAI-compatible `chat.completion.chunk` SSE output with initial assistant role delta, content chunks, terminal stop chunk, and `data: [DONE]`.
+- Added internal `RunAgentRequest.EnableStreaming` so the gateway can enable agent loop streaming without changing public JSON request shape.
+- Preserved existing non-streaming response behavior.
+- Added streaming API test coverage for content type, chunk identity, assistant role, content delta, stop chunk, `[DONE]`, and run recording.
+
+## Validation
+
+- `go test ./internal/daemon` — passed.
+- `go test ./...` — passed.
+- `git diff --check` — passed.
+- `python3 ./.trellis/scripts/task.py validate .trellis/tasks/06-08-openai-compatible-streaming-deltas` — passed.

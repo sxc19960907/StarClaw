@@ -108,6 +108,7 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 		specificModel = effectiveCfg.Agent.Model
 	}
 	loop.SetSpecificModel(specificModel)
+	loop.SetEnableStreaming(req.EnableStreaming)
 	loop.SetSession(sess)
 	loop.SetSessionManager(sessMgr)
 	if approver != nil {

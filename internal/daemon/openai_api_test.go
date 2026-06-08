@@ -3,6 +3,7 @@ package daemon
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -70,6 +71,80 @@ func TestHandleOpenAIChatCompletions(t *testing.T) {
 	if !strings.Contains(run.Request.Text, "system: Keep answers terse.") ||
 		!strings.Contains(run.Request.Text, "hello") {
 		t.Fatalf("run prompt missing expected chat content: %q", run.Request.Text)
+	}
+}
+
+func TestHandleOpenAIChatCompletionsStreaming(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{
+		"model":"request-model",
+		"request_id":"oa-stream",
+		"user":"stream-user",
+		"stream":true,
+		"messages":[{"role":"user","content":"hello stream"}]
+	}`
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/v1/chat/completions", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /v1/chat/completions stream: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		data, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, body = %s", resp.StatusCode, data)
+	}
+	if got := resp.Header.Get("Content-Type"); !strings.Contains(got, "text/event-stream") {
+		t.Fatalf("content-type = %q, want text/event-stream", got)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read stream: %v", err)
+	}
+	stream := string(data)
+	if !strings.Contains(stream, "data: [DONE]") {
+		t.Fatalf("stream missing DONE:\n%s", stream)
+	}
+	chunks := decodeOpenAIStreamChunks(t, stream)
+	if len(chunks) < 3 {
+		t.Fatalf("chunks len = %d, want at least 3: %#v\n%s", len(chunks), chunks, stream)
+	}
+	if chunks[0].Object != openAIChatCompletionChunkObject || chunks[0].Choices[0].Delta["role"] != "assistant" {
+		t.Fatalf("role chunk = %#v", chunks[0])
+	}
+	foundContent := false
+	foundStop := false
+	for _, chunk := range chunks {
+		if chunk.ID != "chatcmpl-oa-stream" || chunk.Model != "request-model" || chunk.RunID != "oa-stream" {
+			t.Fatalf("chunk identity = %#v", chunk)
+		}
+		if chunk.Choices[0].Delta["content"] != "" {
+			foundContent = true
+		}
+		if chunk.Choices[0].FinishReason != nil && *chunk.Choices[0].FinishReason == "stop" {
+			foundStop = true
+		}
+	}
+	if !foundContent {
+		t.Fatalf("stream missing content chunk: %#v", chunks)
+	}
+	if !foundStop {
+		t.Fatalf("stream missing stop chunk: %#v", chunks)
+	}
+
+	var run RunRecord
+	getJSON(t, ts.URL+"/runs/oa-stream", http.StatusOK, &run)
+	if run.ID != "oa-stream" || run.Request.Source != "openai-compatible" || run.Request.Sender != "stream-user" {
+		t.Fatalf("run = %#v", run)
+	}
+	if len(run.StructuredEvents) == 0 {
+		t.Fatal("expected streaming run structured events")
 	}
 }
 
@@ -254,11 +329,6 @@ func TestHandleOpenAIChatCompletionsValidation(t *testing.T) {
 			want: "messages is required",
 		},
 		{
-			name: "unsupported stream",
-			body: `{"model":"local","stream":true,"messages":[{"role":"user","content":"hello"}]}`,
-			want: "stream=true is not supported",
-		},
-		{
 			name: "unsupported tools",
 			body: `{"model":"local","tools":[{"type":"function"}],"messages":[{"role":"user","content":"hello"}]}`,
 			want: "tool/function calling fields are not supported",
@@ -307,4 +377,28 @@ func TestHandleOpenAIChatCompletionsValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func decodeOpenAIStreamChunks(t *testing.T, stream string) []openAIChatCompletionChunk {
+	t.Helper()
+	var chunks []openAIChatCompletionChunk
+	for _, block := range strings.Split(stream, "\n\n") {
+		block = strings.TrimSpace(block)
+		if block == "" {
+			continue
+		}
+		if !strings.HasPrefix(block, "data: ") {
+			t.Fatalf("unexpected stream block %q in stream:\n%s", block, stream)
+		}
+		payload := strings.TrimPrefix(block, "data: ")
+		if payload == "[DONE]" {
+			continue
+		}
+		var chunk openAIChatCompletionChunk
+		if err := json.Unmarshal([]byte(payload), &chunk); err != nil {
+			t.Fatalf("decode stream chunk %q: %v", payload, err)
+		}
+		chunks = append(chunks, chunk)
+	}
+	return chunks
 }

@@ -29,6 +29,7 @@ type RunAgentRequest struct {
 	Attachments []string `json:"attachments,omitempty"`
 
 	PauseController agent.PauseController `json:"-"`
+	EnableStreaming bool                  `json:"-"`
 }
 
 // RunAgentResponse is the result of an agent execution.

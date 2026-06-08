@@ -8,9 +8,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/starclaw/starclaw/internal/agent"
+	"github.com/starclaw/starclaw/internal/client"
 )
 
 const openAIChatCompletionObject = "chat.completion"
+const openAIChatCompletionChunkObject = "chat.completion.chunk"
 
 type openAIChatCompletionRequest struct {
 	Model          string              `json:"model"`
@@ -43,6 +47,21 @@ type openAIChatCompletionResponse struct {
 	Choices []openAIChoice `json:"choices"`
 	Usage   openAIUsage    `json:"usage,omitempty"`
 	RunID   string         `json:"starclaw_run_id,omitempty"`
+}
+
+type openAIChatCompletionChunk struct {
+	ID      string              `json:"id"`
+	Object  string              `json:"object"`
+	Created int64               `json:"created"`
+	Model   string              `json:"model"`
+	Choices []openAIChunkChoice `json:"choices"`
+	RunID   string              `json:"starclaw_run_id,omitempty"`
+}
+
+type openAIChunkChoice struct {
+	Index        int               `json:"index"`
+	Delta        map[string]string `json:"delta"`
+	FinishReason *string           `json:"finish_reason"`
 }
 
 type openAIChoice struct {
@@ -88,10 +107,18 @@ func (s *Server) handleOpenAIChatCompletions(w http.ResponseWriter, r *http.Requ
 		Model:     strings.TrimSpace(req.Model),
 		RequestID: requestID,
 	}
+
+	if req.Stream {
+		s.handleOpenAIChatCompletionsStream(w, r, req, runReq)
+		return
+	}
+
 	s.runStore.Start(runReq)
 
 	ctx, cancel := context.WithCancel(r.Context())
-	s.running.Store(runReq.RequestID, cancel)
+	pauseController := newRuntimePauseController()
+	runReq.PauseController = pauseController
+	s.running.Store(runReq.RequestID, &runtimeHandle{cancel: cancel, pause: pauseController})
 	defer s.running.Delete(runReq.RequestID)
 
 	handler := s.recordingHandler(runReq.RequestID, &httpEventHandler{})
@@ -107,6 +134,42 @@ func (s *Server) handleOpenAIChatCompletions(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSON(w, http.StatusOK, openAIResponseFromRun(req.Model, runReq.RequestID, result))
+}
+
+func (s *Server) handleOpenAIChatCompletionsStream(w http.ResponseWriter, r *http.Request, req openAIChatCompletionRequest, runReq RunAgentRequest) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeOpenAIError(w, http.StatusInternalServerError, "streaming not supported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	runReq.EnableStreaming = true
+	s.runStore.Start(runReq)
+
+	ctx, cancel := context.WithCancel(r.Context())
+	pauseController := newRuntimePauseController()
+	runReq.PauseController = pauseController
+	s.running.Store(runReq.RequestID, &runtimeHandle{cancel: cancel, pause: pauseController})
+	defer s.running.Delete(runReq.RequestID)
+
+	handler := newOpenAIStreamingHandler(w, flusher, req.Model, runReq.RequestID)
+	handler.writeRole()
+	result, err := s.runAgent(ctx, runReq, s.recordingHandler(runReq.RequestID, handler))
+	s.runStore.Complete(runReq.RequestID, result, err)
+	if err != nil {
+		handler.writeError(err.Error())
+		return
+	}
+	if result.Error != "" {
+		handler.writeError(result.Error)
+		return
+	}
+	handler.writeStop()
+	_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
+	flusher.Flush()
 }
 
 func decodeOpenAIChatCompletionBody(w http.ResponseWriter, r *http.Request) (openAIChatCompletionRequest, bool) {
@@ -158,9 +221,6 @@ func validateOpenAIChatCompletionRequest(req openAIChatCompletionRequest) error 
 	}
 	if len(req.Messages) == 0 {
 		return fmt.Errorf("messages is required")
-	}
-	if req.Stream {
-		return fmt.Errorf("stream=true is not supported by the OpenAI-compatible gateway")
 	}
 	if len(req.Tools) > 0 || len(req.Functions) > 0 || req.FunctionCall != nil || req.ToolChoice != nil {
 		return fmt.Errorf("OpenAI tool/function calling fields are not supported; use StarClaw local tools through the daemon run")
@@ -239,4 +299,87 @@ func writeOpenAIError(w http.ResponseWriter, status int, msg string) {
 			"type":    "invalid_request_error",
 		},
 	})
+}
+
+type openAIStreamingHandler struct {
+	w            http.ResponseWriter
+	flusher      http.Flusher
+	model        string
+	requestID    string
+	created      int64
+	streamedText bool
+}
+
+func newOpenAIStreamingHandler(w http.ResponseWriter, flusher http.Flusher, model, requestID string) *openAIStreamingHandler {
+	return &openAIStreamingHandler{
+		w:         w,
+		flusher:   flusher,
+		model:     model,
+		requestID: requestID,
+		created:   time.Now().Unix(),
+	}
+}
+
+func (h *openAIStreamingHandler) OnToolCall(name string, args string)               {}
+func (h *openAIStreamingHandler) OnToolResult(name string, result agent.ToolResult) {}
+func (h *openAIStreamingHandler) OnUsage(usage client.Usage)                        {}
+func (h *openAIStreamingHandler) OnPreamble(preamble string)                        {}
+
+func (h *openAIStreamingHandler) OnText(text string) {
+	if h.streamedText {
+		return
+	}
+	h.writeContent(text)
+}
+
+func (h *openAIStreamingHandler) OnStreamDelta(delta string) {
+	if delta == "" {
+		return
+	}
+	h.streamedText = true
+	h.writeContent(delta)
+}
+
+func (h *openAIStreamingHandler) writeRole() {
+	h.writeChunk(map[string]string{"role": "assistant"}, nil)
+}
+
+func (h *openAIStreamingHandler) writeContent(content string) {
+	if content == "" {
+		return
+	}
+	h.writeChunk(map[string]string{"content": content}, nil)
+}
+
+func (h *openAIStreamingHandler) writeStop() {
+	reason := "stop"
+	h.writeChunk(map[string]string{}, &reason)
+}
+
+func (h *openAIStreamingHandler) writeError(message string) {
+	data := mustJSON(map[string]any{
+		"error": map[string]string{
+			"message": message,
+			"type":    "server_error",
+		},
+	})
+	_, _ = fmt.Fprintf(h.w, "data: %s\n\n", data)
+	h.flusher.Flush()
+}
+
+func (h *openAIStreamingHandler) writeChunk(delta map[string]string, finishReason *string) {
+	chunk := openAIChatCompletionChunk{
+		ID:      "chatcmpl-" + h.requestID,
+		Object:  openAIChatCompletionChunkObject,
+		Created: h.created,
+		Model:   h.model,
+		RunID:   h.requestID,
+		Choices: []openAIChunkChoice{{
+			Index:        0,
+			Delta:        delta,
+			FinishReason: finishReason,
+		}},
+	}
+	_, _ = fmt.Fprintf(h.w, "data: %s\n\n", mustJSON(chunk))
+	h.flusher.Flush()
 }
