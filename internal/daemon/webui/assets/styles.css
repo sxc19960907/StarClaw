@@ -3295,6 +3295,67 @@ textarea:focus {
   font-size: 13px;
 }
 
+.comparison-lanes {
+  display: grid;
+  gap: 10px;
+}
+
+.comparison-lane {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.comparison-lane.active {
+  border-color: rgba(49, 92, 255, 0.28);
+  background:
+    linear-gradient(90deg, rgba(49, 92, 255, 0.08), transparent 54%),
+    rgba(255, 255, 255, 0.76);
+}
+
+.comparison-lane strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comparison-lane p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.comparison-evidence {
+  display: grid;
+  gap: 6px;
+}
+
+.comparison-evidence span {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.comparison-evidence.detail span {
+  color: var(--text);
+}
+
+.comparison-detail {
+  margin-top: 16px;
+}
+
 .run-timeline {
   position: relative;
   display: grid;

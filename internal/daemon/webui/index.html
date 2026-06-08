@@ -39,6 +39,10 @@
               <span><span class="nav-icon" aria-hidden="true">◎</span>运行</span>
               <small id="runs-count">0</small>
             </button>
+            <button class="nav-item" data-panel="compare" aria-label="Compare">
+              <span><span class="nav-icon" aria-hidden="true">◈</span>比较</span>
+              <small id="nav-compare-count">0</small>
+            </button>
             <button class="nav-item" data-panel="inbox" aria-label="Inbox">
               <span><span class="nav-icon" aria-hidden="true">◫</span>收件箱</span>
               <small id="nav-inbox-count">0</small>
@@ -577,6 +581,11 @@
                 <strong id="manage-council-count">0 reviews</strong>
                 <small>Coordinate planner, researcher, and reviewer roles.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="compare">
+                <span>Comparison Workbench</span>
+                <strong id="manage-compare-count">0 lanes</strong>
+                <small>Compare runs, agents, memory, and council evidence before choosing a path.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="inbox">
                 <span>Inbox</span>
                 <strong id="manage-inbox-count">0 pending</strong>
@@ -922,6 +931,27 @@
             </form>
             <div class="council-detail" id="council-detail">
               <div class="empty-state">Start or select a council run.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-compare" aria-labelledby="compare-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="compare-heading">Comparison Workbench</h2>
+              <p id="compare-summary">Compare candidate paths before launching the next Astria move.</p>
+            </div>
+            <div class="comparison-lanes" id="comparison-lanes">
+              <div class="empty-state">No comparison candidates yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Decision Brief</h2>
+              <p>Side-by-side evidence from recent runs, agents, memory, and council output.</p>
+            </div>
+            <div class="comparison-detail" id="comparison-detail">
+              <div class="empty-state">Select a comparison lane.</div>
             </div>
           </aside>
         </section>

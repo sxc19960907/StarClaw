@@ -11,6 +11,7 @@ const state = {
   intakeResult: null,
   currentRunDetail: null,
   currentCouncilRun: null,
+  selectedComparisonLane: "",
   diagnostics: null,
   config: null,
   permissions: null,
@@ -51,6 +52,7 @@ const views = {
   mcp: ["MCP 星港", "Inspect configured MCP servers and docking readiness."],
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
+  compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
   intake: ["文件星舱", "Inspect local documents and archives before a run."],
   schedules: ["定时任务", "Create and manage cron-based local tasks."],
@@ -1210,6 +1212,7 @@ function renderHomeActivity() {
   renderFocusBrief();
   renderApprovalCenter();
   renderReviewQueue();
+  renderComparisonWorkbench();
 }
 
 function renderHomeLatestRun() {
@@ -1250,6 +1253,7 @@ function renderHomeDockedTools() {
   renderWorkspaceHealthStrip();
   renderApprovalCenter();
   renderReviewQueue();
+  renderComparisonWorkbench();
 }
 
 function renderWorkspaceHub() {
@@ -1605,11 +1609,167 @@ function renderPromptSuggestionDock() {
   </button>`).join("");
 }
 
+function comparisonCandidates() {
+  const latestRun = state.runs[0];
+  const completedRuns = state.runs.filter((run) => runHealthGroup(run) === "completed");
+  const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed");
+  const latestAgent = state.agents[0];
+  const latestCouncil = state.councilRuns[0];
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const memoryCategories = new Set(memoryEntries.map((entry) => normalizeMemoryCategory(entry.category || entry.type)));
+  const commandCount = state.agents.reduce((total, agent) => total + Object.keys(agent.commands || {}).length, 0);
+  const roles = Array.isArray(latestCouncil?.roles) ? latestCouncil.roles : [];
+  return [
+    {
+      id: "recent-runs",
+      source: "Runs",
+      panel: "runs",
+      title: latestRun?.prompt || "Recent run evidence",
+      metric: state.runs.length ? `${completedRuns.length}/${state.runs.length} complete` : "seed",
+      evidence: [
+        latestRun ? `Latest: ${latestRun.status || "unknown"} with ${latestRun.agent || "default"}` : "No latest run captured",
+        failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"} need review` : "No failed runs in the current list",
+        latestRun ? `Started ${formatTimestamp(latestRun.started_at)}` : "Open Runs after the first execution",
+      ],
+      tradeoff: "Best when the next decision should follow observed execution rather than a fresh plan.",
+      recommendation: failedRuns.length ? "Review failures before launching a similar run." : state.runs.length ? "Use the latest successful run as the shortest path to continue." : "Create a baseline run before choosing by execution evidence.",
+      prompt: `Compare recent Astria runs and decide the next execution path.\n\nLatest run: ${latestRun?.prompt || "none"}\nStatus: ${latestRun?.status || "unknown"}\nCompleted runs: ${completedRuns.length}\nFailed runs: ${failedRuns.length}`,
+    },
+    {
+      id: "agent-profiles",
+      source: "Agents",
+      panel: "agents",
+      title: latestAgent?.name || "Agent profile options",
+      metric: state.agents.length ? `${state.agents.length} profile${state.agents.length === 1 ? "" : "s"}` : "seed",
+      evidence: [
+        latestAgent ? `Lead candidate: ${latestAgent.name}` : "No lead agent selected",
+        `${commandCount} saved command${commandCount === 1 ? "" : "s"}`,
+        latestAgent?.model ? `Model: ${latestAgent.model}` : "Model inherits default configuration",
+      ],
+      tradeoff: "Best when the decision depends on role, model, tools, or saved command fit.",
+      recommendation: commandCount ? "Start from the agent with the closest saved command." : "Pick a focused agent before adding more workflow state.",
+      prompt: `Compare Astria agent profiles for the next task.\n\nProfiles: ${state.agents.map((agent) => agent.name).join(", ") || "none"}\nSaved commands: ${commandCount}`,
+    },
+    {
+      id: "memory-context",
+      source: "Memory",
+      panel: "memory",
+      title: "Durable context",
+      metric: memoryEntries.length ? `${memoryEntries.length} item${memoryEntries.length === 1 ? "" : "s"}` : "seed",
+      evidence: [
+        `${memoryCategories.size || 0} memorized categor${memoryCategories.size === 1 ? "y" : "ies"}`,
+        memoryEntries[0]?.text ? `Latest: ${String(memoryEntries[0].text).slice(0, 90)}` : "No durable memory selected",
+        "Useful for preferences, decisions, risks, and architecture constraints",
+      ],
+      tradeoff: "Best when correctness depends on remembered project decisions instead of raw recency.",
+      recommendation: memoryEntries.length ? "Use memory context to avoid repeating settled decisions." : "Capture a decision or preference before relying on memory.",
+      prompt: `Compare current options against Astria memory.\n\nMemory categories: ${Array.from(memoryCategories).join(", ") || "uncategorized"}\nMemory count: ${memoryEntries.length}`,
+    },
+    {
+      id: "council-synthesis",
+      source: "Council",
+      panel: "council",
+      title: latestCouncil?.goal || "Council synthesis",
+      metric: roles.length ? `${roles.length} role${roles.length === 1 ? "" : "s"}` : "seed",
+      evidence: [
+        latestCouncil ? `Goal: ${latestCouncil.goal}` : "No council selected",
+        roles.length ? `Roles: ${roles.map((role) => role.role).join(", ")}` : "No role notes captured",
+        latestCouncil?.synthesis ? "Synthesis is ready for handoff" : "Synthesis pending",
+      ],
+      tradeoff: "Best when the next step needs planner, researcher, and reviewer balance.",
+      recommendation: latestCouncil?.synthesis ? "Use the council synthesis when tradeoffs matter more than speed." : "Run council before treating this as reviewed.",
+      prompt: `Compare the council synthesis against other Astria options.\n\nGoal: ${latestCouncil?.goal || "none"}\nRoles: ${roles.map((role) => role.role).join(", ") || "none"}\nSynthesis:\n${latestCouncil?.synthesis || ""}`,
+    },
+  ];
+}
+
+function renderComparisonWorkbench() {
+  const lanes = comparisonCandidates();
+  setText("nav-compare-count", lanes.length);
+  setText("manage-compare-count", `${lanes.length} lane${lanes.length === 1 ? "" : "s"}`);
+  setText("compare-summary", `${lanes.length} comparison lane${lanes.length === 1 ? "" : "s"} from current workspace evidence.`);
+  const list = $("comparison-lanes");
+  if (!list) return;
+  if (!state.selectedComparisonLane || !lanes.some((lane) => lane.id === state.selectedComparisonLane)) {
+    state.selectedComparisonLane = lanes[0]?.id || "";
+  }
+  list.innerHTML = lanes.map((lane) => `<article class="comparison-lane ${lane.id === state.selectedComparisonLane ? "active" : ""}" data-compare-lane="${escapeHTML(lane.id)}">
+    <div class="row-item-title"><span>${escapeHTML(lane.source)}</span><span class="tag">${escapeHTML(lane.metric)}</span></div>
+    <strong>${escapeHTML(lane.title)}</strong>
+    <p>${escapeHTML(lane.recommendation)}</p>
+    <div class="comparison-evidence">
+      ${lane.evidence.slice(0, 3).map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
+    </div>
+    <div class="row-actions">
+      <button type="button" data-compare-select="${escapeHTML(lane.id)}">Decision brief</button>
+      <button type="button" data-compare-draft="${escapeHTML(lane.id)}">Draft compare</button>
+      <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderComparisonDetail(lanes.find((lane) => lane.id === state.selectedComparisonLane) || lanes[0]);
+}
+
+function renderComparisonDetail(lane) {
+  const target = $("comparison-detail");
+  if (!target) return;
+  if (!lane) {
+    target.innerHTML = `<div class="empty-state">Select a comparison lane.</div>`;
+    return;
+  }
+  const title = String(lane.title || "");
+  const displayTitle = title.length > 140 ? `${title.slice(0, 137)}...` : title;
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(displayTitle)}</h3>
+      <div class="run-meta-grid">
+        <span>Source</span><strong>${escapeHTML(lane.source)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(lane.metric)}</strong>
+        <span>Route</span><strong>${escapeHTML(lane.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Evidence</h3>
+      <div class="comparison-evidence detail">
+        ${lane.evidence.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Tradeoff</h3>
+      <p>${escapeHTML(lane.tradeoff)}</p>
+      <h3>Recommendation</h3>
+      <p>${escapeHTML(lane.recommendation)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-compare-draft="${escapeHTML(lane.id)}">Draft compare</button>
+        <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function comparisonLaneByID(id) {
+  return comparisonCandidates().find((lane) => lane.id === id) || null;
+}
+
+function draftComparisonToChat(id) {
+  const lane = comparisonLaneByID(id);
+  if (!lane) return;
+  $("chat-input").value = `${lane.prompt}\n\nExplain why this path is better or worse than the other Astria options, then recommend one next action with validation.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Comparison drafted to chat.");
+}
+
 function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const compareCount = comparisonCandidates().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + 1);
+  setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
+  setText("nav-compare-count", compareCount);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + state.councilRuns.length + state.inboxItems.length + compareCount + 1);
 }
 
 function renderMCPStarport() {
@@ -2296,12 +2456,14 @@ async function loadMemory() {
     renderMemoryMapPreview();
     renderAgentContinuityDigest();
     renderHomeDockedTools();
+    renderComparisonWorkbench();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
     renderMemoryMapPreview();
     renderAgentContinuityDigest();
     renderHomeDockedTools();
+    renderComparisonWorkbench();
     showToast(error.message);
   }
 }
@@ -2322,6 +2484,7 @@ async function submitMemoryCandidate(event) {
     $("memory-candidate").value = "";
     $("memory-save-state").textContent = "Saved";
     renderMemoryMapPreview();
+    renderComparisonWorkbench();
     showToast("Memory approved.");
   } catch (error) {
     $("memory-save-state").textContent = "Error";
@@ -2335,6 +2498,7 @@ async function deleteMemoryEntry(name) {
   try {
     state.memory = await api(`/memory/${encodeURIComponent(name)}`, { method: "DELETE" });
     renderMemoryMapPreview();
+    renderComparisonWorkbench();
     showToast("Memory entry deleted.");
   } catch (error) {
     showToast(error.message);
@@ -2425,11 +2589,13 @@ async function loadCouncilRuns() {
     const data = await api("/council");
     state.councilRuns = Array.isArray(data.runs) ? data.runs : [];
     renderCouncilRuns();
+    renderComparisonWorkbench();
   } catch (error) {
     state.councilRuns = [];
     state.currentCouncilRun = null;
     setText("council-state", "Error");
     renderError(list, error.message);
+    renderComparisonWorkbench();
   }
 }
 
@@ -3109,6 +3275,7 @@ async function loadAgents() {
     updateAgentSelects();
     renderAgentContinuityDigest();
     renderAgentCapabilityRoster();
+    renderComparisonWorkbench();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
       return;
@@ -3126,6 +3293,7 @@ async function loadAgents() {
     renderError(list, error.message);
     if ($("agent-continuity-digest")) renderError($("agent-continuity-digest"), error.message);
     if (roster) renderError(roster, error.message);
+    renderComparisonWorkbench();
   }
 }
 
@@ -3883,6 +4051,7 @@ async function loadSessions(query = "") {
       renderKnowledgeCuration();
       renderPromptSuggestionDock();
       renderFocusBrief();
+      renderComparisonWorkbench();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
@@ -3904,6 +4073,7 @@ async function loadSessions(query = "") {
     renderKnowledgeCuration();
     renderPromptSuggestionDock();
     renderFocusBrief();
+    renderComparisonWorkbench();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
@@ -3911,6 +4081,7 @@ async function loadSessions(query = "") {
     renderKnowledgeCuration();
     renderPromptSuggestionDock();
     renderFocusBrief();
+    renderComparisonWorkbench();
   }
 }
 
@@ -3953,6 +4124,7 @@ async function loadRuns() {
     renderMemoryMapPreview();
     renderAgentContinuityDigest();
     renderRunsList();
+    renderComparisonWorkbench();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
       renderRunDetail(null);
@@ -3963,6 +4135,7 @@ async function loadRuns() {
     renderHomeActivity();
     renderMemoryMapPreview();
     renderAgentContinuityDigest();
+    renderComparisonWorkbench();
     renderError(list, error.message);
   }
 }
@@ -4945,6 +5118,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const compareSelect = event.target.closest("[data-compare-select]");
+  if (compareSelect) {
+    state.selectedComparisonLane = compareSelect.dataset.compareSelect || "";
+    renderComparisonWorkbench();
+    return;
+  }
+
+  const compareDraft = event.target.closest("[data-compare-draft]");
+  if (compareDraft) {
+    draftComparisonToChat(compareDraft.dataset.compareDraft);
+    return;
+  }
+
+  const compareLane = event.target.closest("[data-compare-lane]");
+  if (compareLane && !event.target.closest("button")) {
+    state.selectedComparisonLane = compareLane.dataset.compareLane || "";
+    renderComparisonWorkbench();
+    return;
+  }
+
   const action = event.target.closest("[data-action]");
   if (action?.dataset.action === "mcp-new") {
     beginMCPCreate();
@@ -5333,5 +5526,6 @@ renderPromptSuggestionDock();
 renderFocusBrief();
 renderApprovalCenter();
 renderWorkspaceHealthStrip();
+renderComparisonWorkbench();
 connectEventStream();
 refreshAll();
