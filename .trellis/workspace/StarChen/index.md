@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 113
+- **Total Sessions**: 114
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1038 | Active |
+| `journal-3.md` | ~1071 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 114 | 2026-06-08 | Durable workflow run store | `61f0062` | `main` |
 | 113 | 2026-06-08 | Archive completed Astria parity parents | `12e62b8` | `main` |
 | 112 | 2026-06-08 | Astria Kocoro parity phase 3 complete | `7d11b9d` | `main` |
 | 111 | 2026-06-08 | Astria stellar workbench UI language | `e510afb` | `main` |

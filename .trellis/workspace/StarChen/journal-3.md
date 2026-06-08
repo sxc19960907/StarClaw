@@ -1036,3 +1036,36 @@ Completed remaining parent acceptance and archived Astria Kocoro parity phase 1 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 114: Durable workflow run store
+
+**Date**: 2026-06-08
+**Task**: Durable workflow run store
+**Branch**: `main`
+
+### Summary
+
+Added optional local JSON persistence for daemon RunStore, recovery tests for run metadata/control/event sequence/corrupt files/limits, and backend spec guidance for durable run-store behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `61f0062` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
