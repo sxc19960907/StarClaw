@@ -99,6 +99,7 @@ type RunStore struct {
 	eventSeq    map[string]int
 	persistPath string
 	persistErr  error
+	eventBus    *EventBus
 }
 
 type runStoreEnvelope struct {
@@ -130,6 +131,12 @@ func NewPersistentRunStore(limit int, path string) (*RunStore, error) {
 	return store, nil
 }
 
+func (s *RunStore) SetEventBus(bus *EventBus) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.eventBus = bus
+}
+
 func (s *RunStore) Start(req RunAgentRequest) *RunRecord {
 	record := &RunRecord{
 		ID:        req.RequestID,
@@ -151,6 +158,7 @@ func (s *RunStore) Start(req RunAgentRequest) *RunRecord {
 		"channel": req.Channel,
 		"source":  req.Source,
 	})
+	lifecycleEvent := s.lifecycleEventLocked("run_started", record)
 	for len(s.order) > s.limit {
 		last := s.order[len(s.order)-1]
 		s.order = s.order[:len(s.order)-1]
@@ -158,6 +166,7 @@ func (s *RunStore) Start(req RunAgentRequest) *RunRecord {
 		delete(s.eventSeq, last)
 	}
 	s.persistLocked()
+	publishLifecycleEvent(lifecycleEvent)
 	return record
 }
 
@@ -210,14 +219,18 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 		record.Status = "error"
 		record.Error = err.Error()
 		s.addStructuredEventLocked(id, "run_error", map[string]any{"error": err.Error()})
+		lifecycleEvent := s.lifecycleEventLocked("run_error", record)
 		s.persistLocked()
+		publishLifecycleEvent(lifecycleEvent)
 		return
 	}
 	if response.Error != "" {
 		record.Status = "error"
 		record.Error = response.Error
 		s.addStructuredEventLocked(id, "run_error", map[string]any{"error": response.Error})
+		lifecycleEvent := s.lifecycleEventLocked("run_error", record)
 		s.persistLocked()
+		publishLifecycleEvent(lifecycleEvent)
 		return
 	}
 	record.Status = "completed"
@@ -225,7 +238,9 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 		"status": record.Status,
 		"usage":  response.Usage,
 	})
+	lifecycleEvent := s.lifecycleEventLocked("run_completed", record)
 	s.persistLocked()
+	publishLifecycleEvent(lifecycleEvent)
 }
 
 func (s *RunStore) AddEvent(id, eventType string, data map[string]any) {
@@ -460,6 +475,139 @@ func (s *RunStore) addStructuredEventLocked(id, eventType string, data map[strin
 	s.eventSeq[id]++
 	record.StructuredEvents = append(record.StructuredEvents,
 		newStructuredRunEvent(id, eventType, eventPhase(eventType), time.Now(), data, s.eventSeq[id]))
+}
+
+type pendingLifecycleEvent struct {
+	bus *EventBus
+	evt Event
+}
+
+func (s *RunStore) lifecycleEventLocked(eventType string, record *RunRecord) *pendingLifecycleEvent {
+	if s.eventBus == nil || record == nil {
+		return nil
+	}
+	payload := lifecycleEventPayload(record)
+	if len(payload) == 0 {
+		return nil
+	}
+	data, err := json.Marshal(redactEventData(eventType, payload))
+	if err != nil {
+		return nil
+	}
+	return &pendingLifecycleEvent{
+		bus: s.eventBus,
+		evt: Event{Type: eventType, Data: string(data)},
+	}
+}
+
+func publishLifecycleEvent(pending *pendingLifecycleEvent) {
+	if pending == nil || pending.bus == nil {
+		return
+	}
+	pending.bus.Publish(pending.evt)
+}
+
+func lifecycleEventPayload(record *RunRecord) map[string]any {
+	if record == nil || record.ID == "" {
+		return nil
+	}
+	payload := map[string]any{
+		"schema_version": structuredEventSchemaVersion,
+		"run_id":         record.ID,
+		"status":         record.Status,
+		"started_at":     record.StartedAt,
+	}
+	if record.Agent != "" {
+		payload["agent"] = record.Agent
+	}
+	if record.Channel != "" {
+		payload["channel"] = record.Channel
+	}
+	if record.Request.Source != "" {
+		payload["source"] = record.Request.Source
+	}
+	if record.SessionID != "" {
+		payload["session_id"] = record.SessionID
+	}
+	if record.EndedAt != nil {
+		payload["ended_at"] = record.EndedAt
+	}
+	if record.Error != "" {
+		payload["error"] = record.Error
+	}
+	if len(record.Usage) > 0 {
+		payload["usage"] = cloneIntMap(record.Usage)
+	}
+	if record.Budget != nil {
+		payload["budget_status"] = lifecycleBudgetPayload(record.Budget)
+	}
+	if record.Routing != nil {
+		payload["routing"] = lifecycleRoutingPayload(record.Routing)
+	}
+	if record.Fallback != nil {
+		payload["fallback"] = lifecycleFallbackPayload(record.Fallback)
+	}
+	return payload
+}
+
+func cloneIntMap(values map[string]int) map[string]int {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]int, len(values))
+	for key, value := range values {
+		out[key] = value
+	}
+	return out
+}
+
+func lifecycleBudgetPayload(status *agent.TokenBudgetUsage) map[string]any {
+	if status == nil {
+		return nil
+	}
+	payload := map[string]any{
+		"status":        status.Status,
+		"input_tokens":  status.InputTokens,
+		"output_tokens": status.OutputTokens,
+		"total_tokens":  status.TotalTokens,
+	}
+	if status.UnknownTurns > 0 {
+		payload["unknown_turns"] = status.UnknownTurns
+	}
+	if status.Detail != "" {
+		payload["detail"] = status.Detail
+	}
+	return payload
+}
+
+func lifecycleRoutingPayload(routing *agent.RouteRecommendation) map[string]any {
+	if routing == nil {
+		return nil
+	}
+	payload := map[string]any{
+		"complexity": routing.Complexity,
+		"route":      routing.Route,
+		"model_tier": routing.ModelTier,
+	}
+	if routing.Reason != "" {
+		payload["reason"] = routing.Reason
+	}
+	return payload
+}
+
+func lifecycleFallbackPayload(fallback *agent.FallbackDecision) map[string]any {
+	if fallback == nil {
+		return nil
+	}
+	payload := map[string]any{
+		"reason":     fallback.Reason,
+		"route":      fallback.Route,
+		"model_tier": fallback.ModelTier,
+	}
+	if fallback.Detail != "" {
+		payload["detail"] = fallback.Detail
+	}
+	return payload
 }
 
 func (s *RunStore) PersistError() error {

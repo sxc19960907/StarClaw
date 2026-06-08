@@ -76,6 +76,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 	if deps != nil {
 		tools.RegisterCalendarTools(deps.Registry, s.desktopRPC)
 	}
+	s.runStore.SetEventBus(s.eventBus)
 	return s
 }
 

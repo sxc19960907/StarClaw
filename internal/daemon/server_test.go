@@ -303,6 +303,43 @@ func TestHandleEventsReplaysThenStreamsLiveWithoutDuplicate(t *testing.T) {
 	}
 }
 
+func TestHandleEventsReplaysRunLifecycleEvents(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "sse-life", Text: "secret prompt", Channel: ChannelHTTP, Source: "test"})
+	firstID := s.eventBus.EventsSince("")[0].ID
+	s.runStore.Complete("sse-life", RunAgentResponse{SessionID: "sess-1"}, nil)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/events?last_event_id="+firstID, nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /events: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	events := readSSEEvents(t, resp.Body, 1)
+	cancel()
+	if len(events) != 1 || events[0].Type != "run_completed" {
+		t.Fatalf("events = %#v, want replayed run_completed", events)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(events[0].Data), &payload); err != nil {
+		t.Fatalf("decode lifecycle payload: %v", err)
+	}
+	if payload["run_id"] != "sse-life" || payload["status"] != "completed" || payload["session_id"] != "sess-1" {
+		t.Fatalf("payload = %#v, want completed sse-life sess-1", payload)
+	}
+	if strings.Contains(events[0].Data, "secret prompt") {
+		t.Fatalf("lifecycle SSE leaked prompt: %s", events[0].Data)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Schedule CRUD
 // ---------------------------------------------------------------------------
