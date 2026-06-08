@@ -130,3 +130,64 @@ Remaining post-Phase6 gaps likely need additional phases:
 - Phase8: native desktop and tool parity, expanding the Desktop RPC boundary into calendar/native tools, deeper browser handoff, AX integration, Ghostty/workspace helpers, and visual verification.
 - Phase9: share/sync/migration parity, including local share rendering, retractable publishing abstractions, sync dry-run/marker/uploader lifecycle, and Claude Code import/migration support.
 - Phase10: product polish and compatibility, including OpenAI-compatible streaming/tool-call deltas if StarClaw is intended to serve as a local OpenAI-style endpoint, plus Astria stellar workbench UI polish after core platform gaps are closed.
+
+## 2026-06-08 follow-up: Phase6 complete and Phase7 recommendation
+
+Phase6 child tasks are now complete and archived:
+
+1. `kocoro-style-workflow-orchestration`
+2. `daemon-mailbox-channel-runtime`
+3. `episodic-memory-sidecar-foundation`
+4. `desktop-rpc-boundary`
+5. `desktop-browser-tool-depth`
+6. `share-sync-delivery-lifecycle`
+
+Remaining module-level gaps against local Kocoro commit `74cdb3c`:
+
+- `internal/agenttypes`
+- `internal/cloudflow`
+- `internal/images`
+- `internal/keychain`
+- `internal/memory`
+- `internal/migrate`
+- `internal/sync`
+
+Remaining daemon gaps are now concentrated in channel/cloud delivery and platform lifecycle depth:
+
+- `ws_controller.go`
+- `channel_state_*`
+- `connection_state_cache.go`
+- `reply_route_index.go`
+- `delivery_inject.go`
+- `message_origin.go`
+- `system_event_store.go`
+- `suggestion_handler.go`
+- auth / IM bindings / Feishu handlers
+
+Recommended next parent:
+
+`Astria Kocoro parity phase 7: channel and cloud delivery parity`
+
+Goal: move StarClaw from local-only workflow/channel foundations toward Kocoro's channel delivery model: cloudflow dispatch contracts, connection state and route indexing, system events, suggestion events, channel lifecycle state, and optional external transport boundaries. Keep this local-first unless cloud credentials / off-machine transport are explicitly approved.
+
+Recommended child order:
+
+1. `cloudflow-dispatch-contract`
+   - Add a Kocoro-style cloudflow package boundary for slash command parsing/display/dispatch.
+   - Extend workflow parsing to support `/dag` as auto orchestration.
+   - Keep provider local/null by default; no cloud Gateway call in the first slice.
+
+2. `channel-route-index-connection-state`
+   - Add route index and connection-state cache foundations.
+   - Track route keys, last-seen state, and safe injection targets without external IM transports.
+
+3. `system-event-store-suggestions`
+   - Add durable system event store and suggestion records.
+   - Surface content-free system events for diagnostics and UI.
+
+4. `delivery-inject-lifecycle-depth`
+   - Deepen queue/mailbox delivery injection lifecycle around busy runs, orphan replies, and re-enqueue behavior.
+
+5. `external-channel-adapter-boundaries`
+   - Define Feishu/Slack/Telegram adapter interfaces and test fakes.
+   - Do not enable real external transport without explicit privacy and credential approval.
