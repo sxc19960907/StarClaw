@@ -1499,3 +1499,36 @@ Completed and archived the Astria Phase 5 integrated hardening parent after all 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 128: Session sync privacy batcher
+
+**Date**: 2026-06-08
+**Task**: Session sync privacy batcher
+**Branch**: `main`
+
+### Summary
+
+Implemented Phase10 session sync candidate discovery and privacy-preserving batching: scans default/named session dirs, filters by watermark/exclusions/failure retry state, strips assistant thinking blocks before size checks, records local load/size failures, and validates local-only boundaries with full Go tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1fb408a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

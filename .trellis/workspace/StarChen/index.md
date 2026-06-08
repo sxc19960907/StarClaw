@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 127
+- **Total Sessions**: 128
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1501 | Active |
+| `journal-3.md` | ~1534 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 128 | 2026-06-08 | Session sync privacy batcher | `1fb408a` | `main` |
 | 127 | 2026-06-08 | Phase 5 integrated hardening complete | `8cbcfc7`, `c37c565` | `main` |
 | 126 | 2026-06-08 | Phase 5 Kocoro gap audit | `c37c565` | `main` |
 | 125 | 2026-06-08 | Phase 5 docs current capabilities | `f489ff8` | `main` |
