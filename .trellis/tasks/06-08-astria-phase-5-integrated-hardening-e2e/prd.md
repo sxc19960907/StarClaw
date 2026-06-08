@@ -29,13 +29,13 @@ Phase 5 is not a new feature-pile phase. It is the acceptance layer for Phase 3 
 
 ## Acceptance Criteria
 
-- [ ] Phase 5 parent lists validation/hardening before any new capability expansion.
-- [ ] Each child has PRD acceptance criteria, clear non-goals, and validation commands.
-- [ ] Runtime E2E checks exercise the Phase 3/4 platform features together, not as isolated unit tests only.
-- [ ] Observability and API checks prove local compatibility without cloud telemetry.
-- [ ] Secret-leakage regression covers metrics, traces, summaries, support/handoff-style output, and Web UI trace/recovery surfaces.
-- [ ] Docs explain the current Astria capability set, including limitations and local-only boundaries.
-- [ ] Final Kocoro gap audit is based on validated behavior after hardening, not assumptions.
+- [x] Phase 5 parent lists validation/hardening before any new capability expansion.
+- [x] Each child has PRD acceptance criteria, clear non-goals, and validation commands.
+- [x] Runtime E2E checks exercise the Phase 3/4 platform features together, not as isolated unit tests only.
+- [x] Observability and API checks prove local compatibility without cloud telemetry.
+- [x] Secret-leakage regression covers metrics, traces, summaries, support/handoff-style output, and Web UI trace/recovery surfaces.
+- [x] Docs explain the current Astria capability set, including limitations and local-only boundaries.
+- [x] Final Kocoro gap audit is based on validated behavior after hardening, not assumptions.
 
 ## Non-Goals
 
@@ -43,21 +43,3 @@ Phase 5 is not a new feature-pile phase. It is the acceptance layer for Phase 3 
 - No external hosted service integration.
 - No new remote sync or team account model.
 - No broad visual redesign unless a bug blocks validation.
-
-## Goal
-
-TBD.
-
-## Requirements
-
-- TBD
-
-## Acceptance Criteria
-
-- [ ] TBD
-
-## Notes
-
-- Keep `prd.md` focused on requirements, constraints, and acceptance criteria.
-- Lightweight tasks can remain PRD-only.
-- For complex tasks, add `design.md` for technical design and `implement.md` for execution planning before `task.py start`.

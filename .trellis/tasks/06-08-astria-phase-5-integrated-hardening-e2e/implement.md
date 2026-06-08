@@ -2,16 +2,16 @@
 
 ## Checklist
 
-1. Create Phase 5 parent task and planning artifacts.
-2. Create child tasks in the specified order.
-3. For each child:
+1. [x] Create Phase 5 parent task and planning artifacts.
+2. [x] Create child tasks in the specified order.
+3. [x] For each child:
    - write PRD/design/implement as needed
    - start only after planning review
    - run `trellis-before-dev` before edits
    - run targeted validation and `go test ./...` when code changes land
    - commit, archive, and journal independently
-4. After all validation/hardening children finish, complete `phase5-kocoro-gap-audit`.
-5. Update parent acceptance criteria, archive parent, and record final Phase 5 journal.
+4. [x] After all validation/hardening children finish, complete `phase5-kocoro-gap-audit`.
+5. [x] Update parent acceptance criteria, archive parent, and record final Phase 5 journal.
 
 ## Initial Child Task Order
 
