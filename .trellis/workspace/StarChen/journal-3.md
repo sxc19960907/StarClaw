@@ -151,6 +151,30 @@ Added a Home Approval Center that centralizes approvals, permission risk, diagno
 [OK] **Completed**
 
 
+## Session 116: Run Follow-up Suggestions
+
+**Date**: 2026-06-08
+**Task**: Run follow-up suggestions
+**Branch**: `main`
+
+### Summary
+
+Added Suggest follow-up actions to Chat run summaries and Mission Control run details. The actions draft a run-derived next prompt into Home using run id, status, agent, session, usage, original prompt, and result preview.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `./scripts/smoke_webui_runs.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 115: Prompt Suggestion Dock
 
 **Date**: 2026-06-07

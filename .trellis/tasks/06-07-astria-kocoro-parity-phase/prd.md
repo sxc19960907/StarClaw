@@ -31,6 +31,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-06-07-knowledge-curation-console` | Add a Knowledge Curation console for reviewable long-term memory candidates. |
 | P1 | `06-07-06-07-mcp-capability-inspector` | Add a Tool Dock Inspector for MCP transports, env keys, readiness flags, and no-dock recovery. |
 | P1 | `06-07-06-07-prompt-suggestion-dock` | Add Kocoro-style next prompt suggestions derived from current Astria workspace state. |
+| P1 | `06-07-06-07-run-follow-up-suggestions` | Add run-completion follow-up suggestion actions to Chat summaries and Mission Control details. |
 
 ## Acceptance Criteria
 

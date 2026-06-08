@@ -419,7 +419,7 @@ function commandCenterItems() {
   const recentRunItems = state.runs.slice(0, 3).map((run) => ({
     id: `run:${run.id}`,
     type: "Recent",
-    title: run.prompt || run.id,
+    title: run.prompt && run.id ? `${run.prompt} · ${run.id}` : run.prompt || run.id,
     detail: `${run.status || "unknown"} · ${run.agent || "default"} · open run`,
     run: () => selectRun(run.id),
   }));
@@ -3751,6 +3751,7 @@ function renderRunDetail(run) {
         <button type="button" data-run-detail-copy-summary>Copy summary</button>
         <button type="button" data-run-detail-copy-prompt>Copy prompt</button>
         <button type="button" data-run-detail-copy-result>Copy result</button>
+        ${prompt ? `<button type="button" data-run-detail-follow-up>Suggest follow-up</button>` : ""}
         ${sessionID ? `<button type="button" data-run-detail-open-session="${escapeHTML(sessionID)}">Open session</button>` : ""}
         ${prompt ? `<button type="button" data-run-detail-rerun>Re-run</button>` : ""}
       </div>
@@ -3963,6 +3964,25 @@ function runSummaryText(run) {
     `Session: ${runSessionID(run) || "-"}`,
     `Usage: ${formatUsage(usage)}`,
     `Prompt: ${runPrompt(run) || "-"}`,
+  ].join("\n");
+}
+
+function runFollowUpPrompt(run) {
+  const prompt = runPrompt(run);
+  const result = runResultText(run);
+  const usage = run?.usage || run?.response?.usage || {};
+  return [
+    "Continue from this completed Astria run. Summarize what was achieved, identify unresolved risks, and propose the next concrete action with validation.",
+    "",
+    `Run: ${run?.id || "-"}`,
+    `Status: ${run?.status || "-"}`,
+    `Agent: ${run?.agent || "default"}`,
+    `Session: ${runSessionID(run) || "-"}`,
+    `Usage: ${formatUsage(usage)}`,
+    `Original prompt: ${prompt || "-"}`,
+    "",
+    "Result preview:",
+    String(result || "").slice(0, 1600),
   ].join("\n");
 }
 
@@ -4239,6 +4259,15 @@ function renderRunSummary(result, payload) {
     .map(([key, value]) => `${key}: ${value}`);
   const usageText = usageItems.length ? usageItems.join(", ") : "-";
   const requestID = payload.request_id || "-";
+  const run = {
+    id: requestID,
+    status: "completed",
+    agent,
+    session_id: sessionID,
+    prompt: payload.text || "",
+    response: result,
+    usage,
+  };
   const summaryText = [
     `Session: ${sessionID || "-"}`,
     `Agent: ${agent}`,
@@ -4262,6 +4291,7 @@ function renderRunSummary(result, payload) {
     </div>
     <div class="run-summary-actions">
       <button type="button" data-run-summary-copy="${escapeHTML(summaryText)}">Copy summary</button>
+      <button type="button" data-run-follow-up="${escapeHTML(runFollowUpPrompt(run))}">Suggest follow-up</button>
       ${openRunAction}
       ${openSessionAction}
     </div>`;
@@ -4725,6 +4755,13 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const runFollowUp = event.target.closest("[data-run-follow-up]");
+  if (runFollowUp) {
+    seedMissionPrompt(runFollowUp.dataset.runFollowUp || "");
+    showToast("Follow-up prompt drafted.");
+    return;
+  }
+
   const agentTestCopySummary = event.target.closest("[data-agent-test-copy-summary]");
   if (agentTestCopySummary) {
     copyText(agentTestCopySummary.dataset.agentTestCopySummary, "Agent test summary copied.")
@@ -4754,6 +4791,13 @@ document.addEventListener("click", (event) => {
     copyText(runResultText(state.currentRunDetail), "Result copied.")
       .then(() => markButtonCopied(runDetailCopyResult))
       .catch((error) => showToast(error.message));
+    return;
+  }
+
+  const runDetailFollowUp = event.target.closest("[data-run-detail-follow-up]");
+  if (runDetailFollowUp) {
+    seedMissionPrompt(runFollowUpPrompt(state.currentRunDetail));
+    showToast("Follow-up prompt drafted.");
     return;
   }
 

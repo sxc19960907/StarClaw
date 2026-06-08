@@ -1,0 +1,29 @@
+{
+  "id": "06-07-run-follow-up-suggestions",
+  "name": "06-07-run-follow-up-suggestions",
+  "title": "Run follow-up suggestions",
+  "description": "Add run-completion follow-up suggestion actions to Chat run summaries and Mission Control run details.",
+  "status": "done",
+  "dev_type": "implementation",
+  "scope": "Astria run follow-up suggestions",
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-07",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/assets/app.js",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Chat run summaries and Mission Control run details now include Suggest follow-up actions that draft a run-derived next prompt into the Home mission composer.",
+  "meta": {}
+}
