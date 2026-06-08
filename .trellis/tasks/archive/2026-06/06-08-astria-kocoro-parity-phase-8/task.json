@@ -3,7 +3,7 @@
   "name": "astria-kocoro-parity-phase-8",
   "title": "Astria Kocoro parity phase 8: local API streaming and runtime compatibility",
   "description": "",
-  "status": "planning",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,7 +11,7 @@
   "creator": "StarChen",
   "assignee": "StarChen",
   "createdAt": "2026-06-08",
-  "completedAt": null,
+  "completedAt": "2026-06-08",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,
@@ -22,7 +22,8 @@
     "06-08-openai-compatible-streaming-deltas",
     "06-08-ws-controller-cloud-lifecycle",
     "06-08-streaming-runtime-edge-cases",
-    "06-08-sse-reconnect-idle-watchdog"
+    "06-08-sse-reconnect-idle-watchdog",
+    "06-08-native-tool-parity-followup"
   ],
   "parent": null,
   "relatedFiles": [],

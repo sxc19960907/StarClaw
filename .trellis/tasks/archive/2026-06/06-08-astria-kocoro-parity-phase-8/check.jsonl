@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Verify Phase 8 remained local-first and daemon/tool safe."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify the final phase split accounts for cross-layer risk."}
+{"file": ".trellis/research/kocoro-local-comparison-phase8-plan.md", "reason": "Verify all Phase 8 child tasks were covered."}
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Verify Phase 8 ends with a fresh Kocoro comparison and Phase 9 plan."}

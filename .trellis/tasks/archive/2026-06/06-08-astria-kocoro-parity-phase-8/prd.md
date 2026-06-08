@@ -41,7 +41,7 @@ Close the next local-first Kocoro parity gaps after Phase 7 by improving local A
 
 ## Acceptance Criteria
 
-- [ ] Child tasks are planned, implemented, validated, committed, and archived independently.
-- [ ] Phase 8 remains local-first by default.
-- [ ] Real cloud credentials/transports are not enabled without explicit approval.
-- [ ] Phase 8 ends with a fresh Kocoro comparison and a concrete Phase 9 native tool/local integration plan.
+- [x] Child tasks are planned, implemented, validated, committed, and archived independently.
+- [x] Phase 8 remains local-first by default.
+- [x] Real cloud credentials/transports are not enabled without explicit approval.
+- [x] Phase 8 ends with a fresh Kocoro comparison and a concrete Phase 9 native tool/local integration plan.

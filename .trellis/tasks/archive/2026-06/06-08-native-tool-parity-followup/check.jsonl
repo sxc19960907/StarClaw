@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Verify planning respects backend/tool safety guidelines."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Verify the phase split accounts for cross-layer risk and reuse."}
+{"file": ".trellis/research/kocoro-local-comparison-phase8-plan.md", "reason": "Verify this followup is consistent with the prior Phase 8 comparison."}
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Verify the delivered comparison and Phase 9 plan."}
+{"file": ".trellis/tasks/archive/2026-06/06-08-astria-kocoro-parity-phase-8/prd.md", "reason": "Verify parent Phase 8 acceptance can be completed by this followup."}
