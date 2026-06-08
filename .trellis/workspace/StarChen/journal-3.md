@@ -970,3 +970,36 @@ Documented Astria stellar UI grammar, unified Home/Run Quality/Budget/Snapshot w
 ### Next Steps
 
 - None - task complete
+
+
+## Session 112: Astria Kocoro parity phase 3 complete
+
+**Date**: 2026-06-08
+**Task**: Astria Kocoro parity phase 3 complete
+**Branch**: `main`
+
+### Summary
+
+Completed and archived phase 3 after finishing structured observability, workflow control API, and stellar workbench UI language, with full tests and Web UI smoke validation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7d11b9d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
