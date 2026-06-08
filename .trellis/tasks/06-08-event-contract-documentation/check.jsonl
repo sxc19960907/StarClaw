@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Final backend documentation check."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Verify daemon API doc placement/linking."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify event/redaction contract accuracy."}
+{"file": ".trellis/tasks/06-08-event-contract-documentation/research/current-event-surfaces.md", "reason": "Verify docs match current evidence."}

@@ -21,7 +21,8 @@
   "children": [
     "06-08-eventbus-replay-sse-resilience",
     "06-08-run-session-lifecycle-events",
-    "06-08-webui-live-recovery"
+    "06-08-webui-live-recovery",
+    "06-08-event-contract-documentation"
   ],
   "parent": null,
   "relatedFiles": [],

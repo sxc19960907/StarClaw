@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend documentation and test expectations."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Daemon Web UI/API documentation scope."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Runtime observability, streaming, and redaction contracts."}
+{"file": ".trellis/tasks/06-08-event-contract-documentation/research/current-event-surfaces.md", "reason": "Current event surface evidence."}
