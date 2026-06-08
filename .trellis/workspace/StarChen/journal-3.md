@@ -1135,3 +1135,36 @@ Added approved replay control boundary: unapproved replay remains plan-only, app
 ### Next Steps
 
 - None - task complete
+
+
+## Session 117: Runtime pause resume support
+
+**Date**: 2026-06-08
+**Task**: Runtime pause resume support
+**Branch**: `main`
+
+### Summary
+
+Added cooperative runtime pause/resume support with agent loop pause points before model/tool calls, daemon runtime pause controllers, active pause/resume control responses, cancel unblocking, durable control/step metadata, tests, and backend spec guidance.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a6814a2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
