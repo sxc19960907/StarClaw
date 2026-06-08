@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/share"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,6 +103,9 @@ func TestPublishToWebTool_Run_HappyPath(t *testing.T) {
 	if !strings.Contains(result.Content, "Published") {
 		t.Errorf("Expected 'Published' in result, got: %s", result.Content)
 	}
+	if !strings.Contains(result.Content, "ID:") {
+		t.Errorf("Expected artifact ID in result, got: %s", result.Content)
+	}
 	if !strings.Contains(result.Content, "Local path:") {
 		t.Errorf("Expected 'Local path:' in result, got: %s", result.Content)
 	}
@@ -135,6 +139,17 @@ func TestPublishToWebTool_Run_HappyPath(t *testing.T) {
 	}
 	if !found {
 		t.Error("published file was not found in ~/.starclaw/web/ directory")
+	}
+	store := share.NewStore(starclawDir)
+	artifacts, err := store.List(false)
+	if err != nil {
+		t.Fatalf("list manifest: %v", err)
+	}
+	if len(artifacts) == 0 {
+		t.Fatal("expected publish manifest record")
+	}
+	if artifacts[0].Status != share.StatusActive || artifacts[0].Filename != "test.html" {
+		t.Fatalf("unexpected manifest artifact: %#v", artifacts[0])
 	}
 
 	// Cleanup: remove published files

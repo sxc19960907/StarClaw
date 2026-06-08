@@ -82,6 +82,8 @@ func RegisterLocalTools(toolsConfig ...config.ToolsConfig) *agent.ToolRegistry {
 
 	// Publish to web tool
 	reg.Register(NewPublishToWebTool())
+	reg.Register(NewListPublishedFilesTool())
+	reg.Register(NewRetractPublishedFileTool())
 
 	// Skills tools
 	skillsDir := config.StarclawDir()

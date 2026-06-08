@@ -12,6 +12,7 @@ import (
 
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/share"
 )
 
 // PublishToWebTool copies a local file to ~/.starclaw/web/ and returns a URL
@@ -106,9 +107,22 @@ func (t *PublishToWebTool) Run(ctx context.Context, argsJSON string) (agent.Tool
 
 	// Build result
 	url := fmt.Sprintf("http://localhost:7533/web/%s/%s", id, filename)
+	store := share.NewStore(starclawDir)
+	artifact, err := store.Record(share.Artifact{
+		ID:         id,
+		Filename:   filename,
+		SourcePath: path,
+		LocalPath:  dst,
+		URL:        url,
+		Purpose:    args.Purpose,
+		SizeBytes:  info.Size(),
+	})
+	if err != nil {
+		return agent.TransientError(fmt.Sprintf("failed to record published file: %v", err)), nil
+	}
 	result := fmt.Sprintf(
-		"Published.\nURL: %s\nLocal path: %s\nSize: %d bytes",
-		url, dst, info.Size(),
+		"Published.\nID: %s\nURL: %s\nLocal path: %s\nSize: %d bytes",
+		artifact.ID, url, dst, info.Size(),
 	)
 	if args.Purpose != "" {
 		result += fmt.Sprintf("\nPurpose: %s", args.Purpose)
