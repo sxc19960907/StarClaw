@@ -19,7 +19,7 @@
   "pr_url": null,
   "subtasks": [],
   "children": [],
-  "parent": "06-08-astria-kocoro-parity-phase-2",
+  "parent": null,
   "relatedFiles": [
     ".trellis/tasks/06-08-knowledge-conflict-reconciliation/prd.md",
     "internal/daemon/webui/index.html",
