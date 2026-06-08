@@ -1697,3 +1697,37 @@ Started Phase12 from the Phase11 Kocoro gap review and implemented the first chi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 134: Run session lifecycle events
+
+**Date**: 2026-06-08
+**Task**: Run session lifecycle events
+**Branch**: `main`
+
+### Summary
+
+Implemented local EventBus run lifecycle publishing for run_started, run_completed, and run_error; added replay and redaction tests; planned and archived the Phase12 child task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `17ce4ec` | (see git log) |
+| `a3d6e9e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

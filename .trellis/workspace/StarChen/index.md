@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 133
+- **Total Sessions**: 134
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1699 | Active |
+| `journal-3.md` | ~1733 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 134 | 2026-06-08 | Run session lifecycle events | `17ce4ec`, `a3d6e9e` | `main` |
 | 133 | 2026-06-08 | EventBus replay SSE resilience | `c8fd217` | `main` |
 | 132 | 2026-06-08 | Phase11 streaming parity closeout | `c09daa0` | `main` |
 | 131 | 2026-06-08 | Provider stream watchdog parity | `e67c78e` | `main` |
