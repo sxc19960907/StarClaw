@@ -1532,3 +1532,36 @@ Implemented Phase10 session sync candidate discovery and privacy-preserving batc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 129: OpenAI gateway streaming parity
+
+**Date**: 2026-06-08
+**Task**: OpenAI gateway streaming parity
+**Branch**: `main`
+
+### Summary
+
+Started Phase11 streaming hardening and completed the OpenAI-compatible gateway streaming child: documented stream:true support, added local streaming examples, exposed run metadata for streaming runs, strengthened SSE chunk/DONE/error tests, and updated backend specs to reflect the streaming contract.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `347a137` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
