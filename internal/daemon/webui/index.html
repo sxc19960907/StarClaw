@@ -114,6 +114,10 @@
               <span><span class="nav-icon" aria-hidden="true">⋱</span>来源登记</span>
               <small id="nav-sources-count">0</small>
             </button>
+            <button class="nav-item" data-panel="citation" aria-label="Citation Planner">
+              <span><span class="nav-icon" aria-hidden="true">⌁</span>引用校准</span>
+              <small id="nav-citation-count">0</small>
+            </button>
             <button class="nav-item" data-panel="council" aria-label="Agent Council">
               <span><span class="nav-icon" aria-hidden="true">✷</span>智能体议会</span>
               <small id="nav-council-count">0</small>
@@ -609,6 +613,11 @@
                 <strong id="manage-sources-count">0 sources</strong>
                 <small>Review freshness, reliability, and maintenance actions for knowledge sources.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="citation">
+                <span>Citation Planner</span>
+                <strong id="manage-citation-count">0 checks</strong>
+                <small>Plan source coverage, claim citations, freshness, and evidence gaps.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="council">
                 <span>Agent Council</span>
                 <strong id="manage-council-count">0 reviews</strong>
@@ -983,6 +992,41 @@
             </div>
             <div class="source-registry-detail" id="source-registry-detail">
               <div class="empty-state">Select a source row.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-citation" aria-labelledby="citation-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="citation-heading">Citation Planner</h2>
+              <p id="citation-summary">Plan source coverage, citation rules, freshness checks, and evidence gaps before drafting.</p>
+            </div>
+            <div class="citation-grounding-form">
+              <label>
+                Claim scope
+                <textarea id="citation-claim-scope" rows="3" aria-label="Citation claim scope" placeholder="The claim, answer, data finding, or handoff section that needs grounding."></textarea>
+              </label>
+              <label>
+                Source posture
+                <input id="citation-source-posture" aria-label="Citation source posture" placeholder="official docs only, local memory plus browser evidence, fresh source required">
+              </label>
+              <label>
+                Evidence level
+                <input id="citation-evidence-level" aria-label="Citation evidence level" placeholder="direct quote, cited summary, timestamped source, or gap report">
+              </label>
+            </div>
+            <div class="citation-grounding-cards" id="citation-grounding-cards">
+              <div class="empty-state">No citation grounding cards yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Grounding Brief</h2>
+              <p>Separate sourced claims from assumptions, stale facts, and missing evidence.</p>
+            </div>
+            <div class="citation-grounding-detail" id="citation-grounding-detail">
+              <div class="empty-state">Select a grounding card.</div>
             </div>
           </aside>
         </section>

@@ -494,6 +494,29 @@ Added a Home Focus Brief that summarizes the current Astria mission stage, selec
 [OK] **Completed**
 
 
+## Session 125: Citation Grounding Planner
+
+**Date**: 2026-06-08
+**Task**: Citation grounding planner
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Citation Grounding Planner for source coverage, claim-to-citation maps, quote and evidence capture, freshness/version risk, and evidence gap escalation. The planner accepts claim scope, source posture, and evidence level, then drafts grounding prompts or routes to Source Registry, Memory, Browser Planner, Data Planner, and Share Pack.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 124: Starter Kit Launcher
 
 **Date**: 2026-06-08

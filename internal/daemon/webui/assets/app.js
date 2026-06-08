@@ -28,6 +28,10 @@ const state = {
   dataOutputFormat: "",
   selectedDeliveryLane: "",
   selectedSourceRow: "",
+  selectedCitationGrounding: "",
+  citationClaimScope: "",
+  citationSourcePosture: "",
+  citationEvidenceLevel: "",
   promptLabGoal: "",
   diagnostics: null,
   config: null,
@@ -69,6 +73,7 @@ const views = {
   mcp: ["MCP 星港", "Inspect configured MCP servers and docking readiness."],
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
   sources: ["来源登记", "Inspect freshness and reliability for knowledge sources."],
+  citation: ["引用校准", "Plan source coverage, citations, and evidence gaps."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
@@ -1239,6 +1244,7 @@ function renderHomeActivity() {
   renderReviewQueue();
   renderComparisonWorkbench();
   renderSourceRegistry();
+  renderCitationGroundingPlanner();
   renderPromptExperimentLab();
   renderReuseGallery();
   renderStarterKitLauncher();
@@ -1288,6 +1294,7 @@ function renderHomeDockedTools() {
   renderReviewQueue();
   renderComparisonWorkbench();
   renderSourceRegistry();
+  renderCitationGroundingPlanner();
   renderPromptExperimentLab();
   renderReuseGallery();
   renderStarterKitLauncher();
@@ -2912,6 +2919,7 @@ function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
   const sourceCount = sourceRegistryRows().length;
+  const citationCount = citationGroundingCards().length;
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
@@ -2923,6 +2931,8 @@ function renderManageCount() {
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-sources-count", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
   setText("nav-sources-count", sourceCount);
+  setText("manage-citation-count", `${citationCount} check${citationCount === 1 ? "" : "s"}`);
+  setText("nav-citation-count", citationCount);
   setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
   setText("nav-compare-count", compareCount);
   setText("manage-promptlab-count", `${promptVariantCount} variant${promptVariantCount === 1 ? "" : "s"}`);
@@ -2939,7 +2949,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -3461,6 +3471,154 @@ function draftSourceMaintenanceToChat(id) {
   switchPanel("chat");
   $("chat-input").focus();
   showToast("Source maintenance drafted to chat.");
+}
+
+function citationGroundingContext() {
+  const claim = ($("citation-claim-scope")?.value || state.citationClaimScope || "").trim();
+  const posture = ($("citation-source-posture")?.value || state.citationSourcePosture || "").trim();
+  const evidence = ($("citation-evidence-level")?.value || state.citationEvidenceLevel || "").trim();
+  return {
+    claim: claim || "The claim, answer, data finding, browser result, or handoff section that needs grounding.",
+    posture: posture || "Use the strongest available local sources first, then request fresh browser evidence if needed.",
+    evidence: evidence || "Cited summary with direct quotes or gap report for unsupported claims.",
+    hasClaim: Boolean(claim),
+  };
+}
+
+function citationGroundingCards() {
+  const ctx = citationGroundingContext();
+  const sourceCount = sourceRegistryRows().length;
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const latestRun = state.runs[0];
+  return [
+    {
+      id: "coverage",
+      type: "Coverage",
+      title: "Source coverage check",
+      panel: "sources",
+      evidence: `${sourceCount} source lanes`,
+      readiness: sourceCount ? "review" : "seed",
+      rule: "List which claims have sources and which still need evidence.",
+      gap: "Missing source lane, stale memory, or unsupported conclusion.",
+      prompt: `Plan an Astria source coverage check.\n\nClaim scope: ${ctx.claim}\nSource posture: ${ctx.posture}\nEvidence level: ${ctx.evidence}\nSource lanes: ${sourceCount}\n\nMap the claim into citeable parts, match each part to current Astria sources, identify unsupported pieces, and return a coverage table with source, reliability, freshness, and next evidence action. Keep the result local and do not invent citations.`,
+    },
+    {
+      id: "claim-map",
+      type: "Claim map",
+      title: "Claim-to-citation map",
+      panel: "memory",
+      evidence: `${memoryCount} memory entries`,
+      readiness: memoryCount ? "grounded" : "needs memory",
+      rule: "Separate durable memory from fresh evidence requirements.",
+      gap: "Claim depends on memory without source or freshness note.",
+      prompt: `Plan an Astria claim-to-citation map.\n\nClaim scope: ${ctx.claim}\nSource posture: ${ctx.posture}\nEvidence level: ${ctx.evidence}\nMemory entries: ${memoryCount}\nLatest run: ${latestRun?.prompt || "none"}\n\nBreak the answer into atomic claims, assign each claim to memory, run evidence, browser evidence, data evidence, or unresolved gap, and state what cannot be cited safely.`,
+    },
+    {
+      id: "quote-capture",
+      type: "Quote",
+      title: "Quote and evidence capture",
+      panel: "browser",
+      evidence: "browser or source excerpt",
+      readiness: "capture",
+      rule: "Use short quotes or precise summaries; avoid private or irrelevant content.",
+      gap: "No direct excerpt, screenshot, selector, or source location for key claim.",
+      prompt: `Plan an Astria quote and evidence capture mission.\n\nClaim scope: ${ctx.claim}\nSource posture: ${ctx.posture}\nEvidence level: ${ctx.evidence}\n\nIdentify which claims need direct quotes, screenshots, selectors, or source locations. Capture only what is necessary, cite the source location, and flag private or sensitive content that should not be copied.`,
+    },
+    {
+      id: "freshness",
+      type: "Freshness",
+      title: "Freshness and version risk",
+      panel: "data",
+      evidence: "timestamp + source version",
+      readiness: "time-sensitive",
+      rule: "Treat unstable facts as stale until verified with a dated source.",
+      gap: "No timestamp, version, release date, or data extraction date.",
+      prompt: `Plan an Astria freshness and version risk review.\n\nClaim scope: ${ctx.claim}\nSource posture: ${ctx.posture}\nEvidence level: ${ctx.evidence}\n\nIdentify time-sensitive claims, required source dates, data extraction timestamps, version labels, and stale-risk warnings. Return what must be rechecked before the answer is trusted.`,
+    },
+    {
+      id: "gap-escalation",
+      type: "Gap",
+      title: "Evidence gap escalation",
+      panel: "share",
+      evidence: "gap report",
+      readiness: "escalate",
+      rule: "Block confident wording when evidence is incomplete.",
+      gap: "Unverified claim, weak source, conflict, or missing approval.",
+      prompt: `Plan an Astria evidence gap escalation.\n\nClaim scope: ${ctx.claim}\nSource posture: ${ctx.posture}\nEvidence level: ${ctx.evidence}\n\nList unsupported claims, weak citations, conflicting sources, privacy or approval blockers, and the next route to resolve each gap. Produce safe wording that distinguishes facts, assumptions, and open questions.`,
+    },
+  ];
+}
+
+function renderCitationGroundingPlanner() {
+  const cards = citationGroundingCards();
+  setText("nav-citation-count", cards.length);
+  setText("manage-citation-count", `${cards.length} check${cards.length === 1 ? "" : "s"}`);
+  setText("citation-summary", `${cards.length} grounding check${cards.length === 1 ? "" : "s"} for source coverage, claim maps, quote capture, freshness, and evidence gaps.`);
+  const list = $("citation-grounding-cards");
+  if (!list) return;
+  if (!state.selectedCitationGrounding || !cards.some((card) => card.id === state.selectedCitationGrounding)) {
+    state.selectedCitationGrounding = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="citation-grounding-card ${card.id === state.selectedCitationGrounding ? "active" : ""}" data-citation-grounding="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="citation-grounding-grid">
+      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>Citation rule</span><strong>${escapeHTML(card.rule)}</strong>
+      <span>Gap trigger</span><strong>${escapeHTML(card.gap)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-citation-select="${escapeHTML(card.id)}">Grounding brief</button>
+      <button type="button" data-citation-draft="${escapeHTML(card.id)}">Draft grounding</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderCitationGroundingDetail(cards.find((card) => card.id === state.selectedCitationGrounding) || cards[0]);
+}
+
+function renderCitationGroundingDetail(card) {
+  const target = $("citation-grounding-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a grounding card.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Citation rule</h3>
+      <p>${escapeHTML(card.rule)}</p>
+      <h3>Gap trigger</h3>
+      <p>${escapeHTML(card.gap)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-citation-draft="${escapeHTML(card.id)}">Draft grounding</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function citationGroundingByID(id) {
+  return citationGroundingCards().find((card) => card.id === id) || null;
+}
+
+function draftCitationGroundingToChat(id) {
+  const card = citationGroundingByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a citation grounding brief with claim map, required sources, citation rules, freshness checks, evidence gaps, uncertainty wording, and next Astria route.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Citation grounding drafted to chat.");
 }
 
 function renderMemoryTaxonomyBar(categories) {
@@ -6651,6 +6809,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const citationSelect = event.target.closest("[data-citation-select]");
+  if (citationSelect) {
+    state.selectedCitationGrounding = citationSelect.dataset.citationSelect || "";
+    renderCitationGroundingPlanner();
+    return;
+  }
+
+  const citationDraft = event.target.closest("[data-citation-draft]");
+  if (citationDraft) {
+    draftCitationGroundingToChat(citationDraft.dataset.citationDraft);
+    return;
+  }
+
+  const citationGrounding = event.target.closest("[data-citation-grounding]");
+  if (citationGrounding && !event.target.closest("button")) {
+    state.selectedCitationGrounding = citationGrounding.dataset.citationGrounding || "";
+    renderCitationGroundingPlanner();
+    return;
+  }
+
   const action = event.target.closest("[data-action]");
   if (action?.dataset.action === "mcp-new") {
     beginMCPCreate();
@@ -7068,11 +7246,24 @@ $("data-output-format").addEventListener("input", (event) => {
   state.dataOutputFormat = event.target.value;
   renderDataInsightPlanner();
 });
+$("citation-claim-scope").addEventListener("input", (event) => {
+  state.citationClaimScope = event.target.value;
+  renderCitationGroundingPlanner();
+});
+$("citation-source-posture").addEventListener("input", (event) => {
+  state.citationSourcePosture = event.target.value;
+  renderCitationGroundingPlanner();
+});
+$("citation-evidence-level").addEventListener("input", (event) => {
+  state.citationEvidenceLevel = event.target.value;
+  renderCitationGroundingPlanner();
+});
 
 renderHomeMode();
 renderStrategyMatrix();
 renderFileIntake();
 renderSourceRegistry();
+renderCitationGroundingPlanner();
 renderWorkspaceHub();
 renderKnowledgeCuration();
 renderToolDockInspector();
