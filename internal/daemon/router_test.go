@@ -31,6 +31,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 
 		// Message / cancel / shutdown
 		{"POST", "/message"},
+		{"POST", "/v1/chat/completions"},
 		{"POST", "/cancel"},
 		{"POST", "/shutdown"},
 

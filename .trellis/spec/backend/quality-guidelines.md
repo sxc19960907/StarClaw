@@ -224,6 +224,95 @@ status := tracker.AddUsage(client.Usage{})
 // status.Status == "unknown"; callers know the provider did not return usage.
 ```
 
+## Scenario: OpenAI-Compatible Local Gateway
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing daemon endpoints that mimic OpenAI API shapes for local StarClaw/Astria execution.
+- Scope: local daemon HTTP API only. The gateway adapts external tool requests into existing `RunAgentRequest` execution and must not bypass daemon permissions, approval, session, run-store, or local-only assumptions.
+
+### 2. Signatures
+
+- Route: `POST /v1/chat/completions`.
+- Handler: `(*Server).handleOpenAIChatCompletions`.
+- Minimum request:
+  ```json
+  {
+    "model": "local-model-or-agent-model",
+    "messages": [
+      {"role": "user", "content": "hello"}
+    ]
+  }
+  ```
+- Optional local extension fields:
+  - `request_id`: reuse as run id and response id suffix.
+  - `session_id`: resume an existing StarClaw session.
+  - `agent`: run a named StarClaw agent.
+  - `user`: copied to `RunAgentRequest.Sender`.
+- Response envelope:
+  - `id`: `chatcmpl-<request_id>`.
+  - `object`: `chat.completion`.
+  - `created`: Unix timestamp.
+  - `model`: request model value.
+  - `choices[0].message.role`: `assistant`.
+  - `choices[0].message.content`: joined local run messages.
+  - `choices[0].finish_reason`: `stop`.
+  - `usage.prompt_tokens`, `completion_tokens`, `total_tokens`: mapped from local usage when available.
+  - `starclaw_run_id`: local run id for `/runs/{id}` lookup.
+
+### 3. Contracts
+
+- The endpoint must call the same `s.runAgent` path used by `/message`; do not create a direct LLM client path.
+- The gateway must create a run record through `RunStore.Start` / `Complete` so `/runs` and `/runs/{id}` include gateway runs.
+- Supported message roles are `system`, `user`, and `assistant`. `user` content is passed as-is; non-user context is prefixed as `<role>: <content>` in the local prompt.
+- The request `model` may override the effective agent config model through `RunAgentRequest.Model`, but other model parameters are intentionally unsupported unless a future task defines their local contract.
+- Unsupported fields must return an OpenAI-style error envelope with `error.message` and `error.type="invalid_request_error"`; do not silently ignore them.
+- `stream=true`, OpenAI tool/function calling fields, `response_format`, metadata, and `n > 1` are unsupported.
+
+### 4. Validation & Error Matrix
+
+- Missing `model` -> HTTP 400.
+- Missing `messages` -> HTTP 400.
+- Empty message content -> HTTP 400.
+- Unsupported role -> HTTP 400.
+- Unknown JSON field -> HTTP 400 naming the unsupported field.
+- `stream=true` -> HTTP 400.
+- `tools`, `functions`, `function_call`, or `tool_choice` present -> HTTP 400.
+- Local run failure -> OpenAI-style HTTP 500 error envelope.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a minimal chat-completions request returns one assistant choice, usage, and a run id discoverable via `/runs/{id}`.
+- Base: request id omitted; daemon generates one and still returns a valid `chatcmpl-*` id.
+- Bad: accepting `parallel_tool_calls`, `stream`, or `response_format` while doing nothing with them.
+
+### 6. Tests Required
+
+- Route registration test for `POST /v1/chat/completions`.
+- Handler success test covering response envelope, usage mapping, run source, sender, and prompt conversion.
+- Validation tests for required fields, unsupported fields, roles, streaming, tool/function fields, and multi-choice requests.
+- Runner test proving request model overrides config model via `ChatOptions.SpecificModel`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+resp, err := s.deps.LLMClient.Chat(ctx, "", messages, nil, maxTokens, nil)
+```
+
+This bypasses daemon permissions, run records, approval, sessions, and configured agent overlays.
+
+#### Correct
+
+```go
+result, err := s.runAgent(ctx, RunAgentRequest{
+    Text: prompt,
+    Source: "openai-compatible",
+    Channel: ChannelHTTP,
+}, handler)
+```
+
 ---
 
 ## Interface Design

@@ -21,6 +21,7 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 	r.registerWebRoutes(mux)
 	r.registerHealthRoutes(mux)
 	r.registerMessageRoutes(mux)
+	r.registerOpenAIRoutes(mux)
 	r.registerScheduleRoutes(mux)
 	r.registerAgentRoutes(mux)
 	r.registerSkillRoutes(mux)
@@ -60,6 +61,10 @@ func (r *Router) registerMessageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /events", r.srv.handleEvents)
 	mux.HandleFunc("GET /runs", r.srv.handleRuns)
 	mux.HandleFunc("GET /runs/{id}", r.srv.handleGetRun)
+}
+
+func (r *Router) registerOpenAIRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /v1/chat/completions", r.srv.handleOpenAIChatCompletions)
 }
 
 func (r *Router) registerScheduleRoutes(mux *http.ServeMux) {

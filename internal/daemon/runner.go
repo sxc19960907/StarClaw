@@ -99,7 +99,11 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	loop.SetPermissions(effectiveCfg.Permissions)
 	loop.SetThinking(agent.ThinkingConfigFromAgent(effectiveCfg.Agent))
 	loop.SetReasoningEffort(effectiveCfg.Agent.ReasoningEffort)
-	loop.SetSpecificModel(effectiveCfg.Agent.Model)
+	specificModel := strings.TrimSpace(req.Model)
+	if specificModel == "" {
+		specificModel = effectiveCfg.Agent.Model
+	}
+	loop.SetSpecificModel(specificModel)
 	loop.SetSession(sess)
 	loop.SetSessionManager(sessMgr)
 	if approver != nil {

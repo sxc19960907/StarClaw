@@ -14,11 +14,11 @@ Add an OpenAI-compatible local API gateway surface so external tools can call As
 
 ## Acceptance Criteria
 
-- [ ] Endpoint accepts a minimal chat-completions request with model/messages.
-- [ ] Endpoint rejects unsupported or unsafe request shapes with clear errors.
-- [ ] Endpoint returns an OpenAI-style response envelope for successful local execution.
-- [ ] Existing `/message`, `/runs`, and Web UI flows continue to pass.
-- [ ] Tests cover request validation, response shape, and unsupported-field behavior.
+- [x] Endpoint accepts a minimal chat-completions request with model/messages.
+- [x] Endpoint rejects unsupported or unsafe request shapes with clear errors.
+- [x] Endpoint returns an OpenAI-style response envelope for successful local execution.
+- [x] Existing `/message`, `/runs`, and Web UI flows continue to pass.
+- [x] Tests cover request validation, response shape, and unsupported-field behavior.
 
 ## Notes
 

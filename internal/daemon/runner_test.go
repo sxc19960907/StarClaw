@@ -303,6 +303,39 @@ tools:
 	}
 }
 
+func TestRunAgent_RequestModelOverridesConfig(t *testing.T) {
+	ctx := context.Background()
+	llmClient := &captureLLMClient{}
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		Config: &config.Config{
+			Agent: config.AgentConfig{
+				MaxIterations: 25,
+				MaxTokens:     8192,
+				Model:         "configured-model",
+			},
+			Tools: config.ToolsConfig{ResultTruncation: 30000},
+		},
+		AgentsDir: t.TempDir(),
+		LLMClient: llmClient,
+		Registry:  agent.NewToolRegistry(),
+	}
+
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "hello", Model: "request-model"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.Error != "" {
+		t.Fatalf("expected no response error, got %q", resp.Error)
+	}
+	if llmClient.opts == nil {
+		t.Fatal("expected chat options")
+	}
+	if llmClient.opts.SpecificModel != "request-model" {
+		t.Fatalf("SpecificModel = %q, want request-model", llmClient.opts.SpecificModel)
+	}
+}
+
 func TestRunAgent_SurfacesBudgetStatus(t *testing.T) {
 	ctx := context.Background()
 	deps := &ServerDeps{
