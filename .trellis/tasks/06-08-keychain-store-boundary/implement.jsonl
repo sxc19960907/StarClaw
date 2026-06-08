@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for package conventions."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"New internal package layout and platform-specific file conventions."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Sentinel errors and wrapping conventions for store/backend failures."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Secret-bearing package must not log stored credential values."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Source plan and Kocoro keychain parity requirements."}
