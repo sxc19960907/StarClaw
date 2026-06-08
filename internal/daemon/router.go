@@ -32,6 +32,7 @@ func (r *Router) RegisterRoutes(mux *http.ServeMux, deps *ServerDeps) {
 	r.registerCouncilRoutes(mux)
 	r.registerInboxRoutes(mux)
 	r.registerQueueRoutes(mux)
+	r.registerChannelRoutes(mux)
 	r.registerIntakeRoutes(mux)
 	r.registerPermissionRoutes(mux)
 }
@@ -143,6 +144,11 @@ func (r *Router) registerQueueRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /queue/claim", r.srv.handleClaimQueueMessages)
 	mux.HandleFunc("POST /queue/{id}/ack", r.srv.handleAckQueueMessage)
 	mux.HandleFunc("POST /queue/{id}/release", r.srv.handleReleaseQueueMessage)
+}
+
+func (r *Router) registerChannelRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /channel/routes/{message_id}", r.srv.handleGetChannelRoute)
+	mux.HandleFunc("GET /channel/state", r.srv.handleGetChannelState)
 }
 
 func (r *Router) registerIntakeRoutes(mux *http.ServeMux) {

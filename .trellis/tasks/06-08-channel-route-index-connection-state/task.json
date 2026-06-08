@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-7",
-  "name": "astria-kocoro-parity-phase-7",
-  "title": "Astria Kocoro parity phase 7: channel and cloud delivery parity",
+  "id": "channel-route-index-connection-state",
+  "name": "channel-route-index-connection-state",
+  "title": "Channel route index connection state",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -18,11 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-08-cloudflow-dispatch-contract",
-    "06-08-channel-route-index-connection-state"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-7",
   "relatedFiles": [],
   "notes": "",
   "meta": {}

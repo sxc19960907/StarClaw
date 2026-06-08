@@ -66,6 +66,9 @@ func (s *Server) handleCreateQueueMessage(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusOK, map[string]any{"message": stored, "duplicate": true})
 		return
 	}
+	if s.replyRoutes != nil && stored.ExternalID != "" && stored.RouteKey != "" {
+		s.replyRoutes.Put(stored.ExternalID, stored.RouteKey)
+	}
 	writeJSON(w, status, map[string]any{"message": stored, "duplicate": false})
 }
 

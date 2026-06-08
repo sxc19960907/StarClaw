@@ -41,6 +41,8 @@ type Server struct {
 	councilStore    *CouncilStore
 	inboxStore      *InboxStore
 	mailboxStore    *MailboxStore
+	replyRoutes     *ReplyRouteIndex
+	connectionState *ConnectionStateCache
 	desktopRPC      *desktop_rpc.Broker
 	desktopListener *desktop_rpc.Listener
 }
@@ -48,16 +50,18 @@ type Server struct {
 // NewServer creates a new Server.
 func NewServer(port int, deps *ServerDeps, version string) *Server {
 	return &Server{
-		port:           port,
-		deps:           deps,
-		version:        version,
-		eventBus:       NewEventBus(),
-		approvalBroker: NewApprovalBroker(),
-		runStore:       NewRunStore(defaultRunStoreLimit),
-		councilStore:   NewCouncilStore(defaultCouncilStoreLimit),
-		inboxStore:     NewInboxStore(defaultInboxStoreLimit),
-		mailboxStore:   NewMailboxStore(defaultMailboxCapacity),
-		desktopRPC:     desktop_rpc.NewBroker(),
+		port:            port,
+		deps:            deps,
+		version:         version,
+		eventBus:        NewEventBus(),
+		approvalBroker:  NewApprovalBroker(),
+		runStore:        NewRunStore(defaultRunStoreLimit),
+		councilStore:    NewCouncilStore(defaultCouncilStoreLimit),
+		inboxStore:      NewInboxStore(defaultInboxStoreLimit),
+		mailboxStore:    NewMailboxStore(defaultMailboxCapacity),
+		replyRoutes:     NewReplyRouteIndex(defaultReplyRouteIndexCap),
+		connectionState: NewConnectionStateCache(),
+		desktopRPC:      desktop_rpc.NewBroker(),
 	}
 }
 
