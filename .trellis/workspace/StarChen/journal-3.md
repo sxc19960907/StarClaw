@@ -1300,3 +1300,36 @@ Extended the Web UI runs smoke to validate runtime recovery, workflow steps, con
 ### Next Steps
 
 - None - task complete
+
+
+## Session 122: Phase 5 API observability smoke
+
+**Date**: 2026-06-08
+**Task**: Phase 5 API observability smoke
+**Branch**: `main`
+
+### Summary
+
+Added an integration daemon smoke covering OpenAI-compatible chat completions through run records, aggregate-safe metrics, trace read/export JSONL, and replay approval workflow-control metadata. Verified targeted daemon tests, internal/daemon+cmd tests, full go test ./..., git diff --check, and task context validation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b7980e9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
