@@ -151,6 +151,7 @@ func (r *Router) registerQueueRoutes(mux *http.ServeMux) {
 }
 
 func (r *Router) registerChannelRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /channel/adapters", r.srv.handleListChannelAdapters)
 	mux.HandleFunc("GET /channel/routes/{message_id}", r.srv.handleGetChannelRoute)
 	mux.HandleFunc("GET /channel/state", r.srv.handleGetChannelState)
 }

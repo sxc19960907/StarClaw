@@ -23,4 +23,14 @@
 
 ## Completion Notes
 
-TBD.
+- Added daemon channel adapter interface, metadata, install request/record types, registry, and fake adapter implementation.
+- Registered default local-first fake adapter contracts for Feishu/Lark, Slack, Telegram, and local webhook.
+- Added read-only `GET /channel/adapters` metadata endpoint.
+- Added registry, fake install lifecycle, defensive copy, and API tests.
+
+## Validation
+
+- `go test ./internal/daemon` — passed.
+- `go test ./...` — passed.
+- `git diff --check` — passed.
+- `python3 ./.trellis/scripts/task.py validate .trellis/tasks/06-08-external-channel-adapter-boundaries` — passed.

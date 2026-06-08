@@ -45,6 +45,7 @@ type Server struct {
 	connectionState *ConnectionStateCache
 	systemEvents    *SystemEventStore
 	suggestions     *agent.SuggestionState
+	channelAdapters *ChannelAdapterRegistry
 	desktopRPC      *desktop_rpc.Broker
 	desktopListener *desktop_rpc.Listener
 }
@@ -65,6 +66,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		connectionState: NewConnectionStateCache(),
 		systemEvents:    NewSystemEventStore(defaultSystemEventStoreCap),
 		suggestions:     agent.NewSuggestionState(),
+		channelAdapters: newDefaultChannelAdapterRegistry(),
 		desktopRPC:      desktop_rpc.NewBroker(),
 	}
 }

@@ -40,3 +40,11 @@ func (s *Server) handleGetChannelState(w http.ResponseWriter, r *http.Request) {
 		"preamble":      preamble,
 	})
 }
+
+func (s *Server) handleListChannelAdapters(w http.ResponseWriter, r *http.Request) {
+	adapters := []ChannelAdapterMetadata{}
+	if s.channelAdapters != nil {
+		adapters = s.channelAdapters.ListMetadata()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"adapters": adapters})
+}
