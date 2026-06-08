@@ -22,7 +22,8 @@
     "06-08-cloudflow-dispatch-contract",
     "06-08-channel-route-index-connection-state",
     "06-08-system-event-store-suggestions",
-    "06-08-delivery-inject-lifecycle-depth"
+    "06-08-delivery-inject-lifecycle-depth",
+    "06-08-external-channel-adapter-boundaries"
   ],
   "parent": null,
   "relatedFiles": [],
