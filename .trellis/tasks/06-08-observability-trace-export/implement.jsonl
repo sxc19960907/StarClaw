@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Structured observability, durable run-store, trace export, metrics redaction contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Atomic file export and HTTP error path conventions."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Avoid logging trace payloads or secrets."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared data-flow and code reuse thinking for trace export."}

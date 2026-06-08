@@ -230,6 +230,30 @@ func (s *Server) handleGetRun(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, record)
 }
 
+func (s *Server) handleGetRunTrace(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	trace, ok := s.runStore.TraceEvents(id)
+	if !ok {
+		writeError(w, http.StatusNotFound, "run not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"trace": trace})
+}
+
+func (s *Server) handleExportTraces(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimSpace(r.URL.Query().Get("path"))
+	if path == "" {
+		writeError(w, http.StatusBadRequest, "path is required")
+		return
+	}
+	events := s.runStore.AllTraceEvents()
+	if err := writeTraceJSONL(path, events); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"path": path, "events": len(events)})
+}
+
 // ---------------------------------------------------------------------------
 // Cancel / Shutdown
 // ---------------------------------------------------------------------------

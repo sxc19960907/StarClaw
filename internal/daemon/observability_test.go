@@ -1,10 +1,13 @@
 package daemon
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -124,5 +127,116 @@ func TestHandleMetrics(t *testing.T) {
 	}
 	if strings.Contains(string(encoded), "hello") {
 		t.Fatalf("metrics leaked prompt body: %s", encoded)
+	}
+}
+
+func TestRunStoreExportTracesJSONLRedactsPayloads(t *testing.T) {
+	store := NewRunStore(10)
+	store.Start(RunAgentRequest{RequestID: "trace-redact", Text: "secret prompt body", Channel: ChannelHTTP})
+	store.AddEvent("trace-redact", EventToolCall, map[string]any{
+		"tool": "http",
+		"args": `{"api_key":"sk-secret"}`,
+		"metadata": map[string]any{
+			"request": "secret prompt body",
+			"token":   "sk-secret",
+			"safe":    "ok",
+		},
+	})
+	store.Complete("trace-redact", RunAgentResponse{SessionID: "sess"}, nil)
+
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	if err := store.ExportTracesJSONL(path); err != nil {
+		t.Fatalf("export traces: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read trace export: %v", err)
+	}
+	body := string(data)
+	for _, forbidden := range []string{"secret prompt body", "sk-secret", `"args":`, `"request":`, `"token":`} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("trace export leaked %q: %s", forbidden, body)
+		}
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(body))
+	count := 0
+	for scanner.Scan() {
+		count++
+		var record TraceExportRecord
+		if err := json.Unmarshal(scanner.Bytes(), &record); err != nil {
+			t.Fatalf("decode line %d: %v", count, err)
+		}
+		if record.SchemaVersion != structuredEventSchemaVersion || record.TraceID != "trace-redact" || record.EventID == "" || record.Name == "" || record.Phase == "" || record.Timestamp.IsZero() {
+			t.Fatalf("record %d = %#v, want OTel-ready fields", count, record)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("scan trace export: %v", err)
+	}
+	if count == 0 {
+		t.Fatal("expected trace records")
+	}
+}
+
+func TestRunStoreExportRunTraceJSONLMissingRun(t *testing.T) {
+	store := NewRunStore(10)
+	err := store.ExportRunTraceJSONL("missing", filepath.Join(t.TempDir(), "trace.jsonl"))
+	if err == nil || !strings.Contains(err.Error(), "run not found") {
+		t.Fatalf("ExportRunTraceJSONL error = %v, want run not found", err)
+	}
+}
+
+func TestHandleRunTrace(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "trace-api", Text: "secret prompt body", Channel: ChannelHTTP})
+	s.runStore.AddEvent("trace-api", EventText, map[string]any{"text": "assistant body"})
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var got struct {
+		Trace []TraceExportRecord `json:"trace"`
+	}
+	getJSON(t, ts.URL+"/runs/trace-api/trace", http.StatusOK, &got)
+	if len(got.Trace) != 2 {
+		t.Fatalf("trace length = %d, want 2", len(got.Trace))
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal trace response: %v", err)
+	}
+	if strings.Contains(string(encoded), "secret prompt body") || strings.Contains(string(encoded), "assistant body") {
+		t.Fatalf("trace response leaked prompt/text: %s", encoded)
+	}
+	getJSON(t, ts.URL+"/runs/missing/trace", http.StatusNotFound, &map[string]any{})
+}
+
+func TestHandleExportTraces(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "trace-export-api", Text: "secret prompt body", Channel: ChannelHTTP})
+	s.runStore.AddEvent("trace-export-api", EventUsage, map[string]any{"input_tokens": 1})
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var missing map[string]any
+	getJSON(t, ts.URL+"/traces/export", http.StatusBadRequest, &missing)
+
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	var got struct {
+		Path   string `json:"path"`
+		Events int    `json:"events"`
+	}
+	getJSON(t, ts.URL+"/traces/export?path="+path, http.StatusOK, &got)
+	if got.Path != path || got.Events != 2 {
+		t.Fatalf("export response = %#v, want path and 2 events", got)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read trace export: %v", err)
+	}
+	if strings.Contains(string(data), "secret prompt body") {
+		t.Fatalf("trace export leaked prompt: %s", data)
 	}
 }

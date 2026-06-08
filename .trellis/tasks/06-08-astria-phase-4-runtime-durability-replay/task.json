@@ -22,7 +22,8 @@
     "06-08-durable-workflow-run-store",
     "06-08-06-08-durable-workflow-step-state",
     "06-08-safe-replay-execution-boundary",
-    "06-08-runtime-pause-resume-support"
+    "06-08-runtime-pause-resume-support",
+    "06-08-observability-trace-export"
   ],
   "parent": null,
   "relatedFiles": [],

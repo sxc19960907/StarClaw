@@ -401,6 +401,90 @@ store.AddEvent(id, EventToolCall, map[string]any{"args": rawArgsJSON})
 s.addStructuredEventLocked(id, EventToolCall, map[string]any{"args": rawArgsJSON})
 ```
 
+## Scenario: Observability Trace Export
+
+### 1. Scope / Trigger
+
+- Trigger: exporting structured run events to local trace artifacts or adding trace-read HTTP endpoints.
+- Scope: local structured event export only. This is not an external collector, cloud telemetry, prompt archive, or OpenTelemetry SDK integration.
+
+### 2. Signatures
+
+- Trace export record type: `TraceExportRecord`.
+- Store APIs:
+  - `(*RunStore).TraceEvents(runID string) ([]TraceExportRecord, bool)`
+  - `(*RunStore).AllTraceEvents() []TraceExportRecord`
+  - `(*RunStore).ExportTracesJSONL(path string) error`
+  - `(*RunStore).ExportRunTraceJSONL(runID, path string) error`
+- HTTP routes:
+  - `GET /runs/{id}/trace`
+  - `GET /traces/export?path=/local/file.jsonl`
+- JSONL line shape:
+  ```json
+  {
+    "schema_version": "2026-06-08",
+    "trace_id": "run-id",
+    "span_id": "run-id-000001",
+    "run_id": "run-id",
+    "event_id": "run-id-000001",
+    "name": "run_started",
+    "phase": "start",
+    "timestamp": "2026-06-08T00:00:00Z",
+    "attributes": {}
+  }
+  ```
+
+### 3. Contracts
+
+- Export JSONL must contain exactly one valid JSON object per structured event.
+- Export writes use temp-file plus rename semantics.
+- Export must be local-only and caller-directed; do not send traces to remote services.
+- Export records are derived from `StructuredRunEvent`, not legacy raw events or run request/response bodies.
+- Export attributes must be recursively sanitized before writing.
+- Export must not include prompt text, assistant text, tool args, raw provider payloads, request/response bodies, API keys, tokens, passwords, bearer credentials, or secret-looking values.
+- Existing `/metrics`, `/runs`, `/runs/{id}`, SSE, replay, pause/resume, and persistence behavior must remain compatible.
+
+### 4. Validation & Error Matrix
+
+- Missing export path -> contextual error / HTTP `400`.
+- Missing run for single-run export -> contextual error / HTTP `404`.
+- Empty trace set -> create an empty JSONL file successfully.
+- Destination parent missing -> create local parent directory with private permissions.
+- Export encode/write/rename failure -> return contextual error and remove temp file when possible.
+
+### 5. Good/Base/Bad Cases
+
+- Good: exporting a run with tool events produces JSONL with event ids and redacted attributes.
+- Base: `GET /runs/{id}/trace` returns the in-memory trace records for a known run.
+- Bad: exporting from `RunRecord.Events` leaks raw tool args, or `/traces/export` uploads to a collector by default.
+
+### 6. Tests Required
+
+- JSONL export test for all stored runs.
+- Single-run trace HTTP test.
+- Missing-run trace test.
+- Redaction test for prompt text, tool args, request/response fields, and secret-like values.
+- Existing structured event, metrics, and persistent run-store tests continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+for _, evt := range record.Events {
+    encoder.Encode(evt)
+}
+```
+
+Legacy events may contain raw tool args or text payloads.
+
+#### Correct
+
+```go
+records := store.AllTraceEvents()
+writeTraceJSONL(path, records)
+```
+
 ## Scenario: Workflow Control API
 
 ### 1. Scope / Trigger
