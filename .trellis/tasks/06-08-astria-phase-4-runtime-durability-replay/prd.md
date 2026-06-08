@@ -26,11 +26,11 @@ Close the next Kocoro/Shannon gap by moving Astria from a rich local workbench i
 
 ## Acceptance Criteria
 
-- [ ] Parent task lists runtime durability and safe replay work before UI follow-up.
-- [ ] Each child has PRD acceptance criteria and clear non-goals.
-- [ ] The first slice persists local run state without exporting prompts/secrets through metrics or traces.
-- [ ] Replay remains approval-required until a child explicitly implements approved replay execution.
-- [ ] Implemented children pass targeted daemon tests and full `go test ./...`.
+- [x] Parent task lists runtime durability and safe replay work before UI follow-up.
+- [x] Each child has PRD acceptance criteria and clear non-goals.
+- [x] The first slice persists local run state without exporting prompts/secrets through metrics or traces.
+- [x] Replay remains approval-required until a child explicitly implements approved replay execution.
+- [x] Implemented children pass targeted daemon tests and full `go test ./...`.
 
 ## Notes
 
