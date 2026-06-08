@@ -1201,3 +1201,36 @@ Added local JSONL trace export for structured run events with OTel-ready records
 ### Next Steps
 
 - None - task complete
+
+
+## Session 119: Runtime recovery UI
+
+**Date**: 2026-06-08
+**Task**: Runtime recovery UI
+**Branch**: `main`
+
+### Summary
+
+Added Mission Control recovery visibility for durable runs, replay approval state, pause/resume control history, workflow steps, and sanitized trace summaries from the local trace endpoint.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `faee572` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
