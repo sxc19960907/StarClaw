@@ -13,6 +13,7 @@ const state = {
   currentCouncilRun: null,
   selectedComparisonLane: "",
   selectedPromptVariant: "",
+  selectedBudgetGuard: "",
   selectedReuseAsset: "",
   selectedResultArchive: "",
   selectedPlaybook: "",
@@ -82,6 +83,7 @@ const views = {
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
+  budget: ["预算守卫", "Plan token caps, model fallback, complexity routing, and stop rules."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
   results: ["结果星库", "Review saved reports, evidence briefs, and reusable outcomes."],
   playbooks: ["实践手册", "Launch from reviewed local best-practice patterns."],
@@ -1255,6 +1257,7 @@ function renderHomeActivity() {
   renderKnowledgeReconciliation();
   renderCitationGroundingPlanner();
   renderPromptExperimentLab();
+  renderBudgetGuardPlanner();
   renderReuseGallery();
   renderResultLibrary();
   renderPlaybookLibrary();
@@ -1309,6 +1312,7 @@ function renderHomeDockedTools() {
   renderKnowledgeReconciliation();
   renderCitationGroundingPlanner();
   renderPromptExperimentLab();
+  renderBudgetGuardPlanner();
   renderReuseGallery();
   renderResultLibrary();
   renderPlaybookLibrary();
@@ -1963,6 +1967,180 @@ function draftPromptVariantToChat(id) {
   switchPanel("chat");
   $("chat-input").focus();
   showToast("Prompt variant drafted to chat.");
+}
+
+function budgetGuardCards() {
+  const goal = promptLabGoal() || "Define the next Astria task before launch.";
+  const variants = promptLabVariants();
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const sourceCount = sourceRegistryRows().length;
+  const resultCount = resultArchiveEntries().length;
+  const snapshotCount = workspaceSnapshotCards().length;
+  const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed").length;
+  const model = state.config?.model_tier || state.config?.openai_model || state.config?.ollama_model || "configured model";
+  const provider = state.config?.provider || "provider";
+  return [
+    {
+      id: "hard-cap",
+      type: "Token cap",
+      title: "Hard budget cap",
+      panel: "chat",
+      budget: "Set a maximum token/time envelope before launch.",
+      trigger: "Long or ambiguous task with risk of open-ended exploration.",
+      guardrail: "Stop when the cap is reached; return findings, blockers, and the next cheapest action.",
+      fallback: "Trim scope to one verifiable deliverable and ask before expanding.",
+      boundary: "Planning guard only; Astria does not claim backend billing enforcement from this UI card.",
+      prompt: `Plan this Astria task with a hard budget cap.\n\nGoal: ${goal}\nProvider/model context: ${provider} / ${model}\nRecent runs: ${state.runs.length}\n\nDefine a token/time cap, what must fit inside it, what to stop doing first, what evidence is enough, and the next cheapest action if the cap is hit. Do not assume backend billing enforcement; write this as an operator-reviewed launch constraint.`,
+    },
+    {
+      id: "model-route",
+      type: "Model route",
+      title: "Complexity-based model route",
+      panel: "promptlab",
+      budget: `${variants.length} prompt variants available for routing.`,
+      trigger: "Task complexity may not justify the strongest model or longest reasoning path.",
+      guardrail: "Classify simple, evidence-heavy, council-worthy, or delivery-sensitive before choosing route.",
+      fallback: "Use a cheaper direct route first; escalate only when evidence or tests fail.",
+      boundary: "Model routing is a prompt plan unless runtime config is changed explicitly.",
+      prompt: `Plan an Astria complexity-based model route.\n\nGoal: ${goal}\nPrompt variants: ${variants.map((variant) => variant.label).join(", ")}\nProvider/model context: ${provider} / ${model}\n\nClassify the task as simple, evidence-heavy, council-worthy, or delivery-sensitive. Choose the cheapest safe route first, define escalation triggers, and state when fallback to a stronger model or reviewer path is justified.`,
+    },
+    {
+      id: "context-trim",
+      type: "Context",
+      title: "Context trimming pass",
+      panel: "snapshot",
+      budget: `${memoryCount} memory, ${sourceCount} sources, ${snapshotCount} snapshot packs`,
+      trigger: "Large local context could drown the task or inflate cost.",
+      guardrail: "Use only context that directly proves requirements, risks, or validation state.",
+      fallback: "Open Workspace Snapshot and select a smaller resume/evidence pack.",
+      boundary: "Never trim away explicit user requirements, safety constraints, or validation failures.",
+      prompt: `Plan an Astria context trimming pass.\n\nGoal: ${goal}\nMemory entries: ${memoryCount}\nSources: ${sourceCount}\nSnapshot packs: ${snapshotCount}\n\nChoose the smallest context set needed to proceed. Keep explicit requirements, validation state, risks, and relevant evidence. Exclude stale, duplicate, private, or speculative context unless it changes the decision.`,
+    },
+    {
+      id: "fallback",
+      type: "Fallback",
+      title: "Automatic fallback ladder",
+      panel: "diagnostics",
+      budget: `${failedRuns} failed runs; diagnostics ${state.diagnostics?.status || "unknown"}`,
+      trigger: "Runtime readiness, provider setup, or previous failures may make the first route unreliable.",
+      guardrail: "Define fallback order before launch: retry smaller, switch route, ask for approval, or stop.",
+      fallback: "Open Diagnostics, then reduce scope before changing provider or model settings.",
+      boundary: "No remote provider/account change happens without explicit operator action.",
+      prompt: `Plan an Astria fallback ladder.\n\nGoal: ${goal}\nDiagnostics: ${state.diagnostics?.status || "unknown"}\nFailed runs: ${failedRuns}\nProvider/model context: ${provider} / ${model}\n\nDefine the fallback order if the first route fails: smaller retry, evidence-only pass, different agent/variant, diagnostics repair, or stop and ask. Include what evidence proves each fallback is needed.`,
+    },
+    {
+      id: "stop-rules",
+      type: "Stop rules",
+      title: "Long-run stop rules",
+      panel: "runs",
+      budget: `${state.runs.length} runs; ${state.approvals.size} pending approvals`,
+      trigger: "Task may enter repeated debugging, broad research, or unbounded tool use.",
+      guardrail: "Stop after repeated same-class failure, missing requirement evidence, or approval boundary.",
+      fallback: "Summarize current evidence and create a narrower follow-up mission.",
+      boundary: "Do not continue tool use past destructive, external-send, purchase, or account-change boundaries.",
+      prompt: `Plan Astria long-run stop rules.\n\nGoal: ${goal}\nRuns: ${state.runs.length}\nPending approvals: ${state.approvals.size}\n\nDefine stop conditions for repeated failures, missing evidence, destructive boundaries, external delivery, and uncertainty. Include what summary to return when stopping and how to create the next narrower mission.`,
+    },
+    {
+      id: "schedule-limit",
+      type: "Schedule",
+      title: "Scheduled work budget",
+      panel: "schedules",
+      budget: `${state.schedules.length} schedules; ${deliveryLanes().length} delivery lanes`,
+      trigger: "Recurring work can silently spend time, tokens, or attention if the cadence is too broad.",
+      guardrail: "Every schedule needs cadence, max effort, output shape, approval gate, and disable condition.",
+      fallback: "Run manually once and review output before enabling a recurring schedule.",
+      boundary: "No schedule should imply external send or unattended remote state change.",
+      prompt: `Plan an Astria scheduled-work budget.\n\nGoal: ${goal}\nSchedules: ${state.schedules.length}\nDelivery lanes: ${deliveryLanes().length}\n\nDefine cadence, max effort, output shape, approval gate, disable condition, and manual dry-run requirements before any recurring task is enabled.`,
+    },
+    {
+      id: "evidence-cost",
+      type: "Evidence",
+      title: "Evidence cost tradeoff",
+      panel: "citation",
+      budget: `${sourceCount} sources; ${resultCount} result entries`,
+      trigger: "Research could over-collect sources or under-support claims.",
+      guardrail: "Map claims to minimum sufficient evidence and stop when confidence threshold is met.",
+      fallback: "Escalate only unsupported or high-impact claims to deeper research.",
+      boundary: "Do not spend effort proving low-impact claims beyond the required confidence level.",
+      prompt: `Plan an Astria evidence-cost tradeoff.\n\nGoal: ${goal}\nSources: ${sourceCount}\nResult entries: ${resultCount}\n\nIdentify claims, required confidence, minimum sufficient evidence, when to stop collecting, and which high-impact gaps deserve deeper research. Keep unsupported claims visibly downgraded.`,
+    },
+  ];
+}
+
+function renderBudgetGuardPlanner() {
+  const cards = budgetGuardCards();
+  setText("nav-budget-count", cards.length);
+  setText("manage-budget-count", `${cards.length} guard${cards.length === 1 ? "" : "s"}`);
+  setText("budget-summary", `${cards.length} budget guard${cards.length === 1 ? "" : "s"} for token caps, model routing, context trimming, fallback, stop rules, schedules, and evidence tradeoffs.`);
+  const list = $("budget-guard-grid");
+  if (!list) return;
+  if (!state.selectedBudgetGuard || !cards.some((card) => card.id === state.selectedBudgetGuard)) {
+    state.selectedBudgetGuard = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="budget-guard-card ${card.id === state.selectedBudgetGuard ? "active" : ""}" data-budget-guard="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.panel)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="budget-guard-gridline">
+      <span>Budget</span><strong>${escapeHTML(card.budget)}</strong>
+      <span>Trigger</span><strong>${escapeHTML(card.trigger)}</strong>
+      <span>Guardrail</span><strong>${escapeHTML(card.guardrail)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-budget-select="${escapeHTML(card.id)}">Budget brief</button>
+      <button type="button" data-budget-draft="${escapeHTML(card.id)}">Draft guard</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+    </div>
+  </article>`).join("");
+  renderBudgetGuardDetail(cards.find((card) => card.id === state.selectedBudgetGuard) || cards[0]);
+}
+
+function renderBudgetGuardDetail(card) {
+  const target = $("budget-guard-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a budget guard.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>Budget</span><strong>${escapeHTML(card.budget)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Trigger</h3>
+      <p>${escapeHTML(card.trigger)}</p>
+      <h3>Guardrail</h3>
+      <p>${escapeHTML(card.guardrail)}</p>
+      <h3>Fallback</h3>
+      <p>${escapeHTML(card.fallback)}</p>
+      <h3>Review boundary</h3>
+      <p>${escapeHTML(card.boundary)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-budget-draft="${escapeHTML(card.id)}">Draft guard</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function budgetGuardByID(id) {
+  return budgetGuardCards().find((card) => card.id === id) || null;
+}
+
+function draftBudgetGuardToChat(id) {
+  const card = budgetGuardByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a Budget Guard launch brief with budget shape, trigger, guardrail, fallback route, review boundary, stop condition, and validation plan.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Budget guard drafted to chat.");
 }
 
 function reuseGalleryAssets() {
@@ -3505,6 +3683,7 @@ function renderManageCount() {
   const citationCount = citationGroundingCards().length;
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
+  const budgetCount = budgetGuardCards().length;
   const reuseCount = reuseGalleryAssets().length;
   const resultsCount = resultArchiveEntries().length;
   const playbooksCount = playbookLibraryCards().length;
@@ -3525,6 +3704,8 @@ function renderManageCount() {
   setText("nav-compare-count", compareCount);
   setText("manage-promptlab-count", `${promptVariantCount} variant${promptVariantCount === 1 ? "" : "s"}`);
   setText("nav-promptlab-count", promptVariantCount);
+  setText("manage-budget-count", `${budgetCount} guard${budgetCount === 1 ? "" : "s"}`);
+  setText("nav-budget-count", budgetCount);
   setText("manage-reuse-count", `${reuseCount} asset${reuseCount === 1 ? "" : "s"}`);
   setText("nav-reuse-count", reuseCount);
   setText("manage-results-count", `${resultsCount} result${resultsCount === 1 ? "" : "s"}`);
@@ -3543,7 +3724,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + snapshotCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + budgetCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + snapshotCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -7479,6 +7660,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const budgetSelect = event.target.closest("[data-budget-select]");
+  if (budgetSelect) {
+    state.selectedBudgetGuard = budgetSelect.dataset.budgetSelect || "";
+    renderBudgetGuardPlanner();
+    return;
+  }
+
+  const budgetDraft = event.target.closest("[data-budget-draft]");
+  if (budgetDraft) {
+    draftBudgetGuardToChat(budgetDraft.dataset.budgetDraft);
+    return;
+  }
+
+  const budgetGuard = event.target.closest("[data-budget-guard]");
+  if (budgetGuard && !event.target.closest("button")) {
+    state.selectedBudgetGuard = budgetGuard.dataset.budgetGuard || "";
+    renderBudgetGuardPlanner();
+    return;
+  }
+
   const reuseSelect = event.target.closest("[data-reuse-select]");
   if (reuseSelect) {
     state.selectedReuseAsset = reuseSelect.dataset.reuseSelect || "";
@@ -8100,6 +8301,7 @@ $("session-search").addEventListener("input", debouncedSessionSearch);
 $("promptlab-goal").addEventListener("input", (event) => {
   state.promptLabGoal = event.target.value;
   renderPromptExperimentLab();
+  renderBudgetGuardPlanner();
   renderReuseGallery();
   renderResultLibrary();
   renderPlaybookLibrary();
@@ -8162,6 +8364,7 @@ $("citation-claim-scope").addEventListener("input", (event) => {
   renderCitationGroundingPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderBudgetGuardPlanner();
   renderWorkspaceSnapshotPlanner();
 });
 $("citation-source-posture").addEventListener("input", (event) => {
@@ -8169,6 +8372,7 @@ $("citation-source-posture").addEventListener("input", (event) => {
   renderCitationGroundingPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderBudgetGuardPlanner();
   renderWorkspaceSnapshotPlanner();
 });
 $("citation-evidence-level").addEventListener("input", (event) => {
@@ -8176,6 +8380,7 @@ $("citation-evidence-level").addEventListener("input", (event) => {
   renderCitationGroundingPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderBudgetGuardPlanner();
   renderWorkspaceSnapshotPlanner();
 });
 
@@ -8194,6 +8399,7 @@ renderApprovalCenter();
 renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
 renderPromptExperimentLab();
+renderBudgetGuardPlanner();
 renderReuseGallery();
 renderResultLibrary();
 renderPlaybookLibrary();

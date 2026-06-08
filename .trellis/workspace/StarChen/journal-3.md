@@ -726,3 +726,26 @@ Added an embedded Astria Workspace Snapshot planner that bundles local continuit
 ### Status
 
 [OK] **Completed**
+
+
+## Session 127: Budget Guard Planner
+
+**Date**: 2026-06-08
+**Task**: Budget guard planner
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Budget Guard planner for local token caps, complexity-based model routing, context trimming, fallback ladders, long-run stop rules, scheduled-work limits, and evidence-cost tradeoffs. Each guard has a detail brief, Chat draft action, and route back to the relevant planning panel without adding backend billing or accounting.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

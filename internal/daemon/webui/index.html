@@ -47,6 +47,10 @@
               <span><span class="nav-icon" aria-hidden="true">✦</span>实验</span>
               <small id="nav-promptlab-count">0</small>
             </button>
+            <button class="nav-item" data-panel="budget" aria-label="Budget Guard">
+              <span><span class="nav-icon" aria-hidden="true">◍</span>预算守卫</span>
+              <small id="nav-budget-count">0</small>
+            </button>
             <button class="nav-item" data-panel="reuse" aria-label="Reuse Gallery">
               <span><span class="nav-icon" aria-hidden="true">✶</span>复用星库</span>
               <small id="nav-reuse-count">0</small>
@@ -653,6 +657,11 @@
                 <span>Prompt Lab</span>
                 <strong id="manage-promptlab-count">0 variants</strong>
                 <small>Test prompt variants across agents, evidence, council, and delivery paths.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="budget">
+                <span>Budget Guard</span>
+                <strong id="manage-budget-count">0 guards</strong>
+                <small>Plan token caps, model routing, fallback, and stop rules before expensive work.</small>
               </button>
               <button class="hub-card" type="button" data-panel="reuse">
                 <span>Reuse Gallery</span>
@@ -1352,6 +1361,27 @@
             </div>
             <div class="data-insight-detail" id="data-insight-detail">
               <div class="empty-state">Select an insight mission.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-budget" aria-labelledby="budget-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="budget-heading">Budget Guard</h2>
+              <p id="budget-summary">Plan token caps, model routing, fallback, context trimming, and stop rules before long Astria missions.</p>
+            </div>
+            <div class="budget-guard-grid" id="budget-guard-grid">
+              <div class="empty-state">No budget guards yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Budget Brief</h2>
+              <p>Review budget shape, trigger, guardrail, fallback, and review boundary before launch.</p>
+            </div>
+            <div class="budget-guard-detail" id="budget-guard-detail">
+              <div class="empty-state">Select a budget guard.</div>
             </div>
           </aside>
         </section>

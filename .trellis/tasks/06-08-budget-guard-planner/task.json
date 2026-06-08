@@ -1,0 +1,32 @@
+{
+  "id": "budget-guard-planner",
+  "name": "budget-guard-planner",
+  "title": "Budget guard planner",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-2",
+  "relatedFiles": [
+    ".trellis/tasks/06-08-budget-guard-planner/prd.md",
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Added embedded Astria Budget Guard planner with token caps, model routing, context trimming, fallback, stop rules, schedule limits, and evidence-cost tradeoff cards plus Chat drafting and source-panel routing.",
+  "meta": {}
+}
