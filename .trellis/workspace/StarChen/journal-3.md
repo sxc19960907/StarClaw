@@ -1267,3 +1267,36 @@ Closed the Phase 4 parent plan after completing six child slices: durable run pe
 ### Next Steps
 
 - None - task complete
+
+
+## Session 121: Phase 5 runtime E2E smoke
+
+**Date**: 2026-06-08
+**Task**: Phase 5 runtime E2E smoke
+**Branch**: `main`
+
+### Summary
+
+Extended the Web UI runs smoke to validate runtime recovery, workflow steps, control history, trace rendering, budget status, routing, and fallback metadata together with the existing run/session path.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8aad964` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
