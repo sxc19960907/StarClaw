@@ -70,6 +70,8 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		// Memory
 		{"GET", "/memory"},
 		{"POST", "/memory"},
+		{"GET", "/memory/status"},
+		{"POST", "/memory/recall"},
 		{"DELETE", "/memory/MEMORY.md"},
 
 		// Council

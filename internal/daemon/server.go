@@ -218,7 +218,13 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 
 func (s *Server) runAgent(ctx context.Context, req RunAgentRequest, handler agent.EventHandler) (RunAgentResponse, error) {
 	approver := NewDaemonApprovalRequester(s.approvalBroker, s.eventBus, req.Channel, req.RequestID, req.Agent)
-	return RunAgentWithApproval(ctx, s.deps, req, handler, approver)
+	deps := s.deps
+	if deps != nil && deps.MemoryPreflight == nil {
+		copyDeps := *deps
+		copyDeps.MemoryPreflight = s.memoryPreflightProvider(req.RequestID)
+		deps = &copyDeps
+	}
+	return RunAgentWithApproval(ctx, deps, req, handler, approver)
 }
 
 func (s *Server) recordingHandler(requestID string, handler agent.EventHandler) agent.EventHandler {

@@ -3,10 +3,13 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/session"
 )
 
 // MockEventHandler for testing
@@ -86,6 +89,69 @@ func TestAgentLoop_Setters(t *testing.T) {
 	loop.SetSystemPrompt("You are a test assistant")
 	if loop.systemPrompt != "You are a test assistant" {
 		t.Errorf("Expected system prompt set")
+	}
+}
+
+type preflightCaptureClient struct {
+	messages []client.Message
+}
+
+func (c *preflightCaptureClient) Chat(_ context.Context, _ string, messages []client.Message, _ []client.ToolDef, _ int, _ *client.ChatOptions) (*client.Response, error) {
+	c.messages = append([]client.Message(nil), messages...)
+	return &client.Response{Content: "ok"}, nil
+}
+
+type fakeMemoryPreflightProvider struct {
+	result MemoryPreflightResult
+}
+
+func (p fakeMemoryPreflightProvider) PreflightMemory(_ context.Context, _ string) (MemoryPreflightResult, error) {
+	return p.result, nil
+}
+
+func TestAgentLoopMemoryPreflightInjectsModelInputOnly(t *testing.T) {
+	llm := &preflightCaptureClient{}
+	loop := NewAgentLoop(llm, NewToolRegistry())
+	dir := t.TempDir()
+	mgr := session.NewManager(dir)
+	sess := mgr.NewSession()
+	loop.SetSession(sess)
+	loop.SetSessionManager(mgr)
+	loop.SetMemoryPreflightProvider(fakeMemoryPreflightProvider{result: MemoryPreflightResult{
+		Attempted:    true,
+		Provider:     "local",
+		Outcome:      "matched",
+		ResultsCount: 1,
+		Block:        "<private_memory>\n- User likes local-first runtime.\n</private_memory>",
+	}})
+
+	resp, err := loop.Run(context.Background(), "what should I remember?")
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if resp.Content != "ok" {
+		t.Fatalf("response = %q", resp.Content)
+	}
+	if len(llm.messages) != 1 || !strings.Contains(llm.messages[0].Content, "<private_memory>") {
+		t.Fatalf("model messages = %#v, want private memory injected", llm.messages)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, sess.ID+".json"))
+	if err != nil {
+		t.Fatalf("read session: %v", err)
+	}
+	if strings.Contains(string(data), "private_memory") || strings.Contains(string(data), "local-first runtime") {
+		t.Fatalf("session leaked private memory: %s", data)
+	}
+	if !strings.Contains(string(data), "what should I remember?") {
+		t.Fatalf("session missing original query: %s", data)
+	}
+}
+
+func TestStripPrivateMemoryBlock(t *testing.T) {
+	got := stripPrivateMemoryBlock("hello\n\n<private_memory>\nsecret\n</private_memory>")
+	if got != "hello" {
+		t.Fatalf("stripped = %q, want hello", got)
 	}
 }
 

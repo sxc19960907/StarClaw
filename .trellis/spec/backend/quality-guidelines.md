@@ -1102,6 +1102,81 @@ if saveErr == nil {
 
 This preserves queue ownership and leaves failed work retryable.
 
+## Scenario: Episodic Memory Sidecar Preflight
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing memory provider status, memory recall APIs, or model-input memory preflight injection.
+- Scope: local-first memory foundation. This is not cloud session sync, external telemetry, Kocoro/Shannon Cloud bundle pull, tenant account management, or real sidecar process supervision unless a task explicitly adds those pieces.
+
+### 2. Signatures
+
+- HTTP routes:
+  - `GET /memory/status`
+  - `POST /memory/recall`
+- Agent loop interface:
+  - `agent.MemoryPreflightProvider`
+  - `(*AgentLoop).SetMemoryPreflightProvider(provider)`
+- Structured event type:
+  - `memory_preflight`
+
+### 3. Contracts
+
+- Memory status must report provider readiness and reason codes without exposing recalled content, query text, secrets, or provider payloads.
+- Local bundle discovery is limited to safe paths under the StarClaw memory directory.
+- Memory recall may return recalled content to the direct API caller, but memory preflight telemetry must remain content-free.
+- Preflight private memory may be appended to the model-facing user message inside `<private_memory>...</private_memory>`.
+- `<private_memory>` content must not be persisted to session messages, run request/prompt fields, structured events, metrics, trace export, or compaction summaries.
+- Preflight is optional. If the provider is unavailable or returns no data, the run must continue without private memory injection.
+- Existing `GET /memory`, `POST /memory`, `DELETE /memory/{name}`, `memory`, and `memory_append` behavior must remain compatible.
+
+### 4. Validation & Error Matrix
+
+- No memory dir or no local memory -> status provider `disabled`, reason `no_local_memory`.
+- Valid MEMORY.md facts -> status provider `local`, ready `true`, fallback available.
+- Valid current bundle manifest -> status provider `local`, ready `true`, bundle metadata present.
+- Malformed or unsafe bundle -> status provider `degraded`, reason `bundle_invalid`.
+- Empty recall query -> outcome `no_data`, reason `query_empty`.
+- Recall with no facts -> outcome `no_data`, reason `no_local_memory`.
+- Provider/preflight error -> run continues and emits content-free error telemetry.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a run asks about a remembered local preference; preflight injects a private block into the model input, records `results_count=1`, and saves only the original user message to session storage.
+- Base: no memory is configured; `/memory/status` reports disabled and ordinary runs are unchanged.
+- Bad: structured events include the recalled fact text, session JSON contains `<private_memory>`, or bundle path resolution follows a symlink outside the memory directory.
+
+### 6. Tests Required
+
+- Status tests for empty memory, MEMORY.md facts, valid bundle, and malformed bundle.
+- Recall tests for matching facts and no-data reason codes.
+- Agent-loop tests proving private memory reaches model input and is stripped from saved session messages.
+- Run-store tests proving `memory_preflight` events contain counts/status only and no query or recalled content.
+- Regression tests proving existing memory APIs/tools and daemon tests continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+messages = append(messages, client.Message{Role: "user", Content: query + privateMemory})
+session.Messages = messages
+store.AddEvent(runID, "memory_preflight", map[string]any{"memory": privateMemory})
+```
+
+This persists private recall content and leaks it into structured observability.
+
+#### Correct
+
+```go
+modelQuery := query + "\n\n" + privateMemory
+messages = append(messages, client.Message{Role: "user", Content: modelQuery})
+session.Messages = stripPrivateMemoryFromMessages(messages)
+handler.OnMemoryPreflight(agent.MemoryPreflightResult{ResultsCount: count})
+```
+
+This sends recall context to the model while keeping persistence and telemetry content-free.
+
 ### Small, focused interfaces
 
 ```go

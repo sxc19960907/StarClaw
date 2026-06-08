@@ -1,0 +1,8 @@
+{"path":".trellis/tasks/06-08-episodic-memory-sidecar-foundation/prd.md","kind":"task","notes":"Check implementation against acceptance criteria."}
+{"path":".trellis/tasks/06-08-episodic-memory-sidecar-foundation/design.md","kind":"task","notes":"Verify privacy and data-flow design are implemented."}
+{"path":".trellis/tasks/06-08-episodic-memory-sidecar-foundation/implement.md","kind":"task","notes":"Confirm checklist and validation evidence."}
+{"path":"internal/daemon/memory_sidecar.go","kind":"code","notes":"Review status, bundle, recall, and private block behavior."}
+{"path":"internal/agent/loop.go","kind":"code","notes":"Review private memory injection and session persistence boundary."}
+{"path":"internal/daemon/memory_sidecar_test.go","kind":"test","notes":"Status/recall/privacy unit coverage."}
+{"path":"internal/agent/loop_test.go","kind":"test","notes":"Agent-loop preflight injection and persistence coverage."}
+{"path":".trellis/spec/backend/quality-guidelines.md","kind":"spec","notes":"Check memory sidecar/preflight contract update."}

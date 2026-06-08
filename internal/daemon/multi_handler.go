@@ -94,3 +94,13 @@ func (m *MultiHandler) OnPreamble(preamble string) {
 		h.OnPreamble(preamble)
 	}
 }
+
+func (m *MultiHandler) OnMemoryPreflight(result agent.MemoryPreflightResult) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, h := range m.handlers {
+		if mh, ok := h.(agent.MemoryPreflightHandler); ok {
+			mh.OnMemoryPreflight(result)
+		}
+	}
+}

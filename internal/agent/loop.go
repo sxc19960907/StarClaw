@@ -70,6 +70,31 @@ type PauseController interface {
 	WaitIfPaused(ctx context.Context) error
 }
 
+// MemoryPreflightProvider returns private, per-turn memory context to inject
+// into the model-facing user message. The returned text must not be persisted
+// to the session transcript.
+type MemoryPreflightProvider interface {
+	PreflightMemory(ctx context.Context, query string) (MemoryPreflightResult, error)
+}
+
+// MemoryPreflightResult is the content and content-free metadata from a memory
+// preflight attempt.
+type MemoryPreflightResult struct {
+	Block           string
+	Attempted       bool
+	Provider        string
+	Outcome         string
+	Reason          string
+	ResultsCount    int
+	ContextInjected bool
+}
+
+// MemoryPreflightHandler is implemented by event handlers that record
+// content-free memory preflight telemetry.
+type MemoryPreflightHandler interface {
+	OnMemoryPreflight(result MemoryPreflightResult)
+}
+
 // StreamingLLMClient is an optional interface for LLM clients that support streaming.
 type StreamingLLMClient interface {
 	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error)
@@ -77,26 +102,27 @@ type StreamingLLMClient interface {
 
 // AgentLoop manages the conversation with the LLM
 type AgentLoop struct {
-	llmClient     client.LLMClient
-	registry      *ToolRegistry
-	maxIter       int
-	maxTokens     int
-	resultTrunc   int
-	handler       EventHandler
-	systemPrompt  string
-	auditLogger   *audit.AuditLogger
-	sessionID     string
-	session       *session.Session
-	sessionMgr    *session.Manager
-	memory        string // agent memory content
-	memoryDir     string // directory for persistent memory
-	configDir     string // starclaw config dir (~/.starclaw)
-	loopDetector  *LoopDetector
-	contextWindow int                 // max context window in tokens (0 = disabled)
-	permsConfig   *permissions.Config // tool permission rules
-	hookRunner    *hooks.Runner       // lifecycle hook runner
-	approver      ApprovalRequester
-	pause         PauseController
+	llmClient       client.LLMClient
+	registry        *ToolRegistry
+	maxIter         int
+	maxTokens       int
+	resultTrunc     int
+	handler         EventHandler
+	systemPrompt    string
+	auditLogger     *audit.AuditLogger
+	sessionID       string
+	session         *session.Session
+	sessionMgr      *session.Manager
+	memory          string // agent memory content
+	memoryDir       string // directory for persistent memory
+	configDir       string // starclaw config dir (~/.starclaw)
+	loopDetector    *LoopDetector
+	contextWindow   int                 // max context window in tokens (0 = disabled)
+	permsConfig     *permissions.Config // tool permission rules
+	hookRunner      *hooks.Runner       // lifecycle hook runner
+	approver        ApprovalRequester
+	pause           PauseController
+	memoryPreflight MemoryPreflightProvider
 
 	thinking        *client.ThinkingConfig
 	reasoningEffort string
@@ -219,6 +245,11 @@ func (a *AgentLoop) SetPauseController(controller PauseController) {
 	a.pause = controller
 }
 
+// SetMemoryPreflightProvider sets the optional private memory preflight source.
+func (a *AgentLoop) SetMemoryPreflightProvider(provider MemoryPreflightProvider) {
+	a.memoryPreflight = provider
+}
+
 // SetHookRunner sets the lifecycle hook runner for this loop.
 func (a *AgentLoop) SetHookRunner(runner *hooks.Runner) {
 	a.hookRunner = runner
@@ -327,7 +358,25 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 	if a.session != nil {
 		messages = append(messages, a.session.Messages...)
 	}
-	messages = append(messages, client.Message{Role: "user", Content: query})
+	modelQuery := query
+	if a.memoryPreflight != nil {
+		if preflight, err := a.memoryPreflight.PreflightMemory(ctx, query); err == nil {
+			if preflight.Block != "" {
+				modelQuery = query + "\n\n" + preflight.Block
+				preflight.ContextInjected = true
+			}
+			if a.handler != nil {
+				if h, ok := a.handler.(MemoryPreflightHandler); ok {
+					h.OnMemoryPreflight(preflight)
+				}
+			}
+		} else if a.handler != nil {
+			if h, ok := a.handler.(MemoryPreflightHandler); ok {
+				h.OnMemoryPreflight(MemoryPreflightResult{Attempted: true, Outcome: "error", Reason: err.Error()})
+			}
+		}
+	}
+	messages = append(messages, client.Message{Role: "user", Content: modelQuery})
 
 	// Update session title if this is the first message
 	if a.session != nil && len(a.session.Messages) == 0 {
@@ -439,7 +488,7 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 
 			// Update session with final messages
 			if a.session != nil {
-				a.session.Messages = messages
+				a.session.Messages = stripPrivateMemoryFromMessages(messages)
 				a.session.UpdatedAt = time.Now()
 				if a.sessionMgr != nil {
 					if err := a.sessionMgr.Save(); err != nil {
@@ -500,7 +549,7 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 
 		// Update session after each turn and auto-save
 		if a.session != nil {
-			a.session.Messages = messages
+			a.session.Messages = stripPrivateMemoryFromMessages(messages)
 			a.session.UpdatedAt = time.Now()
 			if a.sessionMgr != nil {
 				if err := a.sessionMgr.Save(); err != nil {
@@ -516,6 +565,31 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 	}
 
 	return nil, fmt.Errorf("reached maximum iterations (%d)", a.maxIter)
+}
+
+func stripPrivateMemoryFromMessages(messages []client.Message) []client.Message {
+	out := make([]client.Message, len(messages))
+	copy(out, messages)
+	for i := range out {
+		if out[i].Role != "user" {
+			continue
+		}
+		out[i].Content = stripPrivateMemoryBlock(out[i].Content)
+	}
+	return out
+}
+
+func stripPrivateMemoryBlock(content string) string {
+	start := strings.Index(content, "<private_memory>")
+	if start < 0 {
+		return content
+	}
+	end := strings.Index(content[start:], "</private_memory>")
+	if end < 0 {
+		return strings.TrimSpace(content[:start])
+	}
+	end += start + len("</private_memory>")
+	return strings.TrimSpace(content[:start] + content[end:])
 }
 
 func (a *AgentLoop) waitIfPaused(ctx context.Context) error {

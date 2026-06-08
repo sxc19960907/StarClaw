@@ -116,6 +116,9 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	if req.PauseController != nil {
 		loop.SetPauseController(req.PauseController)
 	}
+	if deps.MemoryPreflight != nil {
+		loop.SetMemoryPreflightProvider(deps.MemoryPreflight)
+	}
 	if agentCfg != nil {
 		agentDir := filepath.Join(deps.AgentsDir, agentName)
 		loop.SwitchAgent(agentCfg.Prompt, agentDir)

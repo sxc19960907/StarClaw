@@ -59,6 +59,23 @@ func (s *Server) handleGetMemory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, view)
 }
 
+func (s *Server) handleGetMemoryStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.memorySidecarStatus())
+}
+
+func (s *Server) handleRecallMemory(w http.ResponseWriter, r *http.Request) {
+	var req MemoryRecallRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	limit := req.Limit
+	result := s.recallMemory(req.Query)
+	if limit > 0 && len(result.Results) > limit {
+		result.Results = result.Results[:limit]
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (s *Server) handleAppendMemory(w http.ResponseWriter, r *http.Request) {
 	var req memoryAppendRequest
 	if !decodeBody(w, r, &req) {

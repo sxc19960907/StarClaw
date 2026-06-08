@@ -114,6 +114,8 @@ func (r *Router) registerSessionRoutes(mux *http.ServeMux) {
 func (r *Router) registerMemoryRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /memory", r.srv.handleGetMemory)
 	mux.HandleFunc("POST /memory", r.srv.handleAppendMemory)
+	mux.HandleFunc("GET /memory/status", r.srv.handleGetMemoryStatus)
+	mux.HandleFunc("POST /memory/recall", r.srv.handleRecallMemory)
 	mux.HandleFunc("DELETE /memory/{name}", r.srv.handleDeleteMemory)
 }
 

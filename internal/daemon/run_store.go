@@ -741,6 +741,17 @@ func (h *runRecorderHandler) OnBudgetStatus(status agent.TokenBudgetUsage) {
 	h.add(EventBudgetStatus, data)
 }
 
+func (h *runRecorderHandler) OnMemoryPreflight(result agent.MemoryPreflightResult) {
+	h.add("memory_preflight", map[string]any{
+		"attempted":        result.Attempted,
+		"provider":         result.Provider,
+		"outcome":          result.Outcome,
+		"reason":           result.Reason,
+		"results_count":    result.ResultsCount,
+		"context_injected": result.ContextInjected,
+	})
+}
+
 func (h *runRecorderHandler) OnStreamDelta(delta string) {
 	h.add(EventStreamDelta, map[string]any{"delta": delta})
 }

@@ -18,6 +18,7 @@ type multiSpy struct {
 	preambles   []string
 	deltas      []string
 	usageCount  int
+	memoryCount int
 }
 
 func (s *multiSpy) OnToolCall(name, args string) {
@@ -49,6 +50,11 @@ func (s *multiSpy) OnPreamble(preamble string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.preambles = append(s.preambles, preamble)
+}
+func (s *multiSpy) OnMemoryPreflight(result agent.MemoryPreflightResult) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.memoryCount++
 }
 
 func (s *multiSpy) ToolCallCount() int {
@@ -85,6 +91,7 @@ func TestMultiHandlerFanOut(t *testing.T) {
 	mh.OnPreamble("pre")
 	mh.OnStreamDelta("delta")
 	mh.OnUsage(client.Usage{InputTokens: 10, OutputTokens: 20})
+	mh.OnMemoryPreflight(agent.MemoryPreflightResult{Attempted: true})
 
 	for i, s := range []*multiSpy{h1, h2} {
 		s.mu.Lock()
@@ -105,6 +112,9 @@ func TestMultiHandlerFanOut(t *testing.T) {
 		}
 		if s.usageCount != 1 {
 			t.Errorf("handler %d: expected 1 usage, got %d", i, s.usageCount)
+		}
+		if s.memoryCount != 1 {
+			t.Errorf("handler %d: expected 1 memory preflight, got %d", i, s.memoryCount)
 		}
 		s.mu.Unlock()
 	}

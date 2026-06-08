@@ -54,6 +54,7 @@ type ServerDeps struct {
 	Registry        *agent.ToolRegistry
 	ScheduleManager *schedule.Manager
 	MCPTester       func(name string, server mcp.MCPServerConfig) ([]mcp.RemoteTool, error)
+	MemoryPreflight agent.MemoryPreflightProvider
 }
 
 // ApprovalDecision represents the user's response to a tool approval request.

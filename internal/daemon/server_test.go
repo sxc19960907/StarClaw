@@ -1493,6 +1493,65 @@ func TestMemoryTaxonomyParsesCategoriesAndWarnings(t *testing.T) {
 	}
 }
 
+func TestHandleMemoryStatusAndRecall(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var view memoryView
+	postJSON(t, ts.URL+"/memory", `{"content":"- preference: User likes local-first runtime."}`, http.StatusOK, &view)
+
+	var status MemorySidecarStatus
+	getJSON(t, ts.URL+"/memory/status", http.StatusOK, &status)
+	if status.Provider != MemoryProviderLocal || !status.Ready || status.LocalFacts != 1 {
+		t.Fatalf("status = %#v, want local ready with one fact", status)
+	}
+
+	var recall MemoryRecallResult
+	postJSON(t, ts.URL+"/memory/recall", `{"query":"local first","limit":1}`, http.StatusOK, &recall)
+	if recall.Outcome != MemoryRecallOutcomeMatched || len(recall.Results) != 1 {
+		t.Fatalf("recall = %#v, want one match", recall)
+	}
+	if !strings.Contains(recall.Results[0].Text, "local-first") {
+		t.Fatalf("recall result = %#v", recall.Results[0])
+	}
+}
+
+func TestHandleMessageMemoryPreflightIsContentFree(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var view memoryView
+	postJSON(t, ts.URL+"/memory", `{"content":"- preference: User likes local-first runtime."}`, http.StatusOK, &view)
+	postJSON(t, ts.URL+"/message", `{"text":"What local first preference is known?","request_id":"memory-preflight-run"}`, http.StatusOK, &RunAgentResponse{})
+
+	var detail RunRecord
+	getJSON(t, ts.URL+"/runs/memory-preflight-run", http.StatusOK, &detail)
+	var found bool
+	for _, event := range detail.StructuredEvents {
+		if event.Type != "memory_preflight" {
+			continue
+		}
+		found = true
+		encoded, err := json.Marshal(event)
+		if err != nil {
+			t.Fatalf("marshal event: %v", err)
+		}
+		if strings.Contains(string(encoded), "local-first runtime") || strings.Contains(string(encoded), "What local first") {
+			t.Fatalf("memory_preflight leaked content: %s", encoded)
+		}
+		if event.Data["results_count"] != float64(1) && event.Data["results_count"] != 1 {
+			t.Fatalf("memory_preflight data = %#v, want result count", event.Data)
+		}
+	}
+	if !found {
+		t.Fatalf("memory_preflight event not found in %#v", detail.StructuredEvents)
+	}
+}
+
 func TestHandleMemoryRejectsTraversal(t *testing.T) {
 	s := newTestServer(t, newTestServerDeps(t))
 	ts := httptest.NewServer(s.Handler())

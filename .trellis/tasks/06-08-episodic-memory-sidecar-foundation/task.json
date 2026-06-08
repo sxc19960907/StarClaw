@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-6",
-  "name": "astria-kocoro-parity-phase-6",
-  "title": "Astria Kocoro parity phase 6: engine orchestration and channel runtime",
+  "id": "episodic-memory-sidecar-foundation",
+  "name": "episodic-memory-sidecar-foundation",
+  "title": "Episodic memory sidecar foundation",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -18,12 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-08-kocoro-style-workflow-orchestration",
-    "06-08-daemon-mailbox-channel-runtime",
-    "06-08-episodic-memory-sidecar-foundation"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-6",
   "relatedFiles": [],
   "notes": "",
   "meta": {}
