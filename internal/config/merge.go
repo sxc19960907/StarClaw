@@ -28,6 +28,9 @@ func MergeAgentConfig(global *Config, ag *agents.Agent) *Config {
 		if ac.Agent.ContextWindow != nil {
 			merged.Agent.ContextWindow = *ac.Agent.ContextWindow
 		}
+		if ac.Agent.StreamIdleTimeoutSecs != nil {
+			merged.Agent.StreamIdleTimeoutSecs = *ac.Agent.StreamIdleTimeoutSecs
+		}
 		if ac.Agent.TokenBudget != nil {
 			if ac.Agent.TokenBudget.MaxInputTokens != nil {
 				merged.Agent.TokenBudget.MaxInputTokens = *ac.Agent.TokenBudget.MaxInputTokens

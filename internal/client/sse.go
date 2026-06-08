@@ -246,6 +246,12 @@ func (c *SSEClient) readEvents(ctx context.Context, body io.Reader, idleTimeout 
 				_ = closer.Close()
 			}
 			return errSSEIdleTimeout
+		case <-ctx.Done():
+			scanCancel()
+			if closer, ok := body.(io.Closer); ok {
+				_ = closer.Close()
+			}
+			return nil
 		}
 	}
 }

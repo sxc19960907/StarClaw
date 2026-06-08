@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -268,6 +269,24 @@ type streamingOnlyClient struct {
 	lastOpts    *client.ChatOptions
 }
 
+type streamIdleTimeoutClient struct {
+	streamCalls int
+	chatCalls   int
+}
+
+func (c *streamIdleTimeoutClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
+	c.chatCalls++
+	return &client.Response{Content: "non-stream fallback"}, nil
+}
+
+func (c *streamIdleTimeoutClient) StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error) {
+	c.streamCalls++
+	if onDelta != nil {
+		onDelta("partial")
+	}
+	return &client.Response{Content: "partial"}, client.ErrStreamIdleTimeout
+}
+
 func (c *streamingOnlyClient) Chat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions) (*client.Response, error) {
 	c.chatCalls++
 	return nil, fmt.Errorf("non-streaming Chat should not be called after successful stream")
@@ -294,6 +313,23 @@ func TestAgentLoop_StreamingSuccessDoesNotCallChat(t *testing.T) {
 	}
 	if resp.Content != "streamed response" {
 		t.Fatalf("Response content = %q, want streamed response", resp.Content)
+	}
+	if llmClient.streamCalls != 1 {
+		t.Fatalf("StreamChat calls = %d, want 1", llmClient.streamCalls)
+	}
+	if llmClient.chatCalls != 0 {
+		t.Fatalf("Chat calls = %d, want 0", llmClient.chatCalls)
+	}
+}
+
+func TestAgentLoop_StreamIdleTimeoutDoesNotRetryOrFallback(t *testing.T) {
+	llmClient := &streamIdleTimeoutClient{}
+	loop := NewAgentLoop(llmClient, NewToolRegistry())
+	loop.SetEnableStreaming(true)
+
+	_, err := loop.Run(context.Background(), "hello")
+	if !errors.Is(err, client.ErrStreamIdleTimeout) {
+		t.Fatalf("Run() error = %v, want ErrStreamIdleTimeout", err)
 	}
 	if llmClient.streamCalls != 1 {
 		t.Fatalf("StreamChat calls = %d, want 1", llmClient.streamCalls)

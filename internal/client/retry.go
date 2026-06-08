@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -27,6 +28,9 @@ func DefaultRetryConfig() RetryConfig {
 // IsRetryableError returns true for transient errors that may succeed on retry.
 func IsRetryableError(err error) bool {
 	if err == nil {
+		return false
+	}
+	if errors.Is(err, ErrStreamIdleTimeout) {
 		return false
 	}
 	s := err.Error()

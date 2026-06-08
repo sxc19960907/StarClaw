@@ -1,9 +1,65 @@
 package client
 
 import (
+	"errors"
+	"io"
 	"strings"
 	"testing"
+	"time"
 )
+
+type blockingReadCloser struct {
+	closed chan struct{}
+}
+
+func newBlockingReadCloser() *blockingReadCloser {
+	return &blockingReadCloser{closed: make(chan struct{})}
+}
+
+func (r *blockingReadCloser) Read(_ []byte) (int, error) {
+	<-r.closed
+	return 0, io.EOF
+}
+
+func (r *blockingReadCloser) Close() error {
+	select {
+	case <-r.closed:
+	default:
+		close(r.closed)
+	}
+	return nil
+}
+
+type prefixThenBlockReadCloser struct {
+	prefix []byte
+	closed chan struct{}
+}
+
+func newPrefixThenBlockReadCloser(prefix string) *prefixThenBlockReadCloser {
+	return &prefixThenBlockReadCloser{
+		prefix: []byte(prefix),
+		closed: make(chan struct{}),
+	}
+}
+
+func (r *prefixThenBlockReadCloser) Read(p []byte) (int, error) {
+	if len(r.prefix) > 0 {
+		n := copy(p, r.prefix)
+		r.prefix = r.prefix[n:]
+		return n, nil
+	}
+	<-r.closed
+	return 0, io.EOF
+}
+
+func (r *prefixThenBlockReadCloser) Close() error {
+	select {
+	case <-r.closed:
+	default:
+		close(r.closed)
+	}
+	return nil
+}
 
 func TestParseOpenAIStream_TextOnly(t *testing.T) {
 	stream := `data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}
@@ -134,6 +190,60 @@ data: [DONE]
 	}
 }
 
+func TestParseOpenAIStreamWithOptionsIdleTimeoutReturnsPartial(t *testing.T) {
+	reader := newPrefixThenBlockReadCloser("data: {\"choices\":[{\"delta\":{\"content\":\"partial\"},\"finish_reason\":null}]}\n")
+
+	resp, err := ParseOpenAIStreamWithOptions(
+		t.Context(),
+		reader,
+		nil,
+		StreamParseOptions{IdleTimeout: 20 * time.Millisecond},
+	)
+	if !errors.Is(err, ErrStreamIdleTimeout) {
+		t.Fatalf("error = %v, want ErrStreamIdleTimeout", err)
+	}
+	if resp.Content != "partial" {
+		t.Fatalf("partial content = %q, want partial", resp.Content)
+	}
+	select {
+	case <-reader.closed:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("reader should be closed on idle timeout")
+	}
+}
+
+func TestParseOpenAIStreamWithOptionsZeroTimeoutUsesLegacyBlockingPath(t *testing.T) {
+	reader := newBlockingReadCloser()
+	done := make(chan error, 1)
+	go func() {
+		_, err := ParseOpenAIStreamWithOptions(
+			t.Context(),
+			reader,
+			nil,
+			StreamParseOptions{},
+		)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("legacy zero-timeout parser returned before close: %v", err)
+	case <-time.After(30 * time.Millisecond):
+	}
+
+	if err := reader.Close(); err != nil {
+		t.Fatalf("close reader: %v", err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("legacy parser after close error = %v", err)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("legacy parser did not return after close")
+	}
+}
+
 func TestParseAnthropicStream_TextOnly(t *testing.T) {
 	stream := `event: message_start
 data: {"type":"message_start","message":{"usage":{"input_tokens":12,"output_tokens":1}}}
@@ -251,5 +361,27 @@ data: {"type":
 	}
 	if resp.Content != "partial" {
 		t.Fatalf("partial content = %q, want partial", resp.Content)
+	}
+}
+
+func TestParseAnthropicStreamWithOptionsIdleTimeoutReturnsPartial(t *testing.T) {
+	reader := newPrefixThenBlockReadCloser("data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"partial\"}}\n")
+
+	resp, err := ParseAnthropicStreamWithOptions(
+		t.Context(),
+		reader,
+		nil,
+		StreamParseOptions{IdleTimeout: 20 * time.Millisecond},
+	)
+	if !errors.Is(err, ErrStreamIdleTimeout) {
+		t.Fatalf("error = %v, want ErrStreamIdleTimeout", err)
+	}
+	if resp.Content != "partial" {
+		t.Fatalf("partial content = %q, want partial", resp.Content)
+	}
+	select {
+	case <-reader.closed:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("reader should be closed on idle timeout")
 	}
 }

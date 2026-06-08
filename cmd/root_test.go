@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/tools"
 )
@@ -158,6 +160,84 @@ func TestApplyToolFilters(t *testing.T) {
 	}
 	if _, ok := filtered.Get("browser"); ok {
 		t.Fatal("browser should be removed by allow filter")
+	}
+}
+
+func TestNewLLMClientAppliesStreamIdleTimeout(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      *config.Config
+		wantType any
+	}{
+		{
+			name: "anthropic",
+			cfg: &config.Config{
+				Provider: "anthropic",
+				Agent:    config.AgentConfig{StreamIdleTimeoutSecs: 7},
+			},
+			wantType: &client.AnthropicClient{},
+		},
+		{
+			name: "openai",
+			cfg: &config.Config{
+				Provider: "openai",
+				Agent:    config.AgentConfig{StreamIdleTimeoutSecs: 7},
+			},
+			wantType: &client.OpenAIClient{},
+		},
+		{
+			name: "ollama",
+			cfg: &config.Config{
+				Provider: "ollama",
+				Agent:    config.AgentConfig{StreamIdleTimeoutSecs: 7},
+			},
+			wantType: &client.OllamaClient{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := newLLMClient(tt.cfg)
+			switch c := got.(type) {
+			case *client.AnthropicClient:
+				if _, ok := tt.wantType.(*client.AnthropicClient); !ok {
+					t.Fatalf("client type = %T", got)
+				}
+				if c.StreamIdleTimeout() != 7*time.Second {
+					t.Fatalf("StreamIdleTimeout = %s, want 7s", c.StreamIdleTimeout())
+				}
+			case *client.OpenAIClient:
+				if _, ok := tt.wantType.(*client.OpenAIClient); !ok {
+					t.Fatalf("client type = %T", got)
+				}
+				if c.StreamIdleTimeout() != 7*time.Second {
+					t.Fatalf("StreamIdleTimeout = %s, want 7s", c.StreamIdleTimeout())
+				}
+			case *client.OllamaClient:
+				if _, ok := tt.wantType.(*client.OllamaClient); !ok {
+					t.Fatalf("client type = %T", got)
+				}
+				if c.StreamIdleTimeout() != 7*time.Second {
+					t.Fatalf("StreamIdleTimeout = %s, want 7s", c.StreamIdleTimeout())
+				}
+			default:
+				t.Fatalf("unexpected client type %T", got)
+			}
+		})
+	}
+}
+
+func TestNewLLMClientAllowsStreamIdleTimeoutDisable(t *testing.T) {
+	got := newLLMClient(&config.Config{
+		Provider: "openai",
+		Agent:    config.AgentConfig{StreamIdleTimeoutSecs: 0},
+	})
+	c, ok := got.(*client.OpenAIClient)
+	if !ok {
+		t.Fatalf("client type = %T, want *client.OpenAIClient", got)
+	}
+	if c.StreamIdleTimeout() != 0 {
+		t.Fatalf("StreamIdleTimeout = %s, want disabled zero", c.StreamIdleTimeout())
 	}
 }
 

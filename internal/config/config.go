@@ -41,16 +41,17 @@ type Config struct {
 
 // AgentConfig holds agent-specific settings
 type AgentConfig struct {
-	MaxIterations   int               `mapstructure:"max_iterations" yaml:"max_iterations"`
-	Temperature     float64           `mapstructure:"temperature" yaml:"temperature"`
-	MaxTokens       int               `mapstructure:"max_tokens" yaml:"max_tokens"`
-	ContextWindow   int               `mapstructure:"context_window" yaml:"context_window"`
-	TokenBudget     TokenBudgetConfig `mapstructure:"token_budget" yaml:"token_budget,omitempty" json:"token_budget,omitempty"`
-	Thinking        bool              `mapstructure:"thinking"         yaml:"thinking"         json:"thinking"`
-	ThinkingMode    string            `mapstructure:"thinking_mode"    yaml:"thinking_mode"    json:"thinking_mode"`
-	ThinkingBudget  int               `mapstructure:"thinking_budget"  yaml:"thinking_budget"  json:"thinking_budget"`
-	ReasoningEffort string            `mapstructure:"reasoning_effort" yaml:"reasoning_effort" json:"reasoning_effort"`
-	Model           string            `mapstructure:"model"            yaml:"model"            json:"model"`
+	MaxIterations         int               `mapstructure:"max_iterations" yaml:"max_iterations"`
+	Temperature           float64           `mapstructure:"temperature" yaml:"temperature"`
+	MaxTokens             int               `mapstructure:"max_tokens" yaml:"max_tokens"`
+	ContextWindow         int               `mapstructure:"context_window" yaml:"context_window"`
+	StreamIdleTimeoutSecs int               `mapstructure:"stream_idle_timeout_secs" yaml:"stream_idle_timeout_secs" json:"stream_idle_timeout_secs"`
+	TokenBudget           TokenBudgetConfig `mapstructure:"token_budget" yaml:"token_budget,omitempty" json:"token_budget,omitempty"`
+	Thinking              bool              `mapstructure:"thinking"         yaml:"thinking"         json:"thinking"`
+	ThinkingMode          string            `mapstructure:"thinking_mode"    yaml:"thinking_mode"    json:"thinking_mode"`
+	ThinkingBudget        int               `mapstructure:"thinking_budget"  yaml:"thinking_budget"  json:"thinking_budget"`
+	ReasoningEffort       string            `mapstructure:"reasoning_effort" yaml:"reasoning_effort" json:"reasoning_effort"`
+	Model                 string            `mapstructure:"model"            yaml:"model"            json:"model"`
 }
 
 // TokenBudgetConfig configures local per-run token budget enforcement.
@@ -151,6 +152,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("agent.temperature", 0)
 	viper.SetDefault("agent.max_tokens", 8192)
 	viper.SetDefault("agent.context_window", 0) // 0 = auto/disabled
+	viper.SetDefault("agent.stream_idle_timeout_secs", 90)
 	viper.SetDefault("agent.token_budget.max_input_tokens", 0)
 	viper.SetDefault("agent.token_budget.max_output_tokens", 0)
 	viper.SetDefault("agent.token_budget.max_total_tokens", 0)
@@ -220,6 +222,9 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("invalid agent.thinking_mode %q: must be \"adaptive\" or \"enabled\"", cfg.Agent.ThinkingMode)
 		}
 	}
+	if cfg.Agent.StreamIdleTimeoutSecs < 0 {
+		return nil, fmt.Errorf("agent.stream_idle_timeout_secs (%d) must be >= 0 (0 = disabled)", cfg.Agent.StreamIdleTimeoutSecs)
+	}
 
 	return &cfg, nil
 }
@@ -277,6 +282,7 @@ agent:
   temperature: 0
   max_tokens: 8192
   context_window: 0  # 0 = disabled, set to e.g. 200000 to enable compaction
+  stream_idle_timeout_secs: 90  # provider stream chunk-gap watchdog; 0 disables
   token_budget:
     max_input_tokens: 0   # 0 = disabled
     max_output_tokens: 0  # 0 = disabled
@@ -374,6 +380,10 @@ func LoadFromPath(configPath string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil, fmt.Errorf("failed to inspect config: %w", err)
+	}
 
 	// Set defaults for missing values
 	if cfg.Endpoint == "" {
@@ -387,6 +397,9 @@ func LoadFromPath(configPath string) (*Config, error) {
 	}
 	if cfg.Agent.MaxTokens == 0 {
 		cfg.Agent.MaxTokens = 8192
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs == 0 && !yamlPathExists(&root, "agent", "stream_idle_timeout_secs") {
+		cfg.Agent.StreamIdleTimeoutSecs = 90
 	}
 	if cfg.Tools.ResultTruncation == 0 {
 		cfg.Tools.ResultTruncation = 30000

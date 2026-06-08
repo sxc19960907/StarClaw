@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend quality gate index."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Check timeout sentinel remains detectable with errors.Is."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Focused tests and full-suite expectations."}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"Verify no sensitive prompt/stream payload logging."}
+{"file":".trellis/tasks/06-08-06-08-provider-stream-watchdog-parity/prd.md","reason":"Acceptance criteria for provider stream watchdog parity."}

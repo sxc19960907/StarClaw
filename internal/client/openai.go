@@ -13,11 +13,12 @@ import (
 
 // OpenAIClient implements the LLMClient interface for OpenAI-compatible APIs.
 type OpenAIClient struct {
-	mu         sync.Mutex
-	apiKey     string
-	baseURL    string
-	model      string
-	httpClient *http.Client
+	mu                sync.Mutex
+	apiKey            string
+	baseURL           string
+	model             string
+	streamIdleTimeout time.Duration
+	httpClient        *http.Client
 }
 
 // NewOpenAIClient creates a new OpenAI client.
@@ -248,6 +249,20 @@ func (c *OpenAIClient) SetModel(model string) {
 	c.mu.Unlock()
 }
 
+// SetStreamIdleTimeout configures the per-line watchdog for streaming
+// responses. A zero duration disables the watchdog.
+func (c *OpenAIClient) SetStreamIdleTimeout(timeout time.Duration) {
+	c.mu.Lock()
+	c.streamIdleTimeout = timeout
+	c.mu.Unlock()
+}
+
+func (c *OpenAIClient) StreamIdleTimeout() time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.streamIdleTimeout
+}
+
 // StreamChat implements StreamingLLMClient for OpenAI-compatible APIs.
 func (c *OpenAIClient) StreamChat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions, onDelta func(delta string)) (*Response, error) {
 	if maxTokens == 0 {
@@ -330,5 +345,5 @@ func (c *OpenAIClient) StreamChat(ctx context.Context, systemPrompt string, mess
 		return nil, fmt.Errorf("openAI API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	return ParseOpenAIStream(resp.Body, onDelta)
+	return ParseOpenAIStreamWithOptions(ctx, resp.Body, onDelta, StreamParseOptions{IdleTimeout: c.StreamIdleTimeout()})
 }

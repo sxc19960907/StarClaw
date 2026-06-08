@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-11",
-  "name": "astria-kocoro-parity-phase-11",
-  "title": "Astria Kocoro parity phase 11: streaming hardening",
+  "id": "06-08-provider-stream-watchdog-parity",
+  "name": "06-08-provider-stream-watchdog-parity",
+  "title": "Provider stream watchdog parity",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -18,12 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-08-openai-gateway-streaming-parity",
-    "06-08-daemon-sse-event-vocabulary-parity",
-    "06-08-06-08-provider-stream-watchdog-parity"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-11",
   "relatedFiles": [],
   "notes": "",
   "meta": {}

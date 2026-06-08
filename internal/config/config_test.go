@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -99,6 +100,114 @@ func TestLoad(t *testing.T) {
 	}
 	if cfg.Sync.LockTimeout != "30s" {
 		t.Errorf("Sync.LockTimeout = %q, want 30s", cfg.Sync.LockTimeout)
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 90 {
+		t.Errorf("Agent.StreamIdleTimeoutSecs = %d, want 90", cfg.Agent.StreamIdleTimeoutSecs)
+	}
+}
+
+func TestLoadStreamIdleTimeoutOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	configDir := filepath.Join(tmpDir, ".starclaw")
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(`
+api_key: "test-key"
+agent:
+  stream_idle_timeout_secs: 30
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 30 {
+		t.Fatalf("StreamIdleTimeoutSecs = %d, want 30", cfg.Agent.StreamIdleTimeoutSecs)
+	}
+}
+
+func TestLoadStreamIdleTimeoutExplicitZeroDisables(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	configDir := filepath.Join(tmpDir, ".starclaw")
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(`
+api_key: "test-key"
+agent:
+  stream_idle_timeout_secs: 0
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 0 {
+		t.Fatalf("StreamIdleTimeoutSecs = %d, want disabled zero", cfg.Agent.StreamIdleTimeoutSecs)
+	}
+}
+
+func TestLoadRejectsNegativeStreamIdleTimeout(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	configDir := filepath.Join(tmpDir, ".starclaw")
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(`
+api_key: "test-key"
+agent:
+  stream_idle_timeout_secs: -1
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for negative stream idle timeout")
+	}
+	if !strings.Contains(err.Error(), "agent.stream_idle_timeout_secs") {
+		t.Fatalf("error = %v, want agent.stream_idle_timeout_secs", err)
+	}
+}
+
+func TestLoadFromPathStreamIdleTimeoutDefaultAndExplicitZero(t *testing.T) {
+	tmpDir := t.TempDir()
+	missingPath := filepath.Join(tmpDir, "missing.yaml")
+	if err := os.WriteFile(missingPath, []byte(`
+api_key: "test-key"
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadFromPath(missingPath)
+	if err != nil {
+		t.Fatalf("LoadFromPath missing value: %v", err)
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 90 {
+		t.Fatalf("missing stream idle timeout = %d, want default 90", cfg.Agent.StreamIdleTimeoutSecs)
+	}
+
+	zeroPath := filepath.Join(tmpDir, "zero.yaml")
+	if err := os.WriteFile(zeroPath, []byte(`
+api_key: "test-key"
+agent:
+  stream_idle_timeout_secs: 0
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = LoadFromPath(zeroPath)
+	if err != nil {
+		t.Fatalf("LoadFromPath explicit zero: %v", err)
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 0 {
+		t.Fatalf("explicit zero stream idle timeout = %d, want disabled zero", cfg.Agent.StreamIdleTimeoutSecs)
 	}
 }
 

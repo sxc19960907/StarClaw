@@ -59,20 +59,20 @@ func LoadMultiLevel() (*Config, *ConfigSource, error) {
 	base := defaultConfig()
 
 	globalPath := filepath.Join(globalDir, "config.yaml")
-	if global, err := loadYAMLFile(globalPath); err == nil {
-		overlayConfig(base, global, source, LayerGlobal)
+	if global, presence, err := loadYAMLFile(globalPath); err == nil {
+		overlayConfig(base, global, presence, source, LayerGlobal)
 	}
 
 	cwd, _ := os.Getwd()
 	if cwd != "" {
 		projectPath := filepath.Join(cwd, ".starclaw", "config.yaml")
-		if project, err := loadYAMLFile(projectPath); err == nil {
-			overlayConfig(base, project, source, LayerProject)
+		if project, presence, err := loadYAMLFile(projectPath); err == nil {
+			overlayConfig(base, project, presence, source, LayerProject)
 		}
 
 		localPath := filepath.Join(cwd, ".starclaw", "config.local.yaml")
-		if local, err := loadYAMLFile(localPath); err == nil {
-			overlayConfig(base, local, source, LayerLocal)
+		if local, presence, err := loadYAMLFile(localPath); err == nil {
+			overlayConfig(base, local, presence, source, LayerLocal)
 		}
 	}
 
@@ -101,11 +101,12 @@ func defaultConfig() *Config {
 		OllamaModel:    "llama3.1",
 		ModelTier:      "medium",
 		Agent: AgentConfig{
-			MaxIterations:  25,
-			MaxTokens:      8192,
-			Thinking:       true,
-			ThinkingMode:   "adaptive",
-			ThinkingBudget: 10000,
+			MaxIterations:         25,
+			MaxTokens:             8192,
+			StreamIdleTimeoutSecs: 90,
+			Thinking:              true,
+			ThinkingMode:          "adaptive",
+			ThinkingBudget:        10000,
 		},
 		Tools: ToolsConfig{
 			BashTimeout:       120,
@@ -133,19 +134,57 @@ func defaultConfig() *Config {
 	}
 }
 
-func loadYAMLFile(path string) (*Config, error) {
+type configPresence struct {
+	AgentStreamIdleTimeout bool
+}
+
+func loadYAMLFile(path string) (*Config, configPresence, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, configPresence{}, err
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+		return nil, configPresence{}, err
 	}
-	return &cfg, nil
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil, configPresence{}, err
+	}
+	presence := configPresence{
+		AgentStreamIdleTimeout: yamlPathExists(&root, "agent", "stream_idle_timeout_secs"),
+	}
+	return &cfg, presence, nil
 }
 
-func overlayConfig(base, overlay *Config, source *ConfigSource, layer ConfigLayer) {
+func yamlPathExists(root *yaml.Node, path ...string) bool {
+	if root == nil || len(path) == 0 {
+		return false
+	}
+	node := root
+	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		node = node.Content[0]
+	}
+	for _, key := range path {
+		if node.Kind != yaml.MappingNode {
+			return false
+		}
+		found := false
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i].Value == key {
+				node = node.Content[i+1]
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func overlayConfig(base, overlay *Config, presence configPresence, source *ConfigSource, layer ConfigLayer) {
 	if overlay.Endpoint != "" {
 		base.Endpoint = overlay.Endpoint
 		source.Endpoint = layer
@@ -177,7 +216,7 @@ func overlayConfig(base, overlay *Config, source *ConfigSource, layer ConfigLaye
 		base.ModelTier = overlay.ModelTier
 	}
 
-	overlayAgent(&base.Agent, &overlay.Agent, source, layer)
+	overlayAgent(&base.Agent, &overlay.Agent, presence, source, layer)
 	overlayTools(&base.Tools, &overlay.Tools, source, layer)
 	overlayCloud(&base.Cloud, &overlay.Cloud, layer)
 	overlaySync(&base.Sync, &overlay.Sync, source, layer)
@@ -193,7 +232,7 @@ func overlayConfig(base, overlay *Config, source *ConfigSource, layer ConfigLaye
 	}
 }
 
-func overlayAgent(base, overlay *AgentConfig, source *ConfigSource, layer ConfigLayer) {
+func overlayAgent(base, overlay *AgentConfig, presence configPresence, source *ConfigSource, layer ConfigLayer) {
 	changed := false
 	if overlay.MaxIterations != 0 {
 		base.MaxIterations = overlay.MaxIterations
@@ -209,6 +248,10 @@ func overlayAgent(base, overlay *AgentConfig, source *ConfigSource, layer Config
 	}
 	if overlay.ContextWindow != 0 {
 		base.ContextWindow = overlay.ContextWindow
+		changed = true
+	}
+	if overlay.StreamIdleTimeoutSecs != 0 || presence.AgentStreamIdleTimeout {
+		base.StreamIdleTimeoutSecs = overlay.StreamIdleTimeoutSecs
 		changed = true
 	}
 	if overlay.TokenBudget.MaxInputTokens != 0 {

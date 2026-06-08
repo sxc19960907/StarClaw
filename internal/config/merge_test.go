@@ -165,10 +165,11 @@ func TestMergeAgentConfig_AdvancedAgentOptions(t *testing.T) {
 	global := &Config{
 		ModelTier: "medium",
 		Agent: AgentConfig{
-			Thinking:        true,
-			ThinkingMode:    "adaptive",
-			ThinkingBudget:  10000,
-			ReasoningEffort: "",
+			StreamIdleTimeoutSecs: 90,
+			Thinking:              true,
+			ThinkingMode:          "adaptive",
+			ThinkingBudget:        10000,
+			ReasoningEffort:       "",
 		},
 	}
 
@@ -177,15 +178,17 @@ func TestMergeAgentConfig_AdvancedAgentOptions(t *testing.T) {
 	budget := 2048
 	effort := "high"
 	model := "claude-opus-test"
+	streamIdle := 12
 	ag := &agents.Agent{
 		Name: "reasoner",
 		Config: &agents.AgentConfig{
 			Agent: &agents.AgentModelConfig{
-				Model:           &model,
-				Thinking:        &thinking,
-				ThinkingMode:    &mode,
-				ThinkingBudget:  &budget,
-				ReasoningEffort: &effort,
+				Model:                 &model,
+				StreamIdleTimeoutSecs: &streamIdle,
+				Thinking:              &thinking,
+				ThinkingMode:          &mode,
+				ThinkingBudget:        &budget,
+				ReasoningEffort:       &effort,
 			},
 		},
 	}
@@ -194,6 +197,9 @@ func TestMergeAgentConfig_AdvancedAgentOptions(t *testing.T) {
 
 	if result.Agent.Model != "claude-opus-test" {
 		t.Fatalf("Agent.Model = %q, want claude-opus-test", result.Agent.Model)
+	}
+	if result.Agent.StreamIdleTimeoutSecs != 12 {
+		t.Fatalf("Agent.StreamIdleTimeoutSecs = %d, want 12", result.Agent.StreamIdleTimeoutSecs)
 	}
 	if result.Agent.Thinking {
 		t.Fatal("Agent.Thinking = true, want false")

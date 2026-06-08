@@ -14,10 +14,11 @@ import (
 // OllamaClient implements the LLMClient interface for local Ollama instances.
 // It communicates via Ollama's OpenAI-compatible /v1/chat/completions endpoint.
 type OllamaClient struct {
-	mu         sync.Mutex
-	endpoint   string
-	model      string
-	httpClient *http.Client
+	mu                sync.Mutex
+	endpoint          string
+	model             string
+	streamIdleTimeout time.Duration
+	httpClient        *http.Client
 }
 
 // NewOllamaClient creates a new client for a local Ollama instance.
@@ -181,6 +182,20 @@ func (c *OllamaClient) SetModel(model string) {
 	c.mu.Unlock()
 }
 
+// SetStreamIdleTimeout configures the per-line watchdog for streaming
+// responses. A zero duration disables the watchdog.
+func (c *OllamaClient) SetStreamIdleTimeout(timeout time.Duration) {
+	c.mu.Lock()
+	c.streamIdleTimeout = timeout
+	c.mu.Unlock()
+}
+
+func (c *OllamaClient) StreamIdleTimeout() time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.streamIdleTimeout
+}
+
 // StreamChat implements StreamingLLMClient for Ollama's OpenAI-compatible endpoint.
 func (c *OllamaClient) StreamChat(ctx context.Context, systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions, onDelta func(delta string)) (*Response, error) {
 	if maxTokens == 0 {
@@ -254,5 +269,5 @@ func (c *OllamaClient) StreamChat(ctx context.Context, systemPrompt string, mess
 		return nil, fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	return ParseOpenAIStream(resp.Body, onDelta)
+	return ParseOpenAIStreamWithOptions(ctx, resp.Body, onDelta, StreamParseOptions{IdleTimeout: c.StreamIdleTimeout()})
 }

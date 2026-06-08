@@ -38,6 +38,9 @@ agent:
 	if cfg.Agent.MaxIterations != 50 {
 		t.Errorf("max_iterations = %d, want 50", cfg.Agent.MaxIterations)
 	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 90 {
+		t.Errorf("stream_idle_timeout_secs = %d, want default 90", cfg.Agent.StreamIdleTimeoutSecs)
+	}
 	if source.Endpoint != LayerGlobal {
 		t.Errorf("endpoint source = %v, want global", source.Endpoint)
 	}
@@ -69,6 +72,7 @@ agent:
 	if err := os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
 agent:
   max_iterations: 100
+  stream_idle_timeout_secs: 45
   model: "claude-opus"
 `), 0600); err != nil {
 		t.Fatal(err)
@@ -102,8 +106,59 @@ agent:
 	if cfg.Agent.Model != "claude-opus" {
 		t.Errorf("model = %q, want claude-opus", cfg.Agent.Model)
 	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 45 {
+		t.Errorf("stream_idle_timeout_secs = %d, want 45", cfg.Agent.StreamIdleTimeoutSecs)
+	}
 	if source.Agent != LayerProject {
 		t.Errorf("agent source = %v, want project", source.Agent)
+	}
+}
+
+func TestLoadMultiLevel_StreamIdleTimeoutExplicitZeroDisables(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+api_key: "global-key"
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	projectDir := filepath.Join(tmpDir, "project", ".starclaw")
+	if err := os.MkdirAll(projectDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "config.yaml"), []byte(`
+agent:
+  stream_idle_timeout_secs: 0
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(filepath.Join(tmpDir, "project")); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+	if cfg.Agent.StreamIdleTimeoutSecs != 0 {
+		t.Fatalf("stream_idle_timeout_secs = %d, want disabled zero", cfg.Agent.StreamIdleTimeoutSecs)
+	}
+	if source.Agent != LayerProject {
+		t.Fatalf("agent source = %v, want project", source.Agent)
 	}
 }
 

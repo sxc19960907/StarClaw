@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/starclaw/starclaw/internal/agent"
@@ -381,13 +382,20 @@ func truncateString(s string, maxLen int) string {
 
 // newLLMClient creates the appropriate LLM client based on config provider.
 func newLLMClient(cfg *config.Config) client.LLMClient {
+	streamIdleTimeout := time.Duration(cfg.Agent.StreamIdleTimeoutSecs) * time.Second
 	switch cfg.Provider {
 	case "openai":
-		return client.NewOpenAIClient(cfg.OpenAIAPIKey, cfg.OpenAIEndpoint, cfg.OpenAIModel)
+		c := client.NewOpenAIClient(cfg.OpenAIAPIKey, cfg.OpenAIEndpoint, cfg.OpenAIModel)
+		c.SetStreamIdleTimeout(streamIdleTimeout)
+		return c
 	case "ollama":
-		return client.NewOllamaClient(cfg.OllamaEndpoint, cfg.OllamaModel)
+		c := client.NewOllamaClient(cfg.OllamaEndpoint, cfg.OllamaModel)
+		c.SetStreamIdleTimeout(streamIdleTimeout)
+		return c
 	default:
-		return client.NewAnthropicClient(cfg.APIKey, cfg.Endpoint, cfg.ModelTier)
+		c := client.NewAnthropicClient(cfg.APIKey, cfg.Endpoint, cfg.ModelTier)
+		c.SetStreamIdleTimeout(streamIdleTimeout)
+		return c
 	}
 }
 

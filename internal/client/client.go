@@ -93,11 +93,12 @@ type LLMClient interface {
 
 // AnthropicClient implements the Anthropic Messages API.
 type AnthropicClient struct {
-	mu       sync.Mutex
-	apiKey   string
-	endpoint string
-	model    string
-	client   *http.Client
+	mu                sync.Mutex
+	apiKey            string
+	endpoint          string
+	model             string
+	streamIdleTimeout time.Duration
+	client            *http.Client
 }
 
 // NewAnthropicClient creates a new Anthropic client.
@@ -122,6 +123,20 @@ func (c *AnthropicClient) SetModel(model string) {
 	c.mu.Lock()
 	c.model = model
 	c.mu.Unlock()
+}
+
+// SetStreamIdleTimeout configures the per-line watchdog for streaming
+// responses. A zero duration disables the watchdog.
+func (c *AnthropicClient) SetStreamIdleTimeout(timeout time.Duration) {
+	c.mu.Lock()
+	c.streamIdleTimeout = timeout
+	c.mu.Unlock()
+}
+
+func (c *AnthropicClient) StreamIdleTimeout() time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.streamIdleTimeout
 }
 
 // Complete performs a non-chat completion. Implements the context.Completer interface.
@@ -250,7 +265,7 @@ func (c *AnthropicClient) StreamChat(ctx context.Context, systemPrompt string, m
 		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	return ParseAnthropicStream(resp.Body, onDelta)
+	return ParseAnthropicStreamWithOptions(ctx, resp.Body, onDelta, StreamParseOptions{IdleTimeout: c.StreamIdleTimeout()})
 }
 
 func (c *AnthropicClient) buildMessagesRequestBody(systemPrompt string, messages []Message, tools []ToolDef, maxTokens int, opts *ChatOptions, stream bool) map[string]any {

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -853,6 +854,9 @@ func (a *AgentLoop) chatWithRetry(ctx context.Context, systemPrompt string, mess
 				})
 				if err == nil {
 					return resp, nil
+				}
+				if errors.Is(err, client.ErrStreamIdleTimeout) {
+					return resp, err
 				}
 				if !client.IsRetryableError(err) {
 					return nil, err

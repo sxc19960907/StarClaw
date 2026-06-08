@@ -2,12 +2,19 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
+	"time"
 )
+
+// ErrStreamIdleTimeout is returned when a streaming response goes silent for
+// longer than the configured per-chunk idle timeout.
+var ErrStreamIdleTimeout = errors.New("stream idle timeout")
 
 // streamState accumulates incremental deltas from an OpenAI-compatible SSE stream
 // into a final Response.
@@ -93,10 +100,22 @@ func finalizeStreamToolCalls(toolCalls map[int]*streamToolCall) []ToolUse {
 // ParseOpenAIStream reads an OpenAI-compatible SSE stream from reader, calling
 // onDelta for each text content chunk. Returns the fully assembled Response.
 func ParseOpenAIStream(reader io.Reader, onDelta func(delta string)) (*Response, error) {
-	state := newStreamState()
-	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	return ParseOpenAIStreamWithOptions(context.Background(), reader, onDelta, StreamParseOptions{})
+}
 
+type StreamParseOptions struct {
+	IdleTimeout time.Duration
+}
+
+// ParseOpenAIStreamWithOptions reads an OpenAI-compatible SSE stream with
+// optional per-line idle timeout support.
+func ParseOpenAIStreamWithOptions(ctx context.Context, reader io.Reader, onDelta func(delta string), opts StreamParseOptions) (*Response, error) {
+	state := newStreamState()
+	if opts.IdleTimeout > 0 {
+		return parseOpenAIStreamWithWatchdog(ctx, reader, onDelta, opts.IdleTimeout, state)
+	}
+
+	scanner := newStreamScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -119,6 +138,92 @@ func ParseOpenAIStream(reader io.Reader, onDelta func(delta string)) (*Response,
 	}
 
 	return state.finalize(), nil
+}
+
+func newStreamScanner(reader io.Reader) *bufio.Scanner {
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	return scanner
+}
+
+type streamLine struct {
+	line string
+	eof  bool
+	err  error
+}
+
+func scanStreamLines(ctx context.Context, reader io.Reader, lines chan<- streamLine) {
+	scanner := newStreamScanner(reader)
+	for scanner.Scan() {
+		select {
+		case lines <- streamLine{line: scanner.Text()}:
+		case <-ctx.Done():
+			return
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		select {
+		case lines <- streamLine{err: err}:
+		case <-ctx.Done():
+		}
+		return
+	}
+	select {
+	case lines <- streamLine{eof: true}:
+	case <-ctx.Done():
+	}
+}
+
+func parseOpenAIStreamWithWatchdog(ctx context.Context, reader io.Reader, onDelta func(delta string), timeout time.Duration, state *streamState) (*Response, error) {
+	watchCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	lines := make(chan streamLine, 64)
+	go scanStreamLines(watchCtx, reader, lines)
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case msg := <-lines:
+			if msg.err != nil {
+				return state.finalize(), fmt.Errorf("stream read error: %w", msg.err)
+			}
+			if msg.eof {
+				return state.finalize(), nil
+			}
+			if err := processOpenAIStreamLine(msg.line, state, onDelta); errors.Is(err, io.EOF) {
+				return state.finalize(), nil
+			} else if err != nil {
+				return state.finalize(), err
+			}
+			resetStreamTimer(timer, timeout)
+		case <-timer.C:
+			cancel()
+			closeStreamReader(reader)
+			return state.finalize(), ErrStreamIdleTimeout
+		case <-ctx.Done():
+			cancel()
+			closeStreamReader(reader)
+			return state.finalize(), ctx.Err()
+		}
+	}
+}
+
+func processOpenAIStreamLine(line string, state *streamState, onDelta func(delta string)) error {
+	if !strings.HasPrefix(line, "data: ") {
+		return nil
+	}
+
+	data := strings.TrimPrefix(line, "data: ")
+	if data == "[DONE]" {
+		return io.EOF
+	}
+
+	if err := processStreamChunk(data, state, onDelta); err != nil {
+		return fmt.Errorf("stream chunk parse error: %w", err)
+	}
+	return nil
 }
 
 func processStreamChunk(data string, state *streamState, onDelta func(delta string)) error {
@@ -192,10 +297,18 @@ func processStreamChunk(data string, state *streamState, onDelta func(delta stri
 // ParseAnthropicStream reads an Anthropic Messages SSE stream, calling onDelta
 // for text deltas and returning the fully assembled final response.
 func ParseAnthropicStream(reader io.Reader, onDelta func(delta string)) (*Response, error) {
-	state := newAnthropicStreamState()
-	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	return ParseAnthropicStreamWithOptions(context.Background(), reader, onDelta, StreamParseOptions{})
+}
 
+// ParseAnthropicStreamWithOptions reads an Anthropic Messages SSE stream with
+// optional per-line idle timeout support.
+func ParseAnthropicStreamWithOptions(ctx context.Context, reader io.Reader, onDelta func(delta string), opts StreamParseOptions) (*Response, error) {
+	state := newAnthropicStreamState()
+	if opts.IdleTimeout > 0 {
+		return parseAnthropicStreamWithWatchdog(ctx, reader, onDelta, opts.IdleTimeout, state)
+	}
+
+	scanner := newStreamScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !strings.HasPrefix(line, "data: ") {
@@ -217,6 +330,74 @@ func ParseAnthropicStream(reader io.Reader, onDelta func(delta string)) (*Respon
 	}
 
 	return state.finalize(), nil
+}
+
+func parseAnthropicStreamWithWatchdog(ctx context.Context, reader io.Reader, onDelta func(delta string), timeout time.Duration, state *anthropicStreamState) (*Response, error) {
+	watchCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	lines := make(chan streamLine, 64)
+	go scanStreamLines(watchCtx, reader, lines)
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case msg := <-lines:
+			if msg.err != nil {
+				return state.finalize(), fmt.Errorf("stream read error: %w", msg.err)
+			}
+			if msg.eof {
+				return state.finalize(), nil
+			}
+			if err := processAnthropicStreamLine(msg.line, state, onDelta); errors.Is(err, io.EOF) {
+				return state.finalize(), nil
+			} else if err != nil {
+				return state.finalize(), err
+			}
+			resetStreamTimer(timer, timeout)
+		case <-timer.C:
+			cancel()
+			closeStreamReader(reader)
+			return state.finalize(), ErrStreamIdleTimeout
+		case <-ctx.Done():
+			cancel()
+			closeStreamReader(reader)
+			return state.finalize(), ctx.Err()
+		}
+	}
+}
+
+func processAnthropicStreamLine(line string, state *anthropicStreamState, onDelta func(delta string)) error {
+	if !strings.HasPrefix(line, "data: ") {
+		return nil
+	}
+
+	data := strings.TrimPrefix(line, "data: ")
+	if data == "[DONE]" {
+		return io.EOF
+	}
+
+	if err := processAnthropicStreamEvent(data, state, onDelta); err != nil {
+		return fmt.Errorf("stream event parse error: %w", err)
+	}
+	return nil
+}
+
+func resetStreamTimer(timer *time.Timer, timeout time.Duration) {
+	if !timer.Stop() {
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+	timer.Reset(timeout)
+}
+
+func closeStreamReader(reader io.Reader) {
+	if closer, ok := reader.(io.Closer); ok {
+		_ = closer.Close()
+	}
 }
 
 func processAnthropicStreamEvent(data string, state *anthropicStreamState, onDelta func(delta string)) error {
