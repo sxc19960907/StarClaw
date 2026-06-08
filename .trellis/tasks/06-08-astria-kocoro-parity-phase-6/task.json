@@ -1,0 +1,28 @@
+{
+  "id": "astria-kocoro-parity-phase-6",
+  "name": "astria-kocoro-parity-phase-6",
+  "title": "Astria Kocoro parity phase 6: engine orchestration and channel runtime",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-08-kocoro-style-workflow-orchestration"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

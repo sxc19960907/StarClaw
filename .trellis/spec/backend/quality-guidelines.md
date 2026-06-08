@@ -941,6 +941,80 @@ routing := agent.RecommendRoute(agent.RoutingInput{
 
 ## Interface Design
 
+## Scenario: Kocoro-Style Workflow Commands
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing daemon-recognized slash workflow commands that enter through `POST /message`.
+- Scope: local daemon command parsing and workflow step metadata. This is not a separate workflow endpoint, cloud channel transport, Desktop RPC, or OpenAI-compatible gateway behavior.
+
+### 2. Signatures
+
+- Request endpoint: `POST /message`.
+- Request field: `RunAgentRequest.Text`.
+- Recognized command forms:
+  - `/research <goal>`
+  - `/swarm <goal>`
+- Internal parser: `parseWorkflowInvocation(text string) (*workflowInvocation, error)`.
+- Execution path: `(*Server).runWorkflowAgent(ctx, req, invocation, handler)`.
+
+### 3. Contracts
+
+- Command validation must happen before `RunStore.Start`; invalid empty command goals must not create run records.
+- Recognized workflow commands must still execute through `s.runAgent` / `RunAgentWithApproval`; do not call an LLM client directly.
+- JSON and `Accept: text/event-stream` behavior for `/message` must remain compatible.
+- Non-command prompts and unknown slash commands continue through the existing direct run path unchanged.
+- Workflow commands may transform the prompt before agent execution, but run metadata, approval, pause/resume/cancel, session handling, routing/fallback, and structured observability stay under the existing daemon pipeline.
+- Workflow step metadata may include `workflow`, `command`, and `route_hint`.
+- Workflow step metadata must not include raw goals, prompts, provider payloads, tool args/results, secrets, attachment contents, or local file contents.
+
+### 4. Validation & Error Matrix
+
+- `/research <goal>` -> research workflow invocation.
+- `/swarm <goal>` -> swarm workflow invocation.
+- `/research` or `/swarm` with blank goal -> HTTP 400 before run-store start.
+- Ordinary prompt -> no workflow invocation.
+- Unknown slash command -> no workflow invocation, preserving existing compatibility.
+- Workflow execution failure -> run status/error remains owned by `RunStore.Complete`; workflow execution steps become `failed`.
+
+### 5. Good/Base/Bad Cases
+
+- Good: `/research compare two local implementations` returns a normal `/message` response, records sanitized workflow steps, and emits aggregate-safe `workflow_step` trace events.
+- Base: `hello` behaves exactly like an ordinary direct `/message` request.
+- Bad: adding `POST /research`, bypassing approval/session/run store, or persisting the raw workflow goal in step metadata.
+
+### 6. Tests Required
+
+- Parser unit tests for recognized commands, trimming, case-insensitive command name, unknown slash commands, ordinary prompts, and blank goals.
+- Handler tests for JSON `/research`, JSON `/swarm`, SSE workflow command, blank command HTTP 400 without run record, and ordinary prompt compatibility.
+- Run detail/trace/metrics assertions proving workflow steps are visible and sanitized.
+- Existing `/message`, SSE, run-store, routing/fallback, metrics, OpenAI gateway, and control tests must continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+if strings.HasPrefix(req.Text, "/research") {
+    resp, err := s.deps.LLMClient.Chat(ctx, "", messages, nil, 0, nil)
+}
+```
+
+This bypasses daemon approval, sessions, run records, SSE handlers, pause/cancel, routing/fallback, and structured observability.
+
+#### Correct
+
+```go
+workflow, err := parseWorkflowInvocation(req.Text)
+if err != nil {
+    writeError(w, http.StatusBadRequest, err.Error())
+    return
+}
+result, err := s.runWorkflowAgent(ctx, req, workflow, handler)
+```
+
+This keeps workflow commands inside the normal daemon execution boundary.
+
 ### Small, focused interfaces
 
 ```go

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Workflow orchestration crosses daemon API, run store, SSE, event recording, and Web UI surfaces."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "The implementation should reuse existing /message, council, run-store, and SSE patterns instead of inventing a parallel workflow runtime."}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend spec entry point for required project conventions before daemon changes."}
+{"file": ".trellis/research/kocoro-local-comparison-phase6-plan.md", "reason": "Defines the Kocoro parity evidence and recommended Phase 6 child scope."}

@@ -476,6 +476,141 @@ func TestRunHistoryAPI(t *testing.T) {
 	getJSON(t, ts.URL+"/runs/missing-run", http.StatusNotFound, &map[string]string{})
 }
 
+func TestHandleMessageResearchWorkflowCommand(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"text":"/research compare StarClaw and Kocoro","request_id":"research-workflow"}`
+	resp, err := http.Post(ts.URL+"/message", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /message: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /message status = %d", resp.StatusCode)
+	}
+
+	var result RunAgentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.Routing == nil || result.Routing.Route != "research" {
+		t.Fatalf("routing = %#v, want research route", result.Routing)
+	}
+
+	var detail RunRecord
+	getJSON(t, ts.URL+"/runs/research-workflow", http.StatusOK, &detail)
+	assertWorkflowStepStatus(t, &detail, "parse_command", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "research_plan", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "research_execute", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "research_complete", WorkflowStepCompleted)
+	encodedEvents, err := json.Marshal(detail.StructuredEvents)
+	if err != nil {
+		t.Fatalf("marshal structured events: %v", err)
+	}
+	assertNoForbiddenLeak(t, "research workflow run detail", encodedEvents, []string{"compare StarClaw and Kocoro"})
+
+	var trace struct {
+		Trace []TraceExportRecord `json:"trace"`
+	}
+	getJSON(t, ts.URL+"/runs/research-workflow/trace", http.StatusOK, &trace)
+	if countTraceEvents(trace.Trace, "workflow_step") < 4 {
+		t.Fatalf("workflow_step trace count = %d, want at least 4", countTraceEvents(trace.Trace, "workflow_step"))
+	}
+
+	var metrics struct {
+		Metrics map[string]any `json:"metrics"`
+	}
+	getJSON(t, ts.URL+"/metrics", http.StatusOK, &metrics)
+	events, ok := metrics.Metrics["events_by_type"].(map[string]any)
+	if !ok {
+		t.Fatalf("events_by_type = %#v", metrics.Metrics["events_by_type"])
+	}
+	if got, _ := events["workflow_step"].(float64); got < 4 {
+		t.Fatalf("workflow_step metric = %v, want at least 4", events["workflow_step"])
+	}
+}
+
+func TestHandleMessageSwarmWorkflowCommand(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"text":"/swarm plan phase six","request_id":"swarm-workflow"}`
+	resp, err := http.Post(ts.URL+"/message", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /message: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /message status = %d", resp.StatusCode)
+	}
+
+	var detail RunRecord
+	getJSON(t, ts.URL+"/runs/swarm-workflow", http.StatusOK, &detail)
+	assertWorkflowStepStatus(t, &detail, "parse_command", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "role_plan", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "synthesis_handoff", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "swarm_execute", WorkflowStepCompleted)
+	assertWorkflowStepStatus(t, &detail, "swarm_complete", WorkflowStepCompleted)
+}
+
+func TestHandleMessageWorkflowCommandRejectsEmptyGoal(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/message", "application/json", strings.NewReader(`{"text":"/research","request_id":"empty-workflow"}`))
+	if err != nil {
+		t.Fatalf("POST /message: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("POST /message status = %d, want 400", resp.StatusCode)
+	}
+
+	var list struct {
+		Runs []RunSummary `json:"runs"`
+	}
+	getJSON(t, ts.URL+"/runs", http.StatusOK, &list)
+	if len(list.Runs) != 0 {
+		t.Fatalf("runs = %#v, want no run record", list.Runs)
+	}
+}
+
+func TestHandleMessageSSEWorkflowCommandRecordsSteps(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/message", strings.NewReader(`{"text":"/research stream workflow","request_id":"sse-workflow"}`))
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /message SSE: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /message status = %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read SSE body: %v", err)
+	}
+	if !strings.Contains(string(body), "event: done") {
+		t.Fatalf("SSE stream missing done event:\n%s", body)
+	}
+
+	var detail RunRecord
+	getJSON(t, ts.URL+"/runs/sse-workflow", http.StatusOK, &detail)
+	assertWorkflowStepStatus(t, &detail, "research_complete", WorkflowStepCompleted)
+}
+
 func TestRunsSummaryIncludesRuntimeRecoveryMetadata(t *testing.T) {
 	s := newTestServer(t, newTestServerDeps(t))
 	s.runStore.Start(RunAgentRequest{RequestID: "recovery-summary", Channel: ChannelHTTP, Source: "replay"})
@@ -2747,6 +2882,16 @@ func decodeSSEEvents(t *testing.T, stream string, eventName string) []map[string
 		events = append(events, data)
 	}
 	return events
+}
+
+func countTraceEvents(events []TraceExportRecord, eventName string) int {
+	count := 0
+	for _, event := range events {
+		if event.Name == eventName {
+			count++
+		}
+	}
+	return count
 }
 
 func decodeJSONResponse(t *testing.T, resp *http.Response, wantStatus int, out interface{}) {

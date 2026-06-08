@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality gate for daemon/runtime changes and test expectations."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Workflow parse and execution errors must follow existing daemon error behavior."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Workflow observability must preserve content-safe logging and telemetry behavior."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Workflow execution must preserve normal permission and approval boundaries."}
+{"file": ".trellis/research/kocoro-local-comparison-phase6-plan.md", "reason": "Check implementation against the intended Kocoro parity scope and out-of-scope boundaries."}

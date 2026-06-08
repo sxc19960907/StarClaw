@@ -153,6 +153,17 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 	if req.RequestID == "" {
 		req.RequestID = generateRequestID()
 	}
+	workflow, workflowErr := parseWorkflowInvocation(req.Text)
+	if workflowErr != nil {
+		writeError(w, http.StatusBadRequest, workflowErr.Error())
+		return
+	}
+	if workflow != nil {
+		req.Text = workflow.Prompt
+		if req.Source == "starclaw" {
+			req.Source = "workflow:" + workflow.Type
+		}
+	}
 	s.runStore.Start(req)
 
 	// Create cancellable context for this request.
@@ -164,13 +175,13 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	// SSE streaming.
 	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
-		s.handleMessageSSE(w, r, req, ctx)
+		s.handleMessageSSE(w, r, req, ctx, workflow)
 		return
 	}
 
 	// Synchronous JSON response.
 	handler := s.recordingHandler(req.RequestID, &httpEventHandler{})
-	result, err := s.runAgent(ctx, req, handler)
+	result, err := s.runWorkflowAgent(ctx, req, workflow, handler)
 	s.runStore.Complete(req.RequestID, result, err)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -179,7 +190,7 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
-func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req RunAgentRequest, ctx context.Context) {
+func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req RunAgentRequest, ctx context.Context, workflow *workflowInvocation) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		writeError(w, http.StatusInternalServerError, "streaming not supported")
@@ -192,7 +203,7 @@ func (s *Server) handleMessageSSE(w http.ResponseWriter, r *http.Request, req Ru
 	flusher.Flush()
 
 	handler := s.recordingHandler(req.RequestID, &sseEventHandler{w: w, flusher: flusher})
-	result, err := s.runAgent(ctx, req, handler)
+	result, err := s.runWorkflowAgent(ctx, req, workflow, handler)
 	s.runStore.Complete(req.RequestID, result, err)
 	if err != nil {
 		_, _ = fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]string{"error": err.Error()}))
