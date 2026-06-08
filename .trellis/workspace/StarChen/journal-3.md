@@ -1399,3 +1399,36 @@ Fixed focused Astria Web UI runtime validation issues: made runtime tables and r
 ### Next Steps
 
 - None - task complete
+
+
+## Session 125: Phase 5 docs current capabilities
+
+**Date**: 2026-06-08
+**Task**: Phase 5 docs current capabilities
+**Branch**: `main`
+
+### Summary
+
+Updated user-facing docs for current StarClaw/Astria runtime capabilities: Astria Web UI surfaces, local OpenAI-compatible chat-completions gateway, workflow-control endpoints, metrics/trace export, token budget enforcement, routing/fallback metadata, durable recovery, replay approval, and redaction/local-only boundaries. Verified daemon+cmd tests, full go test ./..., manifest validation, and diff whitespace checks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f489ff8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
