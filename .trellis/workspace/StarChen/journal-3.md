@@ -1465,3 +1465,37 @@ Added a local-evidence Phase 5 Kocoro/Shannon gap audit, confirmed the five plat
 ### Next Steps
 
 - None - task complete
+
+
+## Session 127: Phase 5 integrated hardening complete
+
+**Date**: 2026-06-08
+**Task**: Phase 5 integrated hardening complete
+**Branch**: `main`
+
+### Summary
+
+Completed and archived the Astria Phase 5 integrated hardening parent after all six children were archived. Final gap audit found the local platform foundation aligned for the five prioritized slices and recommended Phase 6 focus on OpenAI-compatible streaming/tools and durable agent orchestration.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8cbcfc7` | (see git log) |
+| `c37c565` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
