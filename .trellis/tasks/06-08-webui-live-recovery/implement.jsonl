@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend/Web UI entry point for daemon-hosted UI changes."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Embedded daemon Web UI contracts and asset constraints."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Testing, streaming parser, and observability privacy requirements."}
+{"file": ".trellis/tasks/06-08-webui-live-recovery/research/current-webui-recovery.md", "reason": "Current Web UI recovery evidence and scope decision."}

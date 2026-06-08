@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-12",
-  "name": "astria-kocoro-parity-phase-12",
-  "title": "Astria Kocoro parity phase 12: event replay and lifecycle resilience",
+  "id": "webui-live-recovery",
+  "name": "webui-live-recovery",
+  "title": "WebUI live recovery",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -18,12 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-08-eventbus-replay-sse-resilience",
-    "06-08-run-session-lifecycle-events",
-    "06-08-webui-live-recovery"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-12",
   "relatedFiles": [],
   "notes": "",
   "meta": {}
