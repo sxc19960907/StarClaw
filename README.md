@@ -126,6 +126,9 @@ The daemon exposes local HTTP endpoints for the embedded UI and for local integr
 
 Runtime metadata includes token budget status, deterministic complexity routing, fallback decisions, durable workflow steps, control decisions, and structured events. Metrics are aggregate-only; trace export is caller-directed and local-only.
 
+For daemon-wide SSE replay, `/message` streaming event aliases, lifecycle
+payloads, and privacy boundaries, see [Daemon Event Contracts](docs/DAEMON_EVENTS.md).
+
 **Pipe input:**
 ```bash
 cat main.go | starclaw chat "Explain this code"
