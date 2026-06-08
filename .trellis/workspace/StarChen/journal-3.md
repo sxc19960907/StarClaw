@@ -1102,3 +1102,36 @@ Added durable per-run workflow step state with upsert/transition APIs, persisted
 ### Next Steps
 
 - None - task complete
+
+
+## Session 116: Safe replay execution boundary
+
+**Date**: 2026-06-08
+**Task**: Safe replay execution boundary
+**Branch**: `main`
+
+### Summary
+
+Added approved replay control boundary: unapproved replay remains plan-only, approved replay launches a linked replay run through the normal daemon path with approval gates preserved, redacted control responses, source/replay step metadata, tests, and backend spec guidance.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `019f558` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

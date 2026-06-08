@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 115
+- **Total Sessions**: 116
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1104 | Active |
+| `journal-3.md` | ~1137 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 116 | 2026-06-08 | Safe replay execution boundary | `019f558` | `main` |
 | 115 | 2026-06-08 | Durable workflow step state | `d17def6` | `main` |
 | 114 | 2026-06-08 | Durable workflow run store | `61f0062` | `main` |
 | 113 | 2026-06-08 | Archive completed Astria parity parents | `12e62b8` | `main` |
