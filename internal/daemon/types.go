@@ -27,6 +27,8 @@ type RunAgentRequest struct {
 	Model       string   `json:"model,omitempty"`
 	RequestID   string   `json:"request_id,omitempty"`
 	Attachments []string `json:"attachments,omitempty"`
+
+	PauseController agent.PauseController `json:"-"`
 }
 
 // RunAgentResponse is the result of an agent execution.

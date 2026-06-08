@@ -707,6 +707,80 @@ handler := s.recordingHandler(replayRunID, &httpEventHandler{})
 result, err := s.runAgent(ctx, replayReq, handler)
 ```
 
+## Scenario: Runtime Pause Resume Support
+
+### 1. Scope / Trigger
+
+- Trigger: changing daemon pause/resume behavior for active runs, agent loop cooperative pause points, or active runtime control state.
+- Scope: local daemon runtime control only. This is not OS-level process suspension, deterministic replay, frontend UI, or persisted process resurrection after daemon death.
+
+### 2. Signatures
+
+- Agent loop interface: `agent.PauseController`.
+- Agent loop setter: `(*AgentLoop).SetPauseController(controller PauseController)`.
+- Daemon runtime handle: `runtimeHandle`.
+- Daemon pause controller: `runtimePauseController`.
+- Run control route: `POST /runs/{id}/control`.
+- Supported runtime statuses:
+  - `paused`
+  - `resumed`
+  - `not_running`
+  - `cancelled`
+
+### 3. Contracts
+
+- Pause/resume only succeeds for active runs present in `Server.running`.
+- Known inactive runs must return HTTP `409`; missing runs must return HTTP `404`.
+- Pause is cooperative: the agent loop waits before model calls and before tool calls. It must not preempt a tool already executing.
+- Resume releases all waiters and allows execution to continue.
+- Cancel must unblock a paused run before cancelling context so the run can terminate promptly.
+- Runtime controls must preserve daemon approval requester and tool permission behavior.
+- Pause/resume must not mutate run terminal status by themselves.
+- Control decisions must be visible on run detail and as structured `control_decision` events.
+- Runtime pause step state must be visible as durable `WorkflowStepState` without prompt/tool/provider payloads.
+
+### 4. Validation & Error Matrix
+
+- Active run pause -> HTTP `200`, status `paused`.
+- Active paused run resume -> HTTP `200`, status `resumed`.
+- Active unpaused run resume -> HTTP `200`, status `resumed`.
+- Known inactive pause/resume -> HTTP `409`, control status `not_running`.
+- Missing run pause/resume -> HTTP `404`.
+- Context cancelled while paused -> agent loop returns a contextual cancellation error.
+
+### 5. Good/Base/Bad Cases
+
+- Good: an active run paused before a model call does not call the LLM until resume.
+- Base: cancelling a paused run records cancelled control metadata and does not hang.
+- Bad: pause only writes `RunRecord.Status="paused"` while the runtime keeps making model/tool calls.
+
+### 6. Tests Required
+
+- Agent loop test proving pause blocks before a model call and resumes.
+- Agent loop test proving cancellation exits while paused.
+- Daemon pause/resume active run test.
+- Daemon pause/resume inactive and missing run tests.
+- Cancel tests proving active paused handles still cancel.
+- Existing replay, metrics, approval, and run control tests continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+record.Status = "paused"
+writeJSON(w, http.StatusOK, record)
+```
+
+This changes metadata only; the runtime still continues model/tool execution.
+
+#### Correct
+
+```go
+handle.pause.Pause()
+s.runStore.AddControlDecision(runID, RunControlDecision{Action: "pause", Status: "paused"})
+```
+
 ## Scenario: Runtime Complexity Routing and Fallback
 
 ### 1. Scope / Trigger

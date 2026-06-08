@@ -113,6 +113,9 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	if approver != nil {
 		loop.SetApprovalRequester(approver)
 	}
+	if req.PauseController != nil {
+		loop.SetPauseController(req.PauseController)
+	}
 	if agentCfg != nil {
 		agentDir := filepath.Join(deps.AgentsDir, agentName)
 		loop.SwitchAgent(agentCfg.Prompt, agentDir)

@@ -50,6 +50,16 @@ func newTestServerDeps(t *testing.T) *ServerDeps {
 	}
 }
 
+func registerTestRuntimeHandle(t *testing.T, s *Server, runID string) {
+	t.Helper()
+	_, cancel := context.WithCancel(context.Background())
+	s.running.Store(runID, &runtimeHandle{cancel: cancel, pause: newRuntimePauseController()})
+	t.Cleanup(func() {
+		cancel()
+		s.running.Delete(runID)
+	})
+}
+
 // ---------------------------------------------------------------------------
 // Health endpoint
 // ---------------------------------------------------------------------------
@@ -1861,10 +1871,8 @@ func TestHandleCancel(t *testing.T) {
 	s := newTestServer(t, newTestServerDeps(t))
 
 	// Register a fake running request.
-	ctx, cancel := context.WithCancel(context.Background())
-	_ = ctx
 	s.runStore.Start(RunAgentRequest{RequestID: "test-request-1", Channel: ChannelHTTP})
-	s.running.Store("test-request-1", cancel)
+	registerTestRuntimeHandle(t, s, "test-request-1")
 
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
@@ -1895,10 +1903,8 @@ func TestHandleCancel(t *testing.T) {
 
 func TestHandleRunControlCancel(t *testing.T) {
 	s := newTestServer(t, newTestServerDeps(t))
-	ctx, cancel := context.WithCancel(context.Background())
-	_ = ctx
 	s.runStore.Start(RunAgentRequest{RequestID: "control-cancel", Channel: ChannelHTTP})
-	s.running.Store("control-cancel", cancel)
+	registerTestRuntimeHandle(t, s, "control-cancel")
 
 	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
@@ -1924,22 +1930,76 @@ func TestHandleRunControlCancel(t *testing.T) {
 	if len(record.StructuredEvents) < 2 {
 		t.Fatalf("structured events = %d, want control event", len(record.StructuredEvents))
 	}
-	last := record.StructuredEvents[len(record.StructuredEvents)-1]
-	if last.Type != "control_decision" || last.Phase != "control" {
-		t.Fatalf("last structured event = %#v, want control_decision/control", last)
+	foundControl := false
+	for _, evt := range record.StructuredEvents {
+		if evt.Type == "control_decision" && evt.Phase == "control" {
+			foundControl = true
+			break
+		}
+	}
+	if !foundControl {
+		t.Fatalf("structured events = %#v, want control_decision/control", record.StructuredEvents)
 	}
 }
 
-func TestHandleRunControlPauseResumeStaged(t *testing.T) {
+func TestHandleRunControlPauseResumeActive(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "control-pause-resume", Channel: ChannelHTTP})
+	registerTestRuntimeHandle(t, s, "control-pause-resume")
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	for _, tc := range []struct {
+		action string
+		status string
+	}{
+		{action: "pause", status: "paused"},
+		{action: "resume", status: "resumed"},
+	} {
+		t.Run(tc.action, func(t *testing.T) {
+			body := `{"action":"` + tc.action + `"}`
+			resp, err := http.Post(ts.URL+"/runs/control-pause-resume/control", "application/json", strings.NewReader(body))
+			if err != nil {
+				t.Fatalf("POST /runs/{id}/control: %v", err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("status = %d, want 200", resp.StatusCode)
+			}
+			var got map[string]string
+			if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if got["status"] != tc.status {
+				t.Fatalf("response = %#v, want status %s", got, tc.status)
+			}
+		})
+	}
+
+	record, ok := s.runStore.Get("control-pause-resume")
+	if !ok {
+		t.Fatal("expected run record")
+	}
+	if len(record.Control) != 2 || record.Control[0].Action != "pause" || record.Control[0].Status != "paused" || record.Control[1].Action != "resume" || record.Control[1].Status != "resumed" {
+		t.Fatalf("control decisions = %#v, want pause/resume", record.Control)
+	}
+	if len(record.Steps) != 1 || record.Steps[0].ID != "runtime-pause" || record.Steps[0].Status != WorkflowStepCompleted {
+		t.Fatalf("pause step = %#v, want completed runtime-pause", record.Steps)
+	}
+}
+
+func TestHandleRunControlPauseResumeInactive(t *testing.T) {
 	for _, action := range []string{"pause", "resume"} {
 		t.Run(action, func(t *testing.T) {
 			s := newTestServer(t, newTestServerDeps(t))
-			s.runStore.Start(RunAgentRequest{RequestID: "control-" + action, Channel: ChannelHTTP})
+			s.runStore.Start(RunAgentRequest{RequestID: "inactive-" + action, Channel: ChannelHTTP})
 			ts := httptest.NewServer(s.Handler())
 			defer ts.Close()
 
 			body := `{"action":"` + action + `"}`
-			resp, err := http.Post(ts.URL+"/runs/control-"+action+"/control", "application/json", strings.NewReader(body))
+			resp, err := http.Post(ts.URL+"/runs/inactive-"+action+"/control", "application/json", strings.NewReader(body))
 			if err != nil {
 				t.Fatalf("POST /runs/{id}/control: %v", err)
 			}
@@ -1949,12 +2009,12 @@ func TestHandleRunControlPauseResumeStaged(t *testing.T) {
 			if resp.StatusCode != http.StatusConflict {
 				t.Fatalf("status = %d, want 409", resp.StatusCode)
 			}
-			record, ok := s.runStore.Get("control-" + action)
+			record, ok := s.runStore.Get("inactive-" + action)
 			if !ok {
 				t.Fatal("expected run record")
 			}
-			if len(record.Control) != 1 || record.Control[0].Action != action || record.Control[0].Status != "unsupported" {
-				t.Fatalf("control decisions = %#v, want unsupported %s", record.Control, action)
+			if len(record.Control) != 1 || record.Control[0].Action != action || record.Control[0].Status != "not_running" {
+				t.Fatalf("control decisions = %#v, want not_running %s", record.Control, action)
 			}
 		})
 	}

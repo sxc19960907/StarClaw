@@ -35,7 +35,7 @@ type Server struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	startedAt      time.Time
-	running        sync.Map // requestID -> context.CancelFunc
+	running        sync.Map // requestID -> *runtimeHandle
 	runStore       *RunStore
 	councilStore   *CouncilStore
 	inboxStore     *InboxStore
@@ -157,7 +157,9 @@ func (s *Server) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Create cancellable context for this request.
 	ctx, cancel := context.WithCancel(r.Context())
-	s.running.Store(req.RequestID, cancel)
+	pauseController := newRuntimePauseController()
+	req.PauseController = pauseController
+	s.running.Store(req.RequestID, &runtimeHandle{cancel: cancel, pause: pauseController})
 	defer s.running.Delete(req.RequestID)
 
 	// SSE streaming.
@@ -245,13 +247,14 @@ func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if cancel, ok := s.running.Load(body.RequestID); ok {
-		cancel.(context.CancelFunc)()
+	if handle, ok := s.loadRuntimeHandle(body.RequestID); ok {
+		handle.Cancel()
 		s.runStore.AddControlDecision(body.RequestID, RunControlDecision{
 			Action: "cancel",
 			Status: "cancelled",
 			Reason: body.Reason,
 		})
+		s.recordRuntimePauseStep(body.RequestID, "cancelled")
 		writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled", "run_id": body.RequestID, "action": "cancel"})
 		return
 	}
@@ -281,9 +284,10 @@ func (s *Server) handleRunControl(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "cancel":
-		if cancel, ok := s.running.Load(runID); ok {
-			cancel.(context.CancelFunc)()
+		if handle, ok := s.loadRuntimeHandle(runID); ok {
+			handle.Cancel()
 			s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "cancelled", Reason: body.Reason})
+			s.recordRuntimePauseStep(runID, "cancelled")
 			writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled", "run_id": runID, "action": action})
 			return
 		}
@@ -294,12 +298,29 @@ func (s *Server) handleRunControl(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, http.StatusNotFound, "run not found")
 	case "pause", "resume":
+		handle, active := s.loadRuntimeHandle(runID)
+		if !active {
+			if _, ok := s.runStore.Get(runID); !ok {
+				writeError(w, http.StatusNotFound, "run not found")
+				return
+			}
+			s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "not_running", Reason: body.Reason})
+			writeError(w, http.StatusConflict, "run is not active")
+			return
+		}
 		if _, ok := s.runStore.Get(runID); !ok {
 			writeError(w, http.StatusNotFound, "run not found")
 			return
 		}
-		s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "unsupported", Reason: body.Reason})
-		writeError(w, http.StatusConflict, action+" is not supported for this runtime")
+		if action == "pause" {
+			handle.pause.Pause()
+			s.recordPauseResumeBoundary(runID, action, "paused", body.Reason)
+			writeJSON(w, http.StatusOK, map[string]string{"status": "paused", "run_id": runID, "action": action})
+			return
+		}
+		handle.pause.Resume()
+		s.recordPauseResumeBoundary(runID, action, "resumed", body.Reason)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "resumed", "run_id": runID, "action": action})
 	case "replay":
 		record, ok := s.runStore.Get(runID)
 		if !ok {
@@ -310,6 +331,38 @@ func (s *Server) handleRunControl(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusBadRequest, "unsupported action")
 	}
+}
+
+func (s *Server) loadRuntimeHandle(runID string) (*runtimeHandle, bool) {
+	value, ok := s.running.Load(runID)
+	if !ok {
+		return nil, false
+	}
+	handle, ok := value.(*runtimeHandle)
+	return handle, ok && handle != nil
+}
+
+func (s *Server) recordPauseResumeBoundary(runID, action, status, reason string) {
+	s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: status, Reason: reason})
+	s.recordRuntimePauseStep(runID, status)
+}
+
+func (s *Server) recordRuntimePauseStep(runID, status string) {
+	stepStatus := WorkflowStepBlocked
+	if status == "resumed" {
+		stepStatus = WorkflowStepCompleted
+	} else if status == "cancelled" {
+		stepStatus = WorkflowStepCancelled
+	}
+	s.runStore.UpsertStep(runID, WorkflowStepState{
+		ID:       "runtime-pause",
+		Title:    "Runtime pause",
+		Status:   stepStatus,
+		Sequence: 2,
+		Metadata: map[string]any{
+			"runtime_status": status,
+		},
+	})
 }
 
 func (s *Server) handleReplayControl(w http.ResponseWriter, r *http.Request, source *RunRecord, approved bool, reason string) {
@@ -331,6 +384,8 @@ func (s *Server) handleReplayControl(w http.ResponseWriter, r *http.Request, sou
 
 	replayReq := replayRunRequest(source.Request, source.ID)
 	s.recordReplayBoundary(source.ID, replayReq.RequestID, "approved", reason)
+	pauseController := newRuntimePauseController()
+	replayReq.PauseController = pauseController
 	s.runStore.Start(replayReq)
 	s.runStore.UpsertStep(replayReq.RequestID, WorkflowStepState{
 		ID:       "replay-launch",
@@ -344,9 +399,10 @@ func (s *Server) handleReplayControl(w http.ResponseWriter, r *http.Request, sou
 	})
 
 	ctx, cancel := context.WithCancel(r.Context())
-	s.running.Store(replayReq.RequestID, cancel)
+	handle := &runtimeHandle{cancel: cancel, pause: pauseController}
+	s.running.Store(replayReq.RequestID, handle)
 	defer func() {
-		cancel()
+		handle.Cancel()
 		s.running.Delete(replayReq.RequestID)
 	}()
 

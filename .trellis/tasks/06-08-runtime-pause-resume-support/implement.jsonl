@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Workflow control, durable step state, replay safety, metrics, and pause/resume contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Context cancellation and control handler error conventions."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Avoid logging sensitive runtime data."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Pause/resume must preserve approval and permission behavior."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared data-flow and code reuse thinking for cross-layer control changes."}

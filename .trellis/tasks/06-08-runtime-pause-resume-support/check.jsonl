@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify cooperative pause/resume control, replay compatibility, durable state, and metrics redaction."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify context cancellation is surfaced correctly."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify no sensitive runtime data is logged."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Verify approvals and permissions remain intact while paused/resumed."}

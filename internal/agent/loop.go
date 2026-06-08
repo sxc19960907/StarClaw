@@ -65,6 +65,11 @@ type ApprovalRequester interface {
 	RequestApproval(ctx context.Context, req ApprovalRequest) (ApprovalDecision, error)
 }
 
+// PauseController blocks the loop at cooperative pause points.
+type PauseController interface {
+	WaitIfPaused(ctx context.Context) error
+}
+
 // StreamingLLMClient is an optional interface for LLM clients that support streaming.
 type StreamingLLMClient interface {
 	StreamChat(ctx context.Context, systemPrompt string, messages []client.Message, tools []client.ToolDef, maxTokens int, opts *client.ChatOptions, onDelta func(delta string)) (*client.Response, error)
@@ -91,6 +96,7 @@ type AgentLoop struct {
 	permsConfig   *permissions.Config // tool permission rules
 	hookRunner    *hooks.Runner       // lifecycle hook runner
 	approver      ApprovalRequester
+	pause         PauseController
 
 	thinking        *client.ThinkingConfig
 	reasoningEffort string
@@ -206,6 +212,11 @@ func (a *AgentLoop) SetPermissions(cfg *permissions.Config) {
 // SetApprovalRequester sets the handler for tool calls that require approval.
 func (a *AgentLoop) SetApprovalRequester(requester ApprovalRequester) {
 	a.approver = requester
+}
+
+// SetPauseController sets the cooperative pause controller for this loop.
+func (a *AgentLoop) SetPauseController(controller PauseController) {
+	a.pause = controller
 }
 
 // SetHookRunner sets the lifecycle hook runner for this loop.
@@ -390,6 +401,10 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 			}
 		}
 
+		if err := a.waitIfPaused(ctx); err != nil {
+			return nil, fmt.Errorf("paused run cancelled: %w", err)
+		}
+
 		// Call LLM with retry
 		resp, err := a.chatWithRetry(ctx, effectivePrompt, messages, tools, chatOpts)
 		if err != nil {
@@ -444,6 +459,9 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 
 		var forceStop bool
 		for _, toolUse := range resp.ToolUses {
+			if err := a.waitIfPaused(ctx); err != nil {
+				return nil, fmt.Errorf("paused run cancelled: %w", err)
+			}
 			result := a.executeTool(ctx, toolUse)
 
 			messages = append(messages, client.Message{
@@ -498,6 +516,13 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 	}
 
 	return nil, fmt.Errorf("reached maximum iterations (%d)", a.maxIter)
+}
+
+func (a *AgentLoop) waitIfPaused(ctx context.Context) error {
+	if a.pause == nil {
+		return nil
+	}
+	return a.pause.WaitIfPaused(ctx)
 }
 
 func (a *AgentLoop) recordBudgetUsage(usage client.Usage) TokenBudgetUsage {
