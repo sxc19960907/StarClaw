@@ -55,6 +55,8 @@ func (r *Router) registerHealthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /metrics", r.srv.handleMetrics)
 	mux.HandleFunc("GET /version", r.srv.handleVersion)
 	mux.HandleFunc("GET /update/check", r.srv.handleUpdateCheck)
+	mux.HandleFunc("GET /cloud/lifecycle", r.srv.handleGetCloudLifecycle)
+	mux.HandleFunc("POST /cloud/lifecycle", r.srv.handlePostCloudLifecycle)
 }
 
 func (r *Router) registerMessageRoutes(mux *http.ServeMux) {

@@ -22,4 +22,15 @@
 
 ## Completion Notes
 
-TBD.
+- Added local-only `CloudLifecycleController` with start, stop, restart, status, runner error capture, and wait-for-stop support.
+- Added default no-network runner that only waits for cancellation.
+- Wired controller into `Server` status.
+- Added `GET /cloud/lifecycle` and `POST /cloud/lifecycle` control API for start/stop/restart.
+- Added unit and API tests for lifecycle semantics.
+
+## Validation
+
+- `go test ./internal/daemon` — passed.
+- `go test ./...` — passed.
+- `git diff --check` — passed.
+- `python3 ./.trellis/scripts/task.py validate .trellis/tasks/06-08-ws-controller-cloud-lifecycle` — passed.

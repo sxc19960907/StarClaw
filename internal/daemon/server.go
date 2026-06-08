@@ -46,6 +46,7 @@ type Server struct {
 	systemEvents    *SystemEventStore
 	suggestions     *agent.SuggestionState
 	channelAdapters *ChannelAdapterRegistry
+	cloudLifecycle  *CloudLifecycleController
 	desktopRPC      *desktop_rpc.Broker
 	desktopListener *desktop_rpc.Listener
 }
@@ -67,6 +68,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		systemEvents:    NewSystemEventStore(defaultSystemEventStoreCap),
 		suggestions:     agent.NewSuggestionState(),
 		channelAdapters: newDefaultChannelAdapterRegistry(),
+		cloudLifecycle:  NewCloudLifecycleController(context.Background(), nil),
 		desktopRPC:      desktop_rpc.NewBroker(),
 	}
 }
@@ -142,10 +144,11 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"uptime":        int(uptime),
-		"version":       s.version,
-		"active_agents": activeCount,
-		"desktop_rpc":   s.desktopRPCStatus(),
+		"uptime":          int(uptime),
+		"version":         s.version,
+		"active_agents":   activeCount,
+		"cloud_lifecycle": s.cloudLifecycleStatus(),
+		"desktop_rpc":     s.desktopRPCStatus(),
 	})
 }
 
