@@ -1,0 +1,33 @@
+{
+  "id": "06-08-agent-command-launcher",
+  "name": "06-08-agent-command-launcher",
+  "title": "Agent command launcher",
+  "description": "Expose named agent command launch chips in the capability roster and draft command bodies into Chat.",
+  "status": "done",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/agents/loader.go",
+    "internal/agents/loader_test.go",
+    "internal/daemon/server_test.go",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Completed: /agents summaries include sorted command names; roster renders slash-command chips; clicking a chip loads the agent detail, drafts the command body into Chat, and selects the agent without sending.",
+  "meta": {}
+}

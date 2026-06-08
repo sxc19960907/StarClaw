@@ -696,6 +696,16 @@ async function runAgents(page) {
   assert(createdRosterMetrics.includes("ALLOW\n2"), `agent roster should show two allowed tools, got ${JSON.stringify(createdRosterMetrics)}`);
   assert(createdRosterMetrics.includes("DENY\n1"), `agent roster should show one denied tool, got ${JSON.stringify(createdRosterMetrics)}`);
   assert(createdRosterMetrics.includes("COMMANDS\n1"), `agent roster should show one command, got ${JSON.stringify(createdRosterMetrics)}`);
+  await rosterCard.getByRole("button", { name: "/review", exact: true }).waitFor();
+  const reviewCommandDetailPromise = page.waitForResponse((response) =>
+    response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
+  );
+  await rosterCard.getByRole("button", { name: "/review", exact: true }).click();
+  await reviewCommandDetailPromise;
+  await page.locator("#panel-chat.active").waitFor();
+  assert(await page.locator("#chat-agent").inputValue() === "smoke-agent", "roster command launch should select smoke-agent");
+  assert((await page.locator("#chat-input").inputValue()).trim() === "Review recent smoke changes.", "roster command launch should draft command body");
+  await openManagePanel(page, "Agents");
   await rosterCard.getByRole("button", { name: "Chat", exact: true }).click();
   await page.locator("#panel-chat.active").waitFor();
   assert(await page.locator("#chat-agent").inputValue() === "smoke-agent", "roster chat action should select smoke-agent");
@@ -808,6 +818,8 @@ async function runAgents(page) {
   assert(updatedRosterMetrics.includes("ALLOW\n3"), `agent roster should show imported allowed tool count, got ${JSON.stringify(updatedRosterMetrics)}`);
   assert(updatedRosterMetrics.includes("DENY\n2"), `agent roster should show edited denied tool count, got ${JSON.stringify(updatedRosterMetrics)}`);
   assert(updatedRosterMetrics.includes("COMMANDS\n2"), `agent roster should show deploy and imported commands, got ${JSON.stringify(updatedRosterMetrics)}`);
+  await rosterCard.getByRole("button", { name: "/deploy", exact: true }).waitFor();
+  await rosterCard.getByRole("button", { name: "/imported", exact: true }).waitFor();
   await page.getByRole("button", { name: "New agent" }).click();
   const updatedDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"

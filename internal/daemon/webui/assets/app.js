@@ -3022,6 +3022,7 @@ function agentCapabilitySummary(agent) {
     heartbeatHours: agent.HeartbeatHours || agent.heartbeat_hours || heartbeatCfg.ActiveHours || heartbeatCfg.active_hours || "",
     heartbeatModel: agent.HeartbeatModel || agent.heartbeat_model || heartbeatCfg.Model || heartbeatCfg.model || "",
     commandCount: Number(agent.CommandCount ?? agent.command_count ?? Object.keys(commands).length ?? 0),
+    commandNames: agentInfoList(agent.CommandNames || agent.command_names || Object.keys(commands)),
     hasMemory: (agent.HasMemory ?? agent.has_memory ?? Boolean(agent.Memory || agent.memory)) === true,
   };
 }
@@ -3040,6 +3041,11 @@ function renderAgentCapabilityRoster() {
       : "off";
     const posture = summary.autoApprove ? "Auto approve" : "Manual review";
     const memory = summary.hasMemory ? "Memory" : "No memory";
+    const commandLaunchers = summary.commandNames.length
+      ? `<div class="agent-command-launchers" aria-label="${escapeHTML(summary.name)} commands">
+        ${summary.commandNames.map((command) => `<button type="button" data-agent-command-launch-agent="${escapeHTML(summary.name)}" data-agent-command-launch="${escapeHTML(command)}">/${escapeHTML(command)}</button>`).join("")}
+      </div>`
+      : "";
     return `<article class="agent-roster-card">
       <div class="agent-roster-head">
         <span class="agent-orbit-dot" aria-hidden="true"></span>
@@ -3062,6 +3068,7 @@ function renderAgentCapabilityRoster() {
         <span>${summary.autoApprove ? "Approval bypass" : "Approval gated"}</span>
         <span>${summary.heartbeatEvery ? "Heartbeat scheduled" : "No heartbeat"}</span>
       </div>
+      ${commandLaunchers}
       <div class="row-actions">
         <button type="button" data-agent-launch-chat="${escapeHTML(summary.name)}">Chat</button>
         <button type="button" data-agent-launch-test="${escapeHTML(summary.name)}">Test</button>
@@ -3341,6 +3348,26 @@ function prepareAgentCouncil(name) {
   switchPanel("council");
   $("council-goal").focus();
   showToast(`Council drafted for ${name}.`);
+}
+
+async function launchAgentCommand(agentName, commandName) {
+  if (!agentName || !commandName) return;
+  try {
+    const detail = await api(`/agents/${encodeURIComponent(agentName)}`);
+    const commands = detail.Commands || detail.commands || {};
+    const body = commands[commandName] || "";
+    if (!body.trim()) {
+      showToast(`Command /${commandName} is empty.`);
+      return;
+    }
+    startNewChat();
+    $("chat-agent").value = agentName;
+    $("chat-input").value = body.trim();
+    $("chat-input").focus();
+    showToast(`/${commandName} drafted for ${agentName}.`);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 async function submitAgent(event) {
@@ -4941,6 +4968,12 @@ document.addEventListener("click", (event) => {
   const agentLaunchCouncil = event.target.closest("[data-agent-launch-council]");
   if (agentLaunchCouncil) {
     prepareAgentCouncil(agentLaunchCouncil.dataset.agentLaunchCouncil);
+    return;
+  }
+
+  const agentCommandLaunch = event.target.closest("[data-agent-command-launch]");
+  if (agentCommandLaunch) {
+    launchAgentCommand(agentCommandLaunch.dataset.agentCommandLaunchAgent, agentCommandLaunch.dataset.agentCommandLaunch);
     return;
   }
 

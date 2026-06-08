@@ -227,6 +227,9 @@ func TestListAgents(t *testing.T) {
 		if first.Model != "gpt-a" || first.ReasoningEffort != "low" || !first.AutoApprove || first.HeartbeatEvery != "15m" || first.HeartbeatHours != "09:00-17:00" || first.HeartbeatModel != "gpt-heartbeat" || first.CommandCount != 1 || !first.HasMemory {
 			t.Fatalf("agent capability summary not populated: %+v", first)
 		}
+		if len(first.CommandNames) != 1 || first.CommandNames[0] != "review" {
+			t.Fatalf("agent command names not populated: %+v", first.CommandNames)
+		}
 		if len(first.ToolsAllow) != 2 || first.ToolsAllow[0] != "file_read" || len(first.ToolsDeny) != 1 || first.ToolsDeny[0] != "bash" {
 			t.Fatalf("agent tool summary not populated: %+v", first)
 		}

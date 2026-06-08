@@ -70,6 +70,7 @@ type AgentInfo struct {
 	HeartbeatHours  string
 	HeartbeatModel  string
 	CommandCount    int
+	CommandNames    []string
 	HasMemory       bool
 }
 
@@ -214,6 +215,11 @@ func enrichAgentInfo(info *AgentInfo, agent *Agent) {
 		return
 	}
 	info.CommandCount = len(agent.Commands)
+	info.CommandNames = make([]string, 0, len(agent.Commands))
+	for name := range agent.Commands {
+		info.CommandNames = append(info.CommandNames, name)
+	}
+	sort.Strings(info.CommandNames)
 	info.HasMemory = strings.TrimSpace(agent.Memory) != ""
 	if agent.Config == nil {
 		return

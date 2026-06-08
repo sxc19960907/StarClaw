@@ -36,6 +36,29 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 116: Agent Command Launcher
+
+**Date**: 2026-06-08
+**Task**: Agent command launcher
+**Branch**: `main`
+
+### Summary
+
+Added slash-command launch chips to Agent Capability Roster cards. The roster now shows saved command names and drafts the selected command body into Chat with the correct named agent selected, without sending automatically.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/agents ./internal/daemon`
+- [OK] `./scripts/smoke_webui_agents.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 115: Agent Launch Actions
 
 **Date**: 2026-06-08

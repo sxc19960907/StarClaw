@@ -2522,6 +2522,29 @@ textarea:focus {
   min-height: 22px;
 }
 
+.agent-command-launchers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-command-launchers button {
+  min-height: 24px;
+  border-color: rgba(49, 92, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(49, 92, 255, 0.055);
+  padding: 2px 9px;
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.agent-command-launchers button:hover {
+  border-color: rgba(49, 92, 255, 0.32);
+  background: rgba(49, 92, 255, 0.09);
+}
+
 .permission-preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));

@@ -34,6 +34,7 @@ Keep moving Astria toward a Kocoro-like independent agent workspace: workflows s
 | P1 | `06-07-06-07-run-follow-up-suggestions` | Add run-completion follow-up suggestion actions to Chat summaries and Mission Control details. |
 | P1 | `06-08-06-07-agent-capability-roster` | Add an Agents capability roster for model, tools, memory, approval, heartbeat, and commands. |
 | P1 | `06-08-06-08-agent-launch-actions` | Add direct Chat, Test, and Council launch actions from each Agent capability roster card. |
+| P1 | `06-08-06-08-agent-command-launcher` | Add slash-command chips on Agent roster cards that draft saved command bodies into Chat. |
 
 ## Acceptance Criteria
 

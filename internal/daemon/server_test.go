@@ -1970,6 +1970,9 @@ func TestHandleCreateAgent(t *testing.T) {
 	if info.Model != "gpt-test" || info.ReasoningEffort != "low" || !info.AutoApprove || info.HeartbeatEvery != "15m" || info.HeartbeatHours != "09:00-17:00" || info.HeartbeatModel != "gpt-heartbeat" || info.CommandCount != 2 || !info.HasMemory {
 		t.Fatalf("agent capability summary not listed: %+v", info)
 	}
+	if len(info.CommandNames) != 2 || info.CommandNames[0] != "deploy" || info.CommandNames[1] != "review" {
+		t.Fatalf("agent command names not listed: %+v", info.CommandNames)
+	}
 	if len(info.ToolsAllow) != 2 || info.ToolsAllow[0] != "file_read" || len(info.ToolsDeny) != 1 || info.ToolsDeny[0] != "bash" {
 		t.Fatalf("agent tool summary not listed: %+v", info)
 	}
