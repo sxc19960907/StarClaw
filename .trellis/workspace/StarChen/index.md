@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 105
-- **Last Active**: 2026-06-07
+- **Total Sessions**: 106
+- **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~40 | Active |
+| `journal-3.md` | ~807 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 106 | 2026-06-08 | Token budget enforcement | `c5c78b6` | `main` |
 | 105 | 2026-06-07 | Astria Command Center | `700d6b8` | `main` |
 | 104 | 2026-06-05 | Harden npm release checks | `47dc8ff` | `main` |
 | 103 | 2026-06-05 | Run GUI e2e user regression | `097552d` | `main` |

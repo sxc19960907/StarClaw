@@ -772,3 +772,36 @@ Added an embedded Astria Run Quality scorecard that evaluates recent work across
 ### Status
 
 [OK] **Completed**
+
+
+## Session 106: Token budget enforcement
+
+**Date**: 2026-06-08
+**Task**: Token budget enforcement
+**Branch**: `main`
+
+### Summary
+
+Implemented runtime token budget config, provider usage tracking, hard-stop enforcement before model follow-up calls, daemon budget status surfacing, tests, and backend code-spec coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c5c78b6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
