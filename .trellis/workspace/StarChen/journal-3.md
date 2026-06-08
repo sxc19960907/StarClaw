@@ -703,3 +703,26 @@ Added an embedded Astria Knowledge Reconciliation panel that catches stale, conf
 ### Status
 
 [OK] **Completed**
+
+
+## Session 126: Workspace Snapshot Export Planner
+
+**Date**: 2026-06-08
+**Task**: Workspace snapshot export planner
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Workspace Snapshot planner that bundles local continuity context into reviewed snapshot packs for session resume, run evidence, memory/source coverage, result archives, playbook reuse, delivery schedules, and privacy/redaction boundaries. Each snapshot card has a detail brief, Chat draft action, and route back to the relevant existing panel without adding backend export storage.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

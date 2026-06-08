@@ -3744,6 +3744,72 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.workspace-snapshot-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-snapshot-card {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 18px 14px, rgba(214, 162, 55, 0.16), transparent 26px),
+    radial-gradient(circle at calc(100% - 22px) 22px, rgba(32, 167, 154, 0.12), transparent 28px),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(247, 249, 244, 0.72)),
+    var(--surface-soft);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.workspace-snapshot-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(214, 162, 55, 0.8), rgba(87, 118, 173, 0.6), rgba(32, 167, 154, 0.66));
+}
+
+.workspace-snapshot-card.active {
+  border-color: rgba(87, 118, 173, 0.34);
+  background:
+    linear-gradient(90deg, rgba(87, 118, 173, 0.1), transparent 58%),
+    rgba(255, 255, 255, 0.82);
+}
+
+.workspace-snapshot-card strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.workspace-snapshot-gridline {
+  display: grid;
+  grid-template-columns: minmax(104px, 0.34fr) minmax(0, 1fr);
+  gap: 6px 10px;
+}
+
+.workspace-snapshot-gridline span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.workspace-snapshot-gridline strong {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workspace-snapshot-detail {
+  margin-top: 16px;
+}
+
 .citation-grounding-form {
   display: grid;
   gap: 10px;

@@ -67,6 +67,10 @@
               <span><span class="nav-icon" aria-hidden="true">✧</span>交接包</span>
               <small id="nav-share-count">0</small>
             </button>
+            <button class="nav-item" data-panel="snapshot" aria-label="Workspace Snapshot">
+              <span><span class="nav-icon" aria-hidden="true">✹</span>快照包</span>
+              <small id="nav-snapshot-count">0</small>
+            </button>
             <button class="nav-item" data-panel="delivery" aria-label="Delivery">
               <span><span class="nav-icon" aria-hidden="true">⇢</span>投递</span>
               <small id="nav-delivery-count">0</small>
@@ -674,6 +678,11 @@
                 <span>Share Pack</span>
                 <strong id="manage-share-count">0 packs</strong>
                 <small>Package successful local work into reviewed, copyable handoff starters.</small>
+              </button>
+              <button class="hub-card" type="button" data-panel="snapshot">
+                <span>Workspace Snapshot</span>
+                <strong id="manage-snapshot-count">0 packs</strong>
+                <small>Plan local resume, evidence, source, privacy, and delivery snapshot bundles.</small>
               </button>
               <button class="hub-card" type="button" data-panel="delivery">
                 <span>Proactive Delivery</span>
@@ -1343,6 +1352,27 @@
             </div>
             <div class="data-insight-detail" id="data-insight-detail">
               <div class="empty-state">Select an insight mission.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-snapshot" aria-labelledby="snapshot-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="snapshot-heading">Workspace Snapshot</h2>
+              <p id="snapshot-summary">Plan local snapshot packs for resume, evidence, sources, results, playbooks, delivery, and privacy review.</p>
+            </div>
+            <div class="workspace-snapshot-grid" id="workspace-snapshot-grid">
+              <div class="empty-state">No snapshot packs yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Snapshot Brief</h2>
+              <p>Review included context, missing pieces, redaction boundary, and the next Astria route.</p>
+            </div>
+            <div class="workspace-snapshot-detail" id="workspace-snapshot-detail">
+              <div class="empty-state">Select a snapshot pack.</div>
             </div>
           </aside>
         </section>

@@ -18,6 +18,7 @@ const state = {
   selectedPlaybook: "",
   selectedStarterKit: "",
   selectedSharePack: "",
+  selectedWorkspaceSnapshot: "",
   sharePackName: "",
   sharePackAudience: "",
   sharePackIntent: "",
@@ -86,6 +87,7 @@ const views = {
   playbooks: ["实践手册", "Launch from reviewed local best-practice patterns."],
   starter: ["启动套件", "Launch from prebuilt Astria workflow kits."],
   share: ["交接包", "Package local work into reviewed handoff starters."],
+  snapshot: ["工作区快照", "Plan local resume, evidence, source, and privacy snapshot packs."],
   browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
   data: ["数据洞察", "Plan reviewed data analysis and knowledge capture missions."],
   delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
@@ -1258,6 +1260,7 @@ function renderHomeActivity() {
   renderPlaybookLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
+  renderWorkspaceSnapshotPlanner();
   renderBrowserMissionPlanner();
   renderDataInsightPlanner();
   renderProactiveDeliveryBoard();
@@ -1311,6 +1314,7 @@ function renderHomeDockedTools() {
   renderPlaybookLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
+  renderWorkspaceSnapshotPlanner();
   renderBrowserMissionPlanner();
   renderDataInsightPlanner();
   renderProactiveDeliveryBoard();
@@ -2869,6 +2873,185 @@ function draftSharePackToChat(id) {
   showToast("Share pack drafted to chat.");
 }
 
+function workspaceSnapshotCards() {
+  const latestRun = state.runs[0];
+  const latestSession = state.sessions[0];
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const sourceCount = sourceRegistryRows().length;
+  const resultCount = resultArchiveEntries().length;
+  const playbookCount = playbookLibraryCards().length;
+  const reuseCount = reuseGalleryAssets().length;
+  const shareCount = sharePackCards().length;
+  const agentCount = state.agents.length;
+  const scheduleCount = state.schedules.length;
+  const riskCount = knowledgeReconciliationItems().length;
+  const runLabel = latestRun?.prompt || latestRun?.id || "No latest run";
+  const sessionLabel = latestSession?.title || latestSession?.id || "No recent session";
+  const localInventory = `${state.sessions.length} sessions, ${state.runs.length} runs, ${memoryCount} memory, ${sourceCount} sources, ${resultCount} results`;
+  return [
+    {
+      id: "resume",
+      type: "Resume",
+      title: "Session resume snapshot",
+      panel: latestSession ? "chat" : "runs",
+      included: `${sessionLabel}; ${runLabel}`,
+      missing: latestSession ? "Confirm unresolved next action and active branch before resuming." : "Create or select a session before treating this as resumable.",
+      reviewGate: "Verify current objective, latest user request, active files, and unfinished checks.",
+      privacy: "Keep local paths and session IDs internal unless the recipient needs them.",
+      route: "Open Chat to continue from the selected local context.",
+      prompt: `Build an Astria session resume snapshot.\n\nLocal inventory: ${localInventory}\nLatest session: ${sessionLabel}\nLatest run: ${runLabel}\n\nReturn a resume pack with current objective, relevant context, completed work, open risks, files to inspect first, validation state, and the next safe action. Mark missing context instead of guessing.`,
+    },
+    {
+      id: "evidence",
+      type: "Evidence",
+      title: "Run evidence snapshot",
+      panel: "runs",
+      included: `${state.runs.length} runs; ${sourceCount} registered sources; ${resultCount} result briefs`,
+      missing: state.runs.length ? "Identify which outputs are final, draft, or blocked." : "Run history is empty; evidence snapshot should start as a checklist.",
+      reviewGate: "Separate observed tool output, model synthesis, and unsupported assumptions.",
+      privacy: "Redact command output that contains secrets, private paths, or account data.",
+      route: "Open Runs to inspect execution detail and copyable summaries.",
+      prompt: `Build an Astria run evidence snapshot.\n\nRuns: ${state.runs.length}\nSources: ${sourceCount}\nResult archive entries: ${resultCount}\nLatest run: ${runLabel}\n\nReturn evidence grouped by run, source, result, confidence, freshness, and unresolved gaps. Flag anything that needs citation grounding or reviewer approval.`,
+    },
+    {
+      id: "memory-source",
+      type: "Knowledge",
+      title: "Memory and source snapshot",
+      panel: sourceCount ? "sources" : "memory",
+      included: `${memoryCount} memory entries; ${sourceCount} source lanes; ${riskCount} reconciliation risks`,
+      missing: riskCount ? "Resolve stale, conflicting, weak, or sensitive knowledge before reuse." : "Add source and freshness notes for any durable memory candidate.",
+      reviewGate: "Every durable fact needs source, freshness, category, and rejection criteria.",
+      privacy: "Do not snapshot sensitive notes, secrets, or private facts without explicit need.",
+      route: "Open Source Registry or Memory Map to curate durable context.",
+      prompt: `Build an Astria memory and source snapshot.\n\nMemory entries: ${memoryCount}\nSource lanes: ${sourceCount}\nReconciliation risks: ${riskCount}\n\nReturn durable facts, source coverage, stale or conflicting items, privacy exclusions, and memory candidates that are safe to reuse.`,
+    },
+    {
+      id: "result-archive",
+      type: "Results",
+      title: "Result archive snapshot",
+      panel: "results",
+      included: `${resultCount} archived results; ${shareCount} share pack cards; ${reuseCount} reusable assets`,
+      missing: resultCount ? "Confirm which archived results have evidence and acceptance checks." : "No archived result yet; seed from the latest completed run.",
+      reviewGate: "Each saved result needs outcome, source evidence, freshness, reuse path, and open risks.",
+      privacy: "Snapshot outcomes without hidden chain-of-thought, credentials, or private workspace data.",
+      route: "Open Result Library to inspect saved reports and follow-up prompts.",
+      prompt: `Build an Astria result archive snapshot.\n\nArchived results: ${resultCount}\nShare pack cards: ${shareCount}\nReusable assets: ${reuseCount}\n\nReturn a local result package with outcome summaries, evidence links, freshness, reusable prompt paths, acceptance checks, and unresolved risks.`,
+    },
+    {
+      id: "playbook-reuse",
+      type: "Reuse",
+      title: "Playbook and reuse snapshot",
+      panel: "playbooks",
+      included: `${playbookCount} playbooks; ${reuseCount} reusable assets; ${agentCount} agents`,
+      missing: playbookCount ? "Confirm the playbook still matches current tools and safety boundaries." : "Promote a successful workflow into a reviewed playbook before reuse.",
+      reviewGate: "Reusable workflow needs trigger, steps, evidence gate, safety boundary, and validation.",
+      privacy: "Store reusable patterns, not sensitive project state or credentials.",
+      route: "Open Playbook Library to launch a reviewed local best-practice path.",
+      prompt: `Build an Astria playbook and reuse snapshot.\n\nPlaybooks: ${playbookCount}\nReusable assets: ${reuseCount}\nAgents: ${agentCount}\n\nReturn repeatable workflows, agent/profile dependencies, prompts to reuse, safety boundaries, validation commands, and stale-pattern risks.`,
+    },
+    {
+      id: "delivery-schedule",
+      type: "Delivery",
+      title: "Delivery and schedule snapshot",
+      panel: scheduleCount ? "delivery" : "schedules",
+      included: `${scheduleCount} schedules; ${deliveryLanes().length} delivery lanes; ${state.inboxItems.length} inbox items`,
+      missing: scheduleCount ? "Confirm destination, approval gate, and rollback path for every scheduled output." : "No schedule exists; keep the delivery snapshot as a reviewed plan.",
+      reviewGate: "Outbound, scheduled, or channel work requires explicit approval and verification.",
+      privacy: "No external send, post, schedule, or remote state change is implied by this snapshot.",
+      route: "Open Delivery or Schedules to review cadence and approval boundaries.",
+      prompt: `Build an Astria delivery and schedule snapshot.\n\nSchedules: ${scheduleCount}\nDelivery lanes: ${deliveryLanes().length}\nInbox items: ${state.inboxItems.length}\n\nReturn destination candidates, schedule cadence, approval gates, verification steps, rollback paths, and what must stay local.`,
+    },
+    {
+      id: "privacy",
+      type: "Privacy",
+      title: "Redaction and handoff boundary",
+      panel: riskCount ? "reconcile" : "share",
+      included: `${riskCount} knowledge risks; ${sourceCount} sources; ${shareCount} share pack cards`,
+      missing: "Review local paths, API keys, account data, private files, and unsupported assumptions before copying anything out.",
+      reviewGate: "Nothing leaves the local workspace until secrets, private data, and weak claims are removed.",
+      privacy: "Default to local-only. Redact credentials, private paths, user data, and hidden state.",
+      route: "Open Knowledge Reconciliation or Share Pack to complete the boundary check.",
+      prompt: `Build an Astria redaction and handoff-boundary snapshot.\n\nKnowledge risks: ${riskCount}\nSources: ${sourceCount}\nShare pack cards: ${shareCount}\n\nReturn what can be copied, what must be redacted, what requires approval, weak or unsupported claims, and the local-only boundary for this handoff.`,
+    },
+  ];
+}
+
+function renderWorkspaceSnapshotPlanner() {
+  const cards = workspaceSnapshotCards();
+  setText("nav-snapshot-count", cards.length);
+  setText("manage-snapshot-count", `${cards.length} pack${cards.length === 1 ? "" : "s"}`);
+  setText("snapshot-summary", `${cards.length} local snapshot pack${cards.length === 1 ? "" : "s"} for resume, evidence, memory, results, playbooks, delivery, and privacy review.`);
+  const list = $("workspace-snapshot-grid");
+  if (!list) return;
+  if (!state.selectedWorkspaceSnapshot || !cards.some((card) => card.id === state.selectedWorkspaceSnapshot)) {
+    state.selectedWorkspaceSnapshot = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="workspace-snapshot-card ${card.id === state.selectedWorkspaceSnapshot ? "active" : ""}" data-workspace-snapshot="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.panel)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="workspace-snapshot-gridline">
+      <span>Included</span><strong>${escapeHTML(card.included)}</strong>
+      <span>Missing</span><strong>${escapeHTML(card.missing)}</strong>
+      <span>Review gate</span><strong>${escapeHTML(card.reviewGate)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-snapshot-select="${escapeHTML(card.id)}">Snapshot brief</button>
+      <button type="button" data-snapshot-draft="${escapeHTML(card.id)}">Draft snapshot</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+    </div>
+  </article>`).join("");
+  renderWorkspaceSnapshotDetail(cards.find((card) => card.id === state.selectedWorkspaceSnapshot) || cards[0]);
+}
+
+function renderWorkspaceSnapshotDetail(card) {
+  const target = $("workspace-snapshot-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a snapshot pack.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>Next</span><strong>${escapeHTML(card.route)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Included context</h3>
+      <p>${escapeHTML(card.included)}</p>
+      <h3>Missing pieces</h3>
+      <p>${escapeHTML(card.missing)}</p>
+      <h3>Review gate</h3>
+      <p>${escapeHTML(card.reviewGate)}</p>
+      <h3>Privacy boundary</h3>
+      <p>${escapeHTML(card.privacy)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-snapshot-draft="${escapeHTML(card.id)}">Draft snapshot</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function workspaceSnapshotByID(id) {
+  return workspaceSnapshotCards().find((card) => card.id === id) || null;
+}
+
+function draftWorkspaceSnapshotToChat(id) {
+  const card = workspaceSnapshotByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a local Workspace Snapshot pack with included context, missing pieces, review gate, privacy/redaction boundary, route, and next action. Do not claim that a file was exported unless explicitly asked to create one.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Workspace snapshot drafted to chat.");
+}
+
 function browserMissionContext() {
   const url = ($("browser-target-url")?.value || state.browserTargetURL || "").trim();
   const goal = ($("browser-mission-goal")?.value || state.browserMissionGoal || "").trim();
@@ -3327,6 +3510,7 @@ function renderManageCount() {
   const playbooksCount = playbookLibraryCards().length;
   const starterCount = starterKits().length;
   const shareCount = sharePackCards().length;
+  const snapshotCount = workspaceSnapshotCards().length;
   const browserCount = browserMissionCards().length;
   const dataCount = dataInsightCards().length;
   const deliveryCount = deliveryLanes().length;
@@ -3351,13 +3535,15 @@ function renderManageCount() {
   setText("nav-starter-count", starterCount);
   setText("manage-share-count", `${shareCount} pack${shareCount === 1 ? "" : "s"}`);
   setText("nav-share-count", shareCount);
+  setText("manage-snapshot-count", `${snapshotCount} pack${snapshotCount === 1 ? "" : "s"}`);
+  setText("nav-snapshot-count", snapshotCount);
   setText("manage-browser-count", `${browserCount} plan${browserCount === 1 ? "" : "s"}`);
   setText("nav-browser-count", browserCount);
   setText("manage-data-count", `${dataCount} lens${dataCount === 1 ? "" : "es"}`);
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + snapshotCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -4516,6 +4702,9 @@ async function loadMemory() {
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
+    renderPlaybookLibrary();
+    renderSharePackBuilder();
+    renderWorkspaceSnapshotPlanner();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
     setText("memory-save-state", "Error");
@@ -4528,6 +4717,9 @@ async function loadMemory() {
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
+    renderPlaybookLibrary();
+    renderSharePackBuilder();
+    renderWorkspaceSnapshotPlanner();
     showToast(error.message);
   }
 }
@@ -4554,6 +4746,9 @@ async function submitMemoryCandidate(event) {
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
+    renderPlaybookLibrary();
+    renderSharePackBuilder();
+    renderWorkspaceSnapshotPlanner();
     showToast("Memory approved.");
   } catch (error) {
     $("memory-save-state").textContent = "Error";
@@ -4573,6 +4768,9 @@ async function deleteMemoryEntry(name) {
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
+    renderPlaybookLibrary();
+    renderSharePackBuilder();
+    renderWorkspaceSnapshotPlanner();
     showToast("Memory entry deleted.");
   } catch (error) {
     showToast(error.message);
@@ -6143,6 +6341,8 @@ async function loadSessions(query = "") {
       renderFocusBrief();
       renderComparisonWorkbench();
       renderReuseGallery();
+      renderResultLibrary();
+      renderWorkspaceSnapshotPlanner();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
@@ -6167,6 +6367,8 @@ async function loadSessions(query = "") {
     renderFocusBrief();
     renderComparisonWorkbench();
     renderReuseGallery();
+    renderResultLibrary();
+    renderWorkspaceSnapshotPlanner();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
@@ -6177,6 +6379,8 @@ async function loadSessions(query = "") {
     renderFocusBrief();
     renderComparisonWorkbench();
     renderReuseGallery();
+    renderResultLibrary();
+    renderWorkspaceSnapshotPlanner();
   }
 }
 
@@ -6190,6 +6394,7 @@ async function loadSchedules() {
     renderManageCount();
     renderHomeDockedTools();
     renderProactiveDeliveryBoard();
+    renderWorkspaceSnapshotPlanner();
     if (!state.schedules.length) {
       renderEmpty(list, "No schedules configured.");
       return;
@@ -6227,6 +6432,9 @@ async function loadRuns() {
     renderReuseGallery();
     renderResultLibrary();
     renderPlaybookLibrary();
+    renderStarterKitLauncher();
+    renderSharePackBuilder();
+    renderWorkspaceSnapshotPlanner();
     renderProactiveDeliveryBoard();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -6245,6 +6453,9 @@ async function loadRuns() {
     renderReuseGallery();
     renderResultLibrary();
     renderPlaybookLibrary();
+    renderStarterKitLauncher();
+    renderSharePackBuilder();
+    renderWorkspaceSnapshotPlanner();
     renderProactiveDeliveryBoard();
     renderError(list, error.message);
   }
@@ -7368,6 +7579,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const snapshotSelect = event.target.closest("[data-snapshot-select]");
+  if (snapshotSelect) {
+    state.selectedWorkspaceSnapshot = snapshotSelect.dataset.snapshotSelect || "";
+    renderWorkspaceSnapshotPlanner();
+    return;
+  }
+
+  const snapshotDraft = event.target.closest("[data-snapshot-draft]");
+  if (snapshotDraft) {
+    draftWorkspaceSnapshotToChat(snapshotDraft.dataset.snapshotDraft);
+    return;
+  }
+
+  const workspaceSnapshot = event.target.closest("[data-workspace-snapshot]");
+  if (workspaceSnapshot && !event.target.closest("button")) {
+    state.selectedWorkspaceSnapshot = workspaceSnapshot.dataset.workspaceSnapshot || "";
+    renderWorkspaceSnapshotPlanner();
+    return;
+  }
+
   const browserSelect = event.target.closest("[data-browser-select]");
   if (browserSelect) {
     state.selectedBrowserMission = browserSelect.dataset.browserSelect || "";
@@ -7874,24 +8105,28 @@ $("promptlab-goal").addEventListener("input", (event) => {
   renderPlaybookLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
+  renderWorkspaceSnapshotPlanner();
 });
 $("share-pack-name").addEventListener("input", (event) => {
   state.sharePackName = event.target.value;
   renderSharePackBuilder();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("share-pack-audience").addEventListener("input", (event) => {
   state.sharePackAudience = event.target.value;
   renderSharePackBuilder();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("share-pack-intent").addEventListener("input", (event) => {
   state.sharePackIntent = event.target.value;
   renderSharePackBuilder();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("browser-target-url").addEventListener("input", (event) => {
   state.browserTargetURL = event.target.value;
@@ -7906,36 +8141,42 @@ $("data-source-descriptor").addEventListener("input", (event) => {
   renderDataInsightPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("data-analysis-question").addEventListener("input", (event) => {
   state.dataAnalysisQuestion = event.target.value;
   renderDataInsightPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("data-output-format").addEventListener("input", (event) => {
   state.dataOutputFormat = event.target.value;
   renderDataInsightPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("citation-claim-scope").addEventListener("input", (event) => {
   state.citationClaimScope = event.target.value;
   renderCitationGroundingPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("citation-source-posture").addEventListener("input", (event) => {
   state.citationSourcePosture = event.target.value;
   renderCitationGroundingPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 $("citation-evidence-level").addEventListener("input", (event) => {
   state.citationEvidenceLevel = event.target.value;
   renderCitationGroundingPlanner();
   renderResultLibrary();
   renderPlaybookLibrary();
+  renderWorkspaceSnapshotPlanner();
 });
 
 renderHomeMode();
@@ -7958,6 +8199,7 @@ renderResultLibrary();
 renderPlaybookLibrary();
 renderStarterKitLauncher();
 renderSharePackBuilder();
+renderWorkspaceSnapshotPlanner();
 renderBrowserMissionPlanner();
 renderDataInsightPlanner();
 renderProactiveDeliveryBoard();

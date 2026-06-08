@@ -24,12 +24,13 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 | P1 | `06-08-result-library-report-archive` | Add a Result Library that archives completed reports, evidence briefs, insight summaries, citation briefs, reusable outputs, and council synthesis for follow-up. |
 | P1 | `06-08-playbook-library-best-practices` | Add a Playbook Library that turns successful local work patterns into reviewed best-practice launch paths. |
 | P1 | `06-08-knowledge-conflict-reconciliation` | Add Knowledge Reconciliation for stale, conflicting, weakly sourced, duplicate, missing-coverage, privacy-sensitive, and result freshness risks. |
+| P1 | `06-08-workspace-snapshot-export-planner` | Add a Workspace Snapshot planner that bundles local resume, evidence, memory/source, result, playbook, delivery, and privacy handoff context. |
 
 ## Acceptance Criteria
 
 - [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
-- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, archiving saved results for follow-up, capturing repeatable best practices as playbooks, and reconciling stale/conflicting knowledge before reuse.
+- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, archiving saved results for follow-up, capturing repeatable best practices as playbooks, reconciling stale/conflicting knowledge before reuse, and planning reusable local workspace snapshots for handoff/resume continuity.
 
 ## Non-Goals
 

@@ -27,7 +27,8 @@
     "06-08-citation-grounding-planner",
     "06-08-result-library-report-archive",
     "06-08-playbook-library-best-practices",
-    "06-08-knowledge-conflict-reconciliation"
+    "06-08-knowledge-conflict-reconciliation",
+    "06-08-workspace-snapshot-export-planner"
   ],
   "parent": null,
   "relatedFiles": [
@@ -37,6 +38,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery, Browser Mission Planner, Data Insight Planner, Share Pack Builder, Starter Kit Launcher, Citation Grounding Planner, Result Library, Playbook Library, and Knowledge Reconciliation are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery, Browser Mission Planner, Data Insight Planner, Share Pack Builder, Starter Kit Launcher, Citation Grounding Planner, Result Library, Playbook Library, Knowledge Reconciliation, and Workspace Snapshot Planner are complete.",
   "meta": {}
 }
