@@ -20,11 +20,11 @@ Close the next major Kocoro/Shannon parity gap by moving Astria from primarily l
 
 ## Acceptance Criteria
 
-- [ ] Parent task lists hard-function child tasks before UI style work.
-- [ ] Each child task has PRD acceptance criteria and clear non-goals.
-- [ ] UI style task is last in the child map and marked as deferred polish.
-- [ ] Each implemented child passes targeted tests and relevant smoke coverage.
-- [ ] The phase produces measurable backend/API/runtime parity improvements, not only new UI panels.
+- [x] Parent task lists hard-function child tasks before UI style work.
+- [x] Each child task has PRD acceptance criteria and clear non-goals.
+- [x] UI style task is last in the child map and marked as deferred polish.
+- [x] Each implemented child passes targeted tests and relevant smoke coverage.
+- [x] The phase produces measurable backend/API/runtime parity improvements, not only new UI panels.
 
 ## Notes
 
