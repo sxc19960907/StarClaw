@@ -328,13 +328,13 @@ func (s *RunStore) TransitionStep(runID, stepID, status string, metadata map[str
 		if step.Attempt <= 0 {
 			step.Attempt = 1
 		}
-		step.Metadata = mergeWorkflowStepMetadata(step.Metadata, metadata)
+		step.Metadata = mergeWorkflowStepMetadata(step.Metadata, redactMetadataMap(metadata))
 		record.Steps[idx] = cloneWorkflowStep(step)
 		s.addStructuredEventLocked(runID, "workflow_step", workflowStepEventData(step))
 		s.persistLocked()
 		return true
 	}
-	step := WorkflowStepState{ID: stepID, Status: status, Metadata: metadata}
+	step := WorkflowStepState{ID: stepID, Status: status, Metadata: redactMetadataMap(metadata)}
 	normalizeWorkflowStep(&step, now)
 	if status == WorkflowStepRunning {
 		started := now
@@ -365,7 +365,6 @@ func (s *RunStore) List() []RunSummary {
 			Status:      record.Status,
 			Agent:       record.Agent,
 			Channel:     record.Channel,
-			Prompt:      record.Prompt,
 			SessionID:   record.SessionID,
 			Source:      record.Request.Source,
 			Control:     append([]RunControlDecision(nil), record.Control...),
@@ -635,11 +634,19 @@ func cloneWorkflowSteps(steps []WorkflowStepState) []WorkflowStepState {
 }
 
 func cloneMetadata(metadata map[string]any) map[string]any {
+	return redactMetadataMap(metadata)
+}
+
+func redactMetadataMap(metadata map[string]any) map[string]any {
 	if metadata == nil {
 		return nil
 	}
 	copyMap := make(map[string]any, len(metadata))
 	for key, value := range metadata {
+		if eventPayloadKeyRedacted(key) {
+			copyMap[key+"_redacted"] = true
+			continue
+		}
 		copyMap[key] = redactScalar(value)
 	}
 	return copyMap

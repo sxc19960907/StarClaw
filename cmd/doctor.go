@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -55,6 +56,8 @@ type doctorDaemonDiagnostics struct {
 }
 
 var doctorHTTPClient = &http.Client{Timeout: 700 * time.Millisecond}
+
+var doctorSensitivePattern = regexp.MustCompile(`(?i)(api[_-]?key|token|secret|password|bearer\s+\S+)`)
 
 var doctorOutputJSON bool
 
@@ -141,6 +144,7 @@ func buildDoctorDaemonReport() doctorDaemonReport {
 	if err != nil {
 		report.Errors = append(report.Errors, fmt.Sprintf("diagnostics API: %v", err))
 	} else {
+		redactDoctorDiagnostics(&diagnostics)
 		report.Diagnostics = &diagnostics
 	}
 	return report
@@ -208,6 +212,25 @@ func doctorFetchJSON[T any](ctx context.Context, url string) (T, error) {
 		return value, fmt.Errorf("decode %s: %w", url, err)
 	}
 	return value, nil
+}
+
+func redactDoctorDiagnostics(diagnostics *doctorDaemonDiagnostics) {
+	if diagnostics == nil {
+		return
+	}
+	diagnostics.Summary = redactDoctorText(diagnostics.Summary)
+	for idx := range diagnostics.Checks {
+		diagnostics.Checks[idx].Label = redactDoctorText(diagnostics.Checks[idx].Label)
+		diagnostics.Checks[idx].Detail = redactDoctorText(diagnostics.Checks[idx].Detail)
+		diagnostics.Checks[idx].Action = redactDoctorText(diagnostics.Checks[idx].Action)
+	}
+}
+
+func redactDoctorText(value string) string {
+	if value == "" {
+		return ""
+	}
+	return doctorSensitivePattern.ReplaceAllString(value, "[REDACTED]")
 }
 
 func doctorLocalChecks(results []tui.CheckResult) []doctorLocalCheck {

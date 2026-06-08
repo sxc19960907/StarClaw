@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,31 @@ import (
 
 	"github.com/starclaw/starclaw/internal/agent"
 )
+
+func assertNoForbiddenLeak(t *testing.T, surface string, data []byte, forbidden []string) {
+	t.Helper()
+	body := string(data)
+	for _, value := range forbidden {
+		if strings.Contains(body, value) {
+			t.Fatalf("%s leaked forbidden value/key %q: %s", surface, value, body)
+		}
+	}
+}
+
+func secretLeakForbiddenValues() []string {
+	return []string{
+		"phase5 prompt secret",
+		"phase5 assistant secret",
+		"phase5 provider request body",
+		"phase5 provider response body",
+		"sk-phase5-secret",
+		"Bearer phase5-token",
+		"phase5-password",
+		`"args":`,
+		`"prompt":`,
+		`"text":`,
+	}
+}
 
 func TestRunStoreStructuredEventsRedactPayloads(t *testing.T) {
 	store := NewRunStore(10)
@@ -62,6 +88,44 @@ func TestRunStoreStructuredEventsRedactPayloads(t *testing.T) {
 				t.Fatalf("structured event leaked %q: %s", forbidden, body)
 			}
 		}
+	}
+}
+
+func TestRunStoreStructuredEventsRedactPhase5LeakFixture(t *testing.T) {
+	store := NewRunStore(10)
+	store.Start(RunAgentRequest{
+		RequestID: "phase5-leak-fixture",
+		Text:      "phase5 prompt secret",
+		Channel:   ChannelHTTP,
+		Source:    "test",
+	})
+	store.AddEvent("phase5-leak-fixture", EventToolCall, map[string]any{
+		"tool": "http",
+		"args": `{"api_key":"sk-phase5-secret","Authorization":"Bearer phase5-token","password":"phase5-password"}`,
+		"metadata": map[string]any{
+			"request":  "phase5 provider request body",
+			"response": "phase5 provider response body",
+			"nested": []any{
+				map[string]any{"token": "Bearer phase5-token"},
+				map[string]any{"password": "phase5-password"},
+			},
+			"safe": "ok",
+		},
+	})
+	store.AddEvent("phase5-leak-fixture", EventText, map[string]any{"text": "phase5 assistant secret"})
+	store.Complete("phase5-leak-fixture", RunAgentResponse{SessionID: "sess"}, nil)
+
+	record, ok := store.Get("phase5-leak-fixture")
+	if !ok {
+		t.Fatal("expected run record")
+	}
+	encoded, err := json.Marshal(record.StructuredEvents)
+	if err != nil {
+		t.Fatalf("marshal events: %v", err)
+	}
+	assertNoForbiddenLeak(t, "structured events", encoded, secretLeakForbiddenValues())
+	if !strings.Contains(string(encoded), `"request_redacted":true`) || !strings.Contains(string(encoded), `"response_redacted":true`) {
+		t.Fatalf("structured events missing nested payload redaction markers: %s", encoded)
 	}
 }
 
@@ -128,6 +192,35 @@ func TestHandleMetrics(t *testing.T) {
 	if strings.Contains(string(encoded), "hello") {
 		t.Fatalf("metrics leaked prompt body: %s", encoded)
 	}
+}
+
+func TestHandleMetricsDoesNotLeakPhase5Fixture(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "phase5-metrics", Text: "phase5 prompt secret", Channel: ChannelHTTP})
+	s.runStore.AddEvent("phase5-metrics", EventToolCall, map[string]any{
+		"args":     `{"api_key":"sk-phase5-secret"}`,
+		"metadata": map[string]any{"request": "phase5 provider request body"},
+	})
+	s.runStore.Complete("phase5-metrics", RunAgentResponse{SessionID: "sess"}, nil)
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/metrics")
+	if err != nil {
+		t.Fatalf("GET /metrics: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read metrics body: %v", err)
+	}
+	assertNoForbiddenLeak(t, "metrics", data, secretLeakForbiddenValues())
 }
 
 func TestRunStoreExportTracesJSONLRedactsPayloads(t *testing.T) {
@@ -239,4 +332,47 @@ func TestHandleExportTraces(t *testing.T) {
 	if strings.Contains(string(data), "secret prompt body") {
 		t.Fatalf("trace export leaked prompt: %s", data)
 	}
+}
+
+func TestHandleRunTraceAndExportDoNotLeakPhase5Fixture(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "phase5-trace", Text: "phase5 prompt secret", Channel: ChannelHTTP})
+	s.runStore.AddEvent("phase5-trace", EventToolCall, map[string]any{
+		"args": `{"api_key":"sk-phase5-secret","Authorization":"Bearer phase5-token"}`,
+		"metadata": map[string]any{
+			"request":  "phase5 provider request body",
+			"response": "phase5 provider response body",
+			"items":    []any{map[string]any{"password": "phase5-password"}},
+		},
+	})
+	s.runStore.AddEvent("phase5-trace", EventText, map[string]any{"text": "phase5 assistant secret"})
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/runs/phase5-trace/trace")
+	if err != nil {
+		t.Fatalf("GET /runs/{id}/trace: %v", err)
+	}
+	data, readErr := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if readErr != nil {
+		t.Fatalf("read trace body: %v", readErr)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("trace status = %d, body = %s", resp.StatusCode, data)
+	}
+	assertNoForbiddenLeak(t, "trace response", data, secretLeakForbiddenValues())
+
+	path := filepath.Join(t.TempDir(), "phase5-trace.jsonl")
+	var got struct {
+		Path   string `json:"path"`
+		Events int    `json:"events"`
+	}
+	getJSON(t, ts.URL+"/traces/export?path="+path, http.StatusOK, &got)
+	exportData, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read trace export: %v", err)
+	}
+	assertNoForbiddenLeak(t, "trace export", exportData, secretLeakForbiddenValues())
 }

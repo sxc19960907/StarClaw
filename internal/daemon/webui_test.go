@@ -110,3 +110,44 @@ func TestWebUIRoutes(t *testing.T) {
 		})
 	}
 }
+
+func TestWebUITraceAndRecoveryRenderersSanitizePayloads(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/app/assets/app.js")
+	if err != nil {
+		t.Fatalf("GET app.js: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	body := string(data)
+	for _, want := range []string{
+		"function safeRenderPayload(value)",
+		"function unsafePayloadKey(key)",
+		"function secretLikeValue(value)",
+		"formatToolPayload(safeRenderPayload(step.metadata))",
+		"formatToolPayload(safeRenderPayload(item.attributes))",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("app.js missing safe-render marker %q", want)
+		}
+	}
+	for _, forbidden := range []string{
+		"formatToolPayload(step.metadata)",
+		"formatToolPayload(item.attributes)",
+	} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("app.js renders unsafe metadata path %q", forbidden)
+		}
+	}
+}

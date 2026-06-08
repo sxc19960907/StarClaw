@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -118,6 +119,48 @@ func TestHandleDiagnosticsReady(t *testing.T) {
 	if len(body.Checks) < 7 {
 		t.Fatalf("expected at least 7 checks, got %d", len(body.Checks))
 	}
+}
+
+func TestHandleDiagnosticsDoesNotLeakConfiguredProviderSecrets(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte("provider: openai\n"), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := &ServerDeps{
+		StarclawDir: dir,
+		ConfigPath:  configPath,
+		AgentsDir:   filepath.Join(dir, "agents"),
+		Config: &config.Config{
+			Provider:       "openai",
+			Endpoint:       "https://api.anthropic.com",
+			APIKey:         "sk-phase5-secret",
+			OpenAIEndpoint: "https://api.openai.com/v1",
+			OpenAIModel:    "gpt-4o",
+			OpenAIAPIKey:   "Bearer phase5-token",
+			Permissions:    permissions.DefaultConfig(),
+		},
+		Registry:        agent.NewToolRegistry(),
+		ScheduleManager: schedule.NewManager(filepath.Join(dir, "schedules.json")),
+	}
+	deps.Registry.Register(diagnosticTestTool{})
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/diagnostics")
+	if err != nil {
+		t.Fatalf("GET /diagnostics: %v", err)
+	}
+	data, readErr := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if readErr != nil {
+		t.Fatalf("read diagnostics body: %v", readErr)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", resp.StatusCode, data)
+	}
+	assertNoForbiddenLeak(t, "diagnostics", data, secretLeakForbiddenValues())
 }
 
 func TestHandleDiagnosticsRouteReturnsStructuredChecks(t *testing.T) {

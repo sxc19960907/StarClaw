@@ -188,6 +188,47 @@ func TestDoctorCmdPrintsReachableDaemonJSON(t *testing.T) {
 	}
 }
 
+func TestDoctorCmdRedactsDaemonDiagnosticSecrets(t *testing.T) {
+	restore := stubDoctorDaemon(t)
+	restore.isHealthy = func(ctx context.Context) bool {
+		return true
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/status":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"uptime":30,"version":"json-version","active_agents":3}`))
+		case "/diagnostics":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"warning","summary":"api_key sk-phase5-secret","checks":[{"label":"Provider token","status":"warning","detail":"Bearer phase5-token","action":"password phase5-password"}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	restore.statusURL = server.URL + "/status"
+	restore.diagnosticsURL = server.URL + "/diagnostics"
+	restore.applyURLs()
+
+	for _, args := range [][]string{{"doctor"}, {"doctor", "--json"}} {
+		root := &cobra.Command{Use: "starclaw"}
+		root.AddCommand(doctorCmd)
+		output, err := executeCommand(root, args...)
+		if err != nil {
+			t.Fatalf("%s failed: %v", strings.Join(args, " "), err)
+		}
+		for _, forbidden := range []string{"api_key", "sk-phase5-secret", "Provider token", "Bearer phase5-token", "password", "phase5-password"} {
+			if strings.Contains(output, forbidden) {
+				t.Fatalf("%s leaked %q: %s", strings.Join(args, " "), forbidden, output)
+			}
+		}
+		if !strings.Contains(output, "[REDACTED]") {
+			t.Fatalf("%s output missing redaction marker: %s", strings.Join(args, " "), output)
+		}
+	}
+}
+
 type doctorDaemonStub struct {
 	isHealthy      func(context.Context) bool
 	statusURL      string

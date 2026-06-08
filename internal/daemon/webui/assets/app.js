@@ -7297,7 +7297,7 @@ function renderWorkflowSteps(steps) {
         <strong>${escapeHTML(step.title || step.id || "Workflow step")}</strong>
         <span>${escapeHTML(step.status || "unknown")} · ${escapeHTML(formatTimestamp(step.updated_at))}</span>
       </div>
-      ${step.metadata ? `<pre>${escapeHTML(formatToolPayload(step.metadata))}</pre>` : ""}
+      ${step.metadata ? `<pre>${escapeHTML(formatToolPayload(safeRenderPayload(step.metadata)))}</pre>` : ""}
     </article>`).join("")}</div>`;
 }
 
@@ -7326,7 +7326,7 @@ function renderRunTrace(trace, error) {
         <span>${escapeHTML(item.event_id || "-")}</span>
         <span>${escapeHTML(item.span_id || "-")}</span>
       </div>
-      ${item.attributes ? `<pre>${escapeHTML(formatToolPayload(item.attributes))}</pre>` : ""}
+      ${item.attributes ? `<pre>${escapeHTML(formatToolPayload(safeRenderPayload(item.attributes)))}</pre>` : ""}
     </article>`).join("")}</div>`;
 }
 
@@ -7620,6 +7620,24 @@ function formatToolPayload(value) {
   } catch {
     return value;
   }
+}
+
+function safeRenderPayload(value) {
+  if (Array.isArray(value)) return value.map((item) => safeRenderPayload(item));
+  if (!value || typeof value !== "object") return secretLikeValue(value) ? "[REDACTED]" : value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => {
+    if (unsafePayloadKey(key)) return [`${key}_redacted`, true];
+    if (secretLikeValue(key)) return [key, "[REDACTED]"];
+    return [key, safeRenderPayload(item)];
+  }));
+}
+
+function unsafePayloadKey(key) {
+  return ["args", "content", "text", "delta", "preamble", "prompt", "request", "response"].includes(String(key || ""));
+}
+
+function secretLikeValue(value) {
+  return /api_key|token|secret|password|bearer\s+/i.test(String(value || ""));
 }
 
 function appendAssistantText(message, text) {

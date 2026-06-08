@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -451,8 +452,8 @@ func TestRunHistoryAPI(t *testing.T) {
 	if list.Runs[0].Status != "completed" {
 		t.Fatalf("run status = %q, want completed", list.Runs[0].Status)
 	}
-	if list.Runs[0].Prompt != "hello" {
-		t.Fatalf("run prompt = %q, want hello", list.Runs[0].Prompt)
+	if list.Runs[0].Prompt != "" {
+		t.Fatalf("run summary prompt = %q, want aggregate-safe omission", list.Runs[0].Prompt)
 	}
 
 	var detail RunRecord
@@ -508,6 +509,44 @@ func TestRunsSummaryIncludesRuntimeRecoveryMetadata(t *testing.T) {
 	}
 	if run.TraceEvents < 3 {
 		t.Fatalf("trace events = %d, want structured event count", run.TraceEvents)
+	}
+}
+
+func TestRunsSummaryRedactsRuntimeRecoveryMetadata(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "phase5-summary", Text: "phase5 prompt secret", Channel: ChannelHTTP, Source: "replay"})
+	if !s.runStore.AddControlDecision("phase5-summary", RunControlDecision{Action: "replay", Status: "approval_required", Reason: "review first"}) {
+		t.Fatal("expected control decision to be recorded")
+	}
+	if !s.runStore.UpsertStep("phase5-summary", WorkflowStepState{
+		ID:     "replay-approval",
+		Status: WorkflowStepWaitingApproval,
+		Metadata: map[string]any{
+			"request":  "phase5 provider request body",
+			"response": "phase5 provider response body",
+			"items": []any{
+				map[string]any{"token": "Bearer phase5-token"},
+				map[string]any{"password": "phase5-password"},
+			},
+		},
+	}) {
+		t.Fatal("expected workflow step to be recorded")
+	}
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var got struct {
+		Runs []RunSummary `json:"runs"`
+	}
+	getJSON(t, ts.URL+"/runs", http.StatusOK, &got)
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal runs response: %v", err)
+	}
+	assertNoForbiddenLeak(t, "runs summary", encoded, secretLeakForbiddenValues())
+	if !strings.Contains(string(encoded), `"request_redacted":true`) || !strings.Contains(string(encoded), `"response_redacted":true`) {
+		t.Fatalf("runs summary missing recovery redaction markers: %s", encoded)
 	}
 }
 
@@ -2216,6 +2255,44 @@ func TestHandleRunControlReplayApprovedLaunchesRun(t *testing.T) {
 	if strings.Contains(string(metricsBody), "repeat this sensitive prompt") {
 		t.Fatalf("metrics leaked source prompt: %s", metricsBody)
 	}
+}
+
+func TestHandleRunControlReplayResponseRedactsPhase5Fixture(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{
+		RequestID: "phase5-replay",
+		Text:      "phase5 prompt secret",
+		Agent:     "helper",
+		Channel:   ChannelHTTP,
+		SessionID: "sess-1",
+		Source:    "test",
+	})
+	if !s.runStore.UpsertStep("phase5-replay", WorkflowStepState{
+		ID:     "unsafe-step",
+		Status: WorkflowStepRunning,
+		Metadata: map[string]any{
+			"request": "phase5 provider request body",
+			"nested":  []any{map[string]any{"token": "Bearer phase5-token"}},
+		},
+	}) {
+		t.Fatal("expected workflow step")
+	}
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/runs/phase5-replay/control", "application/json", strings.NewReader(`{"action":"replay","approved":false}`))
+	if err != nil {
+		t.Fatalf("POST /runs/{id}/control: %v", err)
+	}
+	data, readErr := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if readErr != nil {
+		t.Fatalf("read replay response: %v", readErr)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", resp.StatusCode, data)
+	}
+	assertNoForbiddenLeak(t, "replay control response", data, secretLeakForbiddenValues())
 }
 
 func TestHandleRunControlValidation(t *testing.T) {

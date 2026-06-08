@@ -115,6 +115,10 @@ func redactScalar(value any) any {
 	case map[string]any:
 		out := make(map[string]any, len(v))
 		for key, nested := range v {
+			if eventPayloadKeyRedacted(key) {
+				out[key+"_redacted"] = true
+				continue
+			}
 			if looksSensitive(key) {
 				out[key] = "[REDACTED]"
 				continue
@@ -122,8 +126,23 @@ func redactScalar(value any) any {
 			out[key] = redactScalar(nested)
 		}
 		return out
+	case []any:
+		out := make([]any, 0, len(v))
+		for _, item := range v {
+			out = append(out, redactScalar(item))
+		}
+		return out
 	default:
 		return value
+	}
+}
+
+func eventPayloadKeyRedacted(key string) bool {
+	switch key {
+	case "args", "content", "text", "delta", "preamble", "prompt", "request", "response":
+		return true
+	default:
+		return false
 	}
 }
 

@@ -12,32 +12,14 @@ Add cross-surface regression coverage proving sensitive prompt, tool, provider, 
 
 ## Acceptance Criteria
 
-- [ ] Regression fixture injects prompt text, tool args, request/response-like payloads, and secret-like values.
-- [ ] Metrics and trace exports do not contain forbidden values or raw keys.
-- [ ] Run summary/recovery metadata remains aggregate-safe.
-- [ ] Web UI trace/recovery asset or rendered-smoke checks do not introduce unsafe raw payload display.
-- [ ] Targeted tests and full `go test ./...` pass.
+- [x] Regression fixture injects prompt text, tool args, request/response-like payloads, and secret-like values.
+- [x] Metrics and trace exports do not contain forbidden values or raw keys.
+- [x] Run summary/recovery metadata remains aggregate-safe.
+- [x] Web UI trace/recovery asset or rendered-smoke checks do not introduce unsafe raw payload display.
+- [x] Targeted tests and full `go test ./...` pass.
 
 ## Non-Goals
 
 - No prompt archive.
 - No removal of intentional run detail Prompt/Result sections unless separately scoped.
 - No external secret scanning service.
-
-## Goal
-
-TBD.
-
-## Requirements
-
-- TBD
-
-## Acceptance Criteria
-
-- [ ] TBD
-
-## Notes
-
-- Keep `prd.md` focused on requirements, constraints, and acceptance criteria.
-- Lightweight tasks can remain PRD-only.
-- For complex tasks, add `design.md` for technical design and `implement.md` for execution planning before `task.py start`.
