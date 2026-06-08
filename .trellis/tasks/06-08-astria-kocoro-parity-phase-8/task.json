@@ -20,7 +20,8 @@
   "subtasks": [],
   "children": [
     "06-08-openai-compatible-streaming-deltas",
-    "06-08-ws-controller-cloud-lifecycle"
+    "06-08-ws-controller-cloud-lifecycle",
+    "06-08-streaming-runtime-edge-cases"
   ],
   "parent": null,
   "relatedFiles": [],

@@ -2,7 +2,9 @@ package daemon
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/starclaw/starclaw/internal/client"
 )
 
 func TestHandleOpenAIChatCompletions(t *testing.T) {
@@ -145,6 +149,125 @@ func TestHandleOpenAIChatCompletionsStreaming(t *testing.T) {
 	}
 	if len(run.StructuredEvents) == 0 {
 		t.Fatal("expected streaming run structured events")
+	}
+}
+
+func TestOpenAIStreamingHandlerFallbackText(t *testing.T) {
+	rec := httptest.NewRecorder()
+	handler := newOpenAIStreamingHandler(rec, flushRecorder{rec}, "fallback-model", "fallback-run")
+
+	handler.writeRole()
+	handler.OnText("fallback final")
+	handler.writeStop()
+	_, _ = fmt.Fprint(rec, "data: [DONE]\n\n")
+
+	stream := rec.Body.String()
+	chunks := decodeOpenAIStreamChunks(t, stream)
+	contents := openAIChunkContents(chunks)
+	if len(contents) != 1 || contents[0] != "fallback final" {
+		t.Fatalf("content chunks = %#v, want fallback final once; stream:\n%s", contents, stream)
+	}
+	if !strings.Contains(stream, "data: [DONE]") {
+		t.Fatalf("stream missing DONE:\n%s", stream)
+	}
+}
+
+func TestOpenAIStreamingHandlerSuppressesDuplicateFinalText(t *testing.T) {
+	rec := httptest.NewRecorder()
+	handler := newOpenAIStreamingHandler(rec, flushRecorder{rec}, "delta-model", "delta-run")
+
+	handler.writeRole()
+	handler.OnStreamDelta("delta ")
+	handler.OnStreamDelta("text")
+	handler.OnText("delta text")
+	handler.writeStop()
+	_, _ = fmt.Fprint(rec, "data: [DONE]\n\n")
+
+	stream := rec.Body.String()
+	contents := openAIChunkContents(decodeOpenAIStreamChunks(t, stream))
+	if strings.Join(contents, "") != "delta text" {
+		t.Fatalf("joined content = %q, want delta text; chunks=%#v\n%s", strings.Join(contents, ""), contents, stream)
+	}
+	if len(contents) != 2 {
+		t.Fatalf("content chunk count = %d, want only two deltas and no final duplicate: %#v\n%s", len(contents), contents, stream)
+	}
+}
+
+func TestHandleOpenAIChatCompletionsStreamingRunError(t *testing.T) {
+	deps := newTestServerDeps(t)
+	deps.LLMClient = &openAIStreamingTestClient{
+		deltas: []string{"partial "},
+		err:    fmt.Errorf("synthetic stream failure"),
+	}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	stream := postOpenAIStreaming(t, ts.URL, `{
+		"model":"request-model",
+		"request_id":"oa-stream-error",
+		"stream":true,
+		"messages":[{"role":"user","content":"trigger stream error"}]
+	}`)
+	if strings.Contains(stream, "data: [DONE]") {
+		t.Fatalf("error stream must not emit DONE:\n%s", stream)
+	}
+	if hasOpenAIStopChunk(t, stream) {
+		t.Fatalf("error stream must not emit success stop chunk:\n%s", stream)
+	}
+	errFrame := decodeOpenAIStreamError(t, stream)
+	if !strings.Contains(errFrame.Error.Message, "LLM error: synthetic stream failure") {
+		t.Fatalf("error message = %q, want wrapped stream failure; stream:\n%s", errFrame.Error.Message, stream)
+	}
+	if errFrame.Error.Type != "server_error" {
+		t.Fatalf("error type = %q, want server_error", errFrame.Error.Type)
+	}
+
+	run, ok := s.runStore.Get("oa-stream-error")
+	if !ok {
+		t.Fatal("run not found")
+	}
+	if run.Status != "error" || !strings.Contains(run.Error, "LLM error: synthetic stream failure") {
+		t.Fatalf("run status/error = %q/%q, want error with stream failure", run.Status, run.Error)
+	}
+	if run.Request.Source != "openai-compatible" || !run.Request.EnableStreaming {
+		t.Fatalf("run request source/streaming = %q/%v", run.Request.Source, run.Request.EnableStreaming)
+	}
+}
+
+func TestHandleOpenAIChatCompletionsStreamingResultError(t *testing.T) {
+	deps := newTestServerDeps(t)
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	stream := postOpenAIStreaming(t, ts.URL, `{
+		"model":"request-model",
+		"request_id":"oa-stream-result-error",
+		"agent":"missing-agent",
+		"stream":true,
+		"messages":[{"role":"user","content":"trigger result error"}]
+	}`)
+	if strings.Contains(stream, "data: [DONE]") {
+		t.Fatalf("result-error stream must not emit DONE:\n%s", stream)
+	}
+	if hasOpenAIStopChunk(t, stream) {
+		t.Fatalf("result-error stream must not emit success stop chunk:\n%s", stream)
+	}
+	errFrame := decodeOpenAIStreamError(t, stream)
+	if !strings.Contains(errFrame.Error.Message, `failed to load agent "missing-agent"`) {
+		t.Fatalf("error message = %q, want missing agent load failure; stream:\n%s", errFrame.Error.Message, stream)
+	}
+
+	run, ok := s.runStore.Get("oa-stream-result-error")
+	if !ok {
+		t.Fatal("run not found")
+	}
+	if run.Status != "error" || !strings.Contains(run.Error, `failed to load agent "missing-agent"`) {
+		t.Fatalf("run status/error = %q/%q, want missing agent error", run.Status, run.Error)
+	}
+	if run.Request.Agent != "missing-agent" || !run.Request.EnableStreaming {
+		t.Fatalf("run request agent/streaming = %q/%v", run.Request.Agent, run.Request.EnableStreaming)
 	}
 }
 
@@ -394,6 +517,9 @@ func decodeOpenAIStreamChunks(t *testing.T, stream string) []openAIChatCompletio
 		if payload == "[DONE]" {
 			continue
 		}
+		if strings.Contains(payload, `"error"`) {
+			continue
+		}
 		var chunk openAIChatCompletionChunk
 		if err := json.Unmarshal([]byte(payload), &chunk); err != nil {
 			t.Fatalf("decode stream chunk %q: %v", payload, err)
@@ -401,4 +527,117 @@ func decodeOpenAIStreamChunks(t *testing.T, stream string) []openAIChatCompletio
 		chunks = append(chunks, chunk)
 	}
 	return chunks
+}
+
+func openAIChunkContents(chunks []openAIChatCompletionChunk) []string {
+	var contents []string
+	for _, chunk := range chunks {
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+		if content := chunk.Choices[0].Delta["content"]; content != "" {
+			contents = append(contents, content)
+		}
+	}
+	return contents
+}
+
+func hasOpenAIStopChunk(t *testing.T, stream string) bool {
+	t.Helper()
+	for _, chunk := range decodeOpenAIStreamChunks(t, stream) {
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+		if chunk.Choices[0].FinishReason != nil && *chunk.Choices[0].FinishReason == "stop" {
+			return true
+		}
+	}
+	return false
+}
+
+func decodeOpenAIStreamError(t *testing.T, stream string) openAIStreamErrorFrame {
+	t.Helper()
+	for _, block := range strings.Split(stream, "\n\n") {
+		block = strings.TrimSpace(block)
+		if block == "" || !strings.HasPrefix(block, "data: ") {
+			continue
+		}
+		payload := strings.TrimPrefix(block, "data: ")
+		if payload == "[DONE]" || !strings.Contains(payload, `"error"`) {
+			continue
+		}
+		var frame openAIStreamErrorFrame
+		if err := json.Unmarshal([]byte(payload), &frame); err != nil {
+			t.Fatalf("decode stream error %q: %v", payload, err)
+		}
+		return frame
+	}
+	t.Fatalf("stream missing error frame:\n%s", stream)
+	return openAIStreamErrorFrame{}
+}
+
+func postOpenAIStreaming(t *testing.T, baseURL string, body string) string {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/v1/chat/completions", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("new streaming request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /v1/chat/completions stream: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		data, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, body = %s", resp.StatusCode, data)
+	}
+	if got := resp.Header.Get("Content-Type"); !strings.Contains(got, "text/event-stream") {
+		t.Fatalf("content-type = %q, want text/event-stream", got)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read stream: %v", err)
+	}
+	return string(data)
+}
+
+type flushRecorder struct {
+	*httptest.ResponseRecorder
+}
+
+func (f flushRecorder) Flush() {
+	f.ResponseRecorder.Flush()
+}
+
+type openAIStreamErrorFrame struct {
+	Error struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error"`
+}
+
+type openAIStreamingTestClient struct {
+	deltas   []string
+	response *client.Response
+	err      error
+}
+
+func (c *openAIStreamingTestClient) Chat(context.Context, string, []client.Message, []client.ToolDef, int, *client.ChatOptions) (*client.Response, error) {
+	if c.response != nil {
+		return c.response, c.err
+	}
+	return &client.Response{Content: "non-stream fallback"}, c.err
+}
+
+func (c *openAIStreamingTestClient) StreamChat(_ context.Context, _ string, _ []client.Message, _ []client.ToolDef, _ int, _ *client.ChatOptions, onDelta func(delta string)) (*client.Response, error) {
+	for _, delta := range c.deltas {
+		if onDelta != nil {
+			onDelta(delta)
+		}
+	}
+	if c.response != nil {
+		return c.response, c.err
+	}
+	return &client.Response{Content: strings.Join(c.deltas, "")}, c.err
 }
