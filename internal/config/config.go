@@ -34,6 +34,7 @@ type Config struct {
 	MCPServers     map[string]mcp.MCPServerConfig `mapstructure:"mcp_servers" yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 	Update         UpdateConfig                   `mapstructure:"update" yaml:"update,omitempty" json:"update,omitempty"`
 	Cloud          CloudConfig                    `mapstructure:"cloud" yaml:"cloud,omitempty" json:"cloud,omitempty"`
+	Sync           SyncConfig                     `mapstructure:"sync" yaml:"sync,omitempty" json:"sync,omitempty"`
 	Permissions    *permissions.Config            `mapstructure:"permissions" yaml:"permissions,omitempty" json:"permissions,omitempty"`
 	Hooks          *hooks.Config                  `mapstructure:"hooks" yaml:"hooks,omitempty" json:"hooks,omitempty"`
 }
@@ -95,6 +96,23 @@ type CloudConfig struct {
 	MaxConcurrent int    `mapstructure:"max_concurrent" yaml:"max_concurrent" json:"max_concurrent"`
 }
 
+// SyncConfig holds local session sync settings. Sync remains disabled by
+// default and future cloud uploader work must explicitly opt in.
+type SyncConfig struct {
+	Enabled                    bool     `mapstructure:"enabled" yaml:"enabled" json:"enabled"`
+	DryRun                     bool     `mapstructure:"dry_run" yaml:"dry_run" json:"dry_run"`
+	Endpoint                   string   `mapstructure:"endpoint" yaml:"endpoint" json:"endpoint"`
+	ExcludeAgents              []string `mapstructure:"exclude_agents" yaml:"exclude_agents,omitempty" json:"exclude_agents,omitempty"`
+	ExcludeSources             []string `mapstructure:"exclude_sources" yaml:"exclude_sources,omitempty" json:"exclude_sources,omitempty"`
+	BatchMaxSessions           int      `mapstructure:"batch_max_sessions" yaml:"batch_max_sessions" json:"batch_max_sessions"`
+	BatchMaxBytes              int      `mapstructure:"batch_max_bytes" yaml:"batch_max_bytes" json:"batch_max_bytes"`
+	SingleSessionMaxBytes      int      `mapstructure:"single_session_max_bytes" yaml:"single_session_max_bytes" json:"single_session_max_bytes"`
+	DaemonInterval             string   `mapstructure:"daemon_interval" yaml:"daemon_interval" json:"daemon_interval"`
+	DaemonStartupDelay         string   `mapstructure:"daemon_startup_delay" yaml:"daemon_startup_delay" json:"daemon_startup_delay"`
+	FailedMaxAttemptsTransient int      `mapstructure:"failed_max_attempts_transient" yaml:"failed_max_attempts_transient" json:"failed_max_attempts_transient"`
+	LockTimeout                string   `mapstructure:"lock_timeout" yaml:"lock_timeout" json:"lock_timeout"`
+}
+
 // StarclawDir returns the StarClaw configuration directory
 func StarclawDir() string {
 	home, err := os.UserHomeDir()
@@ -153,6 +171,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("update.auto_install", false)
 	viper.SetDefault("update.channel", "stable")
 	viper.SetDefault("update.cache_ttl", "24h")
+	setSyncDefaults(viper.GetViper())
 
 	// Bind environment variables
 	if err := viper.BindEnv("openai_api_key", "OPENAI_API_KEY"); err != nil {
@@ -281,6 +300,20 @@ tools:
 audit:
   enabled: true
 
+# Local session sync foundation. Disabled by default; dry-run writes only local
+# outbox files and no cloud upload is configured here.
+sync:
+  enabled: false
+  dry_run: false
+  endpoint: ""
+  batch_max_sessions: 25
+  batch_max_bytes: 5242880
+  single_session_max_bytes: 4194304
+  daemon_interval: "24h"
+  daemon_startup_delay: "60s"
+  failed_max_attempts_transient: 5
+  lock_timeout: "30s"
+
 # MCP servers configuration (optional)
 # mcp_servers:
 #   github:
@@ -358,6 +391,7 @@ func LoadFromPath(configPath string) (*Config, error) {
 	if cfg.Tools.ResultTruncation == 0 {
 		cfg.Tools.ResultTruncation = 30000
 	}
+	applySyncDefaults(&cfg.Sync)
 	// thinking is tricky since bool zero value is false — check if it was set
 	// For simplicity, set default thinking to true when thinking_mode is set
 	if cfg.Agent.ThinkingMode == "" {
@@ -380,6 +414,45 @@ func LoadFromPath(configPath string) (*Config, error) {
 	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
 
 	return &cfg, nil
+}
+
+func setSyncDefaults(v *viper.Viper) {
+	v.SetDefault("sync.enabled", false)
+	v.SetDefault("sync.dry_run", false)
+	v.SetDefault("sync.endpoint", "")
+	v.SetDefault("sync.exclude_agents", []string{})
+	v.SetDefault("sync.exclude_sources", []string{})
+	v.SetDefault("sync.batch_max_sessions", 25)
+	v.SetDefault("sync.batch_max_bytes", 5*1024*1024)
+	v.SetDefault("sync.single_session_max_bytes", 4*1024*1024)
+	v.SetDefault("sync.daemon_interval", "24h")
+	v.SetDefault("sync.daemon_startup_delay", "60s")
+	v.SetDefault("sync.failed_max_attempts_transient", 5)
+	v.SetDefault("sync.lock_timeout", "30s")
+}
+
+func applySyncDefaults(sync *SyncConfig) {
+	if sync.BatchMaxSessions == 0 {
+		sync.BatchMaxSessions = 25
+	}
+	if sync.BatchMaxBytes == 0 {
+		sync.BatchMaxBytes = 5 * 1024 * 1024
+	}
+	if sync.SingleSessionMaxBytes == 0 {
+		sync.SingleSessionMaxBytes = 4 * 1024 * 1024
+	}
+	if sync.DaemonInterval == "" {
+		sync.DaemonInterval = "24h"
+	}
+	if sync.DaemonStartupDelay == "" {
+		sync.DaemonStartupDelay = "60s"
+	}
+	if sync.FailedMaxAttemptsTransient == 0 {
+		sync.FailedMaxAttemptsTransient = 5
+	}
+	if sync.LockTimeout == "" {
+		sync.LockTimeout = "30s"
+	}
 }
 
 // NeedsSetup returns true if configuration is incomplete

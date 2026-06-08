@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for package conventions."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"New internal package layout and file naming conventions."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Sentinel lock/contention errors and wrapped filesystem failures."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Required unit tests for new package and config behavior."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Source plan and Kocoro sync marker/dry-run parity requirements."}

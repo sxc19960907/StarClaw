@@ -234,6 +234,53 @@ agent:
 	}
 }
 
+func TestLoadMultiLevel_SyncDefaultsAndOverlay(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	globalDir := filepath.Join(tmpDir, ".starclaw")
+	if err := os.MkdirAll(globalDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, "config.yaml"), []byte(`
+sync:
+  enabled: true
+  dry_run: true
+  endpoint: "http://127.0.0.1/sync"
+  exclude_agents: ["helper"]
+  batch_max_sessions: 4
+  lock_timeout: "250ms"
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, source, err := LoadMultiLevel()
+	if err != nil {
+		t.Fatalf("LoadMultiLevel: %v", err)
+	}
+	if !cfg.Sync.Enabled || !cfg.Sync.DryRun {
+		t.Fatalf("sync enabled/dry_run = %v/%v, want true/true", cfg.Sync.Enabled, cfg.Sync.DryRun)
+	}
+	if cfg.Sync.Endpoint != "http://127.0.0.1/sync" {
+		t.Fatalf("sync endpoint = %q", cfg.Sync.Endpoint)
+	}
+	if len(cfg.Sync.ExcludeAgents) != 1 || cfg.Sync.ExcludeAgents[0] != "helper" {
+		t.Fatalf("sync exclude agents = %v", cfg.Sync.ExcludeAgents)
+	}
+	if cfg.Sync.BatchMaxSessions != 4 {
+		t.Fatalf("sync batch max sessions = %d, want 4", cfg.Sync.BatchMaxSessions)
+	}
+	if cfg.Sync.BatchMaxBytes != 5*1024*1024 {
+		t.Fatalf("sync batch max bytes = %d, want default", cfg.Sync.BatchMaxBytes)
+	}
+	if cfg.Sync.LockTimeout != "250ms" {
+		t.Fatalf("sync lock timeout = %q", cfg.Sync.LockTimeout)
+	}
+	if source.Sync != LayerGlobal {
+		t.Fatalf("sync source = %v, want global", source.Sync)
+	}
+}
+
 func TestLoadMultiLevel_EnvOverride(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)

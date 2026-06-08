@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for review."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Review new internal/sync package shape."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Review marker/lock error contracts."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Review local-only test coverage."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Review local-first sync constraints and parity scope."}

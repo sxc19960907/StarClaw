@@ -3,10 +3,13 @@
 package filelock
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
 )
+
+var ErrWouldBlock = errors.New("filelock: would block")
 
 // Shared takes a shared advisory lock on f.
 func Shared(f *os.File) error {
@@ -20,6 +23,17 @@ func Shared(f *os.File) error {
 func Exclusive(f *os.File) error {
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
 		return fmt.Errorf("flock exclusive: %w", err)
+	}
+	return nil
+}
+
+// TryExclusive attempts to take an exclusive advisory lock without blocking.
+func TryExclusive(f *os.File) error {
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		if errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN) {
+			return ErrWouldBlock
+		}
+		return fmt.Errorf("flock try exclusive: %w", err)
 	}
 	return nil
 }

@@ -78,6 +78,28 @@ func TestLoad(t *testing.T) {
 	if cfg.Agent.Temperature != 0 {
 		t.Errorf("Agent.Temperature = %f, want 0", cfg.Agent.Temperature)
 	}
+
+	if cfg.Sync.Enabled {
+		t.Error("Sync.Enabled should default to false")
+	}
+	if cfg.Sync.DryRun {
+		t.Error("Sync.DryRun should default to false")
+	}
+	if cfg.Sync.BatchMaxSessions != 25 {
+		t.Errorf("Sync.BatchMaxSessions = %d, want 25", cfg.Sync.BatchMaxSessions)
+	}
+	if cfg.Sync.BatchMaxBytes != 5*1024*1024 {
+		t.Errorf("Sync.BatchMaxBytes = %d, want 5242880", cfg.Sync.BatchMaxBytes)
+	}
+	if cfg.Sync.SingleSessionMaxBytes != 4*1024*1024 {
+		t.Errorf("Sync.SingleSessionMaxBytes = %d, want 4194304", cfg.Sync.SingleSessionMaxBytes)
+	}
+	if cfg.Sync.DaemonInterval != "24h" {
+		t.Errorf("Sync.DaemonInterval = %q, want 24h", cfg.Sync.DaemonInterval)
+	}
+	if cfg.Sync.LockTimeout != "30s" {
+		t.Errorf("Sync.LockTimeout = %q, want 30s", cfg.Sync.LockTimeout)
+	}
 }
 
 func TestSave(t *testing.T) {
@@ -230,6 +252,71 @@ mcp_servers:
 	disabled := cfg.MCPServers["disabled_server"]
 	if !disabled.Disabled {
 		t.Error("disabled_server should be disabled")
+	}
+}
+
+func TestLoadFromPathSyncConfig(t *testing.T) {
+	configData := `
+sync:
+  enabled: true
+  dry_run: true
+  endpoint: "http://127.0.0.1/sync"
+  exclude_agents: ["helper"]
+  exclude_sources: ["remote"]
+  batch_max_sessions: 3
+  batch_max_bytes: 1024
+  single_session_max_bytes: 512
+  daemon_interval: "2h"
+  daemon_startup_delay: "5s"
+  failed_max_attempts_transient: 7
+  lock_timeout: "250ms"
+`
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(configData), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := LoadFromPath(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromPath: %v", err)
+	}
+	if !cfg.Sync.Enabled || !cfg.Sync.DryRun {
+		t.Fatalf("sync enabled/dry_run = %v/%v, want true/true", cfg.Sync.Enabled, cfg.Sync.DryRun)
+	}
+	if cfg.Sync.Endpoint != "http://127.0.0.1/sync" {
+		t.Fatalf("sync endpoint = %q", cfg.Sync.Endpoint)
+	}
+	if cfg.Sync.BatchMaxSessions != 3 || cfg.Sync.BatchMaxBytes != 1024 || cfg.Sync.SingleSessionMaxBytes != 512 {
+		t.Fatalf("sync caps = %+v", cfg.Sync)
+	}
+	if cfg.Sync.DaemonInterval != "2h" || cfg.Sync.DaemonStartupDelay != "5s" || cfg.Sync.LockTimeout != "250ms" {
+		t.Fatalf("sync durations = %+v", cfg.Sync)
+	}
+	if cfg.Sync.FailedMaxAttemptsTransient != 7 {
+		t.Fatalf("failed transient cap = %d, want 7", cfg.Sync.FailedMaxAttemptsTransient)
+	}
+}
+
+func TestLoadFromPathSyncDefaults(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`provider: "anthropic"`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := LoadFromPath(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromPath: %v", err)
+	}
+	if cfg.Sync.Enabled {
+		t.Fatal("sync should default disabled")
+	}
+	if cfg.Sync.BatchMaxSessions != 25 || cfg.Sync.BatchMaxBytes != 5*1024*1024 {
+		t.Fatalf("sync defaults = %+v", cfg.Sync)
+	}
+	if cfg.Sync.DaemonInterval != "24h" || cfg.Sync.LockTimeout != "30s" {
+		t.Fatalf("sync duration defaults = %+v", cfg.Sync)
 	}
 }
 

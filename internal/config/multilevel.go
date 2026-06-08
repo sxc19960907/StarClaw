@@ -41,6 +41,7 @@ type ConfigSource struct {
 	Provider   ConfigLayer
 	Agent      ConfigLayer
 	Tools      ConfigLayer
+	Sync       ConfigLayer
 	MCPServers ConfigLayer
 }
 
@@ -120,6 +121,15 @@ func defaultConfig() *Config {
 			Timeout:       3600,
 			MaxConcurrent: 3,
 		},
+		Sync: SyncConfig{
+			BatchMaxSessions:           25,
+			BatchMaxBytes:              5 * 1024 * 1024,
+			SingleSessionMaxBytes:      4 * 1024 * 1024,
+			DaemonInterval:             "24h",
+			DaemonStartupDelay:         "60s",
+			FailedMaxAttemptsTransient: 5,
+			LockTimeout:                "30s",
+		},
 	}
 }
 
@@ -170,6 +180,7 @@ func overlayConfig(base, overlay *Config, source *ConfigSource, layer ConfigLaye
 	overlayAgent(&base.Agent, &overlay.Agent, source, layer)
 	overlayTools(&base.Tools, &overlay.Tools, source, layer)
 	overlayCloud(&base.Cloud, &overlay.Cloud, layer)
+	overlaySync(&base.Sync, &overlay.Sync, source, layer)
 
 	if len(overlay.MCPServers) > 0 {
 		if base.MCPServers == nil {
@@ -296,5 +307,60 @@ func overlayCloud(base, overlay *CloudConfig, layer ConfigLayer) {
 	}
 	if overlay.MaxConcurrent != 0 {
 		base.MaxConcurrent = overlay.MaxConcurrent
+	}
+}
+
+func overlaySync(base, overlay *SyncConfig, source *ConfigSource, layer ConfigLayer) {
+	changed := false
+	if overlay.Enabled {
+		base.Enabled = true
+		changed = true
+	}
+	if overlay.DryRun {
+		base.DryRun = true
+		changed = true
+	}
+	if overlay.Endpoint != "" {
+		base.Endpoint = overlay.Endpoint
+		changed = true
+	}
+	if len(overlay.ExcludeAgents) > 0 {
+		base.ExcludeAgents = append([]string(nil), overlay.ExcludeAgents...)
+		changed = true
+	}
+	if len(overlay.ExcludeSources) > 0 {
+		base.ExcludeSources = append([]string(nil), overlay.ExcludeSources...)
+		changed = true
+	}
+	if overlay.BatchMaxSessions != 0 {
+		base.BatchMaxSessions = overlay.BatchMaxSessions
+		changed = true
+	}
+	if overlay.BatchMaxBytes != 0 {
+		base.BatchMaxBytes = overlay.BatchMaxBytes
+		changed = true
+	}
+	if overlay.SingleSessionMaxBytes != 0 {
+		base.SingleSessionMaxBytes = overlay.SingleSessionMaxBytes
+		changed = true
+	}
+	if overlay.DaemonInterval != "" {
+		base.DaemonInterval = overlay.DaemonInterval
+		changed = true
+	}
+	if overlay.DaemonStartupDelay != "" {
+		base.DaemonStartupDelay = overlay.DaemonStartupDelay
+		changed = true
+	}
+	if overlay.FailedMaxAttemptsTransient != 0 {
+		base.FailedMaxAttemptsTransient = overlay.FailedMaxAttemptsTransient
+		changed = true
+	}
+	if overlay.LockTimeout != "" {
+		base.LockTimeout = overlay.LockTimeout
+		changed = true
+	}
+	if changed {
+		source.Sync = layer
 	}
 }
