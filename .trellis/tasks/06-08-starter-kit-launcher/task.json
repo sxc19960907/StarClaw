@@ -1,0 +1,32 @@
+{
+  "id": "starter-kit-launcher",
+  "name": "starter-kit-launcher",
+  "title": "Starter kit launcher",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-2",
+  "relatedFiles": [
+    ".trellis/tasks/06-08-starter-kit-launcher/prd.md",
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Completed embedded Astria Starter Kit Launcher with six prebuilt local workflow kits for browser research, data insight, focused agents, handoff packages, memory curation, and reusable workflow polish. Validated with JS check, daemon tests, Web UI core smoke, and full Go tests.",
+  "meta": {}
+}

@@ -14,6 +14,7 @@ const state = {
   selectedComparisonLane: "",
   selectedPromptVariant: "",
   selectedReuseAsset: "",
+  selectedStarterKit: "",
   selectedSharePack: "",
   sharePackName: "",
   sharePackAudience: "",
@@ -72,6 +73,7 @@ const views = {
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
+  starter: ["启动套件", "Launch from prebuilt Astria workflow kits."],
   share: ["交接包", "Package local work into reviewed handoff starters."],
   browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
   data: ["数据洞察", "Plan reviewed data analysis and knowledge capture missions."],
@@ -1239,6 +1241,7 @@ function renderHomeActivity() {
   renderSourceRegistry();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderStarterKitLauncher();
   renderSharePackBuilder();
   renderBrowserMissionPlanner();
   renderDataInsightPlanner();
@@ -1287,6 +1290,7 @@ function renderHomeDockedTools() {
   renderSourceRegistry();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderStarterKitLauncher();
   renderSharePackBuilder();
   renderBrowserMissionPlanner();
   renderDataInsightPlanner();
@@ -2142,6 +2146,163 @@ function draftReuseAssetToChat(id) {
   showToast("Reusable starter drafted to chat.");
 }
 
+function starterKits() {
+  const agentCount = state.agents.length;
+  const sourceCount = sourceRegistryRows().length;
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const reuseCount = reuseGalleryAssets().length;
+  return [
+    {
+      id: "browser-research",
+      type: "Browser",
+      title: "Reviewed web research",
+      route: "browser",
+      agent: agentCount ? "researcher" : "default",
+      evidence: "browser inspection + citations",
+      reuse: "Share Pack evidence section",
+      safety: "Read-only navigation; ask before forms, account actions, or downloads.",
+      objective: "Inspect a web page, capture evidence, and produce a cited decision brief.",
+      prompt: "Launch the Astria reviewed web research starter kit.\n\nObjective: inspect a target page, capture cited evidence, and summarize the decision impact.\nAgent posture: careful researcher with read-only browser behavior.\nSource/evidence plan: target URL, visible claims, relevant links, screenshot or selector evidence if needed.\nReview gate: ask before forms, account changes, downloads, purchases, posts, or destructive actions.\nReusable output: evidence notes suitable for Share Pack and Reuse Gallery.",
+    },
+    {
+      id: "data-insight",
+      type: "Data",
+      title: "Local data insight brief",
+      route: "data",
+      agent: "analyst",
+      evidence: `${sourceCount} registered sources`,
+      reuse: "Memory facts + chart brief",
+      safety: "Do not infer missing fields; mark source limits and uncertainty.",
+      objective: "Turn a local table, export, or metric set into reviewable findings.",
+      prompt: "Launch the Astria local data insight starter kit.\n\nObjective: profile a source, answer one analysis question, and produce ranked findings.\nAgent posture: analyst who separates observed evidence from hypotheses.\nSource/evidence plan: source descriptor, key fields, freshness, missing data, and comparison dimensions.\nReview gate: list source limits before conclusions and ask for missing fields instead of inventing them.\nReusable output: memory candidates, chart brief, and prompt pattern for future data reviews.",
+    },
+    {
+      id: "agent-build",
+      type: "Agent",
+      title: "Focused agent profile",
+      route: "agents",
+      agent: "architect",
+      evidence: `${agentCount} current agents`,
+      reuse: "Agent command + prompt asset",
+      safety: "Keep tool permissions explicit and avoid broad auto-approve defaults.",
+      objective: "Design a named agent profile and command set for a repeatable task.",
+      prompt: "Launch the Astria focused agent profile starter kit.\n\nObjective: define a named agent profile for one repeatable workflow.\nAgent posture: systems designer who keeps permissions narrow.\nSource/evidence plan: task type, required memory, allowed tools, denied tools, model posture, and test prompt.\nReview gate: explain why each permission is needed and avoid broad auto-approval.\nReusable output: agent profile, saved command, and launch prompt.",
+    },
+    {
+      id: "share-handoff",
+      type: "Share",
+      title: "Local handoff package",
+      route: "share",
+      agent: "reviewer",
+      evidence: `${state.runs.length} runs + ${reuseCount} assets`,
+      reuse: "Copyable Share Pack",
+      safety: "Local-only handoff; redact secrets and private paths.",
+      objective: "Package useful results into a reviewed handoff for a future session or teammate.",
+      prompt: "Launch the Astria local handoff package starter kit.\n\nObjective: package the useful result of current work into a local, copyable handoff.\nAgent posture: reviewer who checks evidence, privacy, and next-action clarity.\nSource/evidence plan: latest run, reusable prompts, memory, sources, and unresolved risks.\nReview gate: redact secrets/private data and require approval before publishing or sending externally.\nReusable output: Share Pack sections with evidence, boundaries, acceptance checklist, and next steps.",
+    },
+    {
+      id: "memory-curation",
+      type: "Memory",
+      title: "Durable memory curation",
+      route: "memory",
+      agent: "curator",
+      evidence: `${memoryCount} memory entries`,
+      reuse: "Reviewed memory candidates",
+      safety: "Save durable facts only; include source and freshness notes.",
+      objective: "Extract durable facts, risks, preferences, and decisions from recent work.",
+      prompt: "Launch the Astria durable memory curation starter kit.\n\nObjective: identify what should become durable memory from recent Astria work.\nAgent posture: curator who rejects vague or stale notes.\nSource/evidence plan: recent runs, sources, decisions, user preferences, and known risks.\nReview gate: include source, freshness, and why each item should be saved or rejected.\nReusable output: memory candidates and a short taxonomy update if needed.",
+    },
+    {
+      id: "reuse-polish",
+      type: "Reuse",
+      title: "Reusable workflow polish",
+      route: "reuse",
+      agent: "operator",
+      evidence: `${reuseCount} reusable assets`,
+      reuse: "Starter-ready prompt asset",
+      safety: "Prefer one practical reusable pattern over broad abstraction.",
+      objective: "Turn a useful workflow into a clean reusable prompt and launch path.",
+      prompt: "Launch the Astria reusable workflow polish starter kit.\n\nObjective: convert one successful workflow into a starter-ready reusable asset.\nAgent posture: operator who favors clear launch steps over abstraction.\nSource/evidence plan: prompt shape, agent fit, source requirements, expected output, and validation command.\nReview gate: prove the workflow is reusable and state where it should not be used.\nReusable output: Reuse Gallery starter, validation checklist, and suggested follow-up route.",
+    },
+  ];
+}
+
+function renderStarterKitLauncher() {
+  const kits = starterKits();
+  setText("nav-starter-count", kits.length);
+  setText("manage-starter-count", `${kits.length} kit${kits.length === 1 ? "" : "s"}`);
+  setText("starter-summary", `${kits.length} prebuilt Astria starter kit${kits.length === 1 ? "" : "s"} for browser, data, agents, handoff, memory, and reuse workflows.`);
+  const list = $("starter-kit-grid");
+  if (!list) return;
+  if (!state.selectedStarterKit || !kits.some((kit) => kit.id === state.selectedStarterKit)) {
+    state.selectedStarterKit = kits[0]?.id || "";
+  }
+  list.innerHTML = kits.map((kit) => `<article class="starter-kit-card ${kit.id === state.selectedStarterKit ? "active" : ""}" data-starter-kit="${escapeHTML(kit.id)}">
+    <div class="row-item-title"><span>${escapeHTML(kit.type)}</span><span class="tag">${escapeHTML(kit.agent)}</span></div>
+    <strong>${escapeHTML(kit.title)}</strong>
+    <div class="starter-kit-gridline">
+      <span>Route</span><strong>${escapeHTML(kit.route)}</strong>
+      <span>Evidence</span><strong>${escapeHTML(kit.evidence)}</strong>
+      <span>Reusable output</span><strong>${escapeHTML(kit.reuse)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-starter-select="${escapeHTML(kit.id)}">Kit brief</button>
+      <button type="button" data-starter-draft="${escapeHTML(kit.id)}">Draft kit</button>
+      <button type="button" data-panel="${escapeHTML(kit.route)}">Open route</button>
+    </div>
+  </article>`).join("");
+  renderStarterKitDetail(kits.find((kit) => kit.id === state.selectedStarterKit) || kits[0]);
+}
+
+function renderStarterKitDetail(kit) {
+  const target = $("starter-kit-detail");
+  if (!target) return;
+  if (!kit) {
+    target.innerHTML = `<div class="empty-state">Select a starter kit.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(kit.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(kit.type)}</strong>
+        <span>Route</span><strong>${escapeHTML(kit.route)}</strong>
+        <span>Agent posture</span><strong>${escapeHTML(kit.agent)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Objective</h3>
+      <p>${escapeHTML(kit.objective)}</p>
+      <h3>Evidence</h3>
+      <p>${escapeHTML(kit.evidence)}</p>
+      <h3>Safety</h3>
+      <p>${escapeHTML(kit.safety)}</p>
+      <h3>Reusable output</h3>
+      <p>${escapeHTML(kit.reuse)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-starter-draft="${escapeHTML(kit.id)}">Draft kit</button>
+        <button type="button" data-panel="${escapeHTML(kit.route)}">Open route</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function starterKitByID(id) {
+  return starterKits().find((kit) => kit.id === id) || null;
+}
+
+function draftStarterKitToChat(id) {
+  const kit = starterKitByID(id);
+  if (!kit) return;
+  $("chat-input").value = `${kit.prompt}\n\nReturn a starter-kit launch brief with objective, agent posture, evidence plan, review gate, reusable output, and the next Astria panel to open.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Starter kit drafted to chat.");
+}
+
 function sharePackContext() {
   const name = ($("share-pack-name")?.value || state.sharePackName || "").trim();
   const audience = ($("share-pack-audience")?.value || state.sharePackAudience || "").trim();
@@ -2754,6 +2915,7 @@ function renderManageCount() {
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
+  const starterCount = starterKits().length;
   const shareCount = sharePackCards().length;
   const browserCount = browserMissionCards().length;
   const dataCount = dataInsightCards().length;
@@ -2767,6 +2929,8 @@ function renderManageCount() {
   setText("nav-promptlab-count", promptVariantCount);
   setText("manage-reuse-count", `${reuseCount} asset${reuseCount === 1 ? "" : "s"}`);
   setText("nav-reuse-count", reuseCount);
+  setText("manage-starter-count", `${starterCount} kit${starterCount === 1 ? "" : "s"}`);
+  setText("nav-starter-count", starterCount);
   setText("manage-share-count", `${shareCount} pack${shareCount === 1 ? "" : "s"}`);
   setText("nav-share-count", shareCount);
   setText("manage-browser-count", `${browserCount} plan${browserCount === 1 ? "" : "s"}`);
@@ -2775,7 +2939,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + shareCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -6367,6 +6531,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const starterSelect = event.target.closest("[data-starter-select]");
+  if (starterSelect) {
+    state.selectedStarterKit = starterSelect.dataset.starterSelect || "";
+    renderStarterKitLauncher();
+    return;
+  }
+
+  const starterDraft = event.target.closest("[data-starter-draft]");
+  if (starterDraft) {
+    draftStarterKitToChat(starterDraft.dataset.starterDraft);
+    return;
+  }
+
+  const starterKit = event.target.closest("[data-starter-kit]");
+  if (starterKit && !event.target.closest("button")) {
+    state.selectedStarterKit = starterKit.dataset.starterKit || "";
+    renderStarterKitLauncher();
+    return;
+  }
+
   const shareSelect = event.target.closest("[data-share-select]");
   if (shareSelect) {
     state.selectedSharePack = shareSelect.dataset.shareSelect || "";
@@ -6849,6 +7033,7 @@ $("promptlab-goal").addEventListener("input", (event) => {
   state.promptLabGoal = event.target.value;
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderStarterKitLauncher();
   renderSharePackBuilder();
 });
 $("share-pack-name").addEventListener("input", (event) => {
@@ -6898,6 +7083,7 @@ renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
 renderPromptExperimentLab();
 renderReuseGallery();
+renderStarterKitLauncher();
 renderSharePackBuilder();
 renderBrowserMissionPlanner();
 renderDataInsightPlanner();

@@ -19,12 +19,13 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 | P1 | `06-08-browser-mission-planner` | Add a Browser Mission Planner for reviewed web inspection, screenshot, extraction, form-check, and monitoring mission starters. |
 | P1 | `06-08-data-insight-planner` | Add a Data Insight Planner for reviewed local file, table, metric, and export analysis mission starters. |
 | P1 | `06-08-share-pack-builder` | Add a Share Pack Builder for local reviewed handoff packages that make successful work reusable by future sessions or reviewers. |
+| P1 | `06-08-starter-kit-launcher` | Add a Starter Kit Launcher for prebuilt local workflows that map common tasks to prompts, routes, evidence gates, and reusable outputs. |
 
 ## Acceptance Criteria
 
 - [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
-- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, and packaging work into local handoff packs.
+- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, and offering prebuilt starter workflows.
 
 ## Non-Goals
 

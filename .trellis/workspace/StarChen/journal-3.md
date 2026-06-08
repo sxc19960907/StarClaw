@@ -494,6 +494,29 @@ Added a Home Focus Brief that summarizes the current Astria mission stage, selec
 [OK] **Completed**
 
 
+## Session 124: Starter Kit Launcher
+
+**Date**: 2026-06-08
+**Task**: Starter kit launcher
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Starter Kit Launcher for prebuilt local workflows. The launcher exposes six curated kits across browser research, data insight, focused agent profiles, handoff packages, memory curation, and reusable workflow polish, with route, evidence, reusable output, safety boundary, detail pane, and Chat draft actions.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 123: Share Pack Builder
 
 **Date**: 2026-06-08

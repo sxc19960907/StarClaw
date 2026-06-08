@@ -51,6 +51,10 @@
               <span><span class="nav-icon" aria-hidden="true">✶</span>复用星库</span>
               <small id="nav-reuse-count">0</small>
             </button>
+            <button class="nav-item" data-panel="starter" aria-label="Starter Kits">
+              <span><span class="nav-icon" aria-hidden="true">⋆</span>启动套件</span>
+              <small id="nav-starter-count">0</small>
+            </button>
             <button class="nav-item" data-panel="share" aria-label="Share Pack">
               <span><span class="nav-icon" aria-hidden="true">✧</span>交接包</span>
               <small id="nav-share-count">0</small>
@@ -625,6 +629,11 @@
                 <strong id="manage-reuse-count">0 assets</strong>
                 <small>Turn prompts, agents, knowledge, and outcomes into reusable mission starters.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="starter">
+                <span>Starter Kits</span>
+                <strong id="manage-starter-count">0 kits</strong>
+                <small>Launch from prebuilt Astria workflows for common local agent work.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="share">
                 <span>Share Pack</span>
                 <strong id="manage-share-count">0 packs</strong>
@@ -1078,6 +1087,27 @@
             </div>
             <div class="reuse-gallery-detail" id="reuse-gallery-detail">
               <div class="empty-state">Select a reusable asset.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-starter" aria-labelledby="starter-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="starter-heading">Starter Kits</h2>
+              <p id="starter-summary">Prebuilt Astria workflows for common local agent tasks, evidence gates, and reusable outputs.</p>
+            </div>
+            <div class="starter-kit-grid" id="starter-kit-grid">
+              <div class="empty-state">No starter kits yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Kit Brief</h2>
+              <p>Start from a proven structure, then route to the right planner, review gate, and reusable output.</p>
+            </div>
+            <div class="starter-kit-detail" id="starter-kit-detail">
+              <div class="empty-state">Select a starter kit.</div>
             </div>
           </aside>
         </section>

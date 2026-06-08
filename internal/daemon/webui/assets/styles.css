@@ -3475,6 +3475,70 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.starter-kit-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.starter-kit-card {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(243, 248, 255, 0.76), rgba(255, 255, 255, 0.72)),
+    var(--surface-soft);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.starter-kit-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(214, 162, 55, 0.78), rgba(49, 92, 255, 0.64));
+}
+
+.starter-kit-card.active {
+  border-color: rgba(214, 162, 55, 0.34);
+  background:
+    linear-gradient(90deg, rgba(214, 162, 55, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.78);
+}
+
+.starter-kit-card strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.starter-kit-gridline {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.34fr) minmax(0, 1fr);
+  gap: 6px 10px;
+}
+
+.starter-kit-gridline span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.starter-kit-gridline strong {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.starter-kit-detail {
+  margin-top: 16px;
+}
+
 .share-pack-form {
   display: grid;
   gap: 10px;
