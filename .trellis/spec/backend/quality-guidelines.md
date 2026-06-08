@@ -484,6 +484,77 @@ writeJSON(w, http.StatusOK, map[string]any{
 })
 ```
 
+## Scenario: Durable Run Store
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing daemon run-store persistence, recovery, durable run metadata, or restart behavior for Mission Control.
+- Scope: local daemon run metadata only. This is not workflow step execution, cloud sync, or replay execution.
+
+### 2. Signatures
+
+- In-memory constructor: `NewRunStore(limit int) *RunStore`.
+- Persistent constructor: `NewPersistentRunStore(limit int, path string) (*RunStore, error)`.
+- Persistence envelope:
+  ```json
+  {
+    "schema_version": "2026-06-08",
+    "records": []
+  }
+  ```
+- Last persistence/load error: `(*RunStore).PersistError() error`.
+
+### 3. Contracts
+
+- `NewRunStore` remains in-memory and compatible with existing tests and server setup.
+- Persistent mode writes JSON to a local file with temp-file plus rename semantics.
+- Persistent mode must recover run records, summaries, structured events, legacy events, control decisions, usage, budget, routing, fallback, response, and terminal status.
+- Recovery must respect the configured store limit.
+- Recovery must rebuild per-run structured event sequence counters so new events continue monotonically.
+- Corrupt persistence data must not panic. Constructor may return an error with a safe empty store so callers/tests can decide how to surface it.
+- Persistence must not add prompts, tool args, provider responses, or secrets to metrics or trace exports.
+
+### 4. Validation & Error Matrix
+
+- Missing persistence file -> empty store, nil error.
+- Empty persistence file -> empty store, nil error.
+- Corrupt JSON -> empty store plus contextual error.
+- More records than limit -> newest/order-preserved records retained up to limit.
+- Duplicate or blank record ids -> ignore invalid duplicates during recovery.
+- Save failure -> mutation API remains compatible; `PersistError()` exposes the last failure.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a completed run with usage, budget, routing, structured events, and control decisions survives store reconstruction.
+- Base: in-memory `NewRunStore` behavior is unchanged.
+- Bad: daemon startup panics on a corrupt `runs.json`, or recovered structured events restart numbering at `000001`.
+
+### 6. Tests Required
+
+- Restart recovery test for completed runs and metadata.
+- Control-decision and structured-event recovery test.
+- Corrupt-file tolerance test.
+- Limit enforcement on load test.
+- Existing run/control/metrics daemon tests continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+data, _ := os.ReadFile(path)
+_ = json.Unmarshal(data, &records)
+```
+
+This silently ignores corrupt state and hides recovery failures.
+
+#### Correct
+
+```go
+store, err := NewPersistentRunStore(defaultRunStoreLimit, path)
+// err is available to the caller, while store remains safe to use.
+```
+
 ## Scenario: Runtime Complexity Routing and Fallback
 
 ### 1. Scope / Trigger

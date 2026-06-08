@@ -1,6 +1,12 @@
 package daemon
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,11 +62,18 @@ type RunSummary struct {
 }
 
 type RunStore struct {
-	mu       sync.RWMutex
-	limit    int
-	order    []string
-	records  map[string]*RunRecord
-	eventSeq map[string]int
+	mu          sync.RWMutex
+	limit       int
+	order       []string
+	records     map[string]*RunRecord
+	eventSeq    map[string]int
+	persistPath string
+	persistErr  error
+}
+
+type runStoreEnvelope struct {
+	SchemaVersion string       `json:"schema_version"`
+	Records       []*RunRecord `json:"records"`
 }
 
 func NewRunStore(limit int) *RunStore {
@@ -72,6 +85,19 @@ func NewRunStore(limit int) *RunStore {
 		records:  make(map[string]*RunRecord),
 		eventSeq: make(map[string]int),
 	}
+}
+
+func NewPersistentRunStore(limit int, path string) (*RunStore, error) {
+	store := NewRunStore(limit)
+	store.persistPath = path
+	if path == "" {
+		return store, nil
+	}
+	if err := store.load(); err != nil {
+		store.persistErr = err
+		return store, err
+	}
+	return store, nil
 }
 
 func (s *RunStore) Start(req RunAgentRequest) *RunRecord {
@@ -101,6 +127,7 @@ func (s *RunStore) Start(req RunAgentRequest) *RunRecord {
 		delete(s.records, last)
 		delete(s.eventSeq, last)
 	}
+	s.persistLocked()
 	return record
 }
 
@@ -120,6 +147,7 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 	record.Routing = response.Routing
 	record.Fallback = response.Fallback
 	if record.Status == "cancelled" {
+		s.persistLocked()
 		return
 	}
 	if response.BudgetStatus != nil {
@@ -152,12 +180,14 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 		record.Status = "error"
 		record.Error = err.Error()
 		s.addStructuredEventLocked(id, "run_error", map[string]any{"error": err.Error()})
+		s.persistLocked()
 		return
 	}
 	if response.Error != "" {
 		record.Status = "error"
 		record.Error = response.Error
 		s.addStructuredEventLocked(id, "run_error", map[string]any{"error": response.Error})
+		s.persistLocked()
 		return
 	}
 	record.Status = "completed"
@@ -165,6 +195,7 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 		"status": record.Status,
 		"usage":  response.Usage,
 	})
+	s.persistLocked()
 }
 
 func (s *RunStore) AddEvent(id, eventType string, data map[string]any) {
@@ -176,6 +207,7 @@ func (s *RunStore) AddEvent(id, eventType string, data map[string]any) {
 	}
 	record.Events = append(record.Events, RunEvent{Type: eventType, At: time.Now(), Data: data})
 	s.addStructuredEventLocked(id, eventType, data)
+	s.persistLocked()
 }
 
 func (s *RunStore) AddControlDecision(id string, decision RunControlDecision) bool {
@@ -199,6 +231,7 @@ func (s *RunStore) AddControlDecision(id string, decision RunControlDecision) bo
 		"status": decision.Status,
 		"reason": decision.Reason,
 	})
+	s.persistLocked()
 	return true
 }
 
@@ -302,6 +335,120 @@ func (s *RunStore) addStructuredEventLocked(id, eventType string, data map[strin
 	s.eventSeq[id]++
 	record.StructuredEvents = append(record.StructuredEvents,
 		newStructuredRunEvent(id, eventType, eventPhase(eventType), time.Now(), data, s.eventSeq[id]))
+}
+
+func (s *RunStore) PersistError() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.persistErr
+}
+
+func (s *RunStore) load() error {
+	data, err := os.ReadFile(s.persistPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read run store: %w", err)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	var envelope runStoreEnvelope
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return fmt.Errorf("parse run store: %w", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.order = nil
+	s.records = make(map[string]*RunRecord)
+	s.eventSeq = make(map[string]int)
+	for _, record := range envelope.Records {
+		if record == nil || record.ID == "" {
+			continue
+		}
+		if _, exists := s.records[record.ID]; exists {
+			continue
+		}
+		s.records[record.ID] = record
+		s.order = append(s.order, record.ID)
+		s.eventSeq[record.ID] = maxStructuredEventSeq(record.StructuredEvents)
+	}
+	for len(s.order) > s.limit {
+		last := s.order[len(s.order)-1]
+		s.order = s.order[:len(s.order)-1]
+		delete(s.records, last)
+		delete(s.eventSeq, last)
+	}
+	return nil
+}
+
+func (s *RunStore) persistLocked() {
+	if s.persistPath == "" {
+		return
+	}
+	if err := s.saveLocked(); err != nil {
+		s.persistErr = err
+	}
+}
+
+func (s *RunStore) saveLocked() error {
+	if err := os.MkdirAll(filepath.Dir(s.persistPath), 0o700); err != nil {
+		return fmt.Errorf("create run store directory: %w", err)
+	}
+	envelope := runStoreEnvelope{
+		SchemaVersion: structuredEventSchemaVersion,
+		Records:       make([]*RunRecord, 0, len(s.order)),
+	}
+	for _, id := range s.order {
+		record := s.records[id]
+		if record == nil {
+			continue
+		}
+		copyRecord := *record
+		envelope.Records = append(envelope.Records, &copyRecord)
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(s.persistPath), filepath.Base(s.persistPath)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create run store temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	encoder := json.NewEncoder(tmp)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(envelope); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("encode run store: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close run store temp file: %w", err)
+	}
+	if err := os.Rename(tmpPath, s.persistPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("replace run store: %w", err)
+	}
+	s.persistErr = nil
+	return nil
+}
+
+func maxStructuredEventSeq(events []StructuredRunEvent) int {
+	maxSeq := 0
+	for _, evt := range events {
+		idx := strings.LastIndex(evt.ID, "-")
+		if idx < 0 || idx == len(evt.ID)-1 {
+			continue
+		}
+		seq, err := strconv.Atoi(evt.ID[idx+1:])
+		if err == nil && seq > maxSeq {
+			maxSeq = seq
+		}
+	}
+	if maxSeq == 0 {
+		return len(events)
+	}
+	return maxSeq
 }
 
 type runRecorderHandler struct {

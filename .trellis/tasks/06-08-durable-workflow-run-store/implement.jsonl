@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Daemon package file placement and embedded Web UI constraints."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Run observability, workflow control, testing, and durable-state quality rules."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Persistence load/write errors must be contextual and non-panicking."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Persistence warnings must avoid prompt/secret leakage."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared code-reuse and cross-layer thinking guides."}
+{"file": "internal/daemon/run_store.go", "reason": "Primary implementation target for run persistence."}
+{"file": "internal/daemon/server_test.go", "reason": "Existing run/control API behavior tests."}

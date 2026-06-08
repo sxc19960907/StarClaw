@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify durable run-store behavior and tests match backend quality rules."}
+{"file": "internal/daemon/run_store.go", "reason": "Check persistence implementation and compatibility with in-memory behavior."}
+{"file": "internal/daemon/run_store_persistence_test.go", "reason": "Check persistence recovery, corrupt data, limit, and metadata coverage."}
+{"file": "internal/daemon/server_test.go", "reason": "Ensure control/metrics behavior remains compatible."}
