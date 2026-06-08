@@ -26,6 +26,7 @@ func TestRouterRegistersRoutes(t *testing.T) {
 		{"GET", "/health"},
 		{"GET", "/status"},
 		{"GET", "/diagnostics"},
+		{"GET", "/metrics"},
 		{"GET", "/version"},
 		{"GET", "/update/check"},
 

@@ -1,8 +1,13 @@
 package daemon
 
 import (
+	"fmt"
+	"strings"
 	"sync"
+	"time"
 )
+
+const structuredEventSchemaVersion = "2026-06-08"
 
 // Event types emitted by the daemon.
 const (
@@ -31,6 +36,100 @@ const (
 type Event struct {
 	Type string `json:"type"`
 	Data string `json:"data"`
+}
+
+// StructuredRunEvent is the redacted, versioned event shape persisted for
+// observability and future tracing export.
+type StructuredRunEvent struct {
+	ID            string         `json:"id"`
+	SchemaVersion string         `json:"schema_version"`
+	RunID         string         `json:"run_id"`
+	Type          string         `json:"type"`
+	Phase         string         `json:"phase"`
+	At            time.Time      `json:"at"`
+	Data          map[string]any `json:"data,omitempty"`
+}
+
+func newStructuredRunEvent(runID, eventType, phase string, at time.Time, data map[string]any, seq int) StructuredRunEvent {
+	return StructuredRunEvent{
+		ID:            fmt.Sprintf("%s-%06d", runID, seq),
+		SchemaVersion: structuredEventSchemaVersion,
+		RunID:         runID,
+		Type:          eventType,
+		Phase:         phase,
+		At:            at,
+		Data:          redactEventData(eventType, data),
+	}
+}
+
+func eventPhase(eventType string) string {
+	switch eventType {
+	case EventToolCall, EventToolResult, EventToolStatus:
+		return "tool"
+	case EventUsage:
+		return "model"
+	case EventBudgetStatus:
+		return "budget"
+	case EventRunStatus, EventError:
+		return "error"
+	case "run_started":
+		return "start"
+	case "routing_selected":
+		return "routing"
+	case "fallback_decision":
+		return "fallback"
+	case "run_completed", "run_error":
+		return "end"
+	default:
+		return "runtime"
+	}
+}
+
+func redactEventData(eventType string, data map[string]any) map[string]any {
+	if data == nil {
+		return nil
+	}
+	redacted := make(map[string]any, len(data))
+	for key, value := range data {
+		switch key {
+		case "args", "content", "text", "delta", "preamble", "prompt", "request", "response":
+			redacted[key+"_redacted"] = true
+		default:
+			redacted[key] = redactScalar(value)
+		}
+	}
+	return redacted
+}
+
+func redactScalar(value any) any {
+	switch v := value.(type) {
+	case string:
+		if looksSensitive(v) {
+			return "[REDACTED]"
+		}
+		return v
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, nested := range v {
+			if looksSensitive(key) {
+				out[key] = "[REDACTED]"
+				continue
+			}
+			out[key] = redactScalar(nested)
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func looksSensitive(s string) bool {
+	lower := strings.ToLower(s)
+	return strings.Contains(lower, "api_key") ||
+		strings.Contains(lower, "token") ||
+		strings.Contains(lower, "secret") ||
+		strings.Contains(lower, "password") ||
+		strings.Contains(lower, "bearer ")
 }
 
 // EventBus is a simple pub/sub bus for daemon events.

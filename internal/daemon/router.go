@@ -50,6 +50,7 @@ func (r *Router) registerHealthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", r.srv.handleHealth)
 	mux.HandleFunc("GET /status", r.srv.handleStatus)
 	mux.HandleFunc("GET /diagnostics", r.srv.handleDiagnostics)
+	mux.HandleFunc("GET /metrics", r.srv.handleMetrics)
 	mux.HandleFunc("GET /version", r.srv.handleVersion)
 	mux.HandleFunc("GET /update/check", r.srv.handleUpdateCheck)
 }

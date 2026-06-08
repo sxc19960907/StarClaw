@@ -17,22 +17,23 @@ type RunEvent struct {
 }
 
 type RunRecord struct {
-	ID        string                     `json:"id"`
-	Status    string                     `json:"status"`
-	Agent     string                     `json:"agent,omitempty"`
-	Channel   string                     `json:"channel,omitempty"`
-	Prompt    string                     `json:"prompt,omitempty"`
-	SessionID string                     `json:"session_id,omitempty"`
-	StartedAt time.Time                  `json:"started_at"`
-	EndedAt   *time.Time                 `json:"ended_at,omitempty"`
-	Request   RunAgentRequest            `json:"request"`
-	Response  *RunAgentResponse          `json:"response,omitempty"`
-	Usage     map[string]int             `json:"usage,omitempty"`
-	Budget    *agent.TokenBudgetUsage    `json:"budget_status,omitempty"`
-	Routing   *agent.RouteRecommendation `json:"routing,omitempty"`
-	Fallback  *agent.FallbackDecision    `json:"fallback,omitempty"`
-	Error     string                     `json:"error,omitempty"`
-	Events    []RunEvent                 `json:"events,omitempty"`
+	ID               string                     `json:"id"`
+	Status           string                     `json:"status"`
+	Agent            string                     `json:"agent,omitempty"`
+	Channel          string                     `json:"channel,omitempty"`
+	Prompt           string                     `json:"prompt,omitempty"`
+	SessionID        string                     `json:"session_id,omitempty"`
+	StartedAt        time.Time                  `json:"started_at"`
+	EndedAt          *time.Time                 `json:"ended_at,omitempty"`
+	Request          RunAgentRequest            `json:"request"`
+	Response         *RunAgentResponse          `json:"response,omitempty"`
+	Usage            map[string]int             `json:"usage,omitempty"`
+	Budget           *agent.TokenBudgetUsage    `json:"budget_status,omitempty"`
+	Routing          *agent.RouteRecommendation `json:"routing,omitempty"`
+	Fallback         *agent.FallbackDecision    `json:"fallback,omitempty"`
+	Error            string                     `json:"error,omitempty"`
+	Events           []RunEvent                 `json:"events,omitempty"`
+	StructuredEvents []StructuredRunEvent       `json:"structured_events,omitempty"`
 }
 
 type RunSummary struct {
@@ -47,10 +48,11 @@ type RunSummary struct {
 }
 
 type RunStore struct {
-	mu      sync.RWMutex
-	limit   int
-	order   []string
-	records map[string]*RunRecord
+	mu       sync.RWMutex
+	limit    int
+	order    []string
+	records  map[string]*RunRecord
+	eventSeq map[string]int
 }
 
 func NewRunStore(limit int) *RunStore {
@@ -58,8 +60,9 @@ func NewRunStore(limit int) *RunStore {
 		limit = defaultRunStoreLimit
 	}
 	return &RunStore{
-		limit:   limit,
-		records: make(map[string]*RunRecord),
+		limit:    limit,
+		records:  make(map[string]*RunRecord),
+		eventSeq: make(map[string]int),
 	}
 }
 
@@ -79,10 +82,16 @@ func (s *RunStore) Start(req RunAgentRequest) *RunRecord {
 		s.order = append([]string{record.ID}, s.order...)
 	}
 	s.records[record.ID] = record
+	s.addStructuredEventLocked(record.ID, "run_started", map[string]any{
+		"agent":   req.Agent,
+		"channel": req.Channel,
+		"source":  req.Source,
+	})
 	for len(s.order) > s.limit {
 		last := s.order[len(s.order)-1]
 		s.order = s.order[:len(s.order)-1]
 		delete(s.records, last)
+		delete(s.eventSeq, last)
 	}
 	return record
 }
@@ -102,17 +111,49 @@ func (s *RunStore) Complete(id string, response RunAgentResponse, err error) {
 	record.Budget = response.BudgetStatus
 	record.Routing = response.Routing
 	record.Fallback = response.Fallback
+	if response.BudgetStatus != nil {
+		s.addStructuredEventLocked(id, "budget_status", map[string]any{
+			"status":        response.BudgetStatus.Status,
+			"input_tokens":  response.BudgetStatus.InputTokens,
+			"output_tokens": response.BudgetStatus.OutputTokens,
+			"total_tokens":  response.BudgetStatus.TotalTokens,
+			"unknown_turns": response.BudgetStatus.UnknownTurns,
+			"detail":        response.BudgetStatus.Detail,
+		})
+	}
+	if response.Routing != nil {
+		s.addStructuredEventLocked(id, "routing_selected", map[string]any{
+			"complexity": response.Routing.Complexity,
+			"route":      response.Routing.Route,
+			"model_tier": response.Routing.ModelTier,
+			"reason":     response.Routing.Reason,
+		})
+	}
+	if response.Fallback != nil {
+		s.addStructuredEventLocked(id, "fallback_decision", map[string]any{
+			"reason":     response.Fallback.Reason,
+			"route":      response.Fallback.Route,
+			"model_tier": response.Fallback.ModelTier,
+			"detail":     response.Fallback.Detail,
+		})
+	}
 	if err != nil {
 		record.Status = "error"
 		record.Error = err.Error()
+		s.addStructuredEventLocked(id, "run_error", map[string]any{"error": err.Error()})
 		return
 	}
 	if response.Error != "" {
 		record.Status = "error"
 		record.Error = response.Error
+		s.addStructuredEventLocked(id, "run_error", map[string]any{"error": response.Error})
 		return
 	}
 	record.Status = "completed"
+	s.addStructuredEventLocked(id, "run_completed", map[string]any{
+		"status": record.Status,
+		"usage":  response.Usage,
+	})
 }
 
 func (s *RunStore) AddEvent(id, eventType string, data map[string]any) {
@@ -123,6 +164,7 @@ func (s *RunStore) AddEvent(id, eventType string, data map[string]any) {
 		return
 	}
 	record.Events = append(record.Events, RunEvent{Type: eventType, At: time.Now(), Data: data})
+	s.addStructuredEventLocked(id, eventType, data)
 }
 
 func (s *RunStore) List() []RunSummary {
@@ -159,6 +201,9 @@ func (s *RunStore) Get(id string) (*RunRecord, bool) {
 	if record.Events != nil {
 		copyRecord.Events = append([]RunEvent(nil), record.Events...)
 	}
+	if record.StructuredEvents != nil {
+		copyRecord.StructuredEvents = append([]StructuredRunEvent(nil), record.StructuredEvents...)
+	}
 	if record.Usage != nil {
 		copyRecord.Usage = make(map[string]int, len(record.Usage))
 		for key, value := range record.Usage {
@@ -178,6 +223,47 @@ func (s *RunStore) Get(id string) (*RunRecord, bool) {
 		copyRecord.Fallback = &fallback
 	}
 	return &copyRecord, true
+}
+
+func (s *RunStore) Metrics() map[string]any {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	statusCounts := map[string]int{}
+	eventCounts := map[string]int{}
+	var totalInput, totalOutput int
+	for _, id := range s.order {
+		record := s.records[id]
+		if record == nil {
+			continue
+		}
+		statusCounts[record.Status]++
+		if record.Usage != nil {
+			totalInput += record.Usage["input_tokens"]
+			totalOutput += record.Usage["output_tokens"]
+		}
+		for _, evt := range record.StructuredEvents {
+			eventCounts[evt.Type]++
+		}
+	}
+	return map[string]any{
+		"runs_total":          len(s.records),
+		"runs_by_status":      statusCounts,
+		"events_by_type":      eventCounts,
+		"tokens_input_total":  totalInput,
+		"tokens_output_total": totalOutput,
+		"schema_version":      structuredEventSchemaVersion,
+		"stored_run_limit":    s.limit,
+	}
+}
+
+func (s *RunStore) addStructuredEventLocked(id, eventType string, data map[string]any) {
+	record := s.records[id]
+	if record == nil {
+		return
+	}
+	s.eventSeq[id]++
+	record.StructuredEvents = append(record.StructuredEvents,
+		newStructuredRunEvent(id, eventType, eventPhase(eventType), time.Now(), data, s.eventSeq[id]))
 }
 
 type runRecorderHandler struct {

@@ -313,6 +313,94 @@ result, err := s.runAgent(ctx, RunAgentRequest{
 }, handler)
 ```
 
+## Scenario: Structured Runtime Observability
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing daemon run lifecycle events, runtime metrics, tracing export foundations, or any API that exposes run observability.
+- Scope: local daemon HTTP API and in-memory run store. This is an observability surface, not a prompt archive or raw provider transcript.
+
+### 2. Signatures
+
+- Structured event type: `StructuredRunEvent`.
+- Schema fields:
+  ```json
+  {
+    "id": "run-id-000001",
+    "schema_version": "2026-06-08",
+    "run_id": "run-id",
+    "type": "run_started",
+    "phase": "start",
+    "at": "2026-06-08T00:00:00Z",
+    "data": {}
+  }
+  ```
+- Run record field: `RunRecord.StructuredEvents`, serialized as `structured_events`.
+- Metrics route: `GET /metrics`.
+- Response shape:
+  ```json
+  {
+    "metrics": {
+      "runs_total": 1,
+      "runs_by_status": {"completed": 1},
+      "events_by_type": {"run_started": 1},
+      "tokens_input_total": 10,
+      "tokens_output_total": 20,
+      "schema_version": "2026-06-08",
+      "stored_run_limit": 100
+    }
+  }
+  ```
+
+### 3. Contracts
+
+- Every structured event must include `id`, `schema_version`, `run_id`, `type`, `phase`, and `at`.
+- Event ids are deterministic within a run using a monotonically increasing sequence suffix.
+- Runtime must emit structured events for run start, run completion, run error, tool events, usage, budget status, routing decisions, and fallback decisions where those concepts are present.
+- `GET /metrics` returns aggregate counters/gauges only. It must not include prompts, tool arguments, provider payloads, raw responses, or user text.
+- Existing unstructured run events and SSE/Web UI behavior must remain compatible when structured observability is added.
+- Structured observability is local-first. Detailed payload export remains opt-in and must not be introduced implicitly through metrics.
+
+### 4. Validation & Error Matrix
+
+- Prompt or assistant text in event data -> redact field to a boolean marker such as `text_redacted`.
+- Tool args, request, response, delta, content, preamble, or prompt bodies -> redact by default.
+- Values or keys containing API key, token, secret, password, or bearer credentials -> replace with `[REDACTED]`.
+- Missing optional routing/fallback/budget response data -> omit that specific structured decision event.
+- Unknown event type -> keep the type and use a generic runtime phase.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a completed run records `run_started`, usage/tool events, optional `budget_status`, optional `routing_selected`, optional `fallback_decision`, and `run_completed`.
+- Base: `/metrics` reports run counts, event counts, token totals, schema version, and stored run limit.
+- Bad: metrics or structured events expose a prompt body, tool args JSON, bearer token, provider response text, or API key.
+
+### 6. Tests Required
+
+- Unit test structured event schema fields and per-run sequence behavior.
+- Unit test redaction for prompt text, assistant text, tool args/content, and secret-like values.
+- Unit test metric shape and stable counter names.
+- HTTP handler test for `GET /metrics`.
+- Route registration test for `GET /metrics`.
+- Existing SSE/Web UI smoke tests must continue to pass when observability changes touch shared run/event code.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+store.AddEvent(id, EventToolCall, map[string]any{"args": rawArgsJSON})
+record.StructuredEvents = append(record.StructuredEvents, StructuredRunEvent{Data: map[string]any{"args": rawArgsJSON}})
+```
+
+#### Correct
+
+```go
+store.AddEvent(id, EventToolCall, map[string]any{"args": rawArgsJSON})
+// The structured copy redacts args while the legacy run event remains compatible.
+s.addStructuredEventLocked(id, EventToolCall, map[string]any{"args": rawArgsJSON})
+```
+
 ## Scenario: Runtime Complexity Routing and Fallback
 
 ### 1. Scope / Trigger
