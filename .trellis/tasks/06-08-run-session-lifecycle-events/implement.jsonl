@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend entry point and pre-development checklist for daemon changes."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Run lifecycle, observability, redaction, replay, and testing contracts."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Privacy rules for logs and observability payloads."}
+{"file": ".trellis/tasks/06-08-run-session-lifecycle-events/research/kocoro-lifecycle-gap.md", "reason": "Local Kocoro comparison and intentional scope boundary."}
