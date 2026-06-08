@@ -805,3 +805,36 @@ Implemented runtime token budget config, provider usage tracking, hard-stop enfo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 107: OpenAI compatible gateway
+
+**Date**: 2026-06-08
+**Task**: OpenAI compatible gateway
+**Branch**: `main`
+
+### Summary
+
+Added local /v1/chat/completions adapter, OpenAI-style response/error envelopes, unsupported-field validation, request model override wiring, route tests, daemon handler tests, and backend API code-spec coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fbaaebb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
