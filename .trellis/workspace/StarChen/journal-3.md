@@ -1168,3 +1168,36 @@ Added cooperative runtime pause/resume support with agent loop pause points befo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 118: Observability trace export
+
+**Date**: 2026-06-08
+**Task**: Observability trace export
+**Branch**: `main`
+
+### Summary
+
+Added local JSONL trace export for structured run events with OTel-ready records, recursive redaction, trace read/export endpoints, tests, and backend spec guidance.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fe659e9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
