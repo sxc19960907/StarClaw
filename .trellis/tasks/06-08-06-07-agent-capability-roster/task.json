@@ -19,7 +19,7 @@
   "pr_url": null,
   "subtasks": [],
   "children": [],
-  "parent": "06-07-astria-kocoro-parity-phase",
+  "parent": null,
   "relatedFiles": [
     "internal/agents/loader.go",
     "internal/agents/loader_test.go",

@@ -19,7 +19,7 @@
   "pr_url": null,
   "subtasks": [],
   "children": [],
-  "parent": "06-07-astria-kocoro-parity-phase",
+  "parent": null,
   "relatedFiles": [
     "internal/daemon/webui/assets/app.js",
     "internal/daemon/webui/assets/styles.css",
