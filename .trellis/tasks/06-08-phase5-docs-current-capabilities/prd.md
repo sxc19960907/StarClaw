@@ -13,32 +13,14 @@ Update user-facing documentation so StarClaw/Astria describes the current local 
 
 ## Acceptance Criteria
 
-- [ ] README or relevant docs describe Astria Web UI current workflow surfaces.
-- [ ] API docs mention local OpenAI-compatible gateway and workflow-control endpoints.
-- [ ] Runtime docs mention budget enforcement, routing/fallback, observability, trace export, durable recovery, and replay approval boundaries.
-- [ ] Safety docs state prompt/secret redaction guarantees and limitations.
-- [ ] Documentation checks or relevant tests pass.
+- [x] README or relevant docs describe Astria Web UI current workflow surfaces.
+- [x] API docs mention local OpenAI-compatible gateway and workflow-control endpoints.
+- [x] Runtime docs mention budget enforcement, routing/fallback, observability, trace export, durable recovery, and replay approval boundaries.
+- [x] Safety docs state prompt/secret redaction guarantees and limitations.
+- [x] Documentation checks or relevant tests pass.
 
 ## Non-Goals
 
 - No marketing rewrite.
 - No hosted/cloud documentation.
 - No docs for unimplemented Phase 6 ideas.
-
-## Goal
-
-TBD.
-
-## Requirements
-
-- TBD
-
-## Acceptance Criteria
-
-- [ ] TBD
-
-## Notes
-
-- Keep `prd.md` focused on requirements, constraints, and acceptance criteria.
-- Lightweight tasks can remain PRD-only.
-- For complex tasks, add `design.md` for technical design and `implement.md` for execution planning before `task.py start`.

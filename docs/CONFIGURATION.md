@@ -31,6 +31,11 @@ agent:
   max_iterations: 25      # Maximum tool call cycles
   max_tokens: 8192        # Response token limit
   temperature: 0          # 0 = deterministic, 1 = creative
+  token_budget:
+    max_input_tokens: 0    # 0 disables this limit
+    max_output_tokens: 0
+    max_total_tokens: 0
+    hard_stop: false       # Stop before the next model call when exhausted/projected exhausted
 
 # Tool Settings
 tools:
@@ -118,8 +123,28 @@ tools:
 | `standard` | Balanced | General use |
 | `high` | Best quality | Complex tasks |
 
+## Runtime Budget, Routing, and Fallback
+
+`agent.token_budget` configures per-run runtime token budget enforcement:
+
+```yaml
+agent:
+  token_budget:
+    max_input_tokens: 120000
+    max_output_tokens: 12000
+    max_total_tokens: 132000
+    hard_stop: true
+```
+
+Provider usage is authoritative when returned. If provider usage is missing, StarClaw reports an `unknown` budget status instead of inventing exact totals. With `hard_stop: true`, the agent loop stops before the next model call once concrete or projected usage is exhausted.
+
+Complexity routing and fallback metadata are local deterministic run metadata. They help Astria and the daemon explain route choices, budget-constrained paths, provider-error fallback, budget-exhausted fallback, and repeated-failure fallback. They do not require a hosted routing service.
+
 ## Security Notes
 
 - Config file permissions: `0600` (user read/write only)
 - API keys are trimmed of whitespace
 - Never commit config files to version control
+- Runtime observability is local-first: metrics are aggregate-only, trace export writes only to an explicit local path, and no external collector is configured by default.
+- Structured events, trace read/export, diagnostics, run summaries, replay plans, and Web UI trace/recovery renderers redact prompt text, assistant text, tool arguments, provider payloads, API keys, bearer tokens, passwords, and secret-like values.
+- Detailed run Prompt/Result views and explicit local copy/rerun actions are operator-facing UI affordances. Treat them as local review surfaces, not shareable support bundles.

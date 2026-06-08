@@ -93,7 +93,9 @@ starclaw interactive
 starclaw app
 ```
 
-This starts the daemon when needed and opens the local Web UI at `http://127.0.0.1:7533/app/`. It provides a Codex-style workspace for chat, streaming runs, tool-call details, named agents, skills, sessions, and schedules.
+This starts the daemon when needed and opens the local Web UI at `http://127.0.0.1:7533/app/`. The product-facing UI is named **Astria**; CLI, package, binary, and release names remain **StarClaw**.
+
+Astria provides a local workspace for chat, streaming runs, tool-call details, named agents, skills, sessions, schedules, Mission Control, runtime recovery, structured trace inspection, budget/routing review, quality scorecards, reuse assets, memory curation, and local share-pack drafting.
 
 For headless or remote shells:
 ```bash
@@ -112,6 +114,17 @@ starclaw doctor --json
 ```
 
 `starclaw app` reuses an already-running daemon. If the browser cannot be opened automatically, copy the printed Web UI URL manually. `starclaw app --check`, `starclaw doctor`, and the GUI Version page show the same local runtime context: Web UI, health, status, diagnostics, data, and config paths.
+
+### Local Runtime API
+
+The daemon exposes local HTTP endpoints for the embedded UI and for local integrations:
+
+- `POST /message` streams a StarClaw run through the normal daemon permission, approval, session, run-store, and event pipeline.
+- `POST /v1/chat/completions` is a local OpenAI-compatible gateway for non-streaming chat completions. It maps messages into a StarClaw run and returns an OpenAI-style completion envelope plus `starclaw_run_id`. Unsupported OpenAI fields such as streaming, tool/function calling, response formats, metadata, and `n > 1` are rejected rather than silently ignored.
+- `GET /runs`, `GET /runs/{id}`, `GET /metrics`, `GET /runs/{id}/trace`, and `GET /traces/export?path=/local/file.jsonl` expose run summaries, aggregate metrics, structured trace records, and explicit local JSONL trace export.
+- `POST /cancel` remains the compatibility cancel route. `POST /runs/{id}/control` accepts `cancel`, `pause`, `resume`, and `replay` actions. Replay is approval-gated and records source/replay metadata; unapproved replay returns a redacted plan without launching a new run.
+
+Runtime metadata includes token budget status, deterministic complexity routing, fallback decisions, durable workflow steps, control decisions, and structured events. Metrics are aggregate-only; trace export is caller-directed and local-only.
 
 **Pipe input:**
 ```bash
@@ -164,6 +177,11 @@ agent:
   thinking: true
   thinking_mode: "adaptive"
   thinking_budget: 10000
+  token_budget:
+    max_input_tokens: 0    # 0 disables this limit
+    max_output_tokens: 0
+    max_total_tokens: 0
+    hard_stop: false       # true stops before the next model call when exhausted/projected exhausted
 
 tools:
   bash_timeout: 120
@@ -259,6 +277,8 @@ Sensitive data is automatically redacted from logs:
 - GitHub tokens (`ghp_...`, `gho_...`)
 - Environment variables with secret-like names (`KEY=`, `SECRET=`, etc.)
 - PEM certificate markers
+
+Runtime observability surfaces also redact prompt text, assistant text, tool arguments, provider request/response bodies, API keys, bearer tokens, passwords, and secret-like scalar values from metrics, structured events, trace read/export, diagnostics, run summaries, replay plans, and Web UI trace/recovery payload renderers. Detailed run Prompt/Result panels and explicit local copy/rerun actions are operator-facing views, not telemetry exports.
 
 ### Querying Logs
 

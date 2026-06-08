@@ -96,7 +96,9 @@ This starts the daemon when needed and opens the embedded Web UI at:
 http://127.0.0.1:7533/app/
 ```
 
-The Web UI supports chat, streaming output, cancellable runs, expandable tool-call details, named agents, skills, session history, and schedule management.
+The Web UI supports chat, streaming output, cancellable runs, expandable tool-call details, named agents, skills, session history, and schedule management. The product-facing UI is named Astria; CLI, package, release, and module names remain StarClaw.
+
+Astria's runtime panels include Mission Control, run detail, runtime recovery, workflow steps, control history, structured trace inspection, budget/routing/fallback review, quality scorecards, reuse assets, memory curation, and local share-pack drafting.
 
 Check launch readiness without starting the daemon or opening a browser:
 
@@ -139,6 +141,44 @@ starclaw daemon status
 ```
 
 The status output includes the Web UI URL when the daemon is reachable.
+
+### Local API Smoke Examples
+
+OpenAI-compatible local completion:
+
+```bash
+curl -s http://127.0.0.1:7533/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "local",
+    "request_id": "example-openai-local",
+    "messages": [{"role": "user", "content": "Summarize this workspace."}]
+  }' | jq .
+```
+
+Inspect run metadata and aggregate metrics:
+
+```bash
+curl -s http://127.0.0.1:7533/runs/example-openai-local | jq .
+curl -s http://127.0.0.1:7533/metrics | jq .
+```
+
+Read and export structured trace records locally:
+
+```bash
+curl -s http://127.0.0.1:7533/runs/example-openai-local/trace | jq .
+curl -s 'http://127.0.0.1:7533/traces/export?path=/tmp/starclaw-traces.jsonl' | jq .
+```
+
+Request replay review without launching a replay run:
+
+```bash
+curl -s http://127.0.0.1:7533/runs/example-openai-local/control \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"replay","approved":false}' | jq .
+```
+
+Replay plans are approval-gated and redacted. Metrics are aggregate-only. Trace export is explicit, caller-directed, and local-only.
 
 ### Smoke Test the Web UI
 ```bash
