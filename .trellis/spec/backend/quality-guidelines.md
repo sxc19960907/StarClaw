@@ -555,6 +555,82 @@ store, err := NewPersistentRunStore(defaultRunStoreLimit, path)
 // err is available to the caller, while store remains safe to use.
 ```
 
+## Scenario: Durable Workflow Step State
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing durable step-level workflow state, mission step timelines, or future replay/pause/resume state foundations.
+- Scope: local daemon run records and step metadata only. This is not workflow graph execution, cloud sync, or replay execution.
+
+### 2. Signatures
+
+- Step state type: `WorkflowStepState`.
+- Run record field: `RunRecord.Steps`, serialized as `steps`.
+- Store APIs:
+  - `(*RunStore).UpsertStep(runID string, step WorkflowStepState) bool`
+  - `(*RunStore).TransitionStep(runID, stepID, status string, metadata map[string]any) bool`
+- Structured event type: `workflow_step`.
+- Status values:
+  - `planned`
+  - `running`
+  - `blocked`
+  - `waiting_approval`
+  - `completed`
+  - `failed`
+  - `cancelled`
+  - `skipped`
+
+### 3. Contracts
+
+- Step state is per run and must be recoverable through the persistent run-store envelope.
+- Step transitions must not mutate the run's terminal status by themselves; run status remains owned by run lifecycle/control APIs.
+- First upsert defaults blank status to `planned` and attempt to `1`.
+- Entering `running` sets `started_at` when absent.
+- Terminal step statuses set `ended_at`.
+- Step metadata stored in run detail must be redacted/sanitized before persistence.
+- Structured `workflow_step` events must go through the same redaction path as other structured events.
+- Metrics may count `workflow_step` events, but must not include step ids, titles, metadata, prompts, tool args, provider payloads, or secrets.
+
+### 4. Validation & Error Matrix
+
+- Missing run id or unknown run -> mutation returns `false`.
+- Blank step id -> mutation returns `false`.
+- Blank upsert status -> stored as `planned`.
+- Unknown status is not interpreted as a run lifecycle transition; future stricter validation must preserve compatibility deliberately.
+- Corrupt persistent run store -> safe empty store plus contextual error, same as durable run-store behavior.
+
+### 5. Good/Base/Bad Cases
+
+- Good: a recovered run includes step timeline and can continue appending monotonic structured step events.
+- Base: run detail exposes durable step state; run summaries remain unchanged.
+- Bad: setting a step to `completed` marks the whole run completed, or metrics expose step metadata.
+
+### 6. Tests Required
+
+- Upsert and transition tests for timestamps, attempts, ordering, and metadata merge.
+- Persistence recovery test for step state.
+- Redaction test proving step metadata is safe in run detail and structured events.
+- Metrics test proving only aggregate `workflow_step` counts are exposed.
+- Existing run/control/metrics and persistent run-store tests continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+record.Status = WorkflowStepCompleted
+record.Steps = append(record.Steps, stepWithRawToolArgs)
+```
+
+This confuses step lifecycle with run lifecycle and can leak tool metadata through run detail.
+
+#### Correct
+
+```go
+store.TransitionStep(runID, stepID, WorkflowStepCompleted, safeMetadata)
+// The run lifecycle remains controlled by Start/Complete/control APIs.
+```
+
 ## Scenario: Runtime Complexity Routing and Fallback
 
 ### 1. Scope / Trigger

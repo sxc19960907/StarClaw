@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality gate for run-store durability, control API compatibility, metrics redaction, and workflow step-state rules."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify errors are contextual and non-critical persistence failures remain compatible."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify no sensitive metadata is logged."}

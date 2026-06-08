@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +16,17 @@ import (
 )
 
 const defaultRunStoreLimit = 100
+
+const (
+	WorkflowStepPlanned         = "planned"
+	WorkflowStepRunning         = "running"
+	WorkflowStepBlocked         = "blocked"
+	WorkflowStepWaitingApproval = "waiting_approval"
+	WorkflowStepCompleted       = "completed"
+	WorkflowStepFailed          = "failed"
+	WorkflowStepCancelled       = "cancelled"
+	WorkflowStepSkipped         = "skipped"
+)
 
 type RunEvent struct {
 	Type string         `json:"type"`
@@ -27,6 +39,19 @@ type RunControlDecision struct {
 	Status string    `json:"status"`
 	Reason string    `json:"reason,omitempty"`
 	At     time.Time `json:"at"`
+}
+
+type WorkflowStepState struct {
+	ID        string         `json:"id"`
+	Title     string         `json:"title,omitempty"`
+	Status    string         `json:"status"`
+	Sequence  int            `json:"sequence,omitempty"`
+	ParentID  string         `json:"parent_id,omitempty"`
+	Attempt   int            `json:"attempt,omitempty"`
+	StartedAt *time.Time     `json:"started_at,omitempty"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	EndedAt   *time.Time     `json:"ended_at,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 type RunRecord struct {
@@ -48,6 +73,7 @@ type RunRecord struct {
 	Events           []RunEvent                 `json:"events,omitempty"`
 	StructuredEvents []StructuredRunEvent       `json:"structured_events,omitempty"`
 	Control          []RunControlDecision       `json:"control,omitempty"`
+	Steps            []WorkflowStepState        `json:"steps,omitempty"`
 }
 
 type RunSummary struct {
@@ -235,6 +261,92 @@ func (s *RunStore) AddControlDecision(id string, decision RunControlDecision) bo
 	return true
 }
 
+func (s *RunStore) UpsertStep(runID string, step WorkflowStepState) bool {
+	if step.ID == "" {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record := s.records[runID]
+	if record == nil {
+		return false
+	}
+	now := time.Now()
+	normalizeWorkflowStep(&step, now)
+	for idx := range record.Steps {
+		if record.Steps[idx].ID != step.ID {
+			continue
+		}
+		if step.StartedAt == nil {
+			step.StartedAt = record.Steps[idx].StartedAt
+		}
+		if step.EndedAt == nil {
+			step.EndedAt = record.Steps[idx].EndedAt
+		}
+		record.Steps[idx] = cloneWorkflowStep(step)
+		s.addStructuredEventLocked(runID, "workflow_step", workflowStepEventData(step))
+		s.persistLocked()
+		return true
+	}
+	record.Steps = append(record.Steps, cloneWorkflowStep(step))
+	sortWorkflowSteps(record.Steps)
+	s.addStructuredEventLocked(runID, "workflow_step", workflowStepEventData(step))
+	s.persistLocked()
+	return true
+}
+
+func (s *RunStore) TransitionStep(runID, stepID, status string, metadata map[string]any) bool {
+	if stepID == "" || status == "" {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record := s.records[runID]
+	if record == nil {
+		return false
+	}
+	now := time.Now()
+	for idx := range record.Steps {
+		if record.Steps[idx].ID != stepID {
+			continue
+		}
+		step := record.Steps[idx]
+		step.Status = status
+		step.UpdatedAt = now
+		if status == WorkflowStepRunning && step.StartedAt == nil {
+			started := now
+			step.StartedAt = &started
+		}
+		if workflowStepTerminal(status) {
+			ended := now
+			step.EndedAt = &ended
+		}
+		if step.Attempt <= 0 {
+			step.Attempt = 1
+		}
+		step.Metadata = mergeWorkflowStepMetadata(step.Metadata, metadata)
+		record.Steps[idx] = cloneWorkflowStep(step)
+		s.addStructuredEventLocked(runID, "workflow_step", workflowStepEventData(step))
+		s.persistLocked()
+		return true
+	}
+	step := WorkflowStepState{ID: stepID, Status: status, Metadata: metadata}
+	normalizeWorkflowStep(&step, now)
+	if status == WorkflowStepRunning {
+		started := now
+		step.StartedAt = &started
+	}
+	if workflowStepTerminal(status) {
+		ended := now
+		step.EndedAt = &ended
+	}
+	record.Steps = append(record.Steps, cloneWorkflowStep(step))
+	sortWorkflowSteps(record.Steps)
+	s.addStructuredEventLocked(runID, "workflow_step", workflowStepEventData(step))
+	s.persistLocked()
+	return true
+}
+
 func (s *RunStore) List() []RunSummary {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -274,6 +386,12 @@ func (s *RunStore) Get(id string) (*RunRecord, bool) {
 	}
 	if record.Control != nil {
 		copyRecord.Control = append([]RunControlDecision(nil), record.Control...)
+	}
+	if record.Steps != nil {
+		copyRecord.Steps = make([]WorkflowStepState, 0, len(record.Steps))
+		for _, step := range record.Steps {
+			copyRecord.Steps = append(copyRecord.Steps, cloneWorkflowStep(step))
+		}
 	}
 	if record.Usage != nil {
 		copyRecord.Usage = make(map[string]int, len(record.Usage))
@@ -449,6 +567,98 @@ func maxStructuredEventSeq(events []StructuredRunEvent) int {
 		return len(events)
 	}
 	return maxSeq
+}
+
+func normalizeWorkflowStep(step *WorkflowStepState, now time.Time) {
+	if step.Status == "" {
+		step.Status = WorkflowStepPlanned
+	}
+	if step.Attempt <= 0 {
+		step.Attempt = 1
+	}
+	if step.UpdatedAt.IsZero() {
+		step.UpdatedAt = now
+	}
+	step.Metadata = cloneMetadata(step.Metadata)
+	if step.Status == WorkflowStepRunning && step.StartedAt == nil {
+		started := step.UpdatedAt
+		step.StartedAt = &started
+	}
+	if workflowStepTerminal(step.Status) && step.EndedAt == nil {
+		ended := step.UpdatedAt
+		step.EndedAt = &ended
+	}
+}
+
+func workflowStepTerminal(status string) bool {
+	switch status {
+	case WorkflowStepCompleted, WorkflowStepFailed, WorkflowStepCancelled, WorkflowStepSkipped:
+		return true
+	default:
+		return false
+	}
+}
+
+func sortWorkflowSteps(steps []WorkflowStepState) {
+	sort.SliceStable(steps, func(i, j int) bool {
+		left, right := steps[i], steps[j]
+		if left.Sequence == 0 || right.Sequence == 0 {
+			return false
+		}
+		return left.Sequence < right.Sequence
+	})
+}
+
+func cloneWorkflowStep(step WorkflowStepState) WorkflowStepState {
+	copyStep := step
+	copyStep.Metadata = cloneMetadata(step.Metadata)
+	return copyStep
+}
+
+func cloneMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	copyMap := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		copyMap[key] = redactScalar(value)
+	}
+	return copyMap
+}
+
+func mergeWorkflowStepMetadata(existing, updates map[string]any) map[string]any {
+	merged := cloneMetadata(existing)
+	if len(updates) == 0 {
+		return merged
+	}
+	if merged == nil {
+		merged = make(map[string]any, len(updates))
+	}
+	for key, value := range updates {
+		merged[key] = value
+	}
+	return merged
+}
+
+func workflowStepEventData(step WorkflowStepState) map[string]any {
+	data := map[string]any{
+		"step_id": step.ID,
+		"status":  step.Status,
+		"attempt": step.Attempt,
+	}
+	if step.Title != "" {
+		data["title"] = step.Title
+	}
+	if step.Sequence != 0 {
+		data["sequence"] = step.Sequence
+	}
+	if step.ParentID != "" {
+		data["parent_id"] = step.ParentID
+	}
+	if len(step.Metadata) > 0 {
+		data["metadata"] = cloneMetadata(step.Metadata)
+	}
+	return data
 }
 
 type runRecorderHandler struct {

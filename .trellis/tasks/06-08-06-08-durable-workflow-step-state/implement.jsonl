@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Run-store durability, workflow control, structured observability, and future step-state contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Constructor and persistence error handling conventions."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Avoid logging sensitive runtime metadata."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared thinking guides for new state contracts."}

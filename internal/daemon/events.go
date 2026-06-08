@@ -80,6 +80,8 @@ func eventPhase(eventType string) string {
 		return "fallback"
 	case "control_decision":
 		return "control"
+	case "workflow_step":
+		return "workflow"
 	case "run_completed", "run_error":
 		return "end"
 	default:

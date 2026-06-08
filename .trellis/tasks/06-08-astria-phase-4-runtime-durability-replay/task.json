@@ -19,7 +19,8 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "06-08-durable-workflow-run-store"
+    "06-08-durable-workflow-run-store",
+    "06-08-06-08-durable-workflow-step-state"
   ],
   "parent": null,
   "relatedFiles": [],
