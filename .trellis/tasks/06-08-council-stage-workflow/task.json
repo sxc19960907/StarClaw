@@ -1,0 +1,30 @@
+{
+  "id": "council-stage-workflow",
+  "name": "council-stage-workflow",
+  "title": "Council stage workflow",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-07-astria-kocoro-parity-phase",
+  "relatedFiles": [
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Added Council staged workflow rail with planner/researcher/reviewer/synthesis/handoff stages, role copy/draft actions, and smoke coverage for stage actions plus council_handoff run path.",
+  "meta": {}
+}

@@ -2469,6 +2469,7 @@ function renderCouncilDetail(run) {
     return;
   }
   const roles = Array.isArray(run.roles) ? run.roles : [];
+  const stages = councilStages(run, roles);
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(run.goal || "Council run")}</h3>
@@ -2479,12 +2480,32 @@ function renderCouncilDetail(run) {
       </div>
     </section>
     <section class="run-detail-section">
+      <h3>Council stages</h3>
+      <div class="council-stage-rail">
+        ${stages.map((stage) => `<article class="council-stage-card ${stage.kind === "role" ? "role-stage" : "system-stage"}">
+          <div class="council-stage-orbit"><span>${escapeHTML(stage.step)}</span></div>
+          <div class="council-stage-body">
+            <div class="row-item-title"><span>${escapeHTML(stage.title)}</span><span class="tag">${escapeHTML(stage.status)}</span></div>
+            <strong>${escapeHTML(stage.summary)}</strong>
+            <p>${escapeHTML(stage.preview)}</p>
+            <div class="row-actions">
+              ${stage.actions.map((action) => `<button type="button" class="${action.primary ? "primary-button" : ""}" ${action.attr}>${escapeHTML(action.label)}</button>`).join("")}
+            </div>
+          </div>
+        </article>`).join("")}
+      </div>
+    </section>
+    <section class="run-detail-section">
       <h3>Role contributions</h3>
       <div class="council-role-list">
-        ${roles.map((role) => `<article class="council-role-card">
+        ${roles.map((role, index) => `<article class="council-role-card">
           <div class="row-item-title"><span>${escapeHTML(role.role || "role")}</span><span class="tag">${escapeHTML(role.status || "unknown")}</span></div>
           <strong>${escapeHTML(role.summary || "")}</strong>
           <p>${escapeHTML(role.notes || "")}</p>
+          <div class="row-actions">
+            <button type="button" data-council-role-copy="${escapeHTML(run.id)}" data-council-role-index="${index}">Copy notes</button>
+            <button type="button" data-council-role-draft="${escapeHTML(run.id)}" data-council-role-index="${index}">Draft to chat</button>
+          </div>
         </article>`).join("")}
       </div>
     </section>
@@ -2498,6 +2519,52 @@ function renderCouncilDetail(run) {
       </div>
     </section>
   </div>`;
+}
+
+function councilStages(run, roles) {
+  const roleStages = ["planner", "researcher", "reviewer"].map((name, index) => {
+    const matchedIndex = roles.findIndex((item) => String(item.role || "").toLowerCase() === name);
+    const roleIndex = matchedIndex >= 0 ? matchedIndex : index;
+    const role = roles[roleIndex] || {};
+    return {
+      kind: "role",
+      step: String(index + 1),
+      title: role.role || name,
+      status: role.status || run.status || "pending",
+      summary: role.summary || "Role output pending.",
+      preview: role.notes || "No notes captured yet.",
+      actions: [
+        { label: "Copy notes", attr: `data-council-role-copy="${escapeHTML(run.id)}" data-council-role-index="${roleIndex}"` },
+        { label: "Draft to chat", attr: `data-council-role-draft="${escapeHTML(run.id)}" data-council-role-index="${roleIndex}"` },
+      ],
+    };
+  });
+  return [
+    ...roleStages,
+    {
+      kind: "synthesis",
+      step: "4",
+      title: "Synthesis",
+      status: run.synthesis ? "ready" : "pending",
+      summary: "Merge role outputs into one implementation direction.",
+      preview: run.synthesis || "No synthesis captured yet.",
+      actions: [
+        { label: "Copy synthesis", attr: `data-council-copy="${escapeHTML(run.id)}"` },
+        { label: "Send to chat", attr: `data-council-send="${escapeHTML(run.id)}"` },
+      ],
+    },
+    {
+      kind: "handoff",
+      step: "5",
+      title: "Handoff",
+      status: run.status === "completed" ? "ready" : run.status || "pending",
+      summary: "Start the next concrete Astria run from the council result.",
+      preview: run.agent ? `Lead agent: ${run.agent}` : "Use the selected agent for the handoff run.",
+      actions: [
+        { label: "Start run", attr: `data-council-run="${escapeHTML(run.id)}"`, primary: true },
+      ],
+    },
+  ];
 }
 
 async function submitCouncilRun(event) {
@@ -2534,12 +2601,54 @@ function councilSynthesisText(run) {
   return run?.synthesis || "";
 }
 
+function councilRoleByIndex(id, index) {
+  const run = councilRunByID(id);
+  const roles = Array.isArray(run?.roles) ? run.roles : [];
+  const roleIndex = Number.parseInt(index, 10);
+  if (!Number.isInteger(roleIndex) || roleIndex < 0 || roleIndex >= roles.length) return null;
+  return { run, role: roles[roleIndex] };
+}
+
 function copyCouncilSynthesis(id, button) {
   copyText(councilSynthesisText(councilRunByID(id)), "Council synthesis copied.")
     .then(() => {
       if (button) markButtonCopied(button);
     })
     .catch((error) => showToast(error.message));
+}
+
+function copyCouncilRoleNotes(id, index, button) {
+  const found = councilRoleByIndex(id, index);
+  if (!found) return;
+  const text = councilRoleText(found.run, found.role);
+  copyText(text, "Council role notes copied.")
+    .then(() => {
+      if (button) markButtonCopied(button);
+    })
+    .catch((error) => showToast(error.message));
+}
+
+function councilRoleText(run, role) {
+  return [
+    `Council goal: ${run?.goal || "Untitled council run"}`,
+    `Role: ${role?.role || "role"}`,
+    `Status: ${role?.status || "unknown"}`,
+    "",
+    role?.summary || "",
+    role?.notes || "",
+  ].filter((line, index) => index < 3 || line !== "").join("\n");
+}
+
+function draftCouncilRoleToChat(id, index) {
+  const found = councilRoleByIndex(id, index);
+  if (!found) return;
+  $("chat-input").value = `${councilRoleText(found.run, found.role)}\n\nTurn this role perspective into a concrete next action for Astria.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Council role drafted to chat.");
 }
 
 function sendCouncilToChat(id) {
@@ -4870,6 +4979,18 @@ document.addEventListener("click", (event) => {
   const councilCopy = event.target.closest("[data-council-copy]");
   if (councilCopy) {
     copyCouncilSynthesis(councilCopy.dataset.councilCopy, councilCopy);
+    return;
+  }
+
+  const councilRoleCopy = event.target.closest("[data-council-role-copy]");
+  if (councilRoleCopy) {
+    copyCouncilRoleNotes(councilRoleCopy.dataset.councilRoleCopy, councilRoleCopy.dataset.councilRoleIndex, councilRoleCopy);
+    return;
+  }
+
+  const councilRoleDraft = event.target.closest("[data-council-role-draft]");
+  if (councilRoleDraft) {
+    draftCouncilRoleToChat(councilRoleDraft.dataset.councilRoleDraft, councilRoleDraft.dataset.councilRoleIndex);
     return;
   }
 

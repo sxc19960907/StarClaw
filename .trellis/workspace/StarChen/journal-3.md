@@ -36,6 +36,29 @@ Added Astria Command Center palette for workflow launch, panel navigation, and w
 [OK] **Completed**
 
 
+## Session 115: Council Stage Workflow
+
+**Date**: 2026-06-08
+**Task**: Council stage workflow
+**Branch**: `main`
+
+### Summary
+
+Added a staged Agent Council workflow rail for planner, researcher, reviewer, synthesis, and handoff. Role stages now expose copy and draft-to-chat actions, while synthesis and handoff keep copy/send/start-run behavior.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 117: Agent Continuity Digest
 
 **Date**: 2026-06-08

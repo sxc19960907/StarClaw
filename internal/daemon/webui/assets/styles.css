@@ -3204,6 +3204,78 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.council-stage-rail {
+  display: grid;
+  gap: 10px;
+}
+
+.council-stage-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(49, 92, 255, 0.06), transparent 46%),
+    var(--surface-soft);
+}
+
+.council-stage-card.system-stage {
+  background:
+    linear-gradient(90deg, rgba(22, 125, 104, 0.08), transparent 48%),
+    rgba(255, 255, 255, 0.72);
+}
+
+.council-stage-orbit {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.council-stage-orbit::before {
+  position: absolute;
+  inset: 30px auto -22px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(49, 92, 255, 0.25), rgba(22, 125, 104, 0.12));
+  content: "";
+}
+
+.council-stage-card:last-child .council-stage-orbit::before {
+  display: none;
+}
+
+.council-stage-orbit span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(49, 92, 255, 0.22);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.council-stage-body {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.council-stage-body strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.council-stage-body p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .council-role-list {
   display: grid;
   gap: 10px;
