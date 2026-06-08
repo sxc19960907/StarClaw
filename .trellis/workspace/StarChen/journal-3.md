@@ -1731,3 +1731,37 @@ Implemented local EventBus run lifecycle publishing for run_started, run_complet
 ### Next Steps
 
 - None - task complete
+
+
+## Session 135: WebUI live recovery
+
+**Date**: 2026-06-08
+**Task**: WebUI live recovery
+**Branch**: `main`
+
+### Summary
+
+Implemented Astria Web UI recovery from replayable run lifecycle events, including lifecycle EventSource handlers, guarded run refresh after reconnect, recovered run upserts, and static Web UI contract tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8cd3dc5` | (see git log) |
+| `808b3b7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
