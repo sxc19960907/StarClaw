@@ -1,0 +1,4 @@
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Check Phase 9 image parity target and local-first constraints."}
+{"file": ".trellis/tasks/06-08-image-tool-provider-boundary/prd.md", "reason": "Verify acceptance criteria against implementation."}
+{"file": ".trellis/tasks/06-08-image-tool-provider-boundary/design.md", "reason": "Verify provider boundary and default-disabled behavior."}
+{"file": ".trellis/tasks/06-08-image-tool-provider-boundary/implement.md", "reason": "Verify planned validation commands and review gates were run."}

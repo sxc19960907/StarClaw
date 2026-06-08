@@ -121,6 +121,17 @@ func RegisterCalendarTools(reg *agent.ToolRegistry, broker *desktop_rpc.Broker) 
 	}
 }
 
+// RegisterImageTools registers provider-backed image generation/editing tools
+// only when an explicit provider client is supplied. The default local registry
+// does not call this function, preserving local-first behavior.
+func RegisterImageTools(reg *agent.ToolRegistry, client imageProvider, cdnPrefix string) {
+	if reg == nil || client == nil {
+		return
+	}
+	reg.Register(NewGenerateImageTool(client))
+	reg.Register(NewEditImageTool(client, cdnPrefix))
+}
+
 // RegisterVersionTool registers the version tool with the build version.
 func RegisterVersionTool(reg *agent.ToolRegistry, version string) {
 	reg.Register(NewVersionTool(version))

@@ -1,0 +1,4 @@
+{"file": ".trellis/research/kocoro-native-tool-parity-phase9-plan.md", "reason": "Phase 9 source plan and Kocoro image tool parity evidence."}
+{"file": ".trellis/tasks/06-08-image-tool-provider-boundary/prd.md", "reason": "Task requirements and acceptance criteria."}
+{"file": ".trellis/tasks/06-08-image-tool-provider-boundary/design.md", "reason": "Provider-gated image tool/client boundary and local-first constraints."}
+{"file": ".trellis/tasks/06-08-image-tool-provider-boundary/implement.md", "reason": "Ordered implementation and validation plan."}
