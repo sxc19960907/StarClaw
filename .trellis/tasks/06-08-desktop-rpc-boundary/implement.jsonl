@@ -1,0 +1,11 @@
+{"path":".trellis/tasks/06-08-desktop-rpc-boundary/prd.md","kind":"task","notes":"Requirements and acceptance criteria for Desktop RPC boundary."}
+{"path":".trellis/tasks/06-08-desktop-rpc-boundary/design.md","kind":"task","notes":"Technical design for codec, broker, listener, and status wiring."}
+{"path":".trellis/tasks/06-08-desktop-rpc-boundary/implement.md","kind":"task","notes":"Implementation checklist and validation plan."}
+{"path":".trellis/research/kocoro-local-comparison-phase6-plan.md","kind":"research","notes":"Phase6 Kocoro comparison and child ordering."}
+{"path":"/Users/timmy/PycharmProjects/Kocoro/internal/daemon/desktop_rpc/broker.go","kind":"external","notes":"Kocoro Desktop RPC broker lifecycle and pending request semantics."}
+{"path":"/Users/timmy/PycharmProjects/Kocoro/internal/daemon/desktop_rpc/codec.go","kind":"external","notes":"Kocoro length-prefixed JSON frame codec."}
+{"path":"/Users/timmy/PycharmProjects/Kocoro/internal/daemon/desktop_rpc/listener.go","kind":"external","notes":"Kocoro Unix socket listener and disconnect handling."}
+{"path":"/Users/timmy/PycharmProjects/Kocoro/internal/daemon/desktop_rpc/types.go","kind":"external","notes":"Kocoro protocol constants, system methods, and frame schemas."}
+{"path":"internal/daemon/server.go","kind":"code","notes":"Server ownership/status wiring."}
+{"path":"internal/daemon/server_test.go","kind":"test","notes":"Daemon status regression coverage."}
+{"path":".trellis/spec/backend/quality-guidelines.md","kind":"spec","notes":"Backend API/privacy/runtime contracts."}

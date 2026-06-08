@@ -42,7 +42,7 @@ func TestClientStatus_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = fmt.Fprint(w, `{"running_agents":2,"uptime":"5m3s","version":"0.1.0"}`)
+		_, _ = fmt.Fprint(w, `{"running_agents":2,"active_agents":2,"uptime":"5m3s","version":"0.1.0","desktop_rpc":{"listening":true,"connected":false,"pending":3}}`)
 	}))
 	defer server.Close()
 
@@ -59,6 +59,15 @@ func TestClientStatus_Success(t *testing.T) {
 	}
 	if status.Version != "0.1.0" {
 		t.Errorf("Version = %q, want %q", status.Version, "0.1.0")
+	}
+	if !status.DesktopRPC.Listening {
+		t.Errorf("DesktopRPC.Listening = false, want true")
+	}
+	if status.DesktopRPC.Connected {
+		t.Errorf("DesktopRPC.Connected = true, want false")
+	}
+	if status.DesktopRPC.Pending != 3 {
+		t.Errorf("DesktopRPC.Pending = %d, want 3", status.DesktopRPC.Pending)
 	}
 }
 

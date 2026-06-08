@@ -1,0 +1,8 @@
+{"path":".trellis/tasks/06-08-desktop-rpc-boundary/prd.md","kind":"task","notes":"Check implementation against acceptance criteria."}
+{"path":".trellis/tasks/06-08-desktop-rpc-boundary/design.md","kind":"task","notes":"Verify boundary and scope constraints."}
+{"path":".trellis/tasks/06-08-desktop-rpc-boundary/implement.md","kind":"task","notes":"Confirm checklist and validation evidence."}
+{"path":"internal/daemon/desktop_rpc/broker.go","kind":"code","notes":"Review pending request, timeout, resolve, and disconnect behavior."}
+{"path":"internal/daemon/desktop_rpc/codec.go","kind":"code","notes":"Review frame size and JSON codec behavior."}
+{"path":"internal/daemon/desktop_rpc/listener.go","kind":"code","notes":"Review Unix socket cleanup, accept/read loop, local system methods."}
+{"path":"internal/daemon/server.go","kind":"code","notes":"Review status wiring and existing daemon compatibility."}
+{"path":".trellis/spec/backend/quality-guidelines.md","kind":"spec","notes":"Check Desktop RPC contract update."}

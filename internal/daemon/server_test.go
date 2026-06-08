@@ -128,6 +128,22 @@ func TestHandleStatus(t *testing.T) {
 	if _, ok := body["active_agents"]; !ok {
 		t.Errorf("expected active_agents in response")
 	}
+	desktopRPC, ok := body["desktop_rpc"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected desktop_rpc object in response")
+	}
+	if _, ok := desktopRPC["listening"].(bool); !ok {
+		t.Errorf("expected desktop_rpc.listening boolean")
+	}
+	if _, ok := desktopRPC["connected"].(bool); !ok {
+		t.Errorf("expected desktop_rpc.connected boolean")
+	}
+	if _, ok := desktopRPC["pending"].(float64); !ok {
+		t.Errorf("expected desktop_rpc.pending number")
+	}
+	if _, ok := desktopRPC["sock_path"]; ok {
+		t.Errorf("desktop_rpc status must not expose sock_path")
+	}
 }
 
 // ---------------------------------------------------------------------------

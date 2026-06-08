@@ -1246,6 +1246,32 @@ safePath, err := validatePath(args.Path, ".")
 
 ---
 
+## Scenario: Desktop RPC Boundary
+
+### Scope
+
+- Trigger: adding or changing native Desktop integration between the StarClaw daemon and a future local Astria/Desktop app.
+- Scope: local daemon only. The first boundary lives under `internal/daemon/desktop_rpc` and must not assume a cloud transport, calendar/EventKit implementation, or native app launcher.
+
+### Contracts
+
+- Transport uses Unix domain sockets with 4-byte big-endian length-prefixed JSON frames.
+- Supported system methods start with `system.ping` and `system.capabilities`.
+- Codec must reject zero-length, malformed, partial, and oversized frames.
+- Broker pending requests must terminate on success, timeout, context cancellation, send failure, or disconnect. Pending requests must not hang after a Desktop disconnect.
+- Listener may handle Desktop-originated `system.*` requests locally and route daemon-originated request results back through the broker.
+- `/status` may expose only `desktop_rpc.listening`, `desktop_rpc.connected`, and `desktop_rpc.pending`. Do not expose socket paths, raw frame payloads, request params, API keys, provider headers, or user content.
+
+### Tests Required
+
+- Codec round-trip and invalid frame tests.
+- Broker not-connected, request/result correlation, timeout, context cancel, and disconnect cancellation tests.
+- Listener fake Desktop smoke tests for Desktop-originated `system.ping` / `system.capabilities`.
+- Listener fake Desktop smoke test for daemon-originated request/result flow.
+- Daemon `/status` test proving Desktop RPC exposes only state booleans/counts.
+
+---
+
 ## Anti-Patterns
 
 - ❌ Don't add comments that explain WHAT — code should be self-documenting

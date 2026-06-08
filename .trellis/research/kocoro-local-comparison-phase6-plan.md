@@ -106,3 +106,27 @@ Goal: move StarClaw/Astria from a hardened local runtime/workbench into Kocoro-l
 OpenAI-compatible streaming is still valuable, but it is not the top Kocoro parity gap. Kocoro's open-source daemon emphasizes `POST /message` SSE, `/research`, `/swarm`, channel runtime, memory sidecar, and Desktop RPC. Therefore Phase 6 should prioritize engine orchestration and daemon/channel runtime before polishing the OpenAI-compatible gateway.
 
 If product strategy shifts toward "StarClaw as a local OpenAI API endpoint", then `openai-compatible-streaming-tools` should move back to first place. For Kocoro parity, it should be a later compatibility slice.
+
+## 2026-06-08 follow-up: local checkout baseline and next plan
+
+Kocoro is now available locally at `/Users/timmy/PycharmProjects/Kocoro`, so future parity checks should use that checkout first instead of repeatedly reading GitHub. The checkout baseline for this comparison is still:
+
+- Commit: `74cdb3c Merge pull request #233 from Kocoro-lab/fix/mailbox-consume-after-save`
+- Branch state: `main...origin/main`
+- Refresh note: `git pull --ff-only` failed once with `Error in the HTTP2 framing layer`; retrying with `http.version=HTTP/1.1` hung and was terminated. Treat this plan as based on local commit `74cdb3c` until a later explicit refresh succeeds.
+
+Phase6 status against the recommended child order:
+
+1. `kocoro-style-workflow-orchestration` — done and archived.
+2. `daemon-mailbox-channel-runtime` — done and archived.
+3. `episodic-memory-sidecar-foundation` — done and archived.
+4. `desktop-rpc-boundary` — current planned child. This is still the right next task because Kocoro exposes native Desktop capabilities through `internal/daemon/desktop_rpc/*`, and StarClaw has no equivalent package yet.
+5. `desktop-browser-tool-depth` — next after Desktop RPC boundary. Kocoro still has deeper browser / AX / lease / handoff / PinchTab / Ghostty-style tool surfaces than StarClaw.
+6. `share-sync-delivery-lifecycle` — after tool depth. Kocoro still has dedicated `internal/share`, `internal/sync`, retractable publish, and upload lifecycle code that StarClaw only partially mirrors through current publish/upload tools.
+
+Remaining post-Phase6 gaps likely need additional phases:
+
+- Phase7: channel/cloud delivery parity, including richer route indexing, connection state, channel lifecycle, WebSocket controller equivalents, and opt-in external channel transports. Keep this local-first until cloud/privacy approval is explicit.
+- Phase8: native desktop and tool parity, expanding the Desktop RPC boundary into calendar/native tools, deeper browser handoff, AX integration, Ghostty/workspace helpers, and visual verification.
+- Phase9: share/sync/migration parity, including local share rendering, retractable publishing abstractions, sync dry-run/marker/uploader lifecycle, and Claude Code import/migration support.
+- Phase10: product polish and compatibility, including OpenAI-compatible streaming/tool-call deltas if StarClaw is intended to serve as a local OpenAI-style endpoint, plus Astria stellar workbench UI polish after core platform gaps are closed.

@@ -18,6 +18,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agent"
 	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/daemon/desktop_rpc"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/session"
 	"github.com/starclaw/starclaw/internal/skills"
@@ -26,20 +27,22 @@ import (
 
 // Server is the daemon HTTP server.
 type Server struct {
-	port           int
-	deps           *ServerDeps
-	srv            *http.Server
-	version        string
-	eventBus       *EventBus
-	approvalBroker *ApprovalBroker
-	ctx            context.Context
-	cancel         context.CancelFunc
-	startedAt      time.Time
-	running        sync.Map // requestID -> *runtimeHandle
-	runStore       *RunStore
-	councilStore   *CouncilStore
-	inboxStore     *InboxStore
-	mailboxStore   *MailboxStore
+	port            int
+	deps            *ServerDeps
+	srv             *http.Server
+	version         string
+	eventBus        *EventBus
+	approvalBroker  *ApprovalBroker
+	ctx             context.Context
+	cancel          context.CancelFunc
+	startedAt       time.Time
+	running         sync.Map // requestID -> *runtimeHandle
+	runStore        *RunStore
+	councilStore    *CouncilStore
+	inboxStore      *InboxStore
+	mailboxStore    *MailboxStore
+	desktopRPC      *desktop_rpc.Broker
+	desktopListener *desktop_rpc.Listener
 }
 
 // NewServer creates a new Server.
@@ -54,6 +57,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		councilStore:   NewCouncilStore(defaultCouncilStoreLimit),
 		inboxStore:     NewInboxStore(defaultInboxStoreLimit),
 		mailboxStore:   NewMailboxStore(defaultMailboxCapacity),
+		desktopRPC:     desktop_rpc.NewBroker(),
 	}
 }
 
@@ -101,6 +105,14 @@ func (s *Server) SetCancelFunc(cancel context.CancelFunc) {
 	s.cancel = cancel
 }
 
+func (s *Server) DesktopRPCBroker() *desktop_rpc.Broker {
+	return s.desktopRPC
+}
+
+func (s *Server) SetDesktopRPCListener(listener *desktop_rpc.Listener) {
+	s.desktopListener = listener
+}
+
 // ---------------------------------------------------------------------------
 // Health / Status
 // ---------------------------------------------------------------------------
@@ -123,7 +135,25 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"uptime":        int(uptime),
 		"version":       s.version,
 		"active_agents": activeCount,
+		"desktop_rpc":   s.desktopRPCStatus(),
 	})
+}
+
+func (s *Server) desktopRPCStatus() desktop_rpc.Status {
+	if s.desktopListener != nil {
+		return s.desktopListener.Status()
+	}
+	pending := 0
+	connected := false
+	if s.desktopRPC != nil {
+		pending = s.desktopRPC.PendingCount()
+		connected = s.desktopRPC.IsConnected()
+	}
+	return desktop_rpc.Status{
+		Listening: false,
+		Connected: connected,
+		Pending:   pending,
+	}
 }
 
 func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
