@@ -30,6 +30,7 @@ const state = {
   dataOutputFormat: "",
   selectedDeliveryLane: "",
   selectedSourceRow: "",
+  selectedReconcileRisk: "",
   selectedCitationGrounding: "",
   citationClaimScope: "",
   citationSourcePosture: "",
@@ -75,6 +76,7 @@ const views = {
   mcp: ["MCP 星港", "Inspect configured MCP servers and docking readiness."],
   memory: ["记忆星图", "Review source sessions and draft memory candidates."],
   sources: ["来源登记", "Inspect freshness and reliability for knowledge sources."],
+  reconcile: ["知识校验", "Resolve stale, conflicting, weak, or sensitive knowledge."],
   citation: ["引用校准", "Plan source coverage, citations, and evidence gaps."],
   council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
@@ -1248,6 +1250,7 @@ function renderHomeActivity() {
   renderReviewQueue();
   renderComparisonWorkbench();
   renderSourceRegistry();
+  renderKnowledgeReconciliation();
   renderCitationGroundingPlanner();
   renderPromptExperimentLab();
   renderReuseGallery();
@@ -1300,6 +1303,7 @@ function renderHomeDockedTools() {
   renderReviewQueue();
   renderComparisonWorkbench();
   renderSourceRegistry();
+  renderKnowledgeReconciliation();
   renderCitationGroundingPlanner();
   renderPromptExperimentLab();
   renderReuseGallery();
@@ -3314,6 +3318,7 @@ function renderManageCount() {
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
   const sourceCount = sourceRegistryRows().length;
+  const reconcileCount = knowledgeReconciliationItems().length;
   const citationCount = citationGroundingCards().length;
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
@@ -3328,6 +3333,8 @@ function renderManageCount() {
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-sources-count", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
   setText("nav-sources-count", sourceCount);
+  setText("manage-reconcile-count", `${reconcileCount} risk${reconcileCount === 1 ? "" : "s"}`);
+  setText("nav-reconcile-count", reconcileCount);
   setText("manage-citation-count", `${citationCount} check${citationCount === 1 ? "" : "s"}`);
   setText("nav-citation-count", citationCount);
   setText("manage-compare-count", `${compareCount} lane${compareCount === 1 ? "" : "s"}`);
@@ -3350,7 +3357,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + reconcileCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -3874,6 +3881,179 @@ function draftSourceMaintenanceToChat(id) {
   showToast("Source maintenance drafted to chat.");
 }
 
+function knowledgeReconciliationItems() {
+  const sources = sourceRegistryRows();
+  const citationCards = citationGroundingCards();
+  const resultEntries = resultArchiveEntries();
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const uncategorizedFacts = memoryFacts.filter((fact) => String(fact.category || "").toLowerCase() === "uncategorized").length;
+  const staleSource = sources.find((source) => /no |needs|stale|error/i.test(`${source.freshness} ${source.reliability} ${source.action}`)) || sources[0];
+  const weakCitation = citationCards.find((card) => /gap|needs|unsupported|stale|missing/i.test(`${card.readiness} ${card.gap}`)) || citationCards[0];
+  const latestResult = resultEntries[0];
+  return [
+    {
+      id: "source-conflict",
+      type: "Conflict",
+      title: "Source conflict review",
+      route: "sources",
+      severity: sources.length > 1 ? "review" : "seed",
+      evidence: `${sources.length} source lanes`,
+      risk: "Different source lanes may support different versions of a claim.",
+      resolution: "Compare source freshness, reliability, operator selection, and direct evidence before reusing the claim.",
+      boundary: "Do not merge conflicting claims into memory until one source wins or the uncertainty is stated.",
+      prompt: `Run an Astria source conflict reconciliation.\n\nSource lanes: ${sources.map((source) => `${source.title} (${source.reliability}, ${source.freshness})`).join("; ") || "none"}\n\nIdentify conflicting claims, stale sources, reliability differences, and the safest wording. Return a resolution table with winning source, rejected source, uncertainty, and next route.`,
+    },
+    {
+      id: "stale-memory",
+      type: "Freshness",
+      title: "Stale memory review",
+      route: "memory",
+      severity: memoryEntries.length ? "audit" : "seed",
+      evidence: `${memoryEntries.length} memory files, ${memoryFacts.length} facts`,
+      risk: "Durable memory can become stale when source dates, product versions, or user preferences change.",
+      resolution: "Add freshness notes, reject expired facts, and route unstable claims to browser or source review.",
+      boundary: "Treat time-sensitive memory as untrusted until a dated source confirms it.",
+      prompt: `Run an Astria stale memory reconciliation.\n\nMemory files: ${memoryEntries.length}\nFacts: ${memoryFacts.length}\nWarnings: ${memoryWarnings.length}\n\nFind stale, time-sensitive, duplicate, or unsupported memory. For each item, decide keep, update, re-source, or reject, and include a freshness note.`,
+    },
+    {
+      id: "weak-citation",
+      type: "Citation",
+      title: "Weak citation escalation",
+      route: "citation",
+      severity: weakCitation?.readiness || "review",
+      evidence: weakCitation?.evidence || "citation gap",
+      risk: weakCitation?.gap || "A claim has weak or missing citation support.",
+      resolution: "Map atomic claims to sources, capture direct evidence, and block confident wording for gaps.",
+      boundary: "Do not present assumptions as sourced facts.",
+      prompt: `Run an Astria weak citation escalation.\n\nCard: ${weakCitation?.title || "none"}\nGap: ${weakCitation?.gap || "missing citation"}\nEvidence: ${weakCitation?.evidence || "none"}\n\nProduce a claim map, required source list, accepted citations, unsupported claims, and safe uncertainty wording.`,
+    },
+    {
+      id: "duplicate-memory",
+      type: "Duplicate",
+      title: "Duplicate or uncategorized memory",
+      route: "memory",
+      severity: memoryWarnings.length || uncategorizedFacts ? "cleanup" : "monitor",
+      evidence: `${memoryWarnings.length} warnings, ${uncategorizedFacts} uncategorized facts`,
+      risk: "Duplicate or uncategorized memory makes future retrieval ambiguous.",
+      resolution: "Normalize subjects, merge duplicates, categorize useful facts, and reject vague notes.",
+      boundary: "Do not add more memory until obvious duplicates or uncategorized facts are reviewed.",
+      prompt: `Run an Astria memory duplicate reconciliation.\n\nWarnings: ${memoryWarnings.join("; ") || "none"}\nUncategorized facts: ${uncategorizedFacts}\n\nFind duplicate subjects, uncategorized facts, vague notes, and merge candidates. Return approve/update/reject actions with categories and source notes.`,
+    },
+    {
+      id: "missing-coverage",
+      type: "Coverage",
+      title: "Missing source coverage",
+      route: "sources",
+      severity: sources.some((source) => !source.evidence) ? "gap" : "review",
+      evidence: `${sources.filter((source) => Number(source.evidence || 0) > 0).length}/${sources.length} source lanes with evidence`,
+      risk: "A result may rely on source lanes that have no evidence count or no operator-selected source.",
+      resolution: "Require at least one reliable lane per important claim or escalate to evidence capture.",
+      boundary: "Do not reuse results as durable knowledge when the source lane is empty.",
+      prompt: `Run an Astria source coverage reconciliation.\n\nSource lanes: ${sources.map((source) => `${source.id}: ${source.evidence} evidence`).join("; ") || "none"}\n\nIdentify claims or result types without enough source coverage, then route each gap to source registry, browser capture, data planner, memory review, or share-pack caveat.`,
+    },
+    {
+      id: "privacy-boundary",
+      type: "Privacy",
+      title: "Privacy and approval boundary",
+      route: "share",
+      severity: "guarded",
+      evidence: `${state.inboxItems.length} inbox items, ${state.schedules.length} schedules`,
+      risk: "Handoffs, delivery, browser actions, and file evidence can expose private paths, secrets, or remote state changes.",
+      resolution: "Redact private data, require approval before outbound delivery, and state what must remain local.",
+      boundary: "No external send, schedule, form submit, account action, or private excerpt reuse without approval.",
+      prompt: `Run an Astria privacy and approval reconciliation.\n\nInbox items: ${state.inboxItems.length}\nSchedules: ${state.schedules.length}\nLatest result: ${latestResult?.title || "none"}\n\nFind private paths, secrets, external delivery risks, browser/form actions, and approval blockers. Return redactions, local-only boundaries, and required approvals.`,
+    },
+    {
+      id: "result-freshness",
+      type: "Result",
+      title: "Result freshness review",
+      route: "results",
+      severity: latestResult ? latestResult.review : "seed",
+      evidence: latestResult?.evidence || "no archived result",
+      risk: "Saved results can outlive source freshness or hide unresolved assumptions.",
+      resolution: "Attach source dates, unresolved risks, reuse limits, and a recheck route before follow-up.",
+      boundary: "Do not promote archived results into playbooks or memory without freshness and evidence review.",
+      prompt: `Run an Astria result freshness reconciliation.\n\nResult: ${latestResult?.title || "none"}\nEvidence: ${latestResult?.evidence || "none"}\nFreshness: ${latestResult?.freshness || "unknown"}\n\nReview whether the result is still reusable, what source dates are missing, which assumptions remain open, and where to recheck before reuse.`,
+    },
+  ];
+}
+
+function renderKnowledgeReconciliation() {
+  const items = knowledgeReconciliationItems();
+  setText("nav-reconcile-count", items.length);
+  setText("manage-reconcile-count", `${items.length} risk${items.length === 1 ? "" : "s"}`);
+  setText("reconcile-summary", `${items.length} reconciliation item${items.length === 1 ? "" : "s"} across conflicts, stale memory, weak citations, duplicate facts, source coverage, privacy, and result freshness.`);
+  const list = $("knowledge-reconcile-list");
+  if (!list) return;
+  if (!state.selectedReconcileRisk || !items.some((item) => item.id === state.selectedReconcileRisk)) {
+    state.selectedReconcileRisk = items[0]?.id || "";
+  }
+  list.innerHTML = items.map((item) => `<article class="reconcile-card ${item.id === state.selectedReconcileRisk ? "active" : ""}" data-reconcile-risk="${escapeHTML(item.id)}">
+    <div class="row-item-title"><span>${escapeHTML(item.type)}</span><span class="tag">${escapeHTML(item.severity)}</span></div>
+    <strong>${escapeHTML(item.title)}</strong>
+    <div class="reconcile-grid">
+      <span>Evidence</span><strong>${escapeHTML(item.evidence)}</strong>
+      <span>Risk</span><strong>${escapeHTML(item.risk)}</strong>
+      <span>Resolution</span><strong>${escapeHTML(item.resolution)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-reconcile-select="${escapeHTML(item.id)}">Resolution brief</button>
+      <button type="button" data-reconcile-draft="${escapeHTML(item.id)}">Draft resolution</button>
+      <button type="button" data-panel="${escapeHTML(item.route)}">Open route</button>
+    </div>
+  </article>`).join("");
+  renderKnowledgeReconciliationDetail(items.find((item) => item.id === state.selectedReconcileRisk) || items[0]);
+}
+
+function renderKnowledgeReconciliationDetail(item) {
+  const target = $("knowledge-reconcile-detail");
+  if (!target) return;
+  if (!item) {
+    target.innerHTML = `<div class="empty-state">Select a reconciliation item.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(item.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(item.type)}</strong>
+        <span>Severity</span><strong>${escapeHTML(item.severity)}</strong>
+        <span>Route</span><strong>${escapeHTML(item.route)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Risk</h3>
+      <p>${escapeHTML(item.risk)}</p>
+      <h3>Resolution action</h3>
+      <p>${escapeHTML(item.resolution)}</p>
+      <h3>Confidence boundary</h3>
+      <p>${escapeHTML(item.boundary)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-reconcile-draft="${escapeHTML(item.id)}">Draft resolution</button>
+        <button type="button" data-panel="${escapeHTML(item.route)}">Open route</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function reconcileRiskByID(id) {
+  return knowledgeReconciliationItems().find((item) => item.id === id) || null;
+}
+
+function draftReconciliationToChat(id) {
+  const item = reconcileRiskByID(id);
+  if (!item) return;
+  $("chat-input").value = `${item.prompt}\n\nReturn a reconciliation brief with risk, evidence, resolution action, confidence boundary, source route, and what must not be reused yet.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Reconciliation drafted to chat.");
+}
+
 function citationGroundingContext() {
   const claim = ($("citation-claim-scope")?.value || state.citationClaimScope || "").trim();
   const posture = ($("citation-source-posture")?.value || state.citationSourcePosture || "").trim();
@@ -4329,6 +4509,7 @@ async function loadMemory() {
     state.memory = await api("/memory");
     renderMemoryMapPreview();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
@@ -4340,6 +4521,7 @@ async function loadMemory() {
     setText("memory-save-state", "Error");
     renderMemoryMapPreview();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderAgentContinuityDigest();
     renderHomeDockedTools();
     renderComparisonWorkbench();
@@ -4367,6 +4549,7 @@ async function submitMemoryCandidate(event) {
     $("memory-save-state").textContent = "Saved";
     renderMemoryMapPreview();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
@@ -4385,6 +4568,7 @@ async function deleteMemoryEntry(name) {
     state.memory = await api(`/memory/${encodeURIComponent(name)}`, { method: "DELETE" });
     renderMemoryMapPreview();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
@@ -4480,6 +4664,7 @@ async function loadCouncilRuns() {
     state.councilRuns = Array.isArray(data.runs) ? data.runs : [];
     renderCouncilRuns();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderComparisonWorkbench();
     renderReuseGallery();
     renderResultLibrary();
@@ -4490,6 +4675,7 @@ async function loadCouncilRuns() {
     renderError(list, error.message);
     renderComparisonWorkbench();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderReuseGallery();
     renderResultLibrary();
   }
@@ -6033,6 +6219,7 @@ async function loadRuns() {
     renderHomeActivity();
     renderMemoryMapPreview();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderAgentContinuityDigest();
     renderRunsList();
     renderComparisonWorkbench();
@@ -6051,6 +6238,7 @@ async function loadRuns() {
     renderHomeActivity();
     renderMemoryMapPreview();
     renderSourceRegistry();
+    renderKnowledgeReconciliation();
     renderAgentContinuityDigest();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
@@ -7260,6 +7448,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const reconcileSelect = event.target.closest("[data-reconcile-select]");
+  if (reconcileSelect) {
+    state.selectedReconcileRisk = reconcileSelect.dataset.reconcileSelect || "";
+    renderKnowledgeReconciliation();
+    return;
+  }
+
+  const reconcileDraft = event.target.closest("[data-reconcile-draft]");
+  if (reconcileDraft) {
+    draftReconciliationToChat(reconcileDraft.dataset.reconcileDraft);
+    return;
+  }
+
+  const reconcileRisk = event.target.closest("[data-reconcile-risk]");
+  if (reconcileRisk && !event.target.closest("button")) {
+    state.selectedReconcileRisk = reconcileRisk.dataset.reconcileRisk || "";
+    renderKnowledgeReconciliation();
+    return;
+  }
+
   const citationSelect = event.target.closest("[data-citation-select]");
   if (citationSelect) {
     state.selectedCitationGrounding = citationSelect.dataset.citationSelect || "";
@@ -7734,6 +7942,7 @@ renderHomeMode();
 renderStrategyMatrix();
 renderFileIntake();
 renderSourceRegistry();
+renderKnowledgeReconciliation();
 renderCitationGroundingPlanner();
 renderWorkspaceHub();
 renderKnowledgeCuration();

@@ -680,3 +680,26 @@ Added an embedded Astria Playbook Library that turns repeatable local work into 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 125: Knowledge Conflict Reconciliation
+
+**Date**: 2026-06-08
+**Task**: Knowledge conflict reconciliation
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Knowledge Reconciliation panel that catches stale, conflicting, weakly sourced, duplicate, missing-coverage, privacy-sensitive, and result freshness risks before knowledge is reused. Each risk card includes evidence, resolution action, confidence boundary, route, and a Chat draft for reconciliation.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

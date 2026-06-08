@@ -122,6 +122,10 @@
               <span><span class="nav-icon" aria-hidden="true">⋱</span>来源登记</span>
               <small id="nav-sources-count">0</small>
             </button>
+            <button class="nav-item" data-panel="reconcile" aria-label="Knowledge Reconciliation">
+              <span><span class="nav-icon" aria-hidden="true">⊚</span>知识校验</span>
+              <small id="nav-reconcile-count">0</small>
+            </button>
             <button class="nav-item" data-panel="citation" aria-label="Citation Planner">
               <span><span class="nav-icon" aria-hidden="true">⌁</span>引用校准</span>
               <small id="nav-citation-count">0</small>
@@ -621,6 +625,11 @@
                 <strong id="manage-sources-count">0 sources</strong>
                 <small>Review freshness, reliability, and maintenance actions for knowledge sources.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="reconcile">
+                <span>Knowledge Reconciliation</span>
+                <strong id="manage-reconcile-count">0 risks</strong>
+                <small>Resolve stale, conflicting, weak, or privacy-sensitive knowledge before reuse.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="citation">
                 <span>Citation Planner</span>
                 <strong id="manage-citation-count">0 checks</strong>
@@ -1010,6 +1019,27 @@
             </div>
             <div class="source-registry-detail" id="source-registry-detail">
               <div class="empty-state">Select a source row.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-reconcile" aria-labelledby="reconcile-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="reconcile-heading">Knowledge Reconciliation</h2>
+              <p id="reconcile-summary">Resolve stale, conflicting, weak, or sensitive knowledge before reuse.</p>
+            </div>
+            <div class="knowledge-reconcile-list" id="knowledge-reconcile-list">
+              <div class="empty-state">No reconciliation risks yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Resolution Brief</h2>
+              <p>Choose the safest route before memory, sources, citations, or results are reused.</p>
+            </div>
+            <div class="knowledge-reconcile-detail" id="knowledge-reconcile-detail">
+              <div class="empty-state">Select a reconciliation item.</div>
             </div>
           </aside>
         </section>
