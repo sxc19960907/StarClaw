@@ -10,6 +10,8 @@ const state = {
   inboxProviders: [],
   intakeResult: null,
   currentRunDetail: null,
+  currentRunTrace: [],
+  currentRunTraceError: "",
   currentCouncilRun: null,
   selectedComparisonLane: "",
   selectedRunQuality: "",
@@ -6886,12 +6888,14 @@ function renderRunsList() {
     const active = run.id === state.activeRunID ? " active" : "";
     const agent = run.agent || "default";
     const session = run.session_id || "no session";
+    const badges = runRuntimeBadges(run);
     return `<article class="row-item run-row${active}" data-run-id="${escapeHTML(run.id)}">
       <div class="row-item-title">
         <span>${escapeHTML(run.prompt || run.id)}</span>
         <span class="tag run-status ${escapeHTML(run.status || "unknown")}">${escapeHTML(run.status || "unknown")}</span>
       </div>
       <p>${escapeHTML(agent)} · ${escapeHTML(session)} · ${escapeHTML(formatTimestamp(run.started_at))}</p>
+      ${badges.length ? `<div class="run-runtime-badges">${badges.map((badge) => `<span class="runtime-badge ${escapeHTML(badge.tone)}">${escapeHTML(badge.label)}</span>`).join("")}</div>` : ""}
       <div class="row-actions">
         <button type="button" data-run-open="${escapeHTML(run.id)}">Open run</button>
       </div>
@@ -6913,6 +6917,8 @@ function filteredRuns() {
     case "attention":
     case "completed":
       return state.runs.filter((run) => runMissionGroup(run) === state.runFilter);
+    case "recovered":
+      return state.runs.filter((run) => isRecoveredRun(run));
     case "council":
       return state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:"));
     default:
@@ -6929,10 +6935,12 @@ function renderMissionControl() {
     active: state.runs.filter((run) => runMissionGroup(run) === "active").length,
     attention: state.runs.filter((run) => runMissionGroup(run) === "attention").length,
     completed: state.runs.filter((run) => runMissionGroup(run) === "completed").length,
+    recovered: state.runs.filter((run) => isRecoveredRun(run)).length,
     council: state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:")).length,
   };
   board.innerHTML = [
     ["active", "Active", counts.active, "Running or queued work"],
+    ["recovered", "Recovered", counts.recovered, "Restored durable runtime state"],
     ["attention", "Needs attention", counts.attention, "Failed, cancelled, or unknown"],
     ["completed", "Completed", counts.completed, "Finished missions"],
     ["total", "Total", counts.total, "All recorded runs"],
@@ -6944,6 +6952,7 @@ function renderMissionControl() {
   filters.innerHTML = [
     ["all", "All", counts.total],
     ["active", "Active", counts.active],
+    ["recovered", "Recovered", counts.recovered],
     ["attention", "Attention", counts.attention],
     ["completed", "Completed", counts.completed],
     ["council", "Council", counts.council],
@@ -6953,11 +6962,19 @@ function renderMissionControl() {
 async function selectRun(runID) {
   if (!runID) return;
   state.activeRunID = runID;
+  state.currentRunTrace = [];
+  state.currentRunTraceError = "";
   renderRunsList();
   switchPanel("runs");
   try {
-    const run = await api(`/runs/${encodeURIComponent(runID)}`);
+    const encodedRunID = encodeURIComponent(runID);
+    const [run, traceResult] = await Promise.all([
+      api(`/runs/${encodedRunID}`),
+      api(`/runs/${encodedRunID}/trace`).catch((error) => ({ trace: [], error: error.message })),
+    ]);
     state.activeRunID = run.id || runID;
+    state.currentRunTrace = Array.isArray(traceResult.trace) ? traceResult.trace : [];
+    state.currentRunTraceError = traceResult.error || "";
     renderRunsList();
     renderRunDetail(run);
   } catch (error) {
@@ -7000,6 +7017,22 @@ function renderRunDetail(run) {
         ${prompt ? `<button type="button" data-run-detail-rerun>Re-run</button>` : ""}
       </div>
       ${run.error ? `<div class="error-state">${escapeHTML(run.error)}</div>` : ""}
+    </section>
+    <section class="run-detail-section">
+      <h3>Runtime Recovery</h3>
+      ${renderRuntimeRecovery(run)}
+    </section>
+    <section class="run-detail-section">
+      <h3>Workflow Steps</h3>
+      ${renderWorkflowSteps(run.steps || [])}
+    </section>
+    <section class="run-detail-section">
+      <h3>Control History</h3>
+      ${renderControlHistory(run.control || [])}
+    </section>
+    <section class="run-detail-section">
+      <h3>Trace</h3>
+      ${renderRunTrace(state.currentRunTrace, state.currentRunTraceError)}
     </section>
     <section class="run-detail-section">
       <h3>Prompt</h3>
@@ -7183,6 +7216,118 @@ function runEventLabel(type) {
     default:
       return type || "Event";
   }
+}
+
+function isRecoveredRun(run) {
+  if (!run) return false;
+  const status = String(run.status || "").toLowerCase();
+  return status === "running" && run.id !== state.activeRequestID;
+}
+
+function replayState(run) {
+  const controls = run?.control || [];
+  const steps = run?.steps || [];
+  if (controls.some((item) => item.action === "replay" && item.status === "approval_required") || steps.some((step) => step.status === "waiting_approval")) {
+    return "approval";
+  }
+  if (controls.some((item) => item.action === "replay" && item.status === "approved") || steps.some((step) => step.metadata?.replay_run_id)) {
+    return "approved";
+  }
+  return "";
+}
+
+function pauseState(run) {
+  const controls = run?.control || [];
+  for (let index = controls.length - 1; index >= 0; index--) {
+    const item = controls[index];
+    if (item.action === "pause" || item.action === "resume" || item.action === "cancel") {
+      return item.status || item.action;
+    }
+  }
+  const step = (run?.steps || []).find((item) => item.id === "runtime-pause");
+  return step?.metadata?.runtime_status || "";
+}
+
+function runRuntimeBadges(run) {
+  const badges = [];
+  if (isRecoveredRun(run)) badges.push({ label: "recovered", tone: "recovered" });
+  const replay = replayState(run);
+  if (replay === "approval") badges.push({ label: "replay approval", tone: "attention" });
+  if (replay === "approved") badges.push({ label: "replay approved", tone: "ok" });
+  const pause = pauseState(run);
+  if (pause) badges.push({ label: pause, tone: pause === "paused" ? "attention" : "neutral" });
+  const traceCount = Number(run?.trace_events || run?.structured_events?.length || 0);
+  if (traceCount > 0) badges.push({ label: `${traceCount} trace`, tone: "trace" });
+  return badges;
+}
+
+function renderRuntimeRecovery(run) {
+  const traceCount = state.currentRunTrace.length || Number(run?.trace_events || run?.structured_events?.length || 0);
+  const items = [
+    ["Restart state", isRecoveredRun(run) ? "Recovered from durable store" : "Current daemon state"],
+    ["Replay", replayStateLabel(replayState(run))],
+    ["Pause / resume", pauseState(run) || "No pause boundary"],
+    ["Workflow steps", String((run?.steps || []).length)],
+    ["Control decisions", String((run?.control || []).length)],
+    ["Trace events", String(traceCount)],
+  ];
+  return `<div class="runtime-recovery-grid">${items.map(([label, value]) => `
+    <div>
+      <span>${escapeHTML(label)}</span>
+      <strong>${escapeHTML(value)}</strong>
+    </div>`).join("")}</div>`;
+}
+
+function replayStateLabel(value) {
+  switch (value) {
+    case "approval":
+      return "Waiting for replay approval";
+    case "approved":
+      return "Replay approved or launched";
+    default:
+      return "No replay boundary";
+  }
+}
+
+function renderWorkflowSteps(steps) {
+  if (!steps.length) return `<div class="empty-state">No workflow steps recorded.</div>`;
+  return `<div class="runtime-table">${steps.map((step) => `
+    <article>
+      <div>
+        <strong>${escapeHTML(step.title || step.id || "Workflow step")}</strong>
+        <span>${escapeHTML(step.status || "unknown")} · ${escapeHTML(formatTimestamp(step.updated_at))}</span>
+      </div>
+      ${step.metadata ? `<pre>${escapeHTML(formatToolPayload(step.metadata))}</pre>` : ""}
+    </article>`).join("")}</div>`;
+}
+
+function renderControlHistory(control) {
+  if (!control.length) return `<div class="empty-state">No control decisions recorded.</div>`;
+  return `<div class="runtime-table">${control.map((item) => `
+    <article>
+      <div>
+        <strong>${escapeHTML(item.action || "control")}</strong>
+        <span>${escapeHTML(item.status || "unknown")} · ${escapeHTML(formatTimestamp(item.at))}</span>
+      </div>
+      ${item.reason ? `<p>${escapeHTML(item.reason)}</p>` : ""}
+    </article>`).join("")}</div>`;
+}
+
+function renderRunTrace(trace, error) {
+  if (error) return `<div class="error-state">Trace unavailable: ${escapeHTML(error)}</div>`;
+  if (!trace.length) return `<div class="empty-state">No structured trace events recorded.</div>`;
+  return `<div class="runtime-table trace-table">${trace.map((item) => `
+    <article>
+      <div>
+        <strong>${escapeHTML(item.name || item.event_id || "trace_event")}</strong>
+        <span>${escapeHTML(item.phase || "event")} · ${escapeHTML(formatTimestamp(item.timestamp))}</span>
+      </div>
+      <div class="trace-meta">
+        <span>${escapeHTML(item.event_id || "-")}</span>
+        <span>${escapeHTML(item.span_id || "-")}</span>
+      </div>
+      ${item.attributes ? `<pre>${escapeHTML(formatToolPayload(item.attributes))}</pre>` : ""}
+    </article>`).join("")}</div>`;
 }
 
 function runSessionID(run) {

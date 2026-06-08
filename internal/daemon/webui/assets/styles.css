@@ -3086,6 +3086,10 @@ textarea:focus {
   background: #fff8ef;
 }
 
+.mission-control-card.recovered {
+  background: linear-gradient(90deg, rgba(44, 166, 216, 0.08), transparent), var(--surface);
+}
+
 .mission-control-filters {
   display: flex;
   flex-wrap: wrap;
@@ -3125,6 +3129,44 @@ textarea:focus {
 .run-status.running {
   color: #8a5a12;
   border-color: rgba(167, 112, 35, 0.32);
+}
+
+.run-runtime-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.runtime-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.runtime-badge.recovered,
+.runtime-badge.trace {
+  color: var(--route-blue);
+  border-color: rgba(44, 166, 216, 0.28);
+  background: rgba(44, 166, 216, 0.06);
+}
+
+.runtime-badge.attention {
+  color: #8a5a12;
+  border-color: rgba(167, 112, 35, 0.34);
+  background: #fff8ef;
+}
+
+.runtime-badge.ok {
+  color: var(--ok);
+  border-color: rgba(22, 125, 104, 0.28);
 }
 
 .run-detail {
@@ -3188,6 +3230,86 @@ textarea:focus {
   overflow-wrap: anywhere;
   color: var(--text);
   font-weight: 600;
+}
+
+.runtime-recovery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.runtime-recovery-grid div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+}
+
+.runtime-recovery-grid span,
+.trace-meta,
+.runtime-table article > div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.runtime-recovery-grid strong,
+.runtime-table strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.runtime-table {
+  display: grid;
+  gap: 8px;
+}
+
+.runtime-table article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+}
+
+.runtime-table article > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.runtime-table p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.runtime-table pre {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 8px;
+  color: var(--text);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trace-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .council-form {

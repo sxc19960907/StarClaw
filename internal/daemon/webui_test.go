@@ -55,14 +55,14 @@ func TestWebUIRoutes(t *testing.T) {
 			path:             "/app/assets/styles.css",
 			wantStatus:       http.StatusOK,
 			wantContentType:  "text/css",
-			wantBodyContains: []string{".shell"},
+			wantBodyContains: []string{".shell", ".runtime-recovery-grid", ".runtime-badge"},
 		},
 		{
 			name:             "script asset is served",
 			path:             "/app/assets/app.js",
 			wantStatus:       http.StatusOK,
 			wantContentType:  "text/javascript",
-			wantBodyContains: []string{"refreshAll"},
+			wantBodyContains: []string{"refreshAll", "renderRuntimeRecovery", "/trace", "Recovered"},
 		},
 		{
 			name:       "unknown path remains not found",

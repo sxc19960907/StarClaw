@@ -475,6 +475,42 @@ func TestRunHistoryAPI(t *testing.T) {
 	getJSON(t, ts.URL+"/runs/missing-run", http.StatusNotFound, &map[string]string{})
 }
 
+func TestRunsSummaryIncludesRuntimeRecoveryMetadata(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{RequestID: "recovery-summary", Channel: ChannelHTTP, Source: "replay"})
+	if !s.runStore.AddControlDecision("recovery-summary", RunControlDecision{Action: "replay", Status: "approval_required", Reason: "review first"}) {
+		t.Fatal("expected control decision to be recorded")
+	}
+	if !s.runStore.UpsertStep("recovery-summary", WorkflowStepState{ID: "replay-approval", Status: WorkflowStepWaitingApproval}) {
+		t.Fatal("expected workflow step to be recorded")
+	}
+	s.runStore.AddEvent("recovery-summary", EventUsage, map[string]any{"input_tokens": 1})
+
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	var got struct {
+		Runs []RunSummary `json:"runs"`
+	}
+	getJSON(t, ts.URL+"/runs", http.StatusOK, &got)
+	if len(got.Runs) != 1 {
+		t.Fatalf("runs = %d, want 1", len(got.Runs))
+	}
+	run := got.Runs[0]
+	if run.Source != "replay" {
+		t.Fatalf("source = %q, want replay", run.Source)
+	}
+	if len(run.Control) != 1 || run.Control[0].Action != "replay" || run.Control[0].Status != "approval_required" {
+		t.Fatalf("control = %#v, want replay approval metadata", run.Control)
+	}
+	if len(run.Steps) != 1 || run.Steps[0].Status != WorkflowStepWaitingApproval {
+		t.Fatalf("steps = %#v, want waiting approval step", run.Steps)
+	}
+	if run.TraceEvents < 3 {
+		t.Fatalf("trace events = %d, want structured event count", run.TraceEvents)
+	}
+}
+
 func TestSSEEventHandlerToolPayloads(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h := &sseEventHandler{w: rec, flusher: rec}

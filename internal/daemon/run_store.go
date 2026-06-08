@@ -77,14 +77,18 @@ type RunRecord struct {
 }
 
 type RunSummary struct {
-	ID        string     `json:"id"`
-	Status    string     `json:"status"`
-	Agent     string     `json:"agent,omitempty"`
-	Channel   string     `json:"channel,omitempty"`
-	Prompt    string     `json:"prompt,omitempty"`
-	SessionID string     `json:"session_id,omitempty"`
-	StartedAt time.Time  `json:"started_at"`
-	EndedAt   *time.Time `json:"ended_at,omitempty"`
+	ID          string               `json:"id"`
+	Status      string               `json:"status"`
+	Agent       string               `json:"agent,omitempty"`
+	Channel     string               `json:"channel,omitempty"`
+	Prompt      string               `json:"prompt,omitempty"`
+	SessionID   string               `json:"session_id,omitempty"`
+	Source      string               `json:"source,omitempty"`
+	Control     []RunControlDecision `json:"control,omitempty"`
+	Steps       []WorkflowStepState  `json:"steps,omitempty"`
+	TraceEvents int                  `json:"trace_events,omitempty"`
+	StartedAt   time.Time            `json:"started_at"`
+	EndedAt     *time.Time           `json:"ended_at,omitempty"`
 }
 
 type RunStore struct {
@@ -357,14 +361,18 @@ func (s *RunStore) List() []RunSummary {
 			continue
 		}
 		summaries = append(summaries, RunSummary{
-			ID:        record.ID,
-			Status:    record.Status,
-			Agent:     record.Agent,
-			Channel:   record.Channel,
-			Prompt:    record.Prompt,
-			SessionID: record.SessionID,
-			StartedAt: record.StartedAt,
-			EndedAt:   record.EndedAt,
+			ID:          record.ID,
+			Status:      record.Status,
+			Agent:       record.Agent,
+			Channel:     record.Channel,
+			Prompt:      record.Prompt,
+			SessionID:   record.SessionID,
+			Source:      record.Request.Source,
+			Control:     append([]RunControlDecision(nil), record.Control...),
+			Steps:       cloneWorkflowSteps(record.Steps),
+			TraceEvents: len(record.StructuredEvents),
+			StartedAt:   record.StartedAt,
+			EndedAt:     record.EndedAt,
 		})
 	}
 	return summaries
@@ -613,6 +621,17 @@ func cloneWorkflowStep(step WorkflowStepState) WorkflowStepState {
 	copyStep := step
 	copyStep.Metadata = cloneMetadata(step.Metadata)
 	return copyStep
+}
+
+func cloneWorkflowSteps(steps []WorkflowStepState) []WorkflowStepState {
+	if steps == nil {
+		return nil
+	}
+	out := make([]WorkflowStepState, 0, len(steps))
+	for _, step := range steps {
+		out = append(out, cloneWorkflowStep(step))
+	}
+	return out
 }
 
 func cloneMetadata(metadata map[string]any) map[string]any {
