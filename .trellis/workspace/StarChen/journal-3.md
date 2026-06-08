@@ -657,3 +657,26 @@ Added an embedded Astria Result Library that archives saved local outcomes acros
 ### Status
 
 [OK] **Completed**
+
+
+## Session 124: Playbook Library Best Practices
+
+**Date**: 2026-06-08
+**Task**: Playbook library best practices
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Playbook Library that turns repeatable local work into reviewed best-practice cards. The library covers evidence research, data insight, handoff packaging, citation grounding, agent profiles, memory curation, approval-first delivery, and council decision review, with trigger, evidence gate, safety boundary, reusable output, Chat drafting, and source-panel routing.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

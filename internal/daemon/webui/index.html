@@ -55,6 +55,10 @@
               <span><span class="nav-icon" aria-hidden="true">☉</span>结果星库</span>
               <small id="nav-results-count">0</small>
             </button>
+            <button class="nav-item" data-panel="playbooks" aria-label="Playbook Library">
+              <span><span class="nav-icon" aria-hidden="true">✵</span>实践手册</span>
+              <small id="nav-playbooks-count">0</small>
+            </button>
             <button class="nav-item" data-panel="starter" aria-label="Starter Kits">
               <span><span class="nav-icon" aria-hidden="true">⋆</span>启动套件</span>
               <small id="nav-starter-count">0</small>
@@ -647,6 +651,11 @@
                 <strong id="manage-results-count">0 results</strong>
                 <small>Archive completed briefs, evidence bundles, and reusable outputs for follow-up.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="playbooks">
+                <span>Playbook Library</span>
+                <strong id="manage-playbooks-count">0 playbooks</strong>
+                <small>Turn successful work into reviewed local best-practice launch paths.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="starter">
                 <span>Starter Kits</span>
                 <strong id="manage-starter-count">0 kits</strong>
@@ -1161,6 +1170,27 @@
             </div>
             <div class="result-library-detail" id="result-library-detail">
               <div class="empty-state">Select an archived result.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-playbooks" aria-labelledby="playbooks-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="playbooks-heading">Playbook Library</h2>
+              <p id="playbooks-summary">Reviewed local best practices for repeatable Astria work.</p>
+            </div>
+            <div class="playbook-library-grid" id="playbook-library-grid">
+              <div class="empty-state">No playbooks yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Playbook Brief</h2>
+              <p>Use proven routes with explicit evidence gates, safety boundaries, and reusable outputs.</p>
+            </div>
+            <div class="playbook-library-detail" id="playbook-library-detail">
+              <div class="empty-state">Select a playbook.</div>
             </div>
           </aside>
         </section>

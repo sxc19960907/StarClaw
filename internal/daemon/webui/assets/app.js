@@ -15,6 +15,7 @@ const state = {
   selectedPromptVariant: "",
   selectedReuseAsset: "",
   selectedResultArchive: "",
+  selectedPlaybook: "",
   selectedStarterKit: "",
   selectedSharePack: "",
   sharePackName: "",
@@ -80,6 +81,7 @@ const views = {
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
   results: ["结果星库", "Review saved reports, evidence briefs, and reusable outcomes."],
+  playbooks: ["实践手册", "Launch from reviewed local best-practice patterns."],
   starter: ["启动套件", "Launch from prebuilt Astria workflow kits."],
   share: ["交接包", "Package local work into reviewed handoff starters."],
   browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
@@ -1250,6 +1252,7 @@ function renderHomeActivity() {
   renderPromptExperimentLab();
   renderReuseGallery();
   renderResultLibrary();
+  renderPlaybookLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
   renderBrowserMissionPlanner();
@@ -1301,6 +1304,7 @@ function renderHomeDockedTools() {
   renderPromptExperimentLab();
   renderReuseGallery();
   renderResultLibrary();
+  renderPlaybookLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
   renderBrowserMissionPlanner();
@@ -2358,6 +2362,192 @@ function draftResultArchiveToChat(id) {
   showToast("Result follow-up drafted to chat.");
 }
 
+function playbookLibraryCards() {
+  const starterCount = starterKits().length;
+  const resultCount = resultArchiveEntries().length;
+  const reuseCount = reuseGalleryAssets().length;
+  const sourceCount = sourceRegistryRows().length;
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const councilCount = state.councilRuns.length;
+  const deliveryCount = deliveryLanes().length;
+  const browserTarget = browserMissionContext().url;
+  const dataSource = dataInsightContext().source;
+  return [
+    {
+      id: "reviewed-research",
+      type: "Research",
+      title: "Reviewed evidence research",
+      route: "browser",
+      trigger: "A web or product claim needs current, cited evidence before a decision.",
+      evidenceGate: "Visible source, dated summary, citation map, and unsupported-claim list.",
+      safety: "Read-only browsing; ask before forms, authenticated state, downloads, purchases, posts, or account changes.",
+      reusableOutput: "Cited brief that can enter Result Library, Citation Planner, and Share Pack.",
+      next: `Start from Browser Planner with target ${browserTarget}.`,
+      prompt: `Run the Astria reviewed evidence research playbook.\n\nTrigger: verify a web or product claim with current evidence.\nCurrent target: ${browserTarget}\nAvailable sources: ${sourceCount}\n\nSteps:\n1. Define the exact claim and required freshness.\n2. Inspect sources read-only.\n3. Capture citations, dates, and gaps.\n4. Produce safe wording and next route.\n\nEvidence gate: visible source, dated summary, citation map, unsupported-claim list.\nSafety boundary: no forms, account changes, downloads, purchases, posts, or destructive actions without approval.\nReusable output: cited brief for Result Library, Citation Planner, and Share Pack.`,
+    },
+    {
+      id: "data-insight",
+      type: "Data",
+      title: "Reviewable data insight",
+      route: "data",
+      trigger: "A local file, table, metric, or export needs a decision-ready finding.",
+      evidenceGate: "Source descriptor, schema or field limits, observed findings, uncertainty, and freshness date.",
+      safety: "Do not infer hidden fields or causal explanations; separate observation from hypothesis.",
+      reusableOutput: "Insight brief, memory candidates, and reusable analysis prompt.",
+      next: `Start from Data Planner with source ${dataSource}.`,
+      prompt: `Run the Astria reviewable data insight playbook.\n\nTrigger: turn local data into a decision-ready finding.\nCurrent source: ${dataSource}\nMemory entries: ${memoryCount}\n\nSteps:\n1. Profile the source and freshness.\n2. State what can and cannot be answered.\n3. Produce findings with evidence and caveats.\n4. Save durable facts as reviewed memory candidates.\n\nEvidence gate: source descriptor, schema or field limits, observed findings, uncertainty, freshness date.\nSafety boundary: do not invent hidden fields or causal explanations.\nReusable output: insight brief, memory candidates, reusable analysis prompt.`,
+    },
+    {
+      id: "handoff-pack",
+      type: "Handoff",
+      title: "Local handoff package",
+      route: "share",
+      trigger: "Useful work needs to be continued by a future session, reviewer, or teammate.",
+      evidenceGate: "Summary, included artifacts, source freshness, boundaries, acceptance checks, and next actions.",
+      safety: "Keep sharing local; redact secrets, private paths, and assumptions that only the current session knows.",
+      reusableOutput: "Copyable Share Pack section and follow-up prompt.",
+      next: `Use ${resultCount} result archive entries and ${reuseCount} reusable assets.`,
+      prompt: `Run the Astria local handoff package playbook.\n\nTrigger: package useful work for a future session, reviewer, or teammate.\nResult archive entries: ${resultCount}\nReusable assets: ${reuseCount}\n\nSteps:\n1. Summarize the durable result.\n2. List evidence and freshness.\n3. State boundaries, risks, and redactions.\n4. Write a next-action checklist.\n\nEvidence gate: summary, artifacts, source freshness, boundaries, acceptance checks, next actions.\nSafety boundary: local-only handoff; redact secrets and private paths.\nReusable output: copyable Share Pack section and follow-up prompt.`,
+    },
+    {
+      id: "citation-grounding",
+      type: "Citation",
+      title: "Claim grounding review",
+      route: "citation",
+      trigger: "An answer, brief, or result includes claims that need reliable support.",
+      evidenceGate: "Atomic claim map, source lane, quote or cited summary, freshness check, and gap escalation.",
+      safety: "Block confident wording when evidence is weak, stale, private, or conflicting.",
+      reusableOutput: "Citation brief and safe wording for reuse.",
+      next: `Use Citation Planner with ${sourceCount} source lanes.`,
+      prompt: `Run the Astria claim grounding review playbook.\n\nTrigger: claims need reliable support before reuse or delivery.\nSource lanes: ${sourceCount}\n\nSteps:\n1. Split the answer into atomic claims.\n2. Match claims to source lanes.\n3. Capture citations, freshness, and gaps.\n4. Rewrite unsafe claims with uncertainty.\n\nEvidence gate: atomic claim map, source lane, quote or cited summary, freshness check, gap escalation.\nSafety boundary: block confident wording when evidence is weak, stale, private, or conflicting.\nReusable output: citation brief and safe wording.`,
+    },
+    {
+      id: "agent-profile",
+      type: "Agent",
+      title: "Focused agent profile",
+      route: "agents",
+      trigger: "A repeated workflow needs a named agent with clear role, memory, and tool boundaries.",
+      evidenceGate: "Role, model posture, allowed tools, denied tools, memory needs, command, and test prompt.",
+      safety: "Keep permissions narrow and avoid broad auto-approve defaults.",
+      reusableOutput: "Named agent profile plus saved command starter.",
+      next: `Review ${state.agents.length} current agent profiles.`,
+      prompt: `Run the Astria focused agent profile playbook.\n\nTrigger: repeated workflow needs a named agent.\nCurrent agents: ${state.agents.length}\nStarter kits: ${starterCount}\n\nSteps:\n1. Define one repeatable job.\n2. Specify role, model posture, memory needs, and tool boundaries.\n3. Write one saved command and a test prompt.\n4. Validate permissions before reuse.\n\nEvidence gate: role, model posture, allowed tools, denied tools, memory needs, command, test prompt.\nSafety boundary: narrow permissions, no broad auto-approval.\nReusable output: named agent profile plus saved command starter.`,
+    },
+    {
+      id: "memory-curation",
+      type: "Memory",
+      title: "Durable memory curation",
+      route: "memory",
+      trigger: "A result or session produced facts, preferences, decisions, risks, or commands worth remembering.",
+      evidenceGate: "Source, category, durability reason, freshness note, duplicate/conflict check, and rejection criteria.",
+      safety: "Save durable facts only; reject vague, stale, sensitive, or unsupported notes.",
+      reusableOutput: "Reviewed memory candidates and taxonomy improvement notes.",
+      next: `Review ${memoryCount} memory entries and ${resultCount} archived results.`,
+      prompt: `Run the Astria durable memory curation playbook.\n\nTrigger: decide what from recent work should become durable memory.\nMemory entries: ${memoryCount}\nResult archive entries: ${resultCount}\n\nSteps:\n1. Extract candidate facts from results and sessions.\n2. Categorize each candidate.\n3. Check source, freshness, duplicate, and conflict risk.\n4. Approve only durable, useful memory.\n\nEvidence gate: source, category, durability reason, freshness note, duplicate/conflict check, rejection criteria.\nSafety boundary: reject vague, stale, sensitive, or unsupported notes.\nReusable output: reviewed memory candidates and taxonomy notes.`,
+    },
+    {
+      id: "delivery-review",
+      type: "Delivery",
+      title: "Approval-first delivery",
+      route: "delivery",
+      trigger: "A result may need outbound delivery, schedule, or external-channel follow-up.",
+      evidenceGate: "Destination, artifact, approval boundary, schedule or channel, verification, and rollback step.",
+      safety: "Never send externally, schedule, or change remote state without explicit approval.",
+      reusableOutput: "Delivery lane checklist and reviewed outbound prompt.",
+      next: `Review ${deliveryCount} delivery lanes and ${state.schedules.length} schedules.`,
+      prompt: `Run the Astria approval-first delivery playbook.\n\nTrigger: result may need outbound delivery or scheduling.\nDelivery lanes: ${deliveryCount}\nSchedules: ${state.schedules.length}\n\nSteps:\n1. Identify destination and artifact.\n2. Define approval boundary and verification.\n3. Choose schedule or channel only after review.\n4. Include rollback and confirmation steps.\n\nEvidence gate: destination, artifact, approval boundary, schedule or channel, verification, rollback step.\nSafety boundary: no external send, schedule, or remote state change without explicit approval.\nReusable output: delivery checklist and reviewed outbound prompt.`,
+    },
+    {
+      id: "council-decision",
+      type: "Council",
+      title: "Multi-role decision review",
+      route: "council",
+      trigger: "A decision is important enough to need planner, researcher, and reviewer perspectives.",
+      evidenceGate: "Role briefs, disagreement or risk notes, synthesis, acceptance criteria, and next executable step.",
+      safety: "Do not treat role output as final until synthesis resolves conflicts and gaps.",
+      reusableOutput: "Council synthesis that can seed Result Library or Share Pack.",
+      next: `Use ${councilCount} council runs as precedent.`,
+      prompt: `Run the Astria multi-role decision review playbook.\n\nTrigger: decision needs planner, researcher, and reviewer perspectives.\nCouncil runs: ${councilCount}\n\nSteps:\n1. Split the decision into planning, research, and review concerns.\n2. Require each role to state evidence and uncertainty.\n3. Synthesize agreement, disagreement, and gaps.\n4. Produce one executable next step.\n\nEvidence gate: role briefs, disagreement or risk notes, synthesis, acceptance criteria, next executable step.\nSafety boundary: role output is not final until conflicts and gaps are resolved.\nReusable output: council synthesis for Result Library or Share Pack.`,
+    },
+  ];
+}
+
+function renderPlaybookLibrary() {
+  const cards = playbookLibraryCards();
+  setText("nav-playbooks-count", cards.length);
+  setText("manage-playbooks-count", `${cards.length} playbook${cards.length === 1 ? "" : "s"}`);
+  setText("playbooks-summary", `${cards.length} reviewed local best-practice playbook${cards.length === 1 ? "" : "s"} for research, data, handoff, citation, agents, memory, delivery, and council review.`);
+  const list = $("playbook-library-grid");
+  if (!list) return;
+  if (!state.selectedPlaybook || !cards.some((card) => card.id === state.selectedPlaybook)) {
+    state.selectedPlaybook = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="playbook-card ${card.id === state.selectedPlaybook ? "active" : ""}" data-playbook="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.route)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="playbook-gridline">
+      <span>Trigger</span><strong>${escapeHTML(card.trigger)}</strong>
+      <span>Evidence gate</span><strong>${escapeHTML(card.evidenceGate)}</strong>
+      <span>Reusable output</span><strong>${escapeHTML(card.reusableOutput)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-playbook-select="${escapeHTML(card.id)}">Playbook brief</button>
+      <button type="button" data-playbook-draft="${escapeHTML(card.id)}">Draft playbook</button>
+      <button type="button" data-panel="${escapeHTML(card.route)}">Open route</button>
+    </div>
+  </article>`).join("");
+  renderPlaybookDetail(cards.find((card) => card.id === state.selectedPlaybook) || cards[0]);
+}
+
+function renderPlaybookDetail(card) {
+  const target = $("playbook-library-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a playbook.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.route)}</strong>
+        <span>Next</span><strong>${escapeHTML(card.next)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Trigger</h3>
+      <p>${escapeHTML(card.trigger)}</p>
+      <h3>Evidence gate</h3>
+      <p>${escapeHTML(card.evidenceGate)}</p>
+      <h3>Safety boundary</h3>
+      <p>${escapeHTML(card.safety)}</p>
+      <h3>Reusable output</h3>
+      <p>${escapeHTML(card.reusableOutput)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-playbook-draft="${escapeHTML(card.id)}">Draft playbook</button>
+        <button type="button" data-panel="${escapeHTML(card.route)}">Open route</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function playbookByID(id) {
+  return playbookLibraryCards().find((card) => card.id === id) || null;
+}
+
+function draftPlaybookToChat(id) {
+  const card = playbookByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a playbook launch brief with trigger, steps, evidence gate, safety boundary, reusable output, and next Astria route.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Playbook drafted to chat.");
+}
+
 function starterKits() {
   const agentCount = state.agents.length;
   const sourceCount = sourceRegistryRows().length;
@@ -3129,6 +3319,7 @@ function renderManageCount() {
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
   const resultsCount = resultArchiveEntries().length;
+  const playbooksCount = playbookLibraryCards().length;
   const starterCount = starterKits().length;
   const shareCount = sharePackCards().length;
   const browserCount = browserMissionCards().length;
@@ -3147,6 +3338,8 @@ function renderManageCount() {
   setText("nav-reuse-count", reuseCount);
   setText("manage-results-count", `${resultsCount} result${resultsCount === 1 ? "" : "s"}`);
   setText("nav-results-count", resultsCount);
+  setText("manage-playbooks-count", `${playbooksCount} playbook${playbooksCount === 1 ? "" : "s"}`);
+  setText("nav-playbooks-count", playbooksCount);
   setText("manage-starter-count", `${starterCount} kit${starterCount === 1 ? "" : "s"}`);
   setText("nav-starter-count", starterCount);
   setText("manage-share-count", `${shareCount} pack${shareCount === 1 ? "" : "s"}`);
@@ -3157,7 +3350,7 @@ function renderManageCount() {
   setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + citationCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + resultsCount + playbooksCount + starterCount + shareCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -5846,6 +6039,7 @@ async function loadRuns() {
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
+    renderPlaybookLibrary();
     renderProactiveDeliveryBoard();
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
@@ -5862,6 +6056,7 @@ async function loadRuns() {
     renderPromptExperimentLab();
     renderReuseGallery();
     renderResultLibrary();
+    renderPlaybookLibrary();
     renderProactiveDeliveryBoard();
     renderError(list, error.message);
   }
@@ -6925,6 +7120,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const playbookSelect = event.target.closest("[data-playbook-select]");
+  if (playbookSelect) {
+    state.selectedPlaybook = playbookSelect.dataset.playbookSelect || "";
+    renderPlaybookLibrary();
+    return;
+  }
+
+  const playbookDraft = event.target.closest("[data-playbook-draft]");
+  if (playbookDraft) {
+    draftPlaybookToChat(playbookDraft.dataset.playbookDraft);
+    return;
+  }
+
+  const playbook = event.target.closest("[data-playbook]");
+  if (playbook && !event.target.closest("button")) {
+    state.selectedPlaybook = playbook.dataset.playbook || "";
+    renderPlaybookLibrary();
+    return;
+  }
+
   const starterSelect = event.target.closest("[data-starter-select]");
   if (starterSelect) {
     state.selectedStarterKit = starterSelect.dataset.starterSelect || "";
@@ -7448,6 +7663,7 @@ $("promptlab-goal").addEventListener("input", (event) => {
   renderPromptExperimentLab();
   renderReuseGallery();
   renderResultLibrary();
+  renderPlaybookLibrary();
   renderStarterKitLauncher();
   renderSharePackBuilder();
 });
@@ -7455,16 +7671,19 @@ $("share-pack-name").addEventListener("input", (event) => {
   state.sharePackName = event.target.value;
   renderSharePackBuilder();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("share-pack-audience").addEventListener("input", (event) => {
   state.sharePackAudience = event.target.value;
   renderSharePackBuilder();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("share-pack-intent").addEventListener("input", (event) => {
   state.sharePackIntent = event.target.value;
   renderSharePackBuilder();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("browser-target-url").addEventListener("input", (event) => {
   state.browserTargetURL = event.target.value;
@@ -7478,31 +7697,37 @@ $("data-source-descriptor").addEventListener("input", (event) => {
   state.dataSourceDescriptor = event.target.value;
   renderDataInsightPlanner();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("data-analysis-question").addEventListener("input", (event) => {
   state.dataAnalysisQuestion = event.target.value;
   renderDataInsightPlanner();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("data-output-format").addEventListener("input", (event) => {
   state.dataOutputFormat = event.target.value;
   renderDataInsightPlanner();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("citation-claim-scope").addEventListener("input", (event) => {
   state.citationClaimScope = event.target.value;
   renderCitationGroundingPlanner();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("citation-source-posture").addEventListener("input", (event) => {
   state.citationSourcePosture = event.target.value;
   renderCitationGroundingPlanner();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 $("citation-evidence-level").addEventListener("input", (event) => {
   state.citationEvidenceLevel = event.target.value;
   renderCitationGroundingPlanner();
   renderResultLibrary();
+  renderPlaybookLibrary();
 });
 
 renderHomeMode();
@@ -7521,6 +7746,7 @@ renderComparisonWorkbench();
 renderPromptExperimentLab();
 renderReuseGallery();
 renderResultLibrary();
+renderPlaybookLibrary();
 renderStarterKitLauncher();
 renderSharePackBuilder();
 renderBrowserMissionPlanner();

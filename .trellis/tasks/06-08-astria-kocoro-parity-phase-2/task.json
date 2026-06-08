@@ -25,7 +25,8 @@
     "06-08-share-pack-builder",
     "06-08-starter-kit-launcher",
     "06-08-citation-grounding-planner",
-    "06-08-result-library-report-archive"
+    "06-08-result-library-report-archive",
+    "06-08-playbook-library-best-practices"
   ],
   "parent": null,
   "relatedFiles": [
@@ -35,6 +36,6 @@
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery, Browser Mission Planner, Data Insight Planner, Share Pack Builder, Starter Kit Launcher, Citation Grounding Planner, and Result Library are complete.",
+  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery, Browser Mission Planner, Data Insight Planner, Share Pack Builder, Starter Kit Launcher, Citation Grounding Planner, Result Library, and Playbook Library are complete.",
   "meta": {}
 }

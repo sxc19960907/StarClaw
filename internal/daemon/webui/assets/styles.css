@@ -3540,6 +3540,70 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.playbook-library-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.playbook-card {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(246, 252, 249, 0.78), rgba(255, 255, 255, 0.74)),
+    var(--surface-soft);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.playbook-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(32, 167, 154, 0.76), rgba(214, 162, 55, 0.74));
+}
+
+.playbook-card.active {
+  border-color: rgba(32, 167, 154, 0.34);
+  background:
+    linear-gradient(90deg, rgba(32, 167, 154, 0.11), transparent 58%),
+    rgba(255, 255, 255, 0.8);
+}
+
+.playbook-card strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.playbook-gridline {
+  display: grid;
+  grid-template-columns: minmax(104px, 0.34fr) minmax(0, 1fr);
+  gap: 6px 10px;
+}
+
+.playbook-gridline span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.playbook-gridline strong {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.playbook-library-detail {
+  margin-top: 16px;
+}
+
 .starter-kit-grid {
   display: grid;
   gap: 10px;

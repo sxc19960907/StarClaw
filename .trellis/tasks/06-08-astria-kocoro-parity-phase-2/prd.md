@@ -22,12 +22,13 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 | P1 | `06-08-starter-kit-launcher` | Add a Starter Kit Launcher for prebuilt local workflows that map common tasks to prompts, routes, evidence gates, and reusable outputs. |
 | P1 | `06-08-citation-grounding-planner` | Add a Citation Grounding Planner for source coverage, claim maps, quote capture, freshness checks, and evidence gap escalation. |
 | P1 | `06-08-result-library-report-archive` | Add a Result Library that archives completed reports, evidence briefs, insight summaries, citation briefs, reusable outputs, and council synthesis for follow-up. |
+| P1 | `06-08-playbook-library-best-practices` | Add a Playbook Library that turns successful local work patterns into reviewed best-practice launch paths. |
 
 ## Acceptance Criteria
 
 - [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
-- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, and archiving saved results for follow-up.
+- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, archiving saved results for follow-up, and capturing repeatable best practices as playbooks.
 
 ## Non-Goals
 
