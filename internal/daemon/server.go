@@ -306,21 +306,112 @@ func (s *Server) handleRunControl(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "run not found")
 			return
 		}
-		s.runStore.AddControlDecision(runID, RunControlDecision{Action: action, Status: "approval_required", Reason: body.Reason})
-		writeJSON(w, http.StatusOK, map[string]any{
-			"status": "approval_required",
-			"run_id": runID,
-			"action": action,
-			"replay": map[string]any{
-				"source_run_id":     runID,
-				"requires_approval": true,
-				"approved":          body.Approved,
-				"reason":            "Replay can repeat tool calls or external effects.",
-				"request":           replayControlRequest(record.Request),
-			},
-		})
+		s.handleReplayControl(w, r, record, body.Approved, body.Reason)
 	default:
 		writeError(w, http.StatusBadRequest, "unsupported action")
+	}
+}
+
+func (s *Server) handleReplayControl(w http.ResponseWriter, r *http.Request, source *RunRecord, approved bool, reason string) {
+	if source == nil {
+		writeError(w, http.StatusNotFound, "run not found")
+		return
+	}
+	plan := replayControlPlan(source.ID, source.Request, approved)
+	if !approved {
+		s.recordReplayBoundary(source.ID, "", "approval_required", reason)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status": "approval_required",
+			"run_id": source.ID,
+			"action": "replay",
+			"replay": plan,
+		})
+		return
+	}
+
+	replayReq := replayRunRequest(source.Request, source.ID)
+	s.recordReplayBoundary(source.ID, replayReq.RequestID, "approved", reason)
+	s.runStore.Start(replayReq)
+	s.runStore.UpsertStep(replayReq.RequestID, WorkflowStepState{
+		ID:       "replay-launch",
+		Title:    "Replay launch",
+		Status:   WorkflowStepRunning,
+		Sequence: 1,
+		Metadata: map[string]any{
+			"source_run_id": source.ID,
+			"replay_run_id": replayReq.RequestID,
+		},
+	})
+
+	ctx, cancel := context.WithCancel(r.Context())
+	s.running.Store(replayReq.RequestID, cancel)
+	defer func() {
+		cancel()
+		s.running.Delete(replayReq.RequestID)
+	}()
+
+	handler := s.recordingHandler(replayReq.RequestID, &httpEventHandler{})
+	result, err := s.runAgent(ctx, replayReq, handler)
+	s.runStore.Complete(replayReq.RequestID, result, err)
+	status := "completed"
+	if err != nil || result.Error != "" {
+		status = "failed"
+	}
+	s.runStore.TransitionStep(replayReq.RequestID, "replay-launch", status, map[string]any{
+		"source_run_id": source.ID,
+		"replay_run_id": replayReq.RequestID,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":        "launched",
+		"source_run_id": source.ID,
+		"replay_run_id": replayReq.RequestID,
+		"action":        "replay",
+		"replay":        replayControlPlan(source.ID, source.Request, true),
+		"run":           result,
+	})
+}
+
+func (s *Server) recordReplayBoundary(sourceRunID, replayRunID, status, reason string) {
+	if sourceRunID == "" {
+		return
+	}
+	controlReason := reason
+	if replayRunID != "" {
+		if controlReason != "" {
+			controlReason += " "
+		}
+		controlReason += "replay_run_id=" + replayRunID
+	}
+	s.runStore.AddControlDecision(sourceRunID, RunControlDecision{Action: "replay", Status: status, Reason: controlReason})
+	stepID := "replay-approval"
+	stepStatus := WorkflowStepWaitingApproval
+	if status == "approved" {
+		stepStatus = WorkflowStepCompleted
+	}
+	s.runStore.UpsertStep(sourceRunID, WorkflowStepState{
+		ID:       stepID,
+		Title:    "Replay approval",
+		Status:   stepStatus,
+		Sequence: 1,
+		Metadata: map[string]any{
+			"source_run_id": sourceRunID,
+			"replay_run_id": replayRunID,
+			"replay_status": status,
+		},
+	})
+}
+
+func replayControlPlan(sourceRunID string, req RunAgentRequest, approved bool) map[string]any {
+	return map[string]any{
+		"source_run_id":     sourceRunID,
+		"requires_approval": true,
+		"approved":          approved,
+		"reason":            "Replay can repeat tool calls or external effects.",
+		"request":           replayControlRequest(req),
 	}
 }
 
@@ -339,6 +430,24 @@ func replayControlRequest(req RunAgentRequest) map[string]any {
 		out["source"] = req.Source
 	}
 	return out
+}
+
+func replayRunRequest(source RunAgentRequest, sourceRunID string) RunAgentRequest {
+	req := source
+	req.RequestID = generateReplayRequestID(sourceRunID)
+	req.Source = "replay"
+	if req.Channel == "" {
+		req.Channel = ChannelHTTP
+	}
+	return req
+}
+
+func generateReplayRequestID(sourceRunID string) string {
+	source := strings.TrimSpace(sourceRunID)
+	if source == "" {
+		source = "run"
+	}
+	return "replay-" + source + "-" + generateRequestID()
 }
 
 func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {

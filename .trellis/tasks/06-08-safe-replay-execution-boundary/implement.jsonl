@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Workflow control, durable run store, durable step state, and replay safety contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Approved replay launch should use contextual errors and compatible HTTP failures."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Replay must not log prompts, tool args, provider payloads, or secrets."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Replay launch must preserve existing tool approval and permissions behavior."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared thinking guides for control path and data-flow changes."}

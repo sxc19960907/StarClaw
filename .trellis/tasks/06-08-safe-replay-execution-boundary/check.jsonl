@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify replay approval boundary, control metadata, durability, redaction, and metrics contracts."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify replay launch errors are surfaced without losing context."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify no sensitive replay data is logged."}
+{"file": ".trellis/spec/backend/permissions.md", "reason": "Verify replay keeps tool approval and permission gates."}

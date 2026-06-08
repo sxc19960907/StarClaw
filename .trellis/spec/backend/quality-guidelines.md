@@ -631,6 +631,82 @@ store.TransitionStep(runID, stepID, WorkflowStepCompleted, safeMetadata)
 // The run lifecycle remains controlled by Start/Complete/control APIs.
 ```
 
+## Scenario: Safe Replay Execution Boundary
+
+### 1. Scope / Trigger
+
+- Trigger: changing replay control behavior from plan-only to approved replay launch, or adding any API that can re-run historical work.
+- Scope: local daemon run control and execution boundary. This is not deterministic replay, recorded tool-output playback, cloud sync, or frontend replay UI.
+
+### 2. Signatures
+
+- Route: `POST /runs/{id}/control`.
+- Request shape:
+  ```json
+  {
+    "action": "replay",
+    "approved": true,
+    "reason": "operator approved"
+  }
+  ```
+- Plan helper: `replayControlPlan(sourceRunID string, req RunAgentRequest, approved bool) map[string]any`.
+- Replay request helper: `replayRunRequest(source RunAgentRequest, sourceRunID string) RunAgentRequest`.
+- Source control metadata: `RunControlDecision{Action:"replay", Status:"approval_required|approved"}`.
+- Source/replay step metadata uses durable `WorkflowStepState` without prompt text.
+
+### 3. Contracts
+
+- `approved=false` or omitted must remain plan-only and must not create a replay run.
+- `approved=true` is the explicit boundary required before launching replay.
+- Approved replay must generate a new replay run id. It must not reuse or overwrite the source run id.
+- Approved replay must execute through `s.runAgent` and `s.recordingHandler`, preserving daemon approval requester, permissions, run events, usage, routing, fallback, and run-store behavior.
+- Approved replay must link source and replay ids in control/step metadata.
+- Replay control responses must redact source prompt text and must not expose tool args, raw provider payloads, or external side-effect payloads.
+- Replay step/control metadata must not store source prompt text.
+- Approved replay must not mutate the source run terminal status.
+- Metrics remain aggregate-only and must not include source prompt text or replay request metadata.
+
+### 4. Validation & Error Matrix
+
+- Missing run -> HTTP `404`.
+- Missing action -> HTTP `400`.
+- Unsupported action -> HTTP `400`.
+- Replay without approval -> HTTP `200`, `status="approval_required"`, no new run.
+- Replay with approval -> HTTP `200`, `status="launched"`, response includes `source_run_id` and `replay_run_id`.
+- Replay run execution error -> replay run is completed as error and handler returns HTTP `500` with the execution error.
+
+### 5. Good/Base/Bad Cases
+
+- Good: approved replay launches a new run through the normal daemon path, and a tool requiring approval still emits `approval_needed`.
+- Base: unapproved replay returns a redacted plan identical in safety to the previous behavior.
+- Bad: replay calls lower-level agent code without the daemon approval requester, reuses the source run id, or returns the original prompt in the control response.
+
+### 6. Tests Required
+
+- Unapproved replay test proving no replay run is created and prompt is redacted.
+- Approved replay test proving a new replay run is created, executed, and linked to the source run.
+- Source run status preservation test.
+- Control/step metadata test for approval boundary.
+- Metrics/control response redaction tests.
+- Existing control validation and approval tests continue to pass.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```go
+result, err := RunAgent(ctx, s.deps, source.Request, nil)
+```
+
+This bypasses daemon approval requester wiring and loses run recording context.
+
+#### Correct
+
+```go
+handler := s.recordingHandler(replayRunID, &httpEventHandler{})
+result, err := s.runAgent(ctx, replayReq, handler)
+```
+
 ## Scenario: Runtime Complexity Routing and Fallback
 
 ### 1. Scope / Trigger

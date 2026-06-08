@@ -2015,6 +2015,111 @@ func TestHandleRunControlReplayRequiresApproval(t *testing.T) {
 	if len(record.Control) != 1 || record.Control[0].Action != "replay" || record.Control[0].Status != "approval_required" {
 		t.Fatalf("control decisions = %#v, want replay approval_required", record.Control)
 	}
+	if len(s.runStore.List()) != 1 {
+		t.Fatalf("run count = %d, want no replay launch", len(s.runStore.List()))
+	}
+	if len(record.Steps) != 1 || record.Steps[0].ID != "replay-approval" || record.Steps[0].Status != WorkflowStepWaitingApproval {
+		t.Fatalf("replay approval step = %#v, want waiting approval", record.Steps)
+	}
+}
+
+func TestHandleRunControlReplayApprovedLaunchesRun(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.runStore.Start(RunAgentRequest{
+		RequestID: "approved-source",
+		Text:      "repeat this sensitive prompt",
+		Agent:     "",
+		Channel:   ChannelHTTP,
+		SessionID: "",
+		Source:    "test",
+	})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	body := `{"action":"replay","approved":true,"reason":"operator approved"}`
+	resp, err := http.Post(ts.URL+"/runs/approved-source/control", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /runs/{id}/control: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var got struct {
+		Status    string           `json:"status"`
+		SourceRun string           `json:"source_run_id"`
+		ReplayRun string           `json:"replay_run_id"`
+		Replay    map[string]any   `json:"replay"`
+		Run       RunAgentResponse `json:"run"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.Status != "launched" || got.SourceRun != "approved-source" || !strings.HasPrefix(got.ReplayRun, "replay-approved-source-") {
+		t.Fatalf("response = %#v, want launched replay link", got)
+	}
+	request := got.Replay["request"].(map[string]any)
+	if request["text_redacted"] != true {
+		t.Fatalf("replay request = %#v, want redacted text", request)
+	}
+	encoded, err := json.Marshal(got.Replay)
+	if err != nil {
+		t.Fatalf("marshal replay plan: %v", err)
+	}
+	if strings.Contains(string(encoded), "repeat this sensitive prompt") {
+		t.Fatalf("replay control response leaked source prompt: %s", encoded)
+	}
+	if got.Run.SessionID == "" || len(got.Run.Messages) == 0 {
+		t.Fatalf("run response = %#v, want executed replay run", got.Run)
+	}
+
+	source, ok := s.runStore.Get("approved-source")
+	if !ok {
+		t.Fatal("expected source run")
+	}
+	if source.Status != "running" {
+		t.Fatalf("source status = %q, want unchanged running", source.Status)
+	}
+	if len(source.Control) != 1 || source.Control[0].Action != "replay" || source.Control[0].Status != "approved" {
+		t.Fatalf("source control = %#v, want approved replay", source.Control)
+	}
+	if !strings.Contains(source.Control[0].Reason, got.ReplayRun) {
+		t.Fatalf("source control reason = %q, want replay run id", source.Control[0].Reason)
+	}
+	if len(source.Steps) != 1 || source.Steps[0].Status != WorkflowStepCompleted {
+		t.Fatalf("source replay step = %#v, want completed approval boundary", source.Steps)
+	}
+	if source.Steps[0].Metadata["replay_run_id"] != got.ReplayRun {
+		t.Fatalf("source step metadata = %#v, want replay run id", source.Steps[0].Metadata)
+	}
+
+	replay, ok := s.runStore.Get(got.ReplayRun)
+	if !ok {
+		t.Fatal("expected replay run")
+	}
+	if replay.Status != "completed" || replay.Request.Source != "replay" {
+		t.Fatalf("replay record = %#v, want completed replay source", replay)
+	}
+	if len(replay.Steps) != 1 || replay.Steps[0].ID != "replay-launch" || replay.Steps[0].Status != WorkflowStepCompleted {
+		t.Fatalf("replay steps = %#v, want completed launch step", replay.Steps)
+	}
+	if replay.Steps[0].Metadata["source_run_id"] != "approved-source" {
+		t.Fatalf("replay step metadata = %#v, want source run id", replay.Steps[0].Metadata)
+	}
+
+	var metrics struct {
+		Metrics map[string]any `json:"metrics"`
+	}
+	getJSON(t, ts.URL+"/metrics", http.StatusOK, &metrics)
+	metricsBody, err := json.Marshal(metrics)
+	if err != nil {
+		t.Fatalf("marshal metrics: %v", err)
+	}
+	if strings.Contains(string(metricsBody), "repeat this sensitive prompt") {
+		t.Fatalf("metrics leaked source prompt: %s", metricsBody)
+	}
 }
 
 func TestHandleRunControlValidation(t *testing.T) {
