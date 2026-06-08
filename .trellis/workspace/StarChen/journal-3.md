@@ -1366,3 +1366,36 @@ Added cross-surface secret leakage regression coverage and fixes for structured 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 124: Phase 5 Web UI bug bash
+
+**Date**: 2026-06-08
+**Task**: Phase 5 Web UI bug bash
+**Branch**: `main`
+
+### Summary
+
+Fixed focused Astria Web UI runtime validation issues: made runtime tables and run actions resilient on narrow layouts, corrected recovered-run detection to avoid client-local false positives, improved quality/reuse run navigation, redacted prompt/tool payloads from summary and time-travel style surfaces, and extended Web UI static smoke tests for hooks, trace errors, and layout guards. Verified TestWebUI, internal/daemon+cmd tests, full go test ./..., manifest validation, and diff whitespace checks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0bd6325` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
