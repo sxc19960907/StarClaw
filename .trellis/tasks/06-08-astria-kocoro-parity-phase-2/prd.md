@@ -32,7 +32,7 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 
 - [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
-- [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, archiving saved results for follow-up, capturing repeatable best practices as playbooks, reconciling stale/conflicting knowledge before reuse, planning reusable local workspace snapshots for handoff/resume continuity, adding budget-aware launch planning for long or expensive missions, and scoring run quality before retrying, reusing, or delivering outputs.
+- [x] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters, turning local data into reviewed insight briefs, packaging work into local handoff packs, offering prebuilt starter workflows, planning reliable citations, archiving saved results for follow-up, capturing repeatable best practices as playbooks, reconciling stale/conflicting knowledge before reuse, planning reusable local workspace snapshots for handoff/resume continuity, adding budget-aware launch planning for long or expensive missions, and scoring run quality before retrying, reusing, or delivering outputs.
 
 ## Non-Goals
 
