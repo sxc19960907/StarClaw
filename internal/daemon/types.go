@@ -82,3 +82,20 @@ type ApprovalResolvedPayload struct {
 	Decision   ApprovalDecision `json:"decision"`
 	ResolvedBy string           `json:"resolved_by,omitempty"`
 }
+
+// ReplyDeliveryResultPayload carries the outcome of delivering a reply to an
+// external channel. The message id lives on the surrounding transport envelope.
+type ReplyDeliveryResultPayload struct {
+	OK            bool   `json:"ok"`
+	Channel       string `json:"channel"`
+	ThreadID      string `json:"thread_id,omitempty"`
+	PlatformMsgID string `json:"platform_msg_id,omitempty"`
+	Error         string `json:"error,omitempty"`
+	Reason        string `json:"reason,omitempty"`
+	Class         string `json:"class,omitempty"`
+}
+
+const (
+	ClassPermanent = "permanent"
+	ClassTransient = "transient"
+)

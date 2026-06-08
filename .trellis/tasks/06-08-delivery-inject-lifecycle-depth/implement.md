@@ -21,4 +21,14 @@
 
 ## Completion Notes
 
-TBD.
+- Added `ReplyDeliveryResultPayload` and delivery classification constants.
+- Added delivery failure formatting for permanent and transient reply failures.
+- Added route-index backed delivery result consumer that enqueues trusted route-scoped `SystemEvent` records.
+- Added tests for permanent/transient wording, Slack-style channel label rendering, success silence, route miss drop, trusted events, and nil-store no-op behavior.
+
+## Validation
+
+- `go test ./internal/daemon` — passed.
+- `go test ./...` — passed.
+- `git diff --check` — passed.
+- `python3 ./.trellis/scripts/task.py validate .trellis/tasks/06-08-delivery-inject-lifecycle-depth` — passed.
