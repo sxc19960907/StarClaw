@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for review."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Review scanner/batcher package shape."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Review non-fatal skipped files and marker failure errors."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Review privacy and batching tests."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Review sync privacy scope and local-first constraints."}

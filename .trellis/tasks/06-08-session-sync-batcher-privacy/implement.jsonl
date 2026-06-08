@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec entry point for package conventions."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Internal package and test file layout."}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Wrapped load/parse errors and non-fatal skipped session behavior."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Tests for new package behavior and privacy regressions."}
+{"file":".trellis/research/kocoro-keychain-sync-migration-discovery.md","reason":"Source plan and Kocoro sync batching privacy requirements."}

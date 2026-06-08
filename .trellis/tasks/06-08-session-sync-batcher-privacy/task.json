@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-10",
-  "name": "astria-kocoro-parity-phase-10",
-  "title": "Astria Kocoro parity phase 10: privacy and data movement foundation",
+  "id": "session-sync-batcher-privacy",
+  "name": "session-sync-batcher-privacy",
+  "title": "Session sync batcher privacy",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -18,12 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-08-keychain-store-boundary",
-    "06-08-sync-marker-dry-run-foundation",
-    "06-08-session-sync-batcher-privacy"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-10",
   "relatedFiles": [],
   "notes": "",
   "meta": {}
