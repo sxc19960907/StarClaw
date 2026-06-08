@@ -59,8 +59,18 @@ type Agent struct {
 
 // AgentInfo provides basic info about an agent for listing.
 type AgentInfo struct {
-	Name        string
-	Description string // First line of AGENT.md
+	Name            string
+	Description     string // First line of AGENT.md
+	Model           string
+	ReasoningEffort string
+	ToolsAllow      []string
+	ToolsDeny       []string
+	AutoApprove     bool
+	HeartbeatEvery  string
+	HeartbeatHours  string
+	HeartbeatModel  string
+	CommandCount    int
+	HasMemory       bool
 }
 
 // ValidateAgentName validates an agent name format.
@@ -181,10 +191,14 @@ func ListAgents(agentsDir string) ([]AgentInfo, error) {
 			}
 		}
 
-		agents = append(agents, AgentInfo{
+		info := AgentInfo{
 			Name:        name,
 			Description: description,
-		})
+		}
+		if agent, err := LoadAgent(agentsDir, name); err == nil {
+			enrichAgentInfo(&info, agent)
+		}
+		agents = append(agents, info)
 	}
 
 	// Sort by name
@@ -193,6 +207,37 @@ func ListAgents(agentsDir string) ([]AgentInfo, error) {
 	})
 
 	return agents, nil
+}
+
+func enrichAgentInfo(info *AgentInfo, agent *Agent) {
+	if agent == nil {
+		return
+	}
+	info.CommandCount = len(agent.Commands)
+	info.HasMemory = strings.TrimSpace(agent.Memory) != ""
+	if agent.Config == nil {
+		return
+	}
+	if agent.Config.Agent != nil {
+		if agent.Config.Agent.Model != nil {
+			info.Model = *agent.Config.Agent.Model
+		}
+		if agent.Config.Agent.ReasoningEffort != nil {
+			info.ReasoningEffort = *agent.Config.Agent.ReasoningEffort
+		}
+	}
+	if agent.Config.Tools != nil {
+		info.ToolsAllow = append([]string(nil), agent.Config.Tools.Allow...)
+		info.ToolsDeny = append([]string(nil), agent.Config.Tools.Deny...)
+	}
+	if agent.Config.AutoApprove != nil {
+		info.AutoApprove = *agent.Config.AutoApprove
+	}
+	if agent.Config.Heartbeat != nil {
+		info.HeartbeatEvery = agent.Config.Heartbeat.Every
+		info.HeartbeatHours = agent.Config.Heartbeat.ActiveHours
+		info.HeartbeatModel = agent.Config.Heartbeat.Model
+	}
 }
 
 // AgentDir returns the path to an agent's directory.

@@ -2971,6 +2971,7 @@ async function clearPermissions() {
 
 async function loadAgents() {
   const list = $("agents-list");
+  const roster = $("agent-capability-roster");
   try {
     const data = await api("/agents");
     state.agents = data.agents || [];
@@ -2979,6 +2980,7 @@ async function loadAgents() {
     renderManageCount();
     renderHomeDockedTools();
     updateAgentSelects();
+    renderAgentCapabilityRoster();
     if (!state.agents.length) {
       renderEmpty(list, "No named agents found.");
       return;
@@ -2994,7 +2996,75 @@ async function loadAgents() {
     }).join("");
   } catch (error) {
     renderError(list, error.message);
+    if (roster) renderError(roster, error.message);
   }
+}
+
+function agentInfoList(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function agentCapabilitySummary(agent) {
+  const cfg = agent.Config || agent.config || {};
+  const modelCfg = cfg.Agent || cfg.agent || {};
+  const toolsCfg = cfg.Tools || cfg.tools || {};
+  const heartbeatCfg = cfg.Heartbeat || cfg.heartbeat || {};
+  const commands = agent.Commands || agent.commands || {};
+  return {
+    name: normalizeName(agent),
+    description: normalizeDescription(agent) || "No description.",
+    model: agent.Model || agent.model || modelCfg.Model || modelCfg.model || "default",
+    reasoning: agent.ReasoningEffort || agent.reasoning_effort || modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "default",
+    allow: agentInfoList(agent.ToolsAllow || agent.tools_allow || toolsCfg.Allow || toolsCfg.allow),
+    deny: agentInfoList(agent.ToolsDeny || agent.tools_deny || toolsCfg.Deny || toolsCfg.deny),
+    autoApprove: (agent.AutoApprove ?? agent.auto_approve ?? cfg.AutoApprove ?? cfg.auto_approve) === true,
+    heartbeatEvery: agent.HeartbeatEvery || agent.heartbeat_every || heartbeatCfg.Every || heartbeatCfg.every || "",
+    heartbeatHours: agent.HeartbeatHours || agent.heartbeat_hours || heartbeatCfg.ActiveHours || heartbeatCfg.active_hours || "",
+    heartbeatModel: agent.HeartbeatModel || agent.heartbeat_model || heartbeatCfg.Model || heartbeatCfg.model || "",
+    commandCount: Number(agent.CommandCount ?? agent.command_count ?? Object.keys(commands).length ?? 0),
+    hasMemory: (agent.HasMemory ?? agent.has_memory ?? Boolean(agent.Memory || agent.memory)) === true,
+  };
+}
+
+function renderAgentCapabilityRoster() {
+  const roster = $("agent-capability-roster");
+  if (!roster) return;
+  if (!state.agents.length) {
+    renderEmpty(roster, "No agent capabilities to map yet.");
+    return;
+  }
+  roster.innerHTML = state.agents.map((agent) => {
+    const summary = agentCapabilitySummary(agent);
+    const heartbeat = summary.heartbeatEvery
+      ? `${summary.heartbeatEvery}${summary.heartbeatHours ? ` · ${summary.heartbeatHours}` : ""}`
+      : "off";
+    const posture = summary.autoApprove ? "Auto approve" : "Manual review";
+    const memory = summary.hasMemory ? "Memory" : "No memory";
+    return `<article class="agent-roster-card">
+      <div class="agent-roster-head">
+        <span class="agent-orbit-dot" aria-hidden="true"></span>
+        <div>
+          <strong>${escapeHTML(summary.name)}</strong>
+          <small>${escapeHTML(summary.description)}</small>
+        </div>
+        <span class="tag">${escapeHTML(posture)}</span>
+      </div>
+      <div class="agent-roster-metrics">
+        <div><span>Model</span><strong>${escapeHTML(summary.model)}</strong></div>
+        <div><span>Reasoning</span><strong>${escapeHTML(summary.reasoning)}</strong></div>
+        <div><span>Allow</span><strong>${summary.allow.length}</strong></div>
+        <div><span>Deny</span><strong>${summary.deny.length}</strong></div>
+        <div><span>Heartbeat</span><strong>${escapeHTML(heartbeat)}</strong></div>
+        <div><span>Commands</span><strong>${summary.commandCount}</strong></div>
+      </div>
+      <div class="pill-list agent-roster-tags">
+        <span>${escapeHTML(memory)}</span>
+        <span>${summary.autoApprove ? "Approval bypass" : "Approval gated"}</span>
+        <span>${summary.heartbeatEvery ? "Heartbeat scheduled" : "No heartbeat"}</span>
+      </div>
+      <div class="row-actions"><button type="button" data-agent-detail="${escapeHTML(summary.name)}">Edit profile</button></div>
+    </article>`;
+  }).join("");
 }
 
 function updateAgentSelects() {

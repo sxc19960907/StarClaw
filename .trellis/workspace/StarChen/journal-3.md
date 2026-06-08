@@ -292,3 +292,26 @@ Added recent session/run resume actions to Astria Command Center and Home Worksp
 ### Next Steps
 
 - None - task complete
+
+
+## Session 114: Agent Capability Roster
+
+**Date**: 2026-06-08
+**Task**: Agent capability roster
+**Branch**: `main`
+
+### Summary
+
+Added an Agents Capability Roster that surfaces each named agent's model, reasoning effort, memory presence, tool allow/deny counts, auto-approve posture, heartbeat status, and command count before opening the editor.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/agents ./internal/daemon`
+- [OK] `./scripts/smoke_webui_agents.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**

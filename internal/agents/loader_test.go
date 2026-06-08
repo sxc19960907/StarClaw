@@ -173,6 +173,21 @@ func TestListAgents(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(agentDir, "AGENT.md"), []byte("# "+name+"\n\nDescription."), 0644); err != nil {
 			t.Fatal(err)
 		}
+		if name == "agent-a" {
+			if err := os.WriteFile(filepath.Join(agentDir, "MEMORY.md"), []byte("Remember agent-a."), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(agentDir, "config.yaml"), []byte("agent:\n  model: gpt-a\n  reasoning_effort: low\ntools:\n  allow:\n    - file_read\n    - grep\n  deny:\n    - bash\nauto_approve: true\nheartbeat:\n  every: 15m\n  active_hours: 09:00-17:00\n  model: gpt-heartbeat\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			commandsDir := filepath.Join(agentDir, "commands")
+			if err := os.MkdirAll(commandsDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(commandsDir, "review.md"), []byte("Review changes."), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 
 	// Create an incomplete agent (no AGENT.md)
@@ -206,6 +221,15 @@ func TestListAgents(t *testing.T) {
 	// Should be sorted
 	if len(agents) >= 2 && agents[0].Name != "agent-a" {
 		t.Error("Agents should be sorted by name")
+	}
+	if len(agents) >= 1 {
+		first := agents[0]
+		if first.Model != "gpt-a" || first.ReasoningEffort != "low" || !first.AutoApprove || first.HeartbeatEvery != "15m" || first.HeartbeatHours != "09:00-17:00" || first.HeartbeatModel != "gpt-heartbeat" || first.CommandCount != 1 || !first.HasMemory {
+			t.Fatalf("agent capability summary not populated: %+v", first)
+		}
+		if len(first.ToolsAllow) != 2 || first.ToolsAllow[0] != "file_read" || len(first.ToolsDeny) != 1 || first.ToolsDeny[0] != "bash" {
+			t.Fatalf("agent tool summary not populated: %+v", first)
+		}
 	}
 }
 

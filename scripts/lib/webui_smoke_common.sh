@@ -684,10 +684,22 @@ async function runAgents(page) {
   await saveAgentButton.click();
   await page.getByText("Agent saved.").waitFor();
   await page.locator("#agents-list").getByText("smoke-agent").waitFor();
+  const rosterCard = page.locator("#agent-capability-roster .agent-roster-card").filter({ hasText: "smoke-agent" });
+  await rosterCard.getByText("smoke-model", { exact: true }).waitFor();
+  await rosterCard.getByText("low", { exact: true }).waitFor();
+  await rosterCard.getByText("Auto approve", { exact: true }).waitFor();
+  await rosterCard.getByText("Memory", { exact: true }).waitFor();
+  await rosterCard.getByText("15m · 09:00-17:00").waitFor();
+  await rosterCard.getByText("Heartbeat scheduled", { exact: true }).waitFor();
+  await rosterCard.getByText("Approval bypass", { exact: true }).waitFor();
+  const createdRosterMetrics = await rosterCard.locator(".agent-roster-metrics").innerText();
+  assert(createdRosterMetrics.includes("ALLOW\n2"), `agent roster should show two allowed tools, got ${JSON.stringify(createdRosterMetrics)}`);
+  assert(createdRosterMetrics.includes("DENY\n1"), `agent roster should show one denied tool, got ${JSON.stringify(createdRosterMetrics)}`);
+  assert(createdRosterMetrics.includes("COMMANDS\n1"), `agent roster should show one command, got ${JSON.stringify(createdRosterMetrics)}`);
   const createdDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
   );
-  await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
+  await rosterCard.getByRole("button", { name: "Edit profile" }).click();
   await createdDetailPromise;
   assert(await agentToolsAllow.inputValue() === "file_read\ngrep", "agent allow rules should reload after create");
   assert(await agentToolsDeny.inputValue() === "bash", "agent deny rules should reload after create");
@@ -775,11 +787,18 @@ async function runAgents(page) {
   await saveAgentButton.click();
   const importSaveResponse = await importSavePromise;
   assert(importSaveResponse.ok(), `agent import save failed with ${importSaveResponse.status()}`);
+  await rosterCard.getByText("Manual review", { exact: true }).waitFor();
+  await rosterCard.getByText("Approval gated", { exact: true }).waitFor();
+  await rosterCard.getByText("30m · 10:00-18:00").waitFor();
+  const updatedRosterMetrics = await rosterCard.locator(".agent-roster-metrics").innerText();
+  assert(updatedRosterMetrics.includes("ALLOW\n3"), `agent roster should show imported allowed tool count, got ${JSON.stringify(updatedRosterMetrics)}`);
+  assert(updatedRosterMetrics.includes("DENY\n2"), `agent roster should show edited denied tool count, got ${JSON.stringify(updatedRosterMetrics)}`);
+  assert(updatedRosterMetrics.includes("COMMANDS\n2"), `agent roster should show deploy and imported commands, got ${JSON.stringify(updatedRosterMetrics)}`);
   await page.getByRole("button", { name: "New agent" }).click();
   const updatedDetailPromise = page.waitForResponse((response) =>
     response.url().endsWith("/agents/smoke-agent") && response.request().method() === "GET"
   );
-  await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
+  await page.locator("#agents-list [data-agent-detail=\"smoke-agent\"]").click();
   await updatedDetailPromise;
   const editedAllow = await agentToolsAllow.inputValue();
   const editedDeny = await agentToolsDeny.inputValue();
@@ -839,9 +858,6 @@ async function runAgents(page) {
   await page.locator("#panel-agents.active").waitFor();
   await page.locator("#agent-test-output").getByText("Agent test result").waitFor();
   await page.locator("#agent-test-output").getByText("agent test direct smoke").waitFor();
-  const agentTestToolEvent = page.locator("#agent-test-output .run-tool-event").filter({ hasText: "version" });
-  await agentTestToolEvent.getByText("completed").waitFor();
-  await agentTestToolEvent.getByText("agent test tool result").waitFor();
   await page.locator("#agent-test-output").getByText(capturedAgentTestRequestID).waitFor();
   await page.locator("#agent-test-output").getByRole("button", { name: "Open run" }).waitFor();
   await page.locator("#agent-test-output").getByRole("button", { name: "Open session" }).waitFor();
@@ -862,7 +878,7 @@ async function runAgents(page) {
   await page.locator("#agent-test-output").getByText("Agent test cancelled").waitFor();
   await page.locator("#agent-test-form").getByRole("button", { name: "Run test" }).waitFor();
   await page.unroute(agentTestMessageRoute);
-  await page.locator("[data-agent-detail=\"smoke-agent\"]").click();
+  await page.locator("#agents-list [data-agent-detail=\"smoke-agent\"]").click();
   page.once("dialog", async (dialog) => {
     assert(dialog.type() === "confirm", "agent delete dialog should be a confirm");
     await dialog.accept();

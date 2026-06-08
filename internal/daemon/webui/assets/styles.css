@@ -2423,6 +2423,105 @@ textarea:focus {
   background: var(--surface);
 }
 
+.agent-roster {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.agent-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.agent-roster-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(23, 25, 35, 0.08);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 94% 12%, rgba(49, 92, 255, 0.12), transparent 23%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(249, 248, 245, 0.82));
+  padding: 12px;
+  box-shadow: 0 10px 22px rgba(23, 25, 35, 0.045);
+}
+
+.agent-roster-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 9px;
+}
+
+.agent-roster-head strong,
+.agent-roster-head small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-roster-head strong {
+  font-size: 14px;
+}
+
+.agent-roster-head small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.agent-orbit-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(49, 92, 255, 0.1), 0 0 16px rgba(49, 92, 255, 0.38);
+}
+
+.agent-roster-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.agent-roster-metrics div {
+  min-width: 0;
+  border: 1px solid rgba(23, 25, 35, 0.07);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.64);
+  padding: 7px;
+}
+
+.agent-roster-metrics span,
+.agent-roster-metrics strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-roster-metrics span {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.agent-roster-metrics strong {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.agent-roster-tags {
+  min-height: 22px;
+}
+
 .permission-preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
