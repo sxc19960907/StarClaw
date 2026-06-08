@@ -1,0 +1,32 @@
+{
+  "id": "data-insight-planner",
+  "name": "data-insight-planner",
+  "title": "Data insight planner",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-08",
+  "completedAt": "2026-06-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-2",
+  "relatedFiles": [
+    ".trellis/tasks/06-08-data-insight-planner/prd.md",
+    "internal/daemon/webui/index.html",
+    "internal/daemon/webui/assets/app.js",
+    "internal/daemon/webui/assets/styles.css",
+    "scripts/lib/webui_smoke_common.sh"
+  ],
+  "notes": "Completed embedded Astria Data Planner for reviewed local data profiling, trend, anomaly, visual summary, and reusable insight capture mission starters. Validated with JS check, daemon tests, Web UI core smoke, and full Go tests.",
+  "meta": {}
+}

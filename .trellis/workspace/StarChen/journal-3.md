@@ -494,6 +494,29 @@ Added a Home Focus Brief that summarizes the current Astria mission stage, selec
 [OK] **Completed**
 
 
+## Session 122: Data Insight Planner
+
+**Date**: 2026-06-08
+**Task**: Data insight planner
+**Branch**: `main`
+
+### Summary
+
+Added an embedded Astria Data Planner for reviewed local data, table, metric, and export analysis mission starters. The planner captures source descriptor, analysis question, and output format, then offers profile, trend, anomaly, visual summary, and knowledge capture lenses that draft Chat prompts or route to Comparison, Memory, and Reuse Gallery.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 106: Recent Work Resume Rail
 
 **Date**: 2026-06-07

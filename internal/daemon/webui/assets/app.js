@@ -17,6 +17,10 @@ const state = {
   selectedBrowserMission: "",
   browserTargetURL: "",
   browserMissionGoal: "",
+  selectedDataInsight: "",
+  dataSourceDescriptor: "",
+  dataAnalysisQuestion: "",
+  dataOutputFormat: "",
   selectedDeliveryLane: "",
   selectedSourceRow: "",
   promptLabGoal: "",
@@ -65,6 +69,7 @@ const views = {
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
   browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
+  data: ["数据洞察", "Plan reviewed data analysis and knowledge capture missions."],
   delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
   intake: ["文件星舱", "Inspect local documents and archives before a run."],
@@ -1230,6 +1235,7 @@ function renderHomeActivity() {
   renderPromptExperimentLab();
   renderReuseGallery();
   renderBrowserMissionPlanner();
+  renderDataInsightPlanner();
   renderProactiveDeliveryBoard();
 }
 
@@ -1276,6 +1282,7 @@ function renderHomeDockedTools() {
   renderPromptExperimentLab();
   renderReuseGallery();
   renderBrowserMissionPlanner();
+  renderDataInsightPlanner();
   renderProactiveDeliveryBoard();
 }
 
@@ -2274,6 +2281,156 @@ function draftBrowserMissionToChat(id) {
   showToast("Browser mission drafted to chat.");
 }
 
+function dataInsightContext() {
+  const source = ($("data-source-descriptor")?.value || state.dataSourceDescriptor || "").trim();
+  const question = ($("data-analysis-question")?.value || state.dataAnalysisQuestion || "").trim();
+  const output = ($("data-output-format")?.value || state.dataOutputFormat || "").trim();
+  const intakeLabel = state.intakeResult ? `Current file intake: ${state.intakeResult.path || state.intakeResult.mode || "ready"}` : "No file intake attached";
+  return {
+    source: source || intakeLabel,
+    question: question || "Identify the decision this data can support and the uncertainty that still needs review.",
+    output: output || "ranked findings with evidence, caveats, and reusable next steps",
+    hasSource: Boolean(source) || Boolean(state.intakeResult),
+    intakeLabel,
+  };
+}
+
+function dataInsightCards() {
+  const ctx = dataInsightContext();
+  const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
+  const sourceCount = sourceRegistryRows().length;
+  const reuseCount = reuseGalleryAssets().length;
+  return [
+    {
+      id: "profile",
+      type: "Profile",
+      title: "Source profile and schema pass",
+      panel: ctx.hasSource ? "chat" : "intake",
+      evidence: ctx.source,
+      readiness: ctx.hasSource ? "ready" : "needs source",
+      guardrail: "Do not infer missing columns or hidden rows; list source limits before conclusions.",
+      action: "Draft a schema, quality, and coverage review.",
+      prompt: `Plan a reviewed Astria data profiling mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\n\nInspect available columns, sample shape, freshness, missing values, duplicate risks, and source limits. Do not invent unavailable data. Return a compact profile, quality risks, and what analysis is safe to run next.`,
+    },
+    {
+      id: "trend",
+      type: "Trend",
+      title: "Trend and segment reading",
+      panel: "compare",
+      evidence: `${sourceCount} registered sources`,
+      readiness: ctx.hasSource ? "targeted" : "review",
+      guardrail: "Separate observed movement from explanation; mark correlations as hypotheses.",
+      action: "Draft a trend comparison across time, segment, or source.",
+      prompt: `Plan an Astria trend analysis mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\nRegistered sources: ${sourceCount}\n\nIdentify time fields or comparable segments, compute or request only reviewable summaries, compare alternative explanations, and return findings with caveats instead of unsupported causal claims.`,
+    },
+    {
+      id: "anomaly",
+      type: "Anomaly",
+      title: "Outlier and risk review",
+      panel: "runs",
+      evidence: `${state.runs.length} recent runs`,
+      readiness: ctx.hasSource ? "guarded" : "needs source",
+      guardrail: "Flag anomalies as candidates until checked against source quality and context.",
+      action: "Draft an outlier review with validation steps.",
+      prompt: `Plan an Astria anomaly review mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\nRecent runs: ${state.runs.length}\n\nDefine anomaly criteria, inspect source quality first, list candidate outliers, explain why each matters, and propose validation before any decision is made.`,
+    },
+    {
+      id: "visual",
+      type: "Chart brief",
+      title: "Visual summary plan",
+      panel: "reuse",
+      evidence: "chart-ready brief",
+      readiness: "draft",
+      guardrail: "Choose visuals that match the fields; avoid decorative charts that obscure uncertainty.",
+      action: "Draft a chart brief and narrative structure.",
+      prompt: `Plan an Astria visual data summary mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\n\nRecommend the smallest useful chart set, define axes and grouping, state what each visual should prove, and include the text summary that should accompany the charts. If fields are missing, ask for them instead of fabricating visuals.`,
+    },
+    {
+      id: "knowledge",
+      type: "Knowledge",
+      title: "Reusable insight capture",
+      panel: "memory",
+      evidence: `${memoryCount} memory entries`,
+      readiness: "saveable",
+      guardrail: "Only save durable, source-backed findings; separate one-off observations from reusable facts.",
+      action: "Draft memory and reuse candidates from the analysis.",
+      prompt: `Plan an Astria reusable data insight capture mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\nMemory entries: ${memoryCount}\nReuse assets: ${reuseCount}\n\nExtract only durable findings that are backed by the source, write memory candidates with evidence and expiry/freshness notes, and propose which prompts or analysis patterns should become reusable starters.`,
+    },
+  ];
+}
+
+function renderDataInsightPlanner() {
+  const cards = dataInsightCards();
+  setText("nav-data-count", cards.length);
+  setText("manage-data-count", `${cards.length} lens${cards.length === 1 ? "" : "es"}`);
+  setText("data-summary", `${cards.length} data insight lens${cards.length === 1 ? "" : "es"} for profiling, trends, anomalies, visual summaries, and reusable knowledge.`);
+  const list = $("data-insight-cards");
+  if (!list) return;
+  if (!state.selectedDataInsight || !cards.some((card) => card.id === state.selectedDataInsight)) {
+    state.selectedDataInsight = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="data-insight-card ${card.id === state.selectedDataInsight ? "active" : ""}" data-data-insight="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="data-insight-grid">
+      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>Guardrail</span><strong>${escapeHTML(card.guardrail)}</strong>
+      <span>Next action</span><strong>${escapeHTML(card.action)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-data-select="${escapeHTML(card.id)}">Insight brief</button>
+      <button type="button" data-data-draft="${escapeHTML(card.id)}">Draft analysis</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderDataInsightDetail(cards.find((card) => card.id === state.selectedDataInsight) || cards[0]);
+}
+
+function renderDataInsightDetail(card) {
+  const target = $("data-insight-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select an insight mission.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Guardrail</h3>
+      <p>${escapeHTML(card.guardrail)}</p>
+      <h3>Next action</h3>
+      <p>${escapeHTML(card.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-data-draft="${escapeHTML(card.id)}">Draft analysis</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function dataInsightByID(id) {
+  return dataInsightCards().find((card) => card.id === id) || null;
+}
+
+function draftDataInsightToChat(id) {
+  const card = dataInsightByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a data insight mission starter with source assumptions, analysis steps, evidence requirements, review guardrails, reusable findings, and validation.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Data insight mission drafted to chat.");
+}
+
 function deliveryLanes() {
   const enabledSchedules = state.schedules.filter((schedule) => schedule.enabled !== false);
   const scheduledRuns = state.runs.filter((run) => String(run.channel || "").includes("schedule") || String(run.source || "").includes("schedule"));
@@ -2431,6 +2588,7 @@ function renderManageCount() {
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
   const browserCount = browserMissionCards().length;
+  const dataCount = dataInsightCards().length;
   const deliveryCount = deliveryLanes().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-sources-count", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
@@ -2443,9 +2601,11 @@ function renderManageCount() {
   setText("nav-reuse-count", reuseCount);
   setText("manage-browser-count", `${browserCount} plan${browserCount === 1 ? "" : "s"}`);
   setText("nav-browser-count", browserCount);
+  setText("manage-data-count", `${dataCount} lens${dataCount === 1 ? "" : "es"}`);
+  setText("nav-data-count", dataCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + browserCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + browserCount + dataCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -6057,6 +6217,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const dataSelect = event.target.closest("[data-data-select]");
+  if (dataSelect) {
+    state.selectedDataInsight = dataSelect.dataset.dataSelect || "";
+    renderDataInsightPlanner();
+    return;
+  }
+
+  const dataDraft = event.target.closest("[data-data-draft]");
+  if (dataDraft) {
+    draftDataInsightToChat(dataDraft.dataset.dataDraft);
+    return;
+  }
+
+  const dataInsight = event.target.closest("[data-data-insight]");
+  if (dataInsight && !event.target.closest("button")) {
+    state.selectedDataInsight = dataInsight.dataset.dataInsight || "";
+    renderDataInsightPlanner();
+    return;
+  }
+
   const deliverySelect = event.target.closest("[data-delivery-select]");
   if (deliverySelect) {
     state.selectedDeliveryLane = deliverySelect.dataset.deliverySelect || "";
@@ -6488,6 +6668,18 @@ $("browser-mission-goal").addEventListener("input", (event) => {
   state.browserMissionGoal = event.target.value;
   renderBrowserMissionPlanner();
 });
+$("data-source-descriptor").addEventListener("input", (event) => {
+  state.dataSourceDescriptor = event.target.value;
+  renderDataInsightPlanner();
+});
+$("data-analysis-question").addEventListener("input", (event) => {
+  state.dataAnalysisQuestion = event.target.value;
+  renderDataInsightPlanner();
+});
+$("data-output-format").addEventListener("input", (event) => {
+  state.dataOutputFormat = event.target.value;
+  renderDataInsightPlanner();
+});
 
 renderHomeMode();
 renderStrategyMatrix();
@@ -6504,6 +6696,7 @@ renderComparisonWorkbench();
 renderPromptExperimentLab();
 renderReuseGallery();
 renderBrowserMissionPlanner();
+renderDataInsightPlanner();
 renderProactiveDeliveryBoard();
 connectEventStream();
 refreshAll();

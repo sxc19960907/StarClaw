@@ -86,6 +86,10 @@
               <span><span class="nav-icon" aria-hidden="true">◉</span>浏览器</span>
               <small id="nav-browser-count">0</small>
             </button>
+            <button class="nav-item" data-panel="data" aria-label="Data Planner">
+              <span><span class="nav-icon" aria-hidden="true">⋇</span>数据洞察</span>
+              <small id="nav-data-count">0</small>
+            </button>
             <button class="nav-item" data-panel="mcp" aria-label="MCP Servers">
               <span><span class="nav-icon" aria-hidden="true">▤</span>MCP 服务器</span>
               <small id="nav-mcp-count">0</small>
@@ -637,6 +641,11 @@
                 <strong id="manage-browser-count">0 plans</strong>
                 <small>Plan web inspection, screenshots, extraction, form checks, and monitoring.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="data">
+                <span>Data Planner</span>
+                <strong id="manage-data-count">0 lenses</strong>
+                <small>Turn local tables, metrics, and exports into reviewed insight missions.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="schedules">
                 <span>Schedules</span>
                 <strong id="manage-schedules-count">0 active</strong>
@@ -1091,6 +1100,41 @@
             </div>
             <div class="browser-mission-detail" id="browser-mission-detail">
               <div class="empty-state">Select a browser mission.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-data" aria-labelledby="data-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="data-heading">Data Planner</h2>
+              <p id="data-summary">Plan reviewed insight missions before asking Astria to analyze local files, tables, metrics, or research exports.</p>
+            </div>
+            <div class="data-insight-form">
+              <label>
+                Source descriptor
+                <input id="data-source-descriptor" aria-label="Data source descriptor" placeholder="sales.csv, metrics export, local report, or table name">
+              </label>
+              <label>
+                Analysis question
+                <textarea id="data-analysis-question" rows="3" aria-label="Data analysis question" placeholder="What decision should this data help with?"></textarea>
+              </label>
+              <label>
+                Output format
+                <input id="data-output-format" aria-label="Data output format" placeholder="ranked findings, chart brief, executive summary, or reusable memory">
+              </label>
+            </div>
+            <div class="data-insight-cards" id="data-insight-cards">
+              <div class="empty-state">No data insight cards yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Insight Brief</h2>
+              <p>Keep analysis reviewable: describe source limits, cite fields, flag uncertainty, and save reusable findings.</p>
+            </div>
+            <div class="data-insight-detail" id="data-insight-detail">
+              <div class="empty-state">Select an insight mission.</div>
             </div>
           </aside>
         </section>
