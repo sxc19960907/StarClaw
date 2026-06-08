@@ -16,10 +16,11 @@ Continue Astria toward Kocoro parity after the first workflow-heavy phase by mak
 | Priority | Child Task | Purpose |
 |---|---|---|
 | P1 | `06-08-reuse-gallery` | Add an Astria Reuse Gallery that turns prompts, agents, knowledge sources, and run outcomes into reusable launch assets. |
+| P1 | `06-08-browser-mission-planner` | Add a Browser Mission Planner for reviewed web inspection, screenshot, extraction, form-check, and monitoring mission starters. |
 
 ## Acceptance Criteria
 
-- [ ] Each child has testable PRD acceptance criteria.
+- [x] Each child has testable PRD acceptance criteria.
 - [x] Each implemented child passes Web UI smoke or targeted tests.
 - [ ] The phase improves Kocoro parity by making successful Astria work directly reusable as future mission starters.
 

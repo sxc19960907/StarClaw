@@ -3475,6 +3475,70 @@ textarea:focus {
   margin-top: 16px;
 }
 
+.browser-mission-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.browser-mission-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.browser-mission-card {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(248, 251, 255, 0.78), rgba(255, 255, 255, 0.72)),
+    var(--surface-soft);
+  cursor: pointer;
+}
+
+.browser-mission-card.active {
+  border-color: rgba(49, 92, 255, 0.28);
+  background:
+    linear-gradient(90deg, rgba(49, 92, 255, 0.09), transparent 58%),
+    rgba(255, 255, 255, 0.78);
+}
+
+.browser-mission-card strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.browser-mission-grid {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.34fr) minmax(0, 1fr);
+  gap: 6px 10px;
+}
+
+.browser-mission-grid span {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.browser-mission-grid strong {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.browser-mission-detail {
+  margin-top: 16px;
+}
+
 .source-registry-list {
   display: grid;
   gap: 10px;

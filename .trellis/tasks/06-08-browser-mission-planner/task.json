@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-2",
-  "name": "astria-kocoro-parity-phase-2",
-  "title": "Astria Kocoro parity phase 2",
+  "id": "browser-mission-planner",
+  "name": "browser-mission-planner",
+  "title": "Browser mission planner",
   "description": "",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,25 +11,21 @@
   "creator": "StarChen",
   "assignee": "StarChen",
   "createdAt": "2026-06-08",
-  "completedAt": null,
+  "completedAt": "2026-06-08",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-08-reuse-gallery",
-    "06-08-browser-mission-planner"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-08-astria-kocoro-parity-phase-2",
   "relatedFiles": [
-    ".trellis/tasks/06-08-astria-kocoro-parity-phase-2/prd.md",
     "internal/daemon/webui/index.html",
     "internal/daemon/webui/assets/app.js",
     "internal/daemon/webui/assets/styles.css",
     "scripts/lib/webui_smoke_common.sh"
   ],
-  "notes": "Phase remains open for continued Kocoro parity work; Reuse Gallery and Browser Mission Planner are complete.",
+  "notes": "Added Astria Browser Mission Planner for reviewed browser inspection, screenshot, extraction, form-check, and monitoring mission starters.",
   "meta": {}
 }

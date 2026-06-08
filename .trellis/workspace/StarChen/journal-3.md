@@ -6,6 +6,29 @@
 ---
 
 
+## Session 121: Browser Mission Planner
+
+**Date**: 2026-06-08
+**Task**: Browser mission planner
+**Branch**: `main`
+
+### Summary
+
+Added an Astria Browser Mission Planner that turns browser inspection, screenshot evidence, extraction, form checks, and change monitoring into reviewed mission starters with target URL/goal fields, safety boundaries, Chat drafts, and source routing.
+
+### Testing
+
+- [OK] `node --check internal/daemon/webui/assets/app.js`
+- [OK] `git diff --check`
+- [OK] `go test ./internal/daemon`
+- [OK] `./scripts/smoke_webui_core.sh`
+- [OK] `go test ./...`
+
+### Status
+
+[OK] **Completed**
+
+
 ## Session 120: Reuse Gallery
 
 **Date**: 2026-06-08

@@ -14,6 +14,9 @@ const state = {
   selectedComparisonLane: "",
   selectedPromptVariant: "",
   selectedReuseAsset: "",
+  selectedBrowserMission: "",
+  browserTargetURL: "",
+  browserMissionGoal: "",
   selectedDeliveryLane: "",
   selectedSourceRow: "",
   promptLabGoal: "",
@@ -61,6 +64,7 @@ const views = {
   compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
   promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
   reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
+  browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
   delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
   inbox: ["收件箱", "Review inbound channel tasks before running them."],
   intake: ["文件星舱", "Inspect local documents and archives before a run."],
@@ -1225,6 +1229,7 @@ function renderHomeActivity() {
   renderSourceRegistry();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderBrowserMissionPlanner();
   renderProactiveDeliveryBoard();
 }
 
@@ -1270,6 +1275,7 @@ function renderHomeDockedTools() {
   renderSourceRegistry();
   renderPromptExperimentLab();
   renderReuseGallery();
+  renderBrowserMissionPlanner();
   renderProactiveDeliveryBoard();
 }
 
@@ -2122,6 +2128,152 @@ function draftReuseAssetToChat(id) {
   showToast("Reusable starter drafted to chat.");
 }
 
+function browserMissionContext() {
+  const url = ($("browser-target-url")?.value || state.browserTargetURL || "").trim();
+  const goal = ($("browser-mission-goal")?.value || state.browserMissionGoal || "").trim();
+  return {
+    url: url || "the target page",
+    goal: goal || "Inspect the page and capture evidence for the next Astria decision.",
+    hasURL: Boolean(url),
+  };
+}
+
+function browserMissionCards() {
+  const ctx = browserMissionContext();
+  const intakeLabel = state.intakeResult ? `File context ready: ${state.intakeResult.path || state.intakeResult.mode || "intake"}` : "No file context attached";
+  const inboxPending = state.inboxItems.filter((item) => String(item.status || "pending").toLowerCase() === "pending").length;
+  const readyDiagnostics = ["ok", "ready", "healthy"].includes(String(state.diagnostics?.status || "").toLowerCase());
+  return [
+    {
+      id: "inspect",
+      type: "Inspect",
+      title: "Page inspection",
+      panel: "chat",
+      evidence: ctx.hasURL ? ctx.url : "URL needed",
+      readiness: readyDiagnostics ? "ready" : "review",
+      risk: "Read-only navigation and page summary; do not click account-changing controls.",
+      action: "Draft an inspection run with source citations.",
+      prompt: `Plan a reviewed browser inspection mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\n\nUse browser navigation only as needed. Summarize visible page structure, key claims, relevant links, and evidence to cite. Do not submit forms, change account settings, purchase, delete, or post anything without explicit approval.`,
+    },
+    {
+      id: "screenshot",
+      type: "Screenshot",
+      title: "Visual evidence capture",
+      panel: "diagnostics",
+      evidence: "browser + screenshot",
+      readiness: readyDiagnostics ? "ready" : "check runtime",
+      risk: "Capture evidence without exposing secrets or private account data.",
+      action: "Draft a screenshot checklist and evidence summary.",
+      prompt: `Plan a browser screenshot evidence mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\n\nOpen the target, capture the necessary visual evidence, describe what the screenshot proves, and call out any private or sensitive information that should be cropped or avoided. Ask before interacting with authenticated or destructive UI.`,
+    },
+    {
+      id: "extract",
+      type: "Extract",
+      title: "Structured page extraction",
+      panel: state.intakeResult ? "intake" : "chat",
+      evidence: intakeLabel,
+      readiness: ctx.hasURL ? "targeted" : "needs target",
+      risk: "Extract only public or operator-approved content; cite uncertainty and missing fields.",
+      action: "Draft an extraction schema before reading.",
+      prompt: `Plan a structured browser extraction mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\nLocal context: ${intakeLabel}\n\nDefine the fields to extract, inspect the page, return structured findings with citations or selectors where possible, and identify anything that needs manual verification.`,
+    },
+    {
+      id: "form-check",
+      type: "Form check",
+      title: "Form and flow review",
+      panel: "permissions",
+      evidence: "approval required",
+      readiness: "guarded",
+      risk: "Never submit forms, payments, account changes, or messages without explicit approval.",
+      action: "Draft a safe dry-run form review.",
+      prompt: `Plan a safe browser form-check mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\n\nInspect form fields, validation states, required data, and risks. You may type only harmless placeholder data if needed for local validation, but do not submit or trigger remote state changes without explicit approval.`,
+    },
+    {
+      id: "monitor",
+      type: "Monitor",
+      title: "Change monitoring brief",
+      panel: inboxPending ? "inbox" : "schedules",
+      evidence: inboxPending ? `${inboxPending} pending inbound` : `${state.schedules.length} schedules`,
+      readiness: state.schedules.length ? "schedulable" : "manual",
+      risk: "Monitoring should define cadence, threshold, and notification route before scheduling.",
+      action: "Draft a monitoring plan from the current target.",
+      prompt: `Plan a browser change-monitoring mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\nSchedules: ${state.schedules.length}\nPending inbox items: ${inboxPending}\n\nDefine what should be monitored, the cadence, change threshold, evidence to capture, and how Astria should report changes before any schedule is created.`,
+    },
+  ];
+}
+
+function renderBrowserMissionPlanner() {
+  const cards = browserMissionCards();
+  setText("nav-browser-count", cards.length);
+  setText("manage-browser-count", `${cards.length} plan${cards.length === 1 ? "" : "s"}`);
+  setText("browser-summary", `${cards.length} browser mission plan${cards.length === 1 ? "" : "s"} for inspection, screenshots, extraction, form checks, and monitoring.`);
+  const list = $("browser-mission-cards");
+  if (!list) return;
+  if (!state.selectedBrowserMission || !cards.some((card) => card.id === state.selectedBrowserMission)) {
+    state.selectedBrowserMission = cards[0]?.id || "";
+  }
+  list.innerHTML = cards.map((card) => `<article class="browser-mission-card ${card.id === state.selectedBrowserMission ? "active" : ""}" data-browser-mission="${escapeHTML(card.id)}">
+    <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
+    <strong>${escapeHTML(card.title)}</strong>
+    <div class="browser-mission-grid">
+      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>Risk</span><strong>${escapeHTML(card.risk)}</strong>
+      <span>Next action</span><strong>${escapeHTML(card.action)}</strong>
+    </div>
+    <div class="row-actions">
+      <button type="button" data-browser-select="${escapeHTML(card.id)}">Mission brief</button>
+      <button type="button" data-browser-draft="${escapeHTML(card.id)}">Draft mission</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+    </div>
+  </article>`).join("");
+  renderBrowserMissionDetail(cards.find((card) => card.id === state.selectedBrowserMission) || cards[0]);
+}
+
+function renderBrowserMissionDetail(card) {
+  const target = $("browser-mission-detail");
+  if (!target) return;
+  if (!card) {
+    target.innerHTML = `<div class="empty-state">Select a browser mission.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-detail-section">
+      <h3>${escapeHTML(card.title)}</h3>
+      <div class="run-meta-grid">
+        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
+        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>Risk</h3>
+      <p>${escapeHTML(card.risk)}</p>
+      <h3>Next action</h3>
+      <p>${escapeHTML(card.action)}</p>
+      <div class="run-detail-actions">
+        <button type="button" data-browser-draft="${escapeHTML(card.id)}">Draft mission</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function browserMissionByID(id) {
+  return browserMissionCards().find((card) => card.id === id) || null;
+}
+
+function draftBrowserMissionToChat(id) {
+  const card = browserMissionByID(id);
+  if (!card) return;
+  $("chat-input").value = `${card.prompt}\n\nReturn a browser mission starter with objective, target, evidence plan, safety boundary, and validation.`;
+  $("chat-new-session").checked = true;
+  state.activeSessionID = "";
+  updateActiveSessionLabel();
+  switchPanel("chat");
+  $("chat-input").focus();
+  showToast("Browser mission drafted to chat.");
+}
+
 function deliveryLanes() {
   const enabledSchedules = state.schedules.filter((schedule) => schedule.enabled !== false);
   const scheduledRuns = state.runs.filter((run) => String(run.channel || "").includes("schedule") || String(run.source || "").includes("schedule"));
@@ -2278,6 +2430,7 @@ function renderManageCount() {
   const compareCount = comparisonCandidates().length;
   const promptVariantCount = promptLabVariants().length;
   const reuseCount = reuseGalleryAssets().length;
+  const browserCount = browserMissionCards().length;
   const deliveryCount = deliveryLanes().length;
   setText("manage-intake-count", state.intakeResult ? "Result ready" : "Local paths");
   setText("manage-sources-count", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
@@ -2288,9 +2441,11 @@ function renderManageCount() {
   setText("nav-promptlab-count", promptVariantCount);
   setText("manage-reuse-count", `${reuseCount} asset${reuseCount === 1 ? "" : "s"}`);
   setText("nav-reuse-count", reuseCount);
+  setText("manage-browser-count", `${browserCount} plan${browserCount === 1 ? "" : "s"}`);
+  setText("nav-browser-count", browserCount);
   setText("manage-delivery-count", `${deliveryCount} lane${deliveryCount === 1 ? "" : "s"}`);
   setText("nav-delivery-count", deliveryCount);
-  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + deliveryCount + 1);
+  setText("manage-count", state.agents.length + state.skills.length + state.schedules.length + mcpCount + memoryCount + sourceCount + state.councilRuns.length + state.inboxItems.length + compareCount + promptVariantCount + reuseCount + browserCount + deliveryCount + 1);
 }
 
 function renderMCPStarport() {
@@ -5882,6 +6037,26 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const browserSelect = event.target.closest("[data-browser-select]");
+  if (browserSelect) {
+    state.selectedBrowserMission = browserSelect.dataset.browserSelect || "";
+    renderBrowserMissionPlanner();
+    return;
+  }
+
+  const browserDraft = event.target.closest("[data-browser-draft]");
+  if (browserDraft) {
+    draftBrowserMissionToChat(browserDraft.dataset.browserDraft);
+    return;
+  }
+
+  const browserMission = event.target.closest("[data-browser-mission]");
+  if (browserMission && !event.target.closest("button")) {
+    state.selectedBrowserMission = browserMission.dataset.browserMission || "";
+    renderBrowserMissionPlanner();
+    return;
+  }
+
   const deliverySelect = event.target.closest("[data-delivery-select]");
   if (deliverySelect) {
     state.selectedDeliveryLane = deliverySelect.dataset.deliverySelect || "";
@@ -6305,6 +6480,14 @@ $("promptlab-goal").addEventListener("input", (event) => {
   renderPromptExperimentLab();
   renderReuseGallery();
 });
+$("browser-target-url").addEventListener("input", (event) => {
+  state.browserTargetURL = event.target.value;
+  renderBrowserMissionPlanner();
+});
+$("browser-mission-goal").addEventListener("input", (event) => {
+  state.browserMissionGoal = event.target.value;
+  renderBrowserMissionPlanner();
+});
 
 renderHomeMode();
 renderStrategyMatrix();
@@ -6320,6 +6503,7 @@ renderWorkspaceHealthStrip();
 renderComparisonWorkbench();
 renderPromptExperimentLab();
 renderReuseGallery();
+renderBrowserMissionPlanner();
 renderProactiveDeliveryBoard();
 connectEventStream();
 refreshAll();

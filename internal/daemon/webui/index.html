@@ -82,9 +82,9 @@
               <span><span class="nav-icon" aria-hidden="true">∞</span>连接器</span>
               <small>setup</small>
             </button>
-            <button class="nav-item" data-home-action="browser" aria-label="Browser">
+            <button class="nav-item" data-panel="browser" aria-label="Browser">
               <span><span class="nav-icon" aria-hidden="true">◉</span>浏览器</span>
-              <small>probe</small>
+              <small id="nav-browser-count">0</small>
             </button>
             <button class="nav-item" data-panel="mcp" aria-label="MCP Servers">
               <span><span class="nav-icon" aria-hidden="true">▤</span>MCP 服务器</span>
@@ -632,6 +632,11 @@
                 <strong id="manage-intake-count">Local paths</strong>
                 <small>Inspect documents and archives before sending them to a run.</small>
               </button>
+              <button class="hub-card" type="button" data-panel="browser">
+                <span>Browser Planner</span>
+                <strong id="manage-browser-count">0 plans</strong>
+                <small>Plan web inspection, screenshots, extraction, form checks, and monitoring.</small>
+              </button>
               <button class="hub-card" type="button" data-panel="schedules">
                 <span>Schedules</span>
                 <strong id="manage-schedules-count">0 active</strong>
@@ -1055,6 +1060,37 @@
             </div>
             <div class="reuse-gallery-detail" id="reuse-gallery-detail">
               <div class="empty-state">Select a reusable asset.</div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel split-panel" id="panel-browser" aria-labelledby="browser-heading">
+          <div class="panel-list wide">
+            <div class="panel-heading">
+              <h2 id="browser-heading">Browser Planner</h2>
+              <p id="browser-summary">Plan reviewed browser missions before asking Astria to inspect, capture, extract, or monitor a page.</p>
+            </div>
+            <div class="browser-mission-form">
+              <label>
+                Target URL
+                <input id="browser-target-url" aria-label="Browser target URL" placeholder="https://example.com">
+              </label>
+              <label>
+                Mission goal
+                <textarea id="browser-mission-goal" rows="3" aria-label="Browser mission goal" placeholder="Inspect the page and capture the evidence needed for the next decision."></textarea>
+              </label>
+            </div>
+            <div class="browser-mission-cards" id="browser-mission-cards">
+              <div class="empty-state">No browser mission cards yet.</div>
+            </div>
+          </div>
+          <aside class="detail-pane">
+            <div class="panel-heading">
+              <h2>Browser Brief</h2>
+              <p>Keep browser work reviewed: cite evidence, avoid destructive actions, and ask before changing remote state.</p>
+            </div>
+            <div class="browser-mission-detail" id="browser-mission-detail">
+              <div class="empty-state">Select a browser mission.</div>
             </div>
           </aside>
         </section>
