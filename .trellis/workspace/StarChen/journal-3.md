@@ -871,3 +871,36 @@ Added deterministic complexity routing, fallback decisions for provider/budget/r
 ### Next Steps
 
 - None - task complete
+
+
+## Session 109: Structured run observability
+
+**Date**: 2026-06-08
+**Task**: Structured run observability
+**Branch**: `main`
+
+### Summary
+
+Added redacted structured run events, local metrics endpoint, backend observability spec, and tests for redaction/metrics/route registration.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ffd4fdd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
