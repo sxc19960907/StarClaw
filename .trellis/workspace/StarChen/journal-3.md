@@ -904,3 +904,36 @@ Added redacted structured run events, local metrics endpoint, backend observabil
 ### Next Steps
 
 - None - task complete
+
+
+## Session 110: Workflow control API
+
+**Date**: 2026-06-08
+**Task**: Workflow control API
+**Branch**: `main`
+
+### Summary
+
+Added run control endpoint, preserved /cancel compatibility, recorded control decisions in run metadata/events, and made replay approval-required with redacted prompt data.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dfdb7d5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
