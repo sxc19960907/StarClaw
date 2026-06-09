@@ -1832,3 +1832,36 @@ Recorded Phase12 Kocoro gap review, closed event replay/lifecycle resilience sco
 ### Next Steps
 
 - None - task complete
+
+
+## Session 138: Astria macOS shell skeleton
+
+**Date**: 2026-06-09
+**Task**: Astria macOS shell skeleton
+**Branch**: `main`
+
+### Summary
+
+Added the first standalone Astria macOS shell skeleton, unsigned local build/smoke scripts, docs, and Trellis spec guidance while preserving CLI/browser launch fallback.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ea505cb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
