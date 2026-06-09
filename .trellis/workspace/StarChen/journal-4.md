@@ -368,3 +368,36 @@ Hardened the Astria distribution boundary with credential-free release validatio
 ### Next Steps
 
 - None - task complete
+
+
+## Session 154: Astria Kocoro parity phase 16 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 16 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Phase16 native OS integration and distribution hardening: native command/window behavior, local diagnostics export, credential-free distribution boundary validation, and final Kocoro gap review with parity estimate updated to roughly 90-93%.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dfaa4ca` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
