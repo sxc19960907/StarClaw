@@ -109,3 +109,11 @@ Astria updater metadata is either absent or conforms to the signed JSON boundary
 `signature_algorithm`, `public_key_id`, `min_app_version`,
 `min_daemon_version`, and `unavailable_safe=true`. Metadata must not enable app
 replacement until a verified updater implementation exists.
+
+To validate the updater decision path without building release artifacts:
+
+```bash
+scripts/validate_release_artifacts.sh --updater-dry-run-smoke
+```
+
+The dry-run decision keeps `replacement="disabled"` even for valid metadata.

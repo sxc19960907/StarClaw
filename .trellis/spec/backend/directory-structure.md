@@ -252,6 +252,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   unavailable-safe. Present updater metadata must be signed JSON with checksum,
   public-key identity, and app/daemon compatibility fields before any future app
   or bundled-daemon replacement behavior exists.
+- Updater dry-run validation may parse verified metadata and emit a local
+  decision containing version, checksum, signature algorithm, public key id, and
+  app/daemon compatibility fields. The decision must keep replacement disabled.
 - Release validation with `scripts/validate_release_artifacts.sh --npm-only
   --astria-local` must remain credential-free. It should run the Astria smoke,
   verify private signing/notarization material is absent, and reject Astria
@@ -313,6 +316,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Astria updater metadata without checksum/signature/compatibility fields, with
   private fields, or enabling app replacement -> release validation fails;
   missing updater metadata remains non-fatal.
+- Astria updater dry-run with valid metadata -> returns a verified dry-run
+  decision with replacement disabled. Replacement-enabled metadata -> validation
+  fails before any replacement path is considered.
 - Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
@@ -332,6 +338,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   unavailable-safe, unsafe metadata fails, private updater fields fail, and
   signed JSON metadata with checksum/signature/compatibility fields passes while
   app replacement remains disabled.
+- Updater dry-run smoke -> verifies missing metadata, valid metadata, and
+  replacement-enabled metadata decisions without building release artifacts or
+  requiring Apple credentials.
 
 ### 5. Good/Base/Bad Cases
 

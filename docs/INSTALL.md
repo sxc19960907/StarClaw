@@ -181,6 +181,8 @@ profiles, Apple credentials, notarization secrets, or updater private keys.
 Missing updater metadata is intentionally non-fatal for local builds.
 Updater metadata must not enable app replacement until verified checksum and
 signature enforcement exists in the updater implementation.
+Use `scripts/validate_release_artifacts.sh --updater-dry-run-smoke` to verify
+the local no-replacement decision path.
 
 When the shell starts the daemon itself, it also passes Desktop RPC socket and
 pidfile paths under `~/Library/Application Support/dev.starclaw.astria/` and

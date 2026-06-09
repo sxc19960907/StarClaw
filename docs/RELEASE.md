@@ -74,7 +74,13 @@ The updater boundary can be checked without building release artifacts:
 
 ```bash
 scripts/validate_release_artifacts.sh --updater-boundary-smoke
+scripts/validate_release_artifacts.sh --updater-dry-run-smoke
 ```
+
+The dry-run check parses updater metadata and returns a decision with
+`replacement="disabled"`. Valid metadata can be verified for checksum,
+signature, public key, and app/daemon compatibility fields, but app replacement
+remains blocked until a transactional updater exists.
 
 ## Tag Release
 
