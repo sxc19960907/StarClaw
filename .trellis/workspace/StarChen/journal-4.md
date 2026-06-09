@@ -335,3 +335,36 @@ Added local-only Astria diagnostics report export with redaction for API keys, b
 ### Next Steps
 
 - None - task complete
+
+
+## Session 153: Astria signing notarization updater boundary
+
+**Date**: 2026-06-09
+**Task**: Astria signing notarization updater boundary
+**Branch**: `main`
+
+### Summary
+
+Hardened the Astria distribution boundary with credential-free release validation for local shell artifacts, private signing/notarization material checks, updater metadata unavailable-safe checks, release docs, and macOS shell spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0ad3d36` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
