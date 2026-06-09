@@ -1204,3 +1204,36 @@ Added a compact Chat live run status for streaming runs, wired SSE session/usage
 ### Next Steps
 
 - None - task complete
+
+
+## Session 178: Astria Kocoro parity phase 24 gap audit
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 24 gap audit
+**Branch**: `main`
+
+### Summary
+
+Audited Astria against the local Kocoro baseline after Phase23, separated local-first platform parity from full Shannon Cloud production parity, estimated local parity at 98-99% and full production parity at 65-75%, and recommended Phase25 cloud/channel contract simulation only if cloud parity is explicitly pursued.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b349355` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
