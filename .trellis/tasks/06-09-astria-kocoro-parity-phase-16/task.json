@@ -1,0 +1,30 @@
+{
+  "id": "astria-kocoro-parity-phase-16",
+  "name": "astria-kocoro-parity-phase-16",
+  "title": "Astria Kocoro parity phase 16: native OS integration and distribution hardening",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-astria-native-menu-dock-window",
+    "06-09-astria-native-diagnostics-crash-reports",
+    "06-09-astria-signing-notarization-updater-boundary"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
