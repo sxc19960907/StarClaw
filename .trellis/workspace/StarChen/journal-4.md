@@ -203,3 +203,36 @@ Added daemon-side Desktop RPC event monitoring with bounded in-memory event rete
 ### Next Steps
 
 - None - task complete
+
+
+## Session 149: Native desktop diagnostics and recovery UX
+
+**Date**: 2026-06-09
+**Task**: Native desktop diagnostics and recovery UX
+**Branch**: `main`
+
+### Summary
+
+Surfaced Astria Desktop RPC session diagnostics in native banners with reconnecting/degraded/mismatch copy, retry eligibility, smoke assertions, and macOS shell spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `53548bc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
