@@ -9,6 +9,9 @@ APP_DIR="$BUILD_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+BUNDLED_STARCLAW_BIN="${ASTRIA_BUNDLED_STARCLAW_BIN:-}"
+APP_VERSION="${ASTRIA_APP_VERSION:-}"
+APP_BUILD="${ASTRIA_APP_BUILD:-}"
 
 fail() {
   echo "build_macos_astria_shell: $*" >&2
@@ -34,5 +37,19 @@ swiftc \
 
 cp "$SRC_DIR/Info.plist" "$CONTENTS_DIR/Info.plist"
 chmod +x "$MACOS_DIR/$APP_NAME"
+
+if [[ -n "$APP_VERSION" ]]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$CONTENTS_DIR/Info.plist" >/dev/null
+fi
+
+if [[ -n "$APP_BUILD" ]]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $APP_BUILD" "$CONTENTS_DIR/Info.plist" >/dev/null
+fi
+
+if [[ -n "$BUNDLED_STARCLAW_BIN" ]]; then
+  [[ -f "$BUNDLED_STARCLAW_BIN" ]] || fail "missing bundled daemon binary: $BUNDLED_STARCLAW_BIN"
+  cp "$BUNDLED_STARCLAW_BIN" "$RESOURCES_DIR/starclaw"
+  chmod +x "$RESOURCES_DIR/starclaw"
+fi
 
 echo "$APP_DIR"

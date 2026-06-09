@@ -131,6 +131,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Bundle metadata lives in `desktop/macos/Astria/Info.plist`.
 - Local development build script: `scripts/build_macos_astria_shell.sh`.
 - Smoke script: `scripts/smoke_macos_astria_shell.sh`.
+- Optional bundled daemon path inside the app:
+  `Contents/Resources/starclaw`.
 - Default hosted URL: `http://127.0.0.1:7533/app/`.
 - Route recovery storage key: `astria.lastWebRoute` stores a relative `/app`
   route only.
@@ -139,6 +141,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   - `ASTRIA_DIAGNOSTICS_URL`
   - `ASTRIA_HEALTH_URL`
   - `ASTRIA_STARCLAW_BIN`
+  - `ASTRIA_BUNDLED_STARCLAW_BIN` for build-time daemon copying
+  - `ASTRIA_APP_VERSION` for build-time `CFBundleShortVersionString`
+  - `ASTRIA_APP_BUILD` for build-time `CFBundleVersion`
 
 ### 3. Contracts
 
@@ -148,6 +153,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   `starclaw daemon start` remain valid fallback paths.
 - Unsigned local builds must not require private signing, notarization, or
   update credentials.
+- Build-time bundled daemon copies must place the executable at
+  `Contents/Resources/starclaw`. At runtime, explicit `ASTRIA_STARCLAW_BIN`
+  overrides still take precedence, then the bundled daemon, then `PATH`.
+- Release-candidate app builds may set `ASTRIA_APP_VERSION` and
+  `ASTRIA_APP_BUILD`; signed release artifacts must not mix app and daemon
+  versions from different release tags.
 - The shell may start or attach to the local daemon through the existing HTTP
   readiness contract. Deeper pidfile/socket reconciliation belongs in a
   separately scoped task.
@@ -158,6 +169,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   remains responsible for run/event deduplication through `/events` and `/runs`.
 - App Transport Security may allow local networking for `127.0.0.1`; do not add
   broad remote networking exceptions for the shell.
+- Signing and notarization require external Apple credentials, Hardened Runtime,
+  notarization, and stapling. Do not commit credentials, signing identities,
+  keychain profiles, notarization secrets, or update private keys.
+- Astria does not auto-update itself in this phase. Future updater metadata must
+  be unavailable-safe and checksum/signature verified before replacing the app
+  or bundled daemon.
 
 ### 4. Validation & Error Matrix
 
@@ -165,7 +182,13 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Missing `swiftc` on macOS -> build script exits non-zero with a clear message.
 - Missing bundle executable -> smoke script fails.
 - Missing `Info.plist` -> smoke script fails.
+- Missing bundled daemon in a bundled-app smoke -> smoke script fails.
 - Missing local networking ATS allowance -> smoke script fails.
+- Unsigned development build -> allowed locally; do not present it as a signed
+  distributable release artifact.
+- Missing update metadata -> no replacement; current app remains usable.
+- App/daemon release version mismatch -> reject the release-candidate artifact
+  or rebuild from matching release inputs.
 - Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
@@ -174,8 +197,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 ### 5. Good/Base/Bad Cases
 
 - Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`,
-  verifies bundle structure, route recovery, and daemon supervision through a
-  temporary `ASTRIA_STARCLAW_BIN`.
+  verifies bundle structure, bundled daemon layout, route recovery, and daemon
+  supervision through a temporary daemon binary.
 - Base: user opens the unsigned app shell, which reuses an already-running
   daemon or starts a local daemon, then restores the last same-origin `/app`
   route.
@@ -186,7 +209,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 
 - Run `scripts/smoke_macos_astria_shell.sh` on macOS when the shell changes.
   The smoke must cover bundle structure, route recovery, daemon supervision,
-  attach, and launch failure.
+  attach, bundled daemon resolution, and launch failure.
+- Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
+  when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect
   existing CLI launch readiness behavior.
 - Run `go test ./...` before committing mixed shell/documentation changes.

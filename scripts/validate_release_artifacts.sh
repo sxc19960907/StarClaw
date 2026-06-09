@@ -5,19 +5,21 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${RELEASE_DIST_DIR:-$ROOT_DIR/dist}"
 RUN_SNAPSHOT=false
 NPM_ONLY=false
-
-for arg in "$@"; do
-  case "$arg" in
-    --snapshot) RUN_SNAPSHOT=true ;;
-    --npm-only) NPM_ONLY=true ;;
-    *) fail "unknown argument: $arg" ;;
-  esac
-done
+ASTRIA_LOCAL=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
   exit 1
 }
+
+for arg in "$@"; do
+  case "$arg" in
+    --snapshot) RUN_SNAPSHOT=true ;;
+    --npm-only) NPM_ONLY=true ;;
+    --astria-local) ASTRIA_LOCAL=true ;;
+    *) fail "unknown argument: $arg" ;;
+  esac
+done
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
@@ -70,6 +72,10 @@ NODE
 
 if "$NPM_ONLY"; then
   validate_npm_package
+  if "$ASTRIA_LOCAL"; then
+    echo "==> checking Astria local shell"
+    "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
+  fi
   echo "validate_release_artifacts: ok"
   exit 0
 fi
@@ -108,5 +114,10 @@ apk="$(find_one "starclaw_*_linux_*.apk")"
 [[ -n "$apk" ]] || fail "missing apk package artifact"
 
 validate_npm_package
+
+if "$ASTRIA_LOCAL"; then
+  echo "==> checking Astria local shell"
+  "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
+fi
 
 echo "validate_release_artifacts: ok"

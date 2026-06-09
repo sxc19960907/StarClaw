@@ -27,6 +27,23 @@ scripts/build_macos_astria_shell.sh
 The script builds an unsigned app bundle under `build/desktop/macos/` and prints
 the resulting `.app` path.
 
+Build with a bundled local daemon binary:
+
+```bash
+go build -o build/starclaw ./main.go
+ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" scripts/build_macos_astria_shell.sh
+```
+
+The bundled daemon is copied to `Astria.app/Contents/Resources/starclaw`. At
+runtime, `ASTRIA_STARCLAW_BIN` still takes precedence for development overrides;
+otherwise Astria tries the bundled daemon before falling back to `PATH`.
+
+Set app version metadata for release-candidate smoke builds:
+
+```bash
+ASTRIA_APP_VERSION=0.1.0 ASTRIA_APP_BUILD=1 scripts/build_macos_astria_shell.sh
+```
+
 For local testing:
 
 ```bash
@@ -47,3 +64,14 @@ ASTRIA_STARCLAW_BIN=/path/to/starclaw open build/desktop/macos/Astria.app
 
 The route recovery store persists only relative `/app` routes under
 `astria.lastWebRoute`; unsafe or external stored routes fall back to `/app/`.
+
+## Signing and Updates
+
+Local builds are intentionally unsigned. A distributable release build must use
+a Developer ID Application identity, Hardened Runtime, notarization, and
+stapling outside the default Linux release workflow. Do not commit signing
+identities, notarization credentials, keychain profiles, or update private keys.
+
+Astria does not auto-update itself in this phase. Future updater metadata must
+be checksum/signature verified, unavailable-safe, and must not replace the app
+with a daemon version that is incompatible with the app release.

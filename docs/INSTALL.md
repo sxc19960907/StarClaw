@@ -142,6 +142,17 @@ release artifact, but it can start or reuse the local daemon through the same
 HTTP readiness contract used by `starclaw app`. It restores only same-origin
 `/app` routes and falls back to `/app/` for unsafe stored routes.
 
+For bundled-app smoke testing, build a local daemon and copy it into the app
+bundle:
+
+```bash
+go build -o build/starclaw ./main.go
+ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" scripts/build_macos_astria_shell.sh
+```
+
+The bundled daemon lives at `Astria.app/Contents/Resources/starclaw`. Unsigned
+development builds are not notarized release artifacts.
+
 ## Uninstallation
 
 ### Binary

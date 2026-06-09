@@ -18,6 +18,7 @@ and daemon supervision smoke:
 
 ```bash
 scripts/smoke_macos_astria_shell.sh
+scripts/validate_release_artifacts.sh --npm-only --astria-local
 ```
 
 If GoReleaser is installed, validate the full artifact set:
@@ -31,6 +32,34 @@ This verifies:
 - platform archives for macOS, Linux, and Windows
 - Linux `.deb`, `.rpm`, and `.apk` package artifacts
 - npm package contents from `npm pack --dry-run`
+
+## Astria Desktop Boundary
+
+The repository can build and smoke-test an unsigned local Astria macOS app:
+
+```bash
+go build -o build/starclaw ./main.go
+ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" \
+ASTRIA_APP_VERSION="${VERSION:-0.0.0}" \
+ASTRIA_APP_BUILD="${BUILD_NUMBER:-0}" \
+scripts/build_macos_astria_shell.sh
+scripts/smoke_macos_astria_shell.sh
+```
+
+The future signed release artifact shape is `Astria.app` with the launcher at
+`Contents/MacOS/Astria` and the bundled daemon at
+`Contents/Resources/starclaw`. The app and bundled daemon should come from the
+same StarClaw release tag.
+
+Signing and notarization are intentionally outside the default Linux release
+workflow. A distributable macOS artifact requires a Developer ID Application
+identity, Hardened Runtime, notarization with `notarytool`, and stapling. Do
+not commit Apple credentials, keychain profiles, signing identities, or update
+private keys.
+
+Astria does not auto-update itself in this phase. Missing update metadata must
+be non-fatal, and any future updater must verify checksums/signatures before
+replacing the app or bundled daemon.
 
 ## Tag Release
 

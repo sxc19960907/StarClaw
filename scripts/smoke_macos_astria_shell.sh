@@ -23,20 +23,23 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 0
 fi
 
-app_path="$("$ROOT_DIR/scripts/build_macos_astria_shell.sh")"
+echo "==> building StarClaw for supervision smoke"
+(cd "$ROOT_DIR" && go build -o "$BIN" ./main.go)
+
+app_path="$(ASTRIA_BUILD_DIR="$TMP_DIR/build/desktop/macos" ASTRIA_BUNDLED_STARCLAW_BIN="$BIN" "$ROOT_DIR/scripts/build_macos_astria_shell.sh")"
 
 [[ -d "$app_path" ]] || fail "missing app bundle: $app_path"
 [[ -x "$app_path/Contents/MacOS/Astria" ]] || fail "missing executable"
 [[ -f "$app_path/Contents/Info.plist" ]] || fail "missing Info.plist"
+[[ -x "$app_path/Contents/Resources/starclaw" ]] || fail "missing bundled daemon"
 
 /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$app_path/Contents/Info.plist" | grep -Fxq "dev.starclaw.astria" || fail "unexpected bundle identifier"
+/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app_path/Contents/Info.plist" >/dev/null || fail "missing bundle version"
+/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$app_path/Contents/Info.plist" >/dev/null || fail "missing bundle build"
 /usr/libexec/PlistBuddy -c "Print :NSAppTransportSecurity:NSAllowsLocalNetworking" "$app_path/Contents/Info.plist" | grep -Fxq "true" || fail "local networking not enabled"
 
 echo "==> checking Astria route recovery"
 "$app_path/Contents/MacOS/Astria" --route-recovery-smoke
-
-echo "==> building StarClaw for supervision smoke"
-(cd "$ROOT_DIR" && go build -o "$BIN" ./main.go)
 
 mkdir -p "$SMOKE_HOME/.starclaw"
 cat > "$SMOKE_HOME/.starclaw/config.yaml" <<'YAML'
@@ -50,12 +53,12 @@ YAML
 
 curl -fsS -X POST "$BASE_URL/shutdown" >/dev/null 2>&1 || true
 
-echo "==> checking Astria daemon supervision"
-env HOME="$SMOKE_HOME" ASTRIA_STARCLAW_BIN="$BIN" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
+echo "==> checking Astria bundled daemon supervision"
+env HOME="$SMOKE_HOME" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
 curl -fsS "$BASE_URL/health" >/dev/null || fail "daemon did not stay healthy after app supervision"
 
 echo "==> checking Astria daemon attach"
-env HOME="$SMOKE_HOME" ASTRIA_STARCLAW_BIN="$BIN" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
+env HOME="$SMOKE_HOME" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
 
 echo "==> checking Astria daemon launch failure"
 curl -fsS -X POST "$BASE_URL/shutdown" >/dev/null 2>&1 || true
