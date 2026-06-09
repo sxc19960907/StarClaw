@@ -14,6 +14,7 @@ RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=false
 RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=false
 RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=false
 RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE=false
+RUN_SANDBOX_UPDATER_ROLLBACK_REHEARSAL_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -33,6 +34,7 @@ for arg in "$@"; do
     --astria-release-acceptance-gates-smoke) RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=true ;;
     --sandbox-updater-rehearsal-smoke) RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=true ;;
     --sandbox-updater-health-rehearsal-smoke) RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE=true ;;
+    --sandbox-updater-rollback-rehearsal-smoke) RUN_SANDBOX_UPDATER_ROLLBACK_REHEARSAL_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -1114,6 +1116,87 @@ run_astria_sandbox_updater_health_rehearsal_smoke() {
   grep -Fq "outside sandbox" "$tmp/outside-health.err" || fail "sandbox health outside-path guard failed for the wrong reason"
 }
 
+run_astria_sandbox_updater_rollback_rehearsal_smoke() {
+  echo "==> checking Astria sandbox updater rollback rehearsal smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local sandbox="$tmp/sandbox"
+  local current="$sandbox/current/Astria.app"
+  local candidate="$sandbox/candidate/Astria.app"
+  local staging="$sandbox/staging/Astria.app"
+  local install="$sandbox/install/Astria.app"
+  local rollback="$sandbox/rollback/Astria.app"
+  local failed="$sandbox/failed/Astria.app"
+  local state="$sandbox/rollback-state.json"
+  mkdir -p "$sandbox/current" "$sandbox/candidate" "$sandbox/staging" "$sandbox/install" "$sandbox/rollback" "$sandbox/failed"
+
+  write_astria_fixture_bundle "$current" "1.0.0"
+  write_astria_fixture_bundle "$candidate" "1.1.0"
+  rm -f "$candidate/Contents/Info.plist"
+  cp -R "$current" "$install"
+
+  local touched=("$current" "$candidate" "$staging" "$install" "$rollback" "$failed" "$state")
+  local path
+  for path in "${touched[@]}"; do
+    assert_sandbox_path "$sandbox" "$path"
+  done
+
+  cp -R "$candidate" "$staging"
+  rm -rf "$rollback"
+  cp -R "$install" "$rollback"
+  rm -rf "$failed"
+  cp -R "$staging" "$failed"
+
+  if [[ -f "$failed/Contents/Info.plist" ]]; then
+    fail "sandbox rollback rehearsal expected candidate validation failure"
+  fi
+
+  rm -rf "$install"
+  cp -R "$rollback" "$install"
+  cat > "$state" <<JSON
+{
+  "schema_version": "1",
+  "product": "Astria",
+  "fixture": true,
+  "status": "rolled_back",
+  "previous_version": "1.0.0",
+  "failed_candidate_version": "1.1.0",
+  "reason": "candidate_missing_info_plist"
+}
+JSON
+
+  grep -Fxq "1.0.0" "$install/Contents/Resources/version.txt" || fail "sandbox rollback rehearsal did not restore previous fixture"
+  if grep -Fxq "1.1.0" "$install/Contents/Resources/version.txt"; then
+    fail "sandbox rollback rehearsal left failed candidate active"
+  fi
+  require_cmd node
+  node - <<'NODE' "$state"
+const fs = require("fs");
+const statePath = process.argv[2];
+const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+if (state.schema_version !== "1") fail("rollback state schema_version must be 1");
+if (state.product !== "Astria") fail("rollback state product must be Astria");
+if (state.fixture !== true) fail("rollback state must declare fixture=true");
+if (state.status !== "rolled_back") fail("rollback state must be rolled_back");
+if (state.previous_version !== "1.0.0") fail("rollback state previous_version mismatch");
+if (state.failed_candidate_version !== "1.1.0") fail("rollback state failed_candidate_version mismatch");
+if (state.reason !== "candidate_missing_info_plist") fail("rollback state reason mismatch");
+NODE
+
+  local outside="$tmp/outside/rollback-state.json"
+  mkdir -p "$(dirname "$outside")"
+  if (assert_sandbox_path "$sandbox" "$outside") >/dev/null 2>"$tmp/outside-rollback.err"; then
+    fail "sandbox updater rollback rehearsal unexpectedly allowed outside rollback state"
+  fi
+  grep -Fq "outside sandbox" "$tmp/outside-rollback.err" || fail "sandbox rollback outside-path guard failed for the wrong reason"
+}
+
 find_one() {
   local pattern="$1"
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
@@ -1185,6 +1268,12 @@ if "$RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_SANDBOX_UPDATER_ROLLBACK_REHEARSAL_SMOKE"; then
+  run_astria_sandbox_updater_rollback_rehearsal_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
@@ -1196,6 +1285,7 @@ if "$NPM_ONLY"; then
     run_astria_release_acceptance_gates_smoke
     run_astria_sandbox_updater_rehearsal_smoke
     run_astria_sandbox_updater_health_rehearsal_smoke
+    run_astria_sandbox_updater_rollback_rehearsal_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -1247,6 +1337,7 @@ if "$ASTRIA_LOCAL"; then
   run_astria_release_acceptance_gates_smoke
   run_astria_sandbox_updater_rehearsal_smoke
   run_astria_sandbox_updater_health_rehearsal_smoke
+  run_astria_sandbox_updater_rollback_rehearsal_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi

@@ -120,6 +120,7 @@ scripts/validate_release_artifacts.sh --updater-transaction-plan-smoke
 scripts/validate_release_artifacts.sh --astria-release-acceptance-gates-smoke
 scripts/validate_release_artifacts.sh --sandbox-updater-rehearsal-smoke
 scripts/validate_release_artifacts.sh --sandbox-updater-health-rehearsal-smoke
+scripts/validate_release_artifacts.sh --sandbox-updater-rollback-rehearsal-smoke
 ```
 
 The dry-run decision keeps `replacement="disabled"` even for valid metadata.
@@ -139,5 +140,8 @@ back inside a temporary directory while rejecting outside-sandbox paths. The
 sandbox health rehearsal smoke verifies simulated post-update app launch,
 daemon health, Desktop RPC capabilities, and Web UI readiness markers on the
 fixture, including negative coverage for missing markers and outside-sandbox
-paths. These checks do not download, install, publish, notarize, staple,
-replace, or roll back the real app.
+paths. The sandbox rollback rehearsal smoke simulates a failed staged
+replacement, restores the previous fixture as the active install, verifies the
+failed candidate is not left active, and rejects outside-sandbox rollback state.
+These checks do not download, install, publish, notarize, staple, replace, or
+roll back the real app.

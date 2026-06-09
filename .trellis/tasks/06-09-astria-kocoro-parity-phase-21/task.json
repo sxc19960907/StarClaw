@@ -20,7 +20,8 @@
   "subtasks": [],
   "children": [
     "06-09-astria-sandbox-updater-rehearsal-fixture",
-    "06-09-astria-sandbox-updater-health-rehearsal"
+    "06-09-astria-sandbox-updater-health-rehearsal",
+    "06-09-astria-sandbox-updater-rollback-rehearsal"
   ],
   "parent": null,
   "relatedFiles": [],

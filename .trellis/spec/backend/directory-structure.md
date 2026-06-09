@@ -288,6 +288,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   required health markers, reject marker paths outside the sandbox, and must not
   probe real daemons, real Web UI processes, network endpoints, or production
   app bundles.
+- Sandbox updater rollback rehearsals may simulate failed staged replacement
+  only against disposable fake `Astria.app` fixtures under a temporary sandbox.
+  They must restore the previous fixture as the active install, prove the failed
+  candidate is not left active, record rollback state only inside the sandbox,
+  and must not mutate real app bundles, real daemons, production artifacts, or
+  user Application Support.
 - Astria release compatibility manifests must be credential-free JSON with app
   version/build, daemon version, source tag, local-only status, replacement
   disabled, and compatibility min-version fields. App and daemon release
@@ -384,6 +390,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   markers under a temporary sandbox -> validates app launch, daemon health,
   Desktop RPC capabilities, and Web UI readiness markers. Missing required
   marker or outside-sandbox marker path -> validation fails.
+- Sandbox updater rollback rehearsal with fake current/candidate `Astria.app`
+  fixtures under a temporary sandbox -> simulates candidate validation failure,
+  restores the previous active fixture, records rolled-back state, and verifies
+  the failed candidate version is not left active. Outside-sandbox rollback
+  state or touched path -> validation fails.
 - Astria compatibility manifest with matching app and daemon versions ->
   validation passes. Missing app/build/daemon fields or mismatched app/daemon
   release versions -> validation fails.
@@ -432,6 +443,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   health markers and rejects missing markers or outside-sandbox marker paths
   without requiring Apple credentials, real daemon probes, or touching the
   installed app.
+- Sandbox updater rollback rehearsal smoke -> verifies fixture-only failed
+  staged replacement rollback and rejects outside-sandbox rollback state without
+  requiring Apple credentials, real replacement, or touching the installed app.
 
 ### 5. Good/Base/Bad Cases
 
