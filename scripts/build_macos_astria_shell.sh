@@ -35,6 +35,7 @@ swiftc \
   -framework AppKit \
   -framework Contacts \
   -framework EventKit \
+  -framework UserNotifications \
   -o "$MACOS_DIR/$APP_NAME" \
   "$SRC_DIR/Sources/"*.swift
 

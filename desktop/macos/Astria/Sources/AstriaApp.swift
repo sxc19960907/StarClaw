@@ -4,6 +4,7 @@ import AppKit
 import Contacts
 import Darwin
 import EventKit
+import UserNotifications
 
 private enum AstriaDefaults {
     static let mainWindowID = "astria-main"
@@ -139,6 +140,9 @@ struct AstriaApp: App {
         }
         if CommandLine.arguments.contains("--permission-helper-smoke") {
             Foundation.exit(AstriaPermissionHelperSmoke.run())
+        }
+        if CommandLine.arguments.contains("--notification-readiness-smoke") {
+            Foundation.exit(AstriaNotificationReadinessSmoke.run())
         }
         if CommandLine.arguments.contains("--route-recovery-smoke") {
             Foundation.exit(AstriaRouteRecoverySmoke.run())
@@ -896,6 +900,7 @@ struct AstriaPermissionItem: Equatable {
     let id: String
     let title: String
     let status: String
+    let readiness: String
     let guidance: String
 }
 
@@ -909,7 +914,7 @@ struct AstriaPermissionSummary {
 
     var text: String {
         let rows = items.map { item in
-            "- \(item.title): \(item.status). \(item.guidance)"
+            "- \(item.title): \(item.status) (\(item.readiness)). \(item.guidance)"
         }
         return (["Astria permission helper", "Local only: true", "No permissions were requested by this check."] + rows).joined(separator: "\n")
     }
@@ -953,11 +958,13 @@ enum AstriaPermissionHelper {
     }
 
     private static func notificationsItem() -> AstriaPermissionItem {
-        item(id: "notifications", title: "Notifications", status: "check_in_system_settings")
+        let settings = notificationSettings(timeout: 0.2)
+        return item(id: "notifications", title: "Notifications", status: settings.status, explicitReadiness: settings.readiness)
     }
 
-    private static func item(id: String, title: String, status: String) -> AstriaPermissionItem {
-        AstriaPermissionItem(id: id, title: title, status: status, guidance: guidance(for: id, status: status))
+    private static func item(id: String, title: String, status: String, explicitReadiness: String? = nil) -> AstriaPermissionItem {
+        let resolvedReadiness = explicitReadiness ?? readiness(for: id, status: status)
+        return AstriaPermissionItem(id: id, title: title, status: status, readiness: resolvedReadiness, guidance: guidance(for: id, status: status, readiness: resolvedReadiness))
     }
 
     private static func eventKitStatus(_ status: EKAuthorizationStatus) -> String {
@@ -994,7 +1001,80 @@ enum AstriaPermissionHelper {
         }
     }
 
-    private static func guidance(for id: String, status: String) -> String {
+    private static func notificationSettings(timeout: TimeInterval) -> (status: String, readiness: String) {
+        let semaphore = DispatchSemaphore(value: 0)
+        var result = (status: "unknown", readiness: "unavailable_safe")
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            result = (
+                status: notificationStatus(settings.authorizationStatus),
+                readiness: notificationReadiness(settings)
+            )
+            semaphore.signal()
+        }
+        if semaphore.wait(timeout: .now() + timeout) == .timedOut {
+            return (status: "unknown", readiness: "unavailable_safe")
+        }
+        return result
+    }
+
+    private static func notificationStatus(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined:
+            return "not_determined"
+        case .denied:
+            return "denied"
+        case .authorized:
+            return "granted"
+        case .provisional:
+            return "provisional"
+        case .ephemeral:
+            return "ephemeral"
+        @unknown default:
+            return "unknown"
+        }
+    }
+
+    private static func notificationReadiness(_ settings: UNNotificationSettings) -> String {
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return "ready"
+        case .denied:
+            return "blocked"
+        case .notDetermined:
+            return "requires_explicit_request"
+        @unknown default:
+            return "unavailable_safe"
+        }
+    }
+
+    private static func readiness(for id: String, status: String) -> String {
+        switch id {
+        case "notifications":
+            switch status {
+            case "granted", "provisional", "ephemeral":
+                return "ready"
+            case "denied":
+                return "blocked"
+            case "not_determined":
+                return "requires_explicit_request"
+            default:
+                return "unavailable_safe"
+            }
+        default:
+            switch status {
+            case "granted", "write_only", "limited":
+                return "ready"
+            case "denied", "restricted":
+                return "blocked"
+            case "not_determined":
+                return "requires_explicit_request"
+            default:
+                return "unavailable_safe"
+            }
+        }
+    }
+
+    private static func guidance(for id: String, status: String, readiness: String) -> String {
         switch id {
         case "calendar":
             return guidance(status: status, service: "Calendar", nativeTool: "calendar tools")
@@ -1005,9 +1085,22 @@ enum AstriaPermissionHelper {
         case "file_access":
             return "Astria uses user-selected files or Astria-owned support folders. Grant broader file access in System Settings only when a future native tool explicitly asks."
         case "notifications":
-            return "Astria does not request notification permission from this helper. Enable notifications in System Settings only when notification tools are intentionally used."
+            return notificationGuidance(status: status, readiness: readiness)
         default:
             return "Review this local permission before enabling native desktop automation."
+        }
+    }
+
+    private static func notificationGuidance(status: String, readiness: String) -> String {
+        switch readiness {
+        case "ready":
+            return "Astria notifications are locally ready. Notification delivery still remains user-triggered by explicit notification tools."
+        case "blocked":
+            return "Open System Settings > Notifications > Astria and allow notifications before using notification tools."
+        case "requires_explicit_request":
+            return "Astria has not requested notification permission. Use an explicit notification request action only when notifications are needed."
+        default:
+            return "Notification status is unavailable in this build; continue with daemon/Web UI fallback until an explicit notification tool requests access."
         }
     }
 
@@ -1979,11 +2072,11 @@ enum AstriaPermissionHelperSmoke {
             "Astria permission helper",
             "Local only: true",
             "No permissions were requested by this check.",
-            "Calendar: not_determined",
-            "Contacts: denied",
-            "Reminders: granted",
-            "File Access: manual",
-            "Notifications: check_in_system_settings",
+            "Calendar: not_determined (requires_explicit_request)",
+            "Contacts: denied (blocked)",
+            "Reminders: granted (ready)",
+            "File Access: manual (unavailable_safe)",
+            "Notifications: check_in_system_settings (unavailable_safe)",
             "explicit permission request tool",
             "System Settings > Privacy & Security > Contacts",
         ] {
@@ -2001,6 +2094,44 @@ enum AstriaPermissionHelperSmoke {
         if !summary.banner.contains("review") {
             fputs("Astria permission helper smoke banner = \(summary.banner)\n", stderr)
             return 1
+        }
+        return 0
+    }
+}
+
+enum AstriaNotificationReadinessSmoke {
+    static func run() -> Int32 {
+        let cases: [(status: String, readiness: String, required: String)] = [
+            ("granted", "ready", "locally ready"),
+            ("provisional", "ready", "locally ready"),
+            ("denied", "blocked", "System Settings > Notifications > Astria"),
+            ("not_determined", "requires_explicit_request", "explicit notification request action"),
+            ("unknown", "unavailable_safe", "daemon/Web UI fallback"),
+        ]
+        for itemCase in cases {
+            let summary = AstriaPermissionHelper.summary(statuses: [
+                "calendar": "granted",
+                "contacts": "granted",
+                "reminders": "granted",
+                "file_access": "manual",
+                "notifications": itemCase.status,
+            ])
+            for required in [
+                "Notifications: \(itemCase.status) (\(itemCase.readiness))",
+                itemCase.required,
+                "No permissions were requested by this check.",
+            ] {
+                if !summary.text.contains(required) {
+                    fputs("Astria notification readiness smoke missing \(required)\n", stderr)
+                    return 1
+                }
+            }
+            for forbidden in ["requestAuthorization", "requestAccess", "api_key", "bearer", "daemon.sock", "daemon.pid", "/Users/"] {
+                if summary.text.localizedCaseInsensitiveContains(forbidden) {
+                    fputs("Astria notification readiness smoke leaked or promised \(forbidden)\n", stderr)
+                    return 1
+                }
+            }
         }
         return 0
     }

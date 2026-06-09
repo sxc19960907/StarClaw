@@ -53,6 +53,9 @@ echo "==> checking Astria crash summary"
 echo "==> checking Astria permission helper"
 "$app_path/Contents/MacOS/Astria" --permission-helper-smoke
 
+echo "==> checking Astria notification readiness"
+"$app_path/Contents/MacOS/Astria" --notification-readiness-smoke
+
 echo "==> checking Astria Desktop RPC validation"
 "$app_path/Contents/MacOS/Astria" --desktop-rpc-smoke
 

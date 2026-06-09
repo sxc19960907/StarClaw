@@ -169,6 +169,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   It may show/copy status and guidance for Calendar, Contacts, Reminders, file
   access, and notifications, but it must not silently request broad macOS
   privacy/TCC permissions.
+- Notification readiness is part of Permission Help. Passive readiness checks
+  may read notification settings but must not request authorization or send a
+  notification.
 - New Window should open another `astria-main` window around the same local
   daemon instead of disabling macOS new-window behavior.
 - Each native window may restore its own last safe `/app` route while sharing
@@ -194,6 +197,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   builds. It may read non-prompting status APIs and explain how to use System
   Settings or future explicit request tools, but actual permission prompts must
   remain user-triggered by the specific native tool that needs access.
+- Notification readiness must distinguish ready, blocked,
+  requires-explicit-request, and unavailable-safe states. Any future
+  notification permission prompt or delivery test must be an explicit
+  user-triggered action, not part of passive status gathering.
 - The shell must remain optional. `starclaw app`, `starclaw app --no-open`, and
   `starclaw daemon start` remain valid fallback paths.
 - Unsigned local builds must not require private signing, notarization, or
@@ -285,6 +292,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Permission Help -> local-only guidance and status text; it must not call
   broad request-access APIs, add cloud auth, emit telemetry, expose file paths,
   or bypass daemon tool permissions/approval.
+- Notification readiness -> local-only status text; it must not call
+  notification authorization request APIs, send test notifications, add remote
+  notification services, or bypass daemon tool permissions/approval.
 - Dead or malformed pidfile under the Astria runtime directory -> shell removes
   scoped pidfile/socket artifacts before relaunch.
 - Live pidfile under the Astria runtime directory -> shell does not remove
@@ -313,6 +323,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Crash summary smoke -> verifies a local JSON summary is written and does not
   contain API keys, bearer tokens, raw prompts, socket paths, pidfile paths, or
   private local filesystem paths.
+- Notification readiness smoke -> verifies readiness states and guidance text
+  without requesting notification authorization or sending notifications.
 
 ### 5. Good/Base/Bad Cases
 
@@ -336,8 +348,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   session connected/retry/mismatch diagnostics, native command metadata,
   diagnostics export redaction, crash summary redaction, clipboard/file
   affordance route safety and support summary redaction, permission helper
-  guidance/unavailable-safe behavior, multi-window route isolation/fallback, and
-  launch failure.
+  guidance/unavailable-safe behavior, notification readiness guidance,
+  multi-window route isolation/fallback, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` when
   touching Astria distribution boundaries. It must pass without Apple
   credentials.
