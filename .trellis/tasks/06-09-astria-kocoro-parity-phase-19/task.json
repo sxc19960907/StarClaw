@@ -1,0 +1,30 @@
+{
+  "id": "astria-kocoro-parity-phase-19",
+  "name": "astria-kocoro-parity-phase-19",
+  "title": "Astria Kocoro parity phase 19: verified updater release execution",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-astria-signed-updater-dry-run",
+    "06-09-astria-local-os-crash-artifact-collection",
+    "06-09-astria-release-compatibility-manifest"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
