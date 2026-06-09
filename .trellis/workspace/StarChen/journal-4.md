@@ -104,3 +104,36 @@ Hardened Astria Desktop RPC fallback recovery with scoped stale socket/pidfile c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 146: Astria Kocoro parity phase 14 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 14 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Phase14 desktop RPC handshake and daemon reconciliation: all three child tasks archived, final gap review recorded, and parity estimate updated to roughly 85-90% for local-first desktop lifecycle behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2969c9d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 145
+- **Total Sessions**: 146
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~106 | Active |
+| `journal-4.md` | ~139 | Active |
 | `journal-3.md` | ~1999 | Archived |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 146 | 2026-06-09 | Astria Kocoro parity phase 14 closeout | `2969c9d` | `main` |
 | 145 | 2026-06-09 | Desktop RPC fallback recovery | `c58305a` | `main` |
 | 144 | 2026-06-09 | Desktop RPC capabilities reconciliation | `8907e2f` | `main` |
 | 143 | 2026-06-09 | Desktop RPC launch contract | `273237e` | `main` |
