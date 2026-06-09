@@ -161,6 +161,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Export Crash Summary is part of the local crash-report boundary. It writes a
   local redacted crash summary under Astria diagnostics storage and must not
   upload reports automatically.
+- Export Crash Artifacts is part of the local crash-report boundary. It may
+  collect only user-selected local crash files after an explicit native export
+  action, writes a redacted support JSON under Astria diagnostics storage, keeps
+  `uploadReady=false`, and must not upload artifacts automatically.
 - Native clipboard/file affordance commands are local-only and user-triggered:
   Copy Current Route copies only a safe relative `/app` route, Copy Support
   Summary copies a redacted local support summary, and Reveal Diagnostics Folder
@@ -187,6 +191,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   local app/daemon failure state first. It must redact API keys, bearer tokens,
   raw Desktop RPC payloads, user prompts, socket paths, pidfile paths, crash
   file paths, and private local filesystem paths.
+- Export Crash Artifacts must be user-triggered and user-approved. It may store
+  crash artifact basenames, byte counts, source labels, and redacted content
+  snippets, but must not store full source paths, raw prompts, raw Desktop RPC
+  payloads, socket paths, pidfile paths, API keys, bearer tokens, or private
+  local filesystem paths.
 - Copy Support Summary must use the same redaction boundary as diagnostics
   export. It must not include API keys, bearer tokens, raw Desktop RPC payloads,
   user prompts, socket paths, pidfile paths, or full local filesystem paths.
@@ -295,6 +304,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   but must not include secrets, raw prompts, raw Desktop RPC payloads, crash file
   paths, socket paths, pidfile paths, full local filesystem paths, or upload
   destinations.
+- Crash artifact exports -> local-only, user-approved, and redacted; they may
+  include selected artifact basenames, byte counts, source labels, and redacted
+  snippets, but must not include full selected file paths, secrets, raw prompts,
+  raw Desktop RPC payloads, socket paths, pidfile paths, full local filesystem
+  paths, upload destinations, or automatic upload state.
 - Reveal Diagnostics Folder -> opens only the Astria diagnostics directory
   returned by the diagnostics exporter; it must not create remote shares or
   upload artifacts.
@@ -339,6 +353,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Crash summary smoke -> verifies a local JSON summary is written and does not
   contain API keys, bearer tokens, raw prompts, socket paths, pidfile paths, or
   private local filesystem paths.
+- Crash artifact collection smoke -> verifies unapproved collection is refused,
+  a user-approved selected local crash file produces a local JSON export, and
+  the export does not contain API keys, bearer tokens, raw prompts, raw Desktop
+  RPC payloads, socket paths, pidfile paths, selected source paths, or private
+  local filesystem paths.
 - Notification readiness smoke -> verifies readiness states and guidance text
   without requesting notification authorization or sending notifications.
 - Updater boundary smoke -> verifies missing updater metadata is
@@ -357,7 +376,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   verifies bundle structure, bundled daemon layout, route recovery, and daemon
   supervision through a temporary daemon binary. It also validates Desktop RPC
   capabilities, fallback cleanup, session lifecycle smoke paths, and native
-  command/export/clipboard/file/permission helper metadata.
+  command/export/crash-artifact/clipboard/file/permission helper metadata.
 - Base: user opens the unsigned app shell, which reuses an already-running
   daemon or starts a local daemon, then restores the last same-origin `/app`
   route.
@@ -371,10 +390,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
   stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
   session connected/retry/mismatch diagnostics, native command metadata,
-  diagnostics export redaction, crash summary redaction, clipboard/file
-  affordance route safety and support summary redaction, permission helper
-  guidance/unavailable-safe behavior, notification readiness guidance,
-  multi-window route isolation/fallback, and launch failure.
+  diagnostics export redaction, crash summary redaction, crash artifact
+  collection refusal/export redaction, clipboard/file affordance route safety
+  and support summary redaction, permission helper guidance/unavailable-safe
+  behavior, notification readiness guidance, multi-window route
+  isolation/fallback, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` when
   touching Astria distribution boundaries. It must pass without Apple
   credentials.

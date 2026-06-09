@@ -36,13 +36,14 @@ enum AstriaNativeCommandSpec {
     static let diagnostics = AstriaNativeCommand(id: "diagnostics", title: "Open Diagnostics", key: "d", modifiers: [.command, .shift])
     static let exportDiagnostics = AstriaNativeCommand(id: "export_diagnostics", title: "Export Diagnostics", key: "e", modifiers: [.command, .shift])
     static let exportCrashSummary = AstriaNativeCommand(id: "export_crash_summary", title: "Export Crash Summary", key: "k", modifiers: [.command, .shift])
+    static let exportCrashArtifacts = AstriaNativeCommand(id: "export_crash_artifacts", title: "Export Crash Artifacts", key: "a", modifiers: [.command, .shift])
     static let copyCurrentRoute = AstriaNativeCommand(id: "copy_current_route", title: "Copy Current Route", key: "l", modifiers: [.command, .shift])
     static let copySupportSummary = AstriaNativeCommand(id: "copy_support_summary", title: "Copy Support Summary", key: "c", modifiers: [.command, .shift])
     static let revealDiagnosticsFolder = AstriaNativeCommand(id: "reveal_diagnostics_folder", title: "Reveal Diagnostics Folder", key: "f", modifiers: [.command, .shift])
     static let permissionHelp = AstriaNativeCommand(id: "permission_help", title: "Permission Help", key: "p", modifiers: [.command, .shift])
     static let retryDaemon = AstriaNativeCommand(id: "retry_daemon", title: "Retry Daemon", key: "r", modifiers: [.command, .shift])
 
-    static let all = [newWindow, reload, diagnostics, exportDiagnostics, exportCrashSummary, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, permissionHelp, retryDaemon]
+    static let all = [newWindow, reload, diagnostics, exportDiagnostics, exportCrashSummary, exportCrashArtifacts, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, permissionHelp, retryDaemon]
 }
 
 @MainActor
@@ -51,6 +52,7 @@ final class AstriaAppActions: ObservableObject {
     var openDiagnostics: () -> Void = {}
     var exportDiagnostics: () -> Void = {}
     var exportCrashSummary: () -> Void = {}
+    var exportCrashArtifacts: () -> Void = {}
     var copyCurrentRoute: () -> Void = {}
     var copySupportSummary: () -> Void = {}
     var revealDiagnosticsFolder: () -> Void = {}
@@ -90,6 +92,11 @@ struct AstriaNativeCommands: Commands {
                 appActions.exportCrashSummary()
             }
             .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.exportCrashSummary.key)), modifiers: AstriaNativeCommandSpec.exportCrashSummary.modifiers)
+
+            Button(AstriaNativeCommandSpec.exportCrashArtifacts.title) {
+                appActions.exportCrashArtifacts()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.exportCrashArtifacts.key)), modifiers: AstriaNativeCommandSpec.exportCrashArtifacts.modifiers)
 
             Divider()
 
@@ -137,6 +144,9 @@ struct AstriaApp: App {
         }
         if CommandLine.arguments.contains("--crash-summary-smoke") {
             Foundation.exit(AstriaCrashSummarySmoke.run())
+        }
+        if CommandLine.arguments.contains("--crash-artifact-collection-smoke") {
+            Foundation.exit(AstriaCrashArtifactCollectionSmoke.run())
         }
         if CommandLine.arguments.contains("--permission-helper-smoke") {
             Foundation.exit(AstriaPermissionHelperSmoke.run())
@@ -381,6 +391,29 @@ struct AstriaRootView: View {
                 loadState.message = "Astria could not export a crash summary. \(error.localizedDescription)"
             }
         }
+        appActions.exportCrashArtifacts = {
+            let panel = NSOpenPanel()
+            panel.title = "Choose local crash artifacts"
+            panel.prompt = "Export"
+            panel.allowsMultipleSelection = true
+            panel.canChooseFiles = true
+            panel.canChooseDirectories = false
+            panel.resolvesAliases = true
+            guard panel.runModal() == .OK, !panel.urls.isEmpty else {
+                loadState.message = "Crash artifact export canceled."
+                return
+            }
+            do {
+                let url = try AstriaCrashArtifactCollector.export(
+                    config: config,
+                    sourceURLs: panel.urls,
+                    userApproved: true
+                )
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            } catch {
+                loadState.message = "Astria could not export crash artifacts. \(error.localizedDescription)"
+            }
+        }
         appActions.copyCurrentRoute = {
             copyToPasteboard(AstriaSupportSummary.safeRoute(for: webURL, baseURL: config.webURL))
             loadState.message = "Copied the current Astria route."
@@ -418,6 +451,7 @@ struct AstriaRootView: View {
         appActions.openDiagnostics = {}
         appActions.exportDiagnostics = {}
         appActions.exportCrashSummary = {}
+        appActions.exportCrashArtifacts = {}
         appActions.copyCurrentRoute = {}
         appActions.copySupportSummary = {}
         appActions.revealDiagnosticsFolder = {}
@@ -694,8 +728,11 @@ enum AstriaDiagnosticsRedactor {
         if let config {
             redacted = redacted.replacingOccurrences(of: config.desktopRPCSocketPath, with: "[redacted-desktop-rpc-socket]")
             redacted = redacted.replacingOccurrences(of: config.desktopRPCPidfilePath, with: "[redacted-desktop-rpc-pidfile]")
+            redacted = redacted.replacingOccurrences(of: config.runtimeDirectory, with: "[redacted-runtime-dir]")
         }
         redacted = redactBearerTokens(in: redacted)
+        redacted = redactDesktopRPCPayloads(in: redacted)
+        redacted = redactPrivatePaths(in: redacted)
         for key in sensitiveKeys {
             redacted = redactAssignments(in: redacted, key: key)
         }
@@ -718,6 +755,37 @@ enum AstriaDiagnosticsRedactor {
         }
         let range = NSRange(value.startIndex..<value.endIndex, in: value)
         return regex.stringByReplacingMatches(in: value, range: range, withTemplate: "$1[redacted]")
+    }
+
+    private static func redactDesktopRPCPayloads(in value: String) -> String {
+        let patterns = [
+            #"(?is)("desktop_rpc_payload"\s*:\s*)\{.*?\}"#,
+            #"(?is)("desktopRPCPayload"\s*:\s*)\{.*?\}"#,
+            #"(?is)(Desktop RPC payload\s*[:=]\s*)\{.*?\}"#,
+        ]
+        return replacePatterns(patterns, in: value, template: "$1[redacted-desktop-rpc-payload]")
+    }
+
+    private static func redactPrivatePaths(in value: String) -> String {
+        let patterns = [
+            #"/Users/[^ \n\r\t"'<>)]+"#,
+            #"/private/var/folders/[^ \n\r\t"'<>)]+"#,
+            #"/var/folders/[^ \n\r\t"'<>)]+"#,
+            #"/tmp/astria-[^ \n\r\t"'<>)]+"#,
+        ]
+        return replacePatterns(patterns, in: value, template: "[redacted-local-path]")
+    }
+
+    private static func replacePatterns(_ patterns: [String], in value: String, template: String) -> String {
+        var redacted = value
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else {
+                continue
+            }
+            let range = NSRange(redacted.startIndex..<redacted.endIndex, in: redacted)
+            redacted = regex.stringByReplacingMatches(in: redacted, range: range, withTemplate: template)
+        }
+        return redacted
     }
 }
 
@@ -861,6 +929,88 @@ enum AstriaCrashSummaryExporter {
             return 1
         }
         return 0
+    }
+}
+
+struct AstriaCrashArtifact: Encodable {
+    let source: String
+    let displayName: String
+    let byteCount: Int
+    let collectedAt: String
+    let redactedSnippet: String
+}
+
+struct AstriaCrashArtifactReport: Encodable {
+    let generatedAt: String
+    let appVersion: String
+    let source: String
+    let artifactCount: Int
+    let artifacts: [AstriaCrashArtifact]
+    let localOnly: Bool
+    let uploadReady: Bool
+    let userApproved: Bool
+}
+
+enum AstriaCrashArtifactCollector {
+    private static let snippetLimit = 8_192
+    private static let maxReadBytes = 64 * 1024
+
+    static func report(config: LaunchConfig, sourceURLs: [URL], userApproved: Bool) throws -> AstriaCrashArtifactReport {
+        guard userApproved else {
+            throw NSError(domain: "AstriaCrashArtifactCollector", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Crash artifact collection requires explicit user approval.",
+            ])
+        }
+        let collectedAt = ISO8601DateFormatter().string(from: Date())
+        let artifacts = try sourceURLs.map { url in
+            try artifact(from: url, config: config, collectedAt: collectedAt)
+        }
+        return AstriaCrashArtifactReport(
+            generatedAt: collectedAt,
+            appVersion: config.appVersion,
+            source: "user-selected-local-crash-artifacts",
+            artifactCount: artifacts.count,
+            artifacts: artifacts,
+            localOnly: true,
+            uploadReady: false,
+            userApproved: true
+        )
+    }
+
+    static func export(config: LaunchConfig, sourceURLs: [URL], userApproved: Bool) throws -> URL {
+        let directory = try AstriaDiagnosticsExporter.diagnosticsDirectory(config: config)
+        let filename = "astria-crash-artifacts-\(Int(Date().timeIntervalSince1970)).json"
+        let url = directory.appendingPathComponent(filename)
+        let data = try JSONEncoder.sortedPrettyPrinted.encode(report(config: config, sourceURLs: sourceURLs, userApproved: userApproved))
+        try data.write(to: url, options: [.atomic])
+        return url
+    }
+
+    private static func artifact(from url: URL, config: LaunchConfig, collectedAt: String) throws -> AstriaCrashArtifact {
+        let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey, .nameKey])
+        if values.isRegularFile == false {
+            throw NSError(domain: "AstriaCrashArtifactCollector", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Crash artifact must be a regular local file.",
+            ])
+        }
+        let rawData = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let prefix = rawData.prefix(maxReadBytes)
+        let rawText = String(data: prefix, encoding: .utf8)
+            ?? String(data: prefix, encoding: .ascii)
+            ?? "<binary crash artifact: \(prefix.count) bytes sampled>"
+        let redacted = AstriaDiagnosticsRedactor.redact(rawText, config: config)
+        return AstriaCrashArtifact(
+            source: "user-selected-file",
+            displayName: sanitizedDisplayName(values.name ?? url.lastPathComponent),
+            byteCount: values.fileSize ?? rawData.count,
+            collectedAt: collectedAt,
+            redactedSnippet: String(redacted.prefix(snippetLimit))
+        )
+    }
+
+    private static func sanitizedDisplayName(_ value: String) -> String {
+        let basename = (value as NSString).lastPathComponent
+        return AstriaDiagnosticsRedactor.redact(basename)
     }
 }
 
@@ -1932,7 +2082,7 @@ enum AstriaNativeCommandSmoke {
     static func run() -> Int32 {
         let commands = AstriaNativeCommandSpec.all
         let ids = Set(commands.map(\.id))
-        if commands.count != 10 || ids.count != commands.count {
+        if commands.count != 11 || ids.count != commands.count {
             fputs("Astria native command smoke found missing or duplicate commands\n", stderr)
             return 1
         }
@@ -1942,6 +2092,7 @@ enum AstriaNativeCommandSmoke {
             "diagnostics": ("Open Diagnostics", "d"),
             "export_diagnostics": ("Export Diagnostics", "e"),
             "export_crash_summary": ("Export Crash Summary", "k"),
+            "export_crash_artifacts": ("Export Crash Artifacts", "a"),
             "copy_current_route": ("Copy Current Route", "l"),
             "copy_support_summary": ("Copy Support Summary", "c"),
             "reveal_diagnostics_folder": ("Reveal Diagnostics Folder", "f"),
@@ -2195,6 +2346,79 @@ enum AstriaCrashSummarySmoke {
                 fputs("Astria crash summary smoke text leaked \(forbidden)\n", stderr)
                 return 1
             }
+        }
+        return 0
+    }
+}
+
+enum AstriaCrashArtifactCollectionSmoke {
+    static func run() -> Int32 {
+        let runtime = "/tmp/astria-crash-artifacts-\(getpid())-\(UUID().uuidString.prefix(8))"
+        defer {
+            try? FileManager.default.removeItem(atPath: runtime)
+        }
+        let config = LaunchConfig.fromProcess(arguments: [
+            "Astria",
+            "--runtime-dir", runtime,
+        ], environment: [:])
+        let selectedDirectory = URL(fileURLWithPath: runtime, isDirectory: true)
+            .appendingPathComponent("selected", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: selectedDirectory, withIntermediateDirectories: true)
+            let crashURL = selectedDirectory.appendingPathComponent("Astria-2026-06-09.crash")
+            let sensitive = """
+            Process: Astria
+            Path: /Users/timmy/Library/Application Support/dev.starclaw.astria/Astria.app
+            Crashed with api_key=sk-test-secret Authorization: Bearer abc.def token=hidden prompt=private
+            Desktop RPC payload: {"method":"system.capabilities","params":{"prompt":"private","socket":"\(config.desktopRPCSocketPath)"}}
+            Socket: \(config.desktopRPCSocketPath)
+            Pidfile: \(config.desktopRPCPidfilePath)
+            """
+            try sensitive.write(to: crashURL, atomically: true, encoding: .utf8)
+
+            if (try? AstriaCrashArtifactCollector.report(config: config, sourceURLs: [crashURL], userApproved: false)) != nil {
+                fputs("Astria crash artifact collection smoke allowed unapproved collection\n", stderr)
+                return 1
+            }
+
+            let url = try AstriaCrashArtifactCollector.export(
+                config: config,
+                sourceURLs: [crashURL],
+                userApproved: true
+            )
+            let body = try String(contentsOf: url)
+            for required in [
+                "\"localOnly\" : true",
+                "\"uploadReady\" : false",
+                "\"userApproved\" : true",
+                "\"source\" : \"user-selected-local-crash-artifacts\"",
+                "\"artifactCount\" : 1",
+                "\"displayName\" : \"Astria-2026-06-09.crash\"",
+            ] {
+                if !body.contains(required) {
+                    fputs("Astria crash artifact collection smoke missing \(required)\n", stderr)
+                    return 1
+                }
+            }
+            for forbidden in [
+                "sk-test-secret",
+                "abc.def",
+                "hidden",
+                "private",
+                "system.capabilities",
+                config.desktopRPCSocketPath,
+                config.desktopRPCPidfilePath,
+                "/Users/",
+                selectedDirectory.path,
+            ] {
+                if body.contains(forbidden) {
+                    fputs("Astria crash artifact collection smoke leaked \(forbidden)\n", stderr)
+                    return 1
+                }
+            }
+        } catch {
+            fputs("Astria crash artifact collection smoke failed: \(error.localizedDescription)\n", stderr)
+            return 1
         }
         return 0
     }

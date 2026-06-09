@@ -50,6 +50,9 @@ echo "==> checking Astria diagnostics export"
 echo "==> checking Astria crash summary"
 "$app_path/Contents/MacOS/Astria" --crash-summary-smoke
 
+echo "==> checking Astria crash artifact collection"
+"$app_path/Contents/MacOS/Astria" --crash-artifact-collection-smoke
+
 echo "==> checking Astria permission helper"
 "$app_path/Contents/MacOS/Astria" --permission-helper-smoke
 
