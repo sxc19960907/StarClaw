@@ -1,9 +1,9 @@
 {
-  "id": "astria-kocoro-parity-phase-21",
-  "name": "astria-kocoro-parity-phase-21",
-  "title": "Astria Kocoro parity phase 21: sandbox updater rehearsal",
+  "id": "astria-sandbox-updater-health-rehearsal",
+  "name": "astria-sandbox-updater-health-rehearsal",
+  "title": "Astria sandbox updater health rehearsal",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -18,11 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-09-astria-sandbox-updater-rehearsal-fixture",
-    "06-09-astria-sandbox-updater-health-rehearsal"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-09-astria-kocoro-parity-phase-21",
   "relatedFiles": [],
   "notes": "",
   "meta": {}

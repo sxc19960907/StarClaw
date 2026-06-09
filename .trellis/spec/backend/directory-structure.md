@@ -282,6 +282,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   must reject touched paths outside the sandbox and must not mutate real Astria
   app bundles, `/Applications`, user Application Support, real bundled daemons,
   or production release artifacts.
+- Sandbox updater health rehearsals may simulate post-update app launch, daemon
+  health, Desktop RPC capabilities, and Web UI readiness only through
+  disposable fixture markers under a temporary sandbox. They must fail missing
+  required health markers, reject marker paths outside the sandbox, and must not
+  probe real daemons, real Web UI processes, network endpoints, or production
+  app bundles.
 - Astria release compatibility manifests must be credential-free JSON with app
   version/build, daemon version, source tag, local-only status, replacement
   disabled, and compatibility min-version fields. App and daemon release
@@ -374,6 +380,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   fixture, rolls back to the previous fixture, and validates every touched path
   stays under the sandbox. Any touched path outside the sandbox -> validation
   fails.
+- Sandbox updater health rehearsal with fake candidate `Astria.app` fixture
+  markers under a temporary sandbox -> validates app launch, daemon health,
+  Desktop RPC capabilities, and Web UI readiness markers. Missing required
+  marker or outside-sandbox marker path -> validation fails.
 - Astria compatibility manifest with matching app and daemon versions ->
   validation passes. Missing app/build/daemon fields or mismatched app/daemon
   release versions -> validation fails.
@@ -418,6 +428,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Sandbox updater rehearsal smoke -> verifies fixture-only staged replacement,
   rollback, and outside-sandbox path rejection without requiring Apple
   credentials or touching the installed app.
+- Sandbox updater health rehearsal smoke -> verifies fixture-only post-update
+  health markers and rejects missing markers or outside-sandbox marker paths
+  without requiring Apple credentials, real daemon probes, or touching the
+  installed app.
 
 ### 5. Good/Base/Bad Cases
 

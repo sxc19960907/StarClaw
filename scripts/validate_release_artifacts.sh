@@ -13,6 +13,7 @@ RUN_UPDATER_TRANSACTION_PLAN_SMOKE=false
 RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=false
 RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=false
 RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=false
+RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -31,6 +32,7 @@ for arg in "$@"; do
     --updater-rollback-health-gates-smoke) RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=true ;;
     --astria-release-acceptance-gates-smoke) RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=true ;;
     --sandbox-updater-rehearsal-smoke) RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=true ;;
+    --sandbox-updater-health-rehearsal-smoke) RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -977,6 +979,62 @@ PLIST
   printf '%s\n' "$version" > "$bundle/Contents/Resources/version.txt"
 }
 
+write_astria_fixture_health_markers() {
+  local bundle="$1"
+  local version="$2"
+  local health_dir="$bundle/Contents/Resources/health"
+  mkdir -p "$health_dir"
+  local marker
+  for marker in app_launch daemon_health desktop_rpc_capabilities web_ui_readiness; do
+    cat > "$health_dir/$marker.json" <<JSON
+{
+  "schema_version": "1",
+  "product": "Astria",
+  "fixture": true,
+  "check": "$marker",
+  "status": "ready",
+  "version": "$version"
+}
+JSON
+  done
+}
+
+assert_astria_fixture_health_markers() {
+  local sandbox="$1"
+  local bundle="$2"
+  local expected_version="$3"
+  local health_dir="$bundle/Contents/Resources/health"
+  local marker
+  for marker in app_launch daemon_health desktop_rpc_capabilities web_ui_readiness; do
+    local path="$health_dir/$marker.json"
+    assert_sandbox_path "$sandbox" "$path"
+    [[ -f "$path" ]] || fail "sandbox updater health rehearsal missing marker: $marker"
+    require_cmd node
+    node - <<'NODE' "$path" "$marker" "$expected_version"
+const fs = require("fs");
+const [markerPath, expectedCheck, expectedVersion] = process.argv.slice(2);
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+let marker;
+try {
+  marker = JSON.parse(fs.readFileSync(markerPath, "utf8"));
+} catch (error) {
+  fail(`Astria sandbox health marker is not valid JSON: ${error.message}`);
+}
+if (marker.schema_version !== "1") fail("Astria sandbox health marker schema_version must be 1");
+if (marker.product !== "Astria") fail("Astria sandbox health marker product must be Astria");
+if (marker.fixture !== true) fail("Astria sandbox health marker must declare fixture=true");
+if (marker.check !== expectedCheck) fail(`Astria sandbox health marker expected ${expectedCheck}`);
+if (marker.status !== "ready") fail(`Astria sandbox health marker ${expectedCheck} must be ready`);
+if (marker.version !== expectedVersion) fail(`Astria sandbox health marker ${expectedCheck} version mismatch`);
+NODE
+  done
+}
+
 run_astria_sandbox_updater_rehearsal_smoke() {
   echo "==> checking Astria sandbox updater rehearsal smoke"
   local tmp
@@ -1018,6 +1076,42 @@ run_astria_sandbox_updater_rehearsal_smoke() {
     fail "sandbox updater rehearsal unexpectedly allowed outside path"
   fi
   grep -Fq "outside sandbox" "$tmp/outside.err" || fail "sandbox outside-path guard failed for the wrong reason"
+}
+
+run_astria_sandbox_updater_health_rehearsal_smoke() {
+  echo "==> checking Astria sandbox updater health rehearsal smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local sandbox="$tmp/sandbox"
+  local candidate="$sandbox/candidate/Astria.app"
+  local install="$sandbox/install/Astria.app"
+  mkdir -p "$sandbox/candidate" "$sandbox/install"
+
+  write_astria_fixture_bundle "$candidate" "1.1.0"
+  write_astria_fixture_health_markers "$candidate" "1.1.0"
+  cp -R "$candidate" "$install"
+
+  assert_sandbox_path "$sandbox" "$candidate"
+  assert_sandbox_path "$sandbox" "$install"
+  assert_astria_fixture_health_markers "$sandbox" "$install" "1.1.0"
+
+  local missing="$sandbox/missing/Astria.app"
+  mkdir -p "$sandbox/missing"
+  cp -R "$candidate" "$missing"
+  rm -f "$missing/Contents/Resources/health/desktop_rpc_capabilities.json"
+  if (assert_astria_fixture_health_markers "$sandbox" "$missing" "1.1.0") >/dev/null 2>"$tmp/missing-health.err"; then
+    fail "sandbox updater health rehearsal unexpectedly passed without Desktop RPC marker"
+  fi
+  grep -Fq "missing marker: desktop_rpc_capabilities" "$tmp/missing-health.err" || fail "missing health marker failed for the wrong reason"
+
+  local outside="$tmp/outside/Astria.app"
+  mkdir -p "$outside/Contents/Resources/health"
+  if (assert_astria_fixture_health_markers "$sandbox" "$outside" "1.1.0") >/dev/null 2>"$tmp/outside-health.err"; then
+    fail "sandbox updater health rehearsal unexpectedly allowed outside marker path"
+  fi
+  grep -Fq "outside sandbox" "$tmp/outside-health.err" || fail "sandbox health outside-path guard failed for the wrong reason"
 }
 
 find_one() {
@@ -1085,6 +1179,12 @@ if "$RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE"; then
+  run_astria_sandbox_updater_health_rehearsal_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
@@ -1095,6 +1195,7 @@ if "$NPM_ONLY"; then
     run_astria_updater_transaction_plan_smoke
     run_astria_release_acceptance_gates_smoke
     run_astria_sandbox_updater_rehearsal_smoke
+    run_astria_sandbox_updater_health_rehearsal_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -1145,6 +1246,7 @@ if "$ASTRIA_LOCAL"; then
   run_astria_updater_transaction_plan_smoke
   run_astria_release_acceptance_gates_smoke
   run_astria_sandbox_updater_rehearsal_smoke
+  run_astria_sandbox_updater_health_rehearsal_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi
