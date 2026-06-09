@@ -1898,3 +1898,36 @@ Implemented Astria macOS shell daemon supervision: health attach, local daemon l
 ### Next Steps
 
 - None - task complete
+
+
+## Session 140: Astria desktop window recovery
+
+**Date**: 2026-06-09
+**Task**: Astria desktop window recovery
+**Branch**: `main`
+
+### Summary
+
+Implemented Astria macOS shell route restoration, daemon health recovery banner and reload behavior, smoke coverage, and docs/spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1a3e956` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

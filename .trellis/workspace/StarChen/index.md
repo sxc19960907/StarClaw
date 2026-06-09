@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 139
+- **Total Sessions**: 140
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1900 | Active |
+| `journal-3.md` | ~1933 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 140 | 2026-06-09 | Astria desktop window recovery | `1a3e956` | `main` |
 | 139 | 2026-06-09 | Astria daemon supervision launcher | `1939653` | `main` |
 | 138 | 2026-06-09 | Astria macOS shell skeleton | `ea505cb` | `main` |
 | 137 | 2026-06-09 | Phase 12 final gap review | `11e4e3a` | `main` |
