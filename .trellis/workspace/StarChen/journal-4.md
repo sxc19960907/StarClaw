@@ -764,3 +764,36 @@ Added a user-triggered Astria crash artifact export boundary. The native shell n
 ### Next Steps
 
 - None - task complete
+
+
+## Session 166: Astria Kocoro parity phase 19 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 19 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Astria Kocoro parity Phase19 after all three children were archived. Recorded the final gap review, updating Astria/Kocoro local-first desktop platform parity to roughly 95-97% and recommending Phase20 focus on production updater transaction safety, rollback/health gates, and a decision on cloud/channel parity scope.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7a87e93` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
