@@ -104,5 +104,8 @@ scripts/validate_release_artifacts.sh --npm-only --astria-local
 
 This does not require Apple credentials. It confirms the unsigned app smoke
 passes, private signing/notarization material is absent from the repository, and
-no Astria updater metadata is present before checksum/signature validation
-exists.
+Astria updater metadata is either absent or conforms to the signed JSON boundary:
+`version`, `artifact_url`, `checksum_sha256`, `signature`,
+`signature_algorithm`, `public_key_id`, `min_app_version`,
+`min_daemon_version`, and `unavailable_safe=true`. Metadata must not enable app
+replacement until a verified updater implementation exists.

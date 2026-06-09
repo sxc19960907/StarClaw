@@ -248,13 +248,15 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Signing and notarization require external Apple credentials, Hardened Runtime,
   notarization, and stapling. Do not commit credentials, signing identities,
   keychain profiles, notarization secrets, or update private keys.
-- Astria does not auto-update itself in this phase. Future updater metadata must
-  be unavailable-safe and checksum/signature verified before replacing the app
-  or bundled daemon.
+- Astria does not auto-update itself in this phase. Missing updater metadata is
+  unavailable-safe. Present updater metadata must be signed JSON with checksum,
+  public-key identity, and app/daemon compatibility fields before any future app
+  or bundled-daemon replacement behavior exists.
 - Release validation with `scripts/validate_release_artifacts.sh --npm-only
   --astria-local` must remain credential-free. It should run the Astria smoke,
   verify private signing/notarization material is absent, and reject Astria
-  updater metadata until checksum/signature validation exists.
+  updater metadata that lacks checksum/signature/compatibility fields or enables
+  app replacement before verified updater implementation exists.
 
 ### 4. Validation & Error Matrix
 
@@ -308,8 +310,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   or rebuild from matching release inputs.
 - Committed `.p8`, `.p12`, provisioning profile, private key, notary/keychain
   profile, or updater private material -> release validation fails.
-- Astria updater metadata without checksum/signature validation -> release
-  validation fails; missing updater metadata remains non-fatal.
+- Astria updater metadata without checksum/signature/compatibility fields, with
+  private fields, or enabling app replacement -> release validation fails;
+  missing updater metadata remains non-fatal.
 - Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
@@ -325,6 +328,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   private local filesystem paths.
 - Notification readiness smoke -> verifies readiness states and guidance text
   without requesting notification authorization or sending notifications.
+- Updater boundary smoke -> verifies missing updater metadata is
+  unavailable-safe, unsafe metadata fails, private updater fields fail, and
+  signed JSON metadata with checksum/signature/compatibility fields passes while
+  app replacement remains disabled.
 
 ### 5. Good/Base/Bad Cases
 

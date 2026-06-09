@@ -65,6 +65,17 @@ Astria does not auto-update itself in this phase. Missing update metadata must
 be non-fatal, and any future updater must verify checksums/signatures before
 replacing the app or bundled daemon.
 
+If Astria updater metadata is introduced before replacement logic exists, it
+must be signed JSON with checksum and compatibility fields and
+`unavailable_safe=true`; metadata that enables app replacement is rejected by
+local release validation.
+
+The updater boundary can be checked without building release artifacts:
+
+```bash
+scripts/validate_release_artifacts.sh --updater-boundary-smoke
+```
+
 ## Tag Release
 
 ```bash

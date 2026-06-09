@@ -6,6 +6,7 @@ DIST_DIR="${RELEASE_DIST_DIR:-$ROOT_DIR/dist}"
 RUN_SNAPSHOT=false
 NPM_ONLY=false
 ASTRIA_LOCAL=false
+RUN_UPDATER_BOUNDARY_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -17,6 +18,7 @@ for arg in "$@"; do
     --snapshot) RUN_SNAPSHOT=true ;;
     --npm-only) NPM_ONLY=true ;;
     --astria-local) ASTRIA_LOCAL=true ;;
+    --updater-boundary-smoke) RUN_UPDATER_BOUNDARY_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -69,16 +71,148 @@ assert_no_private_release_material() {
 
 assert_astria_updater_boundary() {
   echo "==> checking Astria updater boundary"
+  local search_dir="${1:-${ASTRIA_UPDATER_METADATA_DIR:-$ROOT_DIR/desktop/macos/Astria}}"
+  [[ -d "$search_dir" ]] || fail "missing Astria updater metadata search dir: $search_dir"
   local metadata
   metadata="$(
-    find "$ROOT_DIR/desktop/macos/Astria" -type f \( \
+    find "$search_dir" -type f \( \
       -iname "*appcast*.xml" -o \
       -iname "*sparkle*.xml" -o \
       -iname "*update*.json" -o \
       -iname "*updater*.json" \
     \) -print
   )"
-  [[ -z "$metadata" ]] || fail "Astria updater metadata is not supported yet; future metadata must add checksum/signature validation first: $metadata"
+  if [[ -z "$metadata" ]]; then
+    echo "==> Astria updater metadata absent; unavailable-safe"
+    return 0
+  fi
+  require_cmd node
+  METADATA_FILES="$metadata" node - <<'NODE'
+const fs = require("fs");
+const files = (process.env.METADATA_FILES || "").split(/\n/).filter(Boolean);
+const required = [
+  "version",
+  "artifact_url",
+  "checksum_sha256",
+  "signature",
+  "signature_algorithm",
+  "public_key_id",
+  "min_app_version",
+  "min_daemon_version",
+];
+const allowedAlgorithms = new Set(["ed25519", "rsa-pss-sha256"]);
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+function walk(value, path = []) {
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    const lower = key.toLowerCase();
+    if (
+      lower.includes("private") ||
+      lower.includes("secret") ||
+      lower.includes("notary") ||
+      lower.includes("keychain") ||
+      lower === "p8" ||
+      lower === "p12"
+    ) {
+      fail(`Astria updater metadata contains private field ${[...path, key].join(".")}`);
+    }
+    walk(child, [...path, key]);
+  }
+}
+
+for (const file of files) {
+  if (!file.toLowerCase().endsWith(".json")) {
+    fail(`Astria updater metadata format is unsupported before signed JSON validation exists: ${file}`);
+  }
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    fail(`Astria updater metadata is not valid JSON: ${file}: ${error.message}`);
+  }
+  walk(data);
+  for (const field of required) {
+    if (typeof data[field] !== "string" || data[field].trim() === "") {
+      fail(`Astria updater metadata ${file} missing required field ${field}`);
+    }
+  }
+  if (!/^https:\/\//.test(data.artifact_url)) {
+    fail(`Astria updater metadata ${file} artifact_url must be https`);
+  }
+  if (!/^[a-fA-F0-9]{64}$/.test(data.checksum_sha256)) {
+    fail(`Astria updater metadata ${file} checksum_sha256 must be a 64-character SHA-256 hex digest`);
+  }
+  if (!allowedAlgorithms.has(data.signature_algorithm)) {
+    fail(`Astria updater metadata ${file} signature_algorithm must be one of ${Array.from(allowedAlgorithms).join(", ")}`);
+  }
+  if (data.auto_install === true || data.replace_app === true || data.replacement_allowed === true) {
+    fail(`Astria updater metadata ${file} must not enable app replacement before verified updater implementation exists`);
+  }
+  if (data.unavailable_safe !== true) {
+    fail(`Astria updater metadata ${file} must declare unavailable_safe=true until replacement is implemented`);
+  }
+}
+NODE
+}
+
+run_astria_updater_boundary_smoke() {
+  echo "==> checking Astria updater boundary smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  mkdir -p "$tmp/missing"
+  assert_astria_updater_boundary "$tmp/missing"
+
+  mkdir -p "$tmp/unsafe"
+  cat > "$tmp/unsafe/update.json" <<'JSON'
+{"version":"1.0.0","artifact_url":"https://example.com/Astria.zip"}
+JSON
+  if (assert_astria_updater_boundary "$tmp/unsafe") >/dev/null 2>"$tmp/unsafe.err"; then
+    fail "unsafe Astria updater metadata unexpectedly passed validation"
+  fi
+  grep -Fq "missing required field checksum_sha256" "$tmp/unsafe.err" || fail "unsafe updater metadata failed for the wrong reason"
+
+  mkdir -p "$tmp/private"
+  cat > "$tmp/private/update.json" <<'JSON'
+{
+  "version": "1.0.0",
+  "artifact_url": "https://example.com/Astria.zip",
+  "checksum_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "signature": "signed-by-release-key",
+  "signature_algorithm": "ed25519",
+  "public_key_id": "astria-release-1",
+  "min_app_version": "1.0.0",
+  "min_daemon_version": "1.0.0",
+  "unavailable_safe": true,
+  "private_key": "do-not-commit"
+}
+JSON
+  if (assert_astria_updater_boundary "$tmp/private") >/dev/null 2>"$tmp/private.err"; then
+    fail "private Astria updater metadata unexpectedly passed validation"
+  fi
+  grep -Fq "private field private_key" "$tmp/private.err" || fail "private updater metadata failed for the wrong reason"
+
+  mkdir -p "$tmp/safe"
+  cat > "$tmp/safe/update.json" <<'JSON'
+{
+  "version": "1.0.0",
+  "artifact_url": "https://example.com/Astria.zip",
+  "checksum_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "signature": "signed-by-release-key",
+  "signature_algorithm": "ed25519",
+  "public_key_id": "astria-release-1",
+  "min_app_version": "1.0.0",
+  "min_daemon_version": "1.0.0",
+  "unavailable_safe": true
+}
+JSON
+  assert_astria_updater_boundary "$tmp/safe"
 }
 
 find_one() {
@@ -103,6 +237,12 @@ for (const file of ["bin/starclaw", "scripts/install.js", "scripts/uninstall.js"
 }
 NODE
 }
+
+if "$RUN_UPDATER_BOUNDARY_SMOKE"; then
+  run_astria_updater_boundary_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
 
 if "$NPM_ONLY"; then
   validate_npm_package

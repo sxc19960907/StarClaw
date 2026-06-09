@@ -170,14 +170,17 @@ scripts/validate_release_artifacts.sh --npm-only --astria-local
 ```
 
 This checks the npm package shape, runs the Astria shell smoke, verifies that
-private signing/notarization material is not committed, and confirms Astria has
-no updater metadata until checksum/signature validation is implemented.
+private signing/notarization material is not committed, and confirms Astria
+updater metadata is either absent or has checksum, signature, release
+compatibility, and unavailable-safe fields.
 
 A signed distributable Astria build requires a Developer ID Application
 identity, Hardened Runtime, notarization with `notarytool`, stapling, and
 release-matched app/daemon inputs. Do not commit signing identities, keychain
 profiles, Apple credentials, notarization secrets, or updater private keys.
 Missing updater metadata is intentionally non-fatal for local builds.
+Updater metadata must not enable app replacement until verified checksum and
+signature enforcement exists in the updater implementation.
 
 When the shell starts the daemon itself, it also passes Desktop RPC socket and
 pidfile paths under `~/Library/Application Support/dev.starclaw.astria/` and
