@@ -797,3 +797,36 @@ Closed Astria Kocoro parity Phase19 after all three children were archived. Reco
 ### Next Steps
 
 - None - task complete
+
+
+## Session 167: Astria staged updater transaction planning
+
+**Date**: 2026-06-09
+**Task**: Astria staged updater transaction planning
+**Branch**: `main`
+
+### Summary
+
+Started Astria Kocoro parity Phase20 and completed its first child. Added a credential-free updater transaction planner smoke that combines signed metadata and compatibility manifest inputs into a local plan_only, no-replacement decision, requiring rollback and post-update health gates while rejecting replacement-enabled or missing-gate metadata. Validation passed with Trellis validation, updater transaction plan smoke, Astria local release validation, macOS shell smoke, focused Go tests, go test ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6a2f4f7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
