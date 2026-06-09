@@ -71,3 +71,36 @@ Implemented Astria Desktop RPC capabilities reconciliation: shell-launched daemo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 145: Desktop RPC fallback recovery
+
+**Date**: 2026-06-09
+**Task**: Desktop RPC fallback recovery
+**Branch**: `main`
+
+### Summary
+
+Hardened Astria Desktop RPC fallback recovery with scoped stale socket/pidfile cleanup, live pid preservation, degraded HTTP fallback state, smoke coverage, and docs/spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c58305a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
