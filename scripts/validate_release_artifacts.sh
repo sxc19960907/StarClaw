@@ -8,6 +8,7 @@ NPM_ONLY=false
 ASTRIA_LOCAL=false
 RUN_UPDATER_BOUNDARY_SMOKE=false
 RUN_UPDATER_DRY_RUN_SMOKE=false
+RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -21,6 +22,7 @@ for arg in "$@"; do
     --astria-local) ASTRIA_LOCAL=true ;;
     --updater-boundary-smoke) RUN_UPDATER_BOUNDARY_SMOKE=true ;;
     --updater-dry-run-smoke) RUN_UPDATER_DRY_RUN_SMOKE=true ;;
+    --astria-compatibility-manifest-smoke) RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -312,6 +314,121 @@ JSON
   grep -Fq "must not enable app replacement" "$tmp/replacement.err" || fail "replacement metadata failed for the wrong reason"
 }
 
+write_astria_compatibility_manifest() {
+  local output="$1"
+  local app_version="$2"
+  local app_build="$3"
+  local daemon_version="$4"
+  local source_tag="$5"
+  require_cmd node
+  node - <<'NODE' "$output" "$app_version" "$app_build" "$daemon_version" "$source_tag"
+const fs = require("fs");
+const [output, appVersion, appBuild, daemonVersion, sourceTag] = process.argv.slice(2);
+const manifest = {
+  schema_version: "1",
+  product: "Astria",
+  local_only: true,
+  replacement: "disabled",
+  app: {
+    version: appVersion,
+    build: appBuild,
+  },
+  daemon: {
+    version: daemonVersion,
+  },
+  compatibility: {
+    source_tag: sourceTag,
+    app_daemon_match: appVersion === daemonVersion,
+    min_app_version: appVersion,
+    min_daemon_version: daemonVersion,
+  },
+};
+fs.writeFileSync(output, JSON.stringify(manifest, null, 2) + "\n");
+NODE
+}
+
+assert_astria_compatibility_manifest() {
+  local manifest="$1"
+  require_cmd node
+  node - <<'NODE' "$manifest"
+const fs = require("fs");
+const manifestPath = process.argv[2];
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+let manifest;
+try {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+} catch (error) {
+  fail(`Astria compatibility manifest is not valid JSON: ${error.message}`);
+}
+
+for (const field of ["schema_version", "product", "local_only", "replacement", "app", "daemon", "compatibility"]) {
+  if (manifest[field] === undefined || manifest[field] === null) {
+    fail(`Astria compatibility manifest missing ${field}`);
+  }
+}
+if (manifest.product !== "Astria") fail("Astria compatibility manifest product must be Astria");
+if (manifest.local_only !== true) fail("Astria compatibility manifest must declare local_only=true");
+if (manifest.replacement !== "disabled") fail("Astria compatibility manifest must keep replacement disabled");
+for (const field of ["version", "build"]) {
+  if (typeof manifest.app[field] !== "string" || manifest.app[field].trim() === "") {
+    fail(`Astria compatibility manifest missing app.${field}`);
+  }
+}
+if (typeof manifest.daemon.version !== "string" || manifest.daemon.version.trim() === "") {
+  fail("Astria compatibility manifest missing daemon.version");
+}
+for (const field of ["source_tag", "min_app_version", "min_daemon_version"]) {
+  if (typeof manifest.compatibility[field] !== "string" || manifest.compatibility[field].trim() === "") {
+    fail(`Astria compatibility manifest missing compatibility.${field}`);
+  }
+}
+if (manifest.compatibility.app_daemon_match !== true) {
+  fail("Astria compatibility manifest requires matching app and daemon release versions");
+}
+if (manifest.app.version !== manifest.daemon.version) {
+  fail("Astria compatibility manifest app.version must match daemon.version");
+}
+if (manifest.compatibility.min_app_version !== manifest.app.version) {
+  fail("Astria compatibility manifest compatibility.min_app_version must match app.version");
+}
+if (manifest.compatibility.min_daemon_version !== manifest.daemon.version) {
+  fail("Astria compatibility manifest compatibility.min_daemon_version must match daemon.version");
+}
+NODE
+}
+
+run_astria_compatibility_manifest_smoke() {
+  echo "==> checking Astria compatibility manifest smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local matching="$tmp/astria-compatibility.json"
+  write_astria_compatibility_manifest "$matching" "1.2.3" "456" "1.2.3" "v1.2.3"
+  assert_astria_compatibility_manifest "$matching"
+
+  local mismatched="$tmp/astria-compatibility-mismatch.json"
+  write_astria_compatibility_manifest "$mismatched" "1.2.3" "456" "1.2.4" "v1.2.3"
+  if (assert_astria_compatibility_manifest "$mismatched") >/dev/null 2>"$tmp/mismatch.err"; then
+    fail "mismatched Astria compatibility manifest unexpectedly passed validation"
+  fi
+  grep -Fq "matching app and daemon release versions" "$tmp/mismatch.err" || fail "mismatched compatibility manifest failed for the wrong reason"
+
+  local missing="$tmp/astria-compatibility-missing.json"
+  cat > "$missing" <<'JSON'
+{"schema_version":"1","product":"Astria","local_only":true,"replacement":"disabled","app":{"version":"1.2.3"},"daemon":{"version":"1.2.3"},"compatibility":{"source_tag":"v1.2.3","app_daemon_match":true,"min_app_version":"1.2.3","min_daemon_version":"1.2.3"}}
+JSON
+  if (assert_astria_compatibility_manifest "$missing") >/dev/null 2>"$tmp/missing.err"; then
+    fail "incomplete Astria compatibility manifest unexpectedly passed validation"
+  fi
+  grep -Fq "missing app.build" "$tmp/missing.err" || fail "incomplete compatibility manifest failed for the wrong reason"
+}
+
 find_one() {
   local pattern="$1"
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
@@ -347,11 +464,18 @@ if "$RUN_UPDATER_DRY_RUN_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE"; then
+  run_astria_compatibility_manifest_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
     assert_no_private_release_material
     assert_astria_updater_boundary
+    run_astria_compatibility_manifest_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -397,6 +521,7 @@ validate_npm_package
 if "$ASTRIA_LOCAL"; then
   assert_no_private_release_material
   assert_astria_updater_boundary
+  run_astria_compatibility_manifest_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi

@@ -255,6 +255,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Updater dry-run validation may parse verified metadata and emit a local
   decision containing version, checksum, signature algorithm, public key id, and
   app/daemon compatibility fields. The decision must keep replacement disabled.
+- Astria release compatibility manifests must be credential-free JSON with app
+  version/build, daemon version, source tag, local-only status, replacement
+  disabled, and compatibility min-version fields. App and daemon release
+  versions must match for a release candidate to pass validation.
 - Release validation with `scripts/validate_release_artifacts.sh --npm-only
   --astria-local` must remain credential-free. It should run the Astria smoke,
   verify private signing/notarization material is absent, and reject Astria
@@ -319,6 +323,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Astria updater dry-run with valid metadata -> returns a verified dry-run
   decision with replacement disabled. Replacement-enabled metadata -> validation
   fails before any replacement path is considered.
+- Astria compatibility manifest with matching app and daemon versions ->
+  validation passes. Missing app/build/daemon fields or mismatched app/daemon
+  release versions -> validation fails.
 - Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
@@ -341,6 +348,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Updater dry-run smoke -> verifies missing metadata, valid metadata, and
   replacement-enabled metadata decisions without building release artifacts or
   requiring Apple credentials.
+- Astria compatibility manifest smoke -> verifies matching, mismatched, and
+  incomplete manifest cases without requiring Apple credentials.
 
 ### 5. Good/Base/Bad Cases
 

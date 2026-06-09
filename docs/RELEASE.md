@@ -55,6 +55,13 @@ The future signed release artifact shape is `Astria.app` with the launcher at
 `Contents/Resources/starclaw`. The app and bundled daemon should come from the
 same StarClaw release tag.
 
+Astria release candidates also use a local compatibility manifest shape with
+`schema_version`, `product`, `local_only`, `replacement`, `app.version`,
+`app.build`, `daemon.version`, and `compatibility.source_tag` /
+`min_app_version` / `min_daemon_version`. Validation requires app and daemon
+release versions to match before the artifact can be treated as a compatible
+candidate.
+
 Signing and notarization are intentionally outside the default Linux release
 workflow. A distributable macOS artifact requires a Developer ID Application
 identity, Hardened Runtime, notarization with `notarytool`, and stapling. Do
@@ -75,6 +82,7 @@ The updater boundary can be checked without building release artifacts:
 ```bash
 scripts/validate_release_artifacts.sh --updater-boundary-smoke
 scripts/validate_release_artifacts.sh --updater-dry-run-smoke
+scripts/validate_release_artifacts.sh --astria-compatibility-manifest-smoke
 ```
 
 The dry-run check parses updater metadata and returns a decision with
