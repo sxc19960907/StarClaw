@@ -401,3 +401,36 @@ Closed Phase16 native OS integration and distribution hardening: native command/
 ### Next Steps
 
 - None - task complete
+
+
+## Session 155: Astria native clipboard file affordances
+
+**Date**: 2026-06-09
+**Task**: Astria native clipboard file affordances
+**Branch**: `main`
+
+### Summary
+
+Added native Copy Current Route, Copy Support Summary, and Reveal Diagnostics Folder affordances for Astria. The copied route is constrained to safe relative /app routes, support summaries reuse diagnostics redaction, smoke coverage validates command metadata, route safety, and secret redaction, and the backend Astria shell spec now documents the clipboard/file boundaries.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a022266` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
