@@ -830,3 +830,36 @@ Started Astria Kocoro parity Phase20 and completed its first child. Added a cred
 ### Next Steps
 
 - None - task complete
+
+
+## Session 168: Astria updater rollback health gates
+
+**Date**: 2026-06-09
+**Task**: Astria updater rollback health gates
+**Branch**: `main`
+
+### Summary
+
+Completed the second Phase20 child by adding credential-free Astria rollback and post-update health gate manifest validation. Release validation now checks rollback source/target, daemon compatibility guard, manual approval, and app/daemon/Desktop RPC/Web UI health checks, and rejects missing rollback or health gate inputs without performing replacement. Validation passed with Trellis validation, rollback/health smoke, Astria local release validation, macOS shell smoke, focused Go tests, go test ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `291f1fe` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
