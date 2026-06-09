@@ -122,7 +122,8 @@ scripts/build_macos_astria_shell.sh
 
 This builds an unsigned local `Astria.app` development shell under
 `build/desktop/macos/`. It starts or reuses the local daemon, then hosts the
-same daemon-served Web UI inside the app shell.
+same daemon-served Web UI inside the app shell. The shell restores the last
+same-origin Astria route and reloads the WebView after daemon health recovers.
 
 ### Local Runtime API
 

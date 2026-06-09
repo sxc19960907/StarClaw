@@ -13,8 +13,8 @@ scripts/smoke_npm_install.sh
 scripts/smoke_webui_core.sh
 ```
 
-On macOS, also validate the unsigned Astria development shell and daemon
-supervision smoke:
+On macOS, also validate the unsigned Astria development shell, route recovery,
+and daemon supervision smoke:
 
 ```bash
 scripts/smoke_macos_astria_shell.sh

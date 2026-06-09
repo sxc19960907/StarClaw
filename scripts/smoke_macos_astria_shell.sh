@@ -32,6 +32,9 @@ app_path="$("$ROOT_DIR/scripts/build_macos_astria_shell.sh")"
 /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$app_path/Contents/Info.plist" | grep -Fxq "dev.starclaw.astria" || fail "unexpected bundle identifier"
 /usr/libexec/PlistBuddy -c "Print :NSAppTransportSecurity:NSAllowsLocalNetworking" "$app_path/Contents/Info.plist" | grep -Fxq "true" || fail "local networking not enabled"
 
+echo "==> checking Astria route recovery"
+"$app_path/Contents/MacOS/Astria" --route-recovery-smoke
+
 echo "==> building StarClaw for supervision smoke"
 (cd "$ROOT_DIR" && go build -o "$BIN" ./main.go)
 

@@ -15,6 +15,9 @@ struct AstriaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
+        if CommandLine.arguments.contains("--route-recovery-smoke") {
+            Foundation.exit(AstriaRouteRecoverySmoke.run())
+        }
         if CommandLine.arguments.contains("--supervision-smoke") {
             Foundation.exit(AstriaSupervisorSmoke.run())
         }
@@ -104,17 +107,29 @@ struct LaunchConfig {
 struct AstriaRootView: View {
     let config: LaunchConfig
     @State private var loadState = WebLoadState()
+    @State private var webURL: URL
+    @State private var reloadToken = UUID()
     @StateObject private var supervisor: DaemonSupervisor
 
+    private let routeStore: AstriaRouteStore
+
     init(config: LaunchConfig) {
+        let routeStore = AstriaRouteStore()
         self.config = config
+        self.routeStore = routeStore
+        _webURL = State(initialValue: routeStore.restoredURL(baseURL: config.webURL))
         _supervisor = StateObject(wrappedValue: DaemonSupervisor(config: config))
     }
 
     var body: some View {
         ZStack(alignment: .top) {
             if supervisor.state.isAttached {
-                AstriaWebView(url: config.webURL, loadState: $loadState)
+                AstriaWebView(url: webURL, reloadToken: reloadToken, loadState: $loadState) { navigatedURL in
+                    if AstriaRouteStore.route(from: navigatedURL, baseURL: config.webURL) != nil {
+                        routeStore.persist(url: navigatedURL, baseURL: config.webURL)
+                        webURL = navigatedURL
+                    }
+                }
                     .ignoresSafeArea()
             } else {
                 LaunchStateView(state: supervisor.state, diagnosticsURL: config.diagnosticsURL) {
@@ -131,6 +146,10 @@ struct AstriaRootView: View {
         }
         .task {
             supervisor.start()
+        }
+        .onChange(of: supervisor.recoveryGeneration) { _ in
+            webURL = routeStore.restoredURL(baseURL: config.webURL)
+            reloadToken = UUID()
         }
     }
 }
@@ -209,14 +228,18 @@ enum DaemonState: Equatable {
     case checking
     case starting
     case attached
+    case unavailable
+    case recovered
     case failed(String)
     case crashed(String)
 
     var isAttached: Bool {
-        if case .attached = self {
+        switch self {
+        case .attached, .unavailable, .recovered:
             return true
+        default:
+            return false
         }
-        return false
     }
 
     var canRetry: Bool {
@@ -245,6 +268,10 @@ enum DaemonState: Equatable {
             return "Starting StarClaw daemon"
         case .attached:
             return "Opening Astria"
+        case .unavailable:
+            return "Reconnecting to StarClaw daemon"
+        case .recovered:
+            return "Restoring Astria"
         case .failed:
             return "Astria could not start the daemon"
         case .crashed:
@@ -262,6 +289,10 @@ enum DaemonState: Equatable {
             return "No healthy daemon was found, so Astria is starting one locally."
         case .attached:
             return "The local daemon is healthy."
+        case .unavailable:
+            return "The local daemon is temporarily unavailable. Astria will reload when it recovers."
+        case .recovered:
+            return "The daemon recovered. Astria is reloading the last workspace route."
         case .failed(let message), .crashed(let message):
             return message
         }
@@ -273,6 +304,10 @@ enum DaemonState: Equatable {
             return "Astria is checking the local daemon."
         case .starting:
             return "Astria is starting the local daemon."
+        case .unavailable:
+            return "Local daemon connection lost. Astria will recover when health returns."
+        case .recovered:
+            return "Local daemon recovered. Reloading Astria."
         case .failed(let message), .crashed(let message):
             return message
         default:
@@ -284,10 +319,12 @@ enum DaemonState: Equatable {
 @MainActor
 final class DaemonSupervisor: ObservableObject {
     @Published private(set) var state: DaemonState = .idle
+    @Published private(set) var recoveryGeneration = 0
 
     private let config: LaunchConfig
     private var childProcess: Process?
     private var launchTask: Task<Void, Never>?
+    private var healthMonitorTask: Task<Void, Never>?
 
     init(config: LaunchConfig) {
         self.config = config
@@ -307,6 +344,7 @@ final class DaemonSupervisor: ObservableObject {
         state = .checking
         if await isHealthy() {
             state = .attached
+            startHealthMonitor()
             return
         }
 
@@ -323,6 +361,7 @@ final class DaemonSupervisor: ObservableObject {
         let becameHealthy = await waitForHealth()
         if becameHealthy {
             state = .attached
+            startHealthMonitor()
             return
         }
 
@@ -369,6 +408,41 @@ final class DaemonSupervisor: ObservableObject {
             return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
             return false
+        }
+    }
+
+    private func startHealthMonitor() {
+        healthMonitorTask?.cancel()
+        healthMonitorTask = Task { [weak self] in
+            guard let self else {
+                return
+            }
+            await self.monitorHealth()
+        }
+    }
+
+    private func monitorHealth() async {
+        var sawUnavailable = false
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: UInt64(max(config.healthPollInterval * 6, 0.5) * 1_000_000_000))
+            let healthy = await isHealthy()
+            if healthy {
+                if sawUnavailable {
+                    sawUnavailable = false
+                    state = .recovered
+                    recoveryGeneration += 1
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    if state == .recovered {
+                        state = .attached
+                    }
+                }
+                continue
+            }
+
+            sawUnavailable = true
+            if state == .attached || state == .recovered {
+                state = .unavailable
+            }
         }
     }
 }
@@ -429,6 +503,92 @@ enum DaemonLaunchSupport {
     }
 }
 
+struct AstriaRouteStore {
+    static let key = "astria.lastWebRoute"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func persist(url: URL, baseURL: URL) {
+        guard let route = Self.route(from: url, baseURL: baseURL) else {
+            return
+        }
+        defaults.set(route, forKey: Self.key)
+    }
+
+    func restoredURL(baseURL: URL) -> URL {
+        guard
+            let route = defaults.string(forKey: Self.key),
+            let url = Self.url(forRoute: route, baseURL: baseURL)
+        else {
+            return baseURL
+        }
+        return url
+    }
+
+    static func route(from url: URL, baseURL: URL) -> String? {
+        guard sameOrigin(url, baseURL) else {
+            return nil
+        }
+        return normalizedRoute(path: url.path, query: url.query, fragment: url.fragment)
+    }
+
+    static func url(forRoute route: String, baseURL: URL) -> URL? {
+        guard route.hasPrefix("/") else {
+            return nil
+        }
+        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+        let split = splitRoute(route)
+        guard let normalized = normalizedRoute(path: split.path, query: split.query, fragment: split.fragment) else {
+            return nil
+        }
+        let normalizedSplit = splitRoute(normalized)
+        components?.path = normalizedSplit.path
+        components?.query = normalizedSplit.query
+        components?.fragment = normalizedSplit.fragment
+        return components?.url
+    }
+
+    private static func sameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
+        lhs.scheme == rhs.scheme && lhs.host == rhs.host && lhs.port == rhs.port
+    }
+
+    private static func normalizedRoute(path: String, query: String?, fragment: String?) -> String? {
+        let normalizedPath: String
+        switch path {
+        case "/app":
+            normalizedPath = "/app/"
+        default:
+            guard path == "/app/" || path.hasPrefix("/app/") else {
+                return nil
+            }
+            normalizedPath = path
+        }
+
+        var route = normalizedPath
+        if let query, !query.isEmpty {
+            route += "?\(query)"
+        }
+        if let fragment, !fragment.isEmpty {
+            route += "#\(fragment)"
+        }
+        return route
+    }
+
+    private static func splitRoute(_ route: String) -> (path: String, query: String?, fragment: String?) {
+        let parts = route.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
+        let routeWithoutFragment = String(parts[0])
+        let fragment = parts.count > 1 ? String(parts[1]) : nil
+        let queryParts = routeWithoutFragment.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        let path = String(queryParts[0])
+        let query = queryParts.count > 1 ? String(queryParts[1]) : nil
+        return (path: path, query: query, fragment: fragment)
+    }
+}
+
 enum AstriaSupervisorSmoke {
     static func run() -> Int32 {
         let config = LaunchConfig.fromProcess()
@@ -458,12 +618,60 @@ enum AstriaSupervisorSmoke {
     }
 }
 
+enum AstriaRouteRecoverySmoke {
+    static func run() -> Int32 {
+        guard let baseURL = URL(string: AstriaDefaults.webURL) else {
+            fputs("Astria route smoke could not parse base URL\n", stderr)
+            return 1
+        }
+        let suiteName = "dev.starclaw.astria.route-smoke.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            fputs("Astria route smoke could not create defaults suite\n", stderr)
+            return 1
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        let store = AstriaRouteStore(defaults: defaults)
+
+        let validURL = URL(string: "http://127.0.0.1:7533/app/?view=mission#runs")!
+        store.persist(url: validURL, baseURL: baseURL)
+        guard store.restoredURL(baseURL: baseURL).absoluteString == validURL.absoluteString else {
+            fputs("Astria route smoke failed to restore valid route\n", stderr)
+            return 1
+        }
+
+        let externalURL = URL(string: "https://example.com/app/#bad")!
+        store.persist(url: externalURL, baseURL: baseURL)
+        guard store.restoredURL(baseURL: baseURL).absoluteString == validURL.absoluteString else {
+            fputs("Astria route smoke persisted external route\n", stderr)
+            return 1
+        }
+
+        defaults.set("https://example.com/app/#bad", forKey: AstriaRouteStore.key)
+        guard store.restoredURL(baseURL: baseURL).absoluteString == baseURL.absoluteString else {
+            fputs("Astria route smoke did not fall back for unsafe stored route\n", stderr)
+            return 1
+        }
+
+        defaults.set("/app#compact", forKey: AstriaRouteStore.key)
+        guard store.restoredURL(baseURL: baseURL).absoluteString == "http://127.0.0.1:7533/app/#compact" else {
+            fputs("Astria route smoke did not normalize /app route\n", stderr)
+            return 1
+        }
+
+        return 0
+    }
+}
+
 struct AstriaWebView: NSViewRepresentable {
     let url: URL
+    let reloadToken: UUID
     @Binding var loadState: WebLoadState
+    let onNavigationFinished: (URL) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(loadState: $loadState)
+        Coordinator(loadState: $loadState, onNavigationFinished: onNavigationFinished, reloadToken: reloadToken)
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -478,6 +686,10 @@ struct AstriaWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: WKWebView, context: Context) {
+        if context.coordinator.consumeReloadToken(reloadToken) {
+            view.load(URLRequest(url: url))
+            return
+        }
         if view.url == nil {
             view.load(URLRequest(url: url))
         }
@@ -485,9 +697,21 @@ struct AstriaWebView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         @Binding private var loadState: WebLoadState
+        private let onNavigationFinished: (URL) -> Void
+        private var reloadToken: UUID
 
-        init(loadState: Binding<WebLoadState>) {
+        init(loadState: Binding<WebLoadState>, onNavigationFinished: @escaping (URL) -> Void, reloadToken: UUID) {
             _loadState = loadState
+            self.onNavigationFinished = onNavigationFinished
+            self.reloadToken = reloadToken
+        }
+
+        func consumeReloadToken(_ token: UUID) -> Bool {
+            guard token != reloadToken else {
+                return false
+            }
+            reloadToken = token
+            return true
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -496,6 +720,9 @@ struct AstriaWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             loadState.message = nil
+            if let url = webView.url {
+                onNavigationFinished(url)
+            }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

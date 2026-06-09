@@ -132,6 +132,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Local development build script: `scripts/build_macos_astria_shell.sh`.
 - Smoke script: `scripts/smoke_macos_astria_shell.sh`.
 - Default hosted URL: `http://127.0.0.1:7533/app/`.
+- Route recovery storage key: `astria.lastWebRoute` stores a relative `/app`
+  route only.
 - Development override env keys:
   - `ASTRIA_WEB_URL`
   - `ASTRIA_DIAGNOSTICS_URL`
@@ -149,6 +151,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - The shell may start or attach to the local daemon through the existing HTTP
   readiness contract. Deeper pidfile/socket reconciliation belongs in a
   separately scoped task.
+- The shell may persist the last useful Web UI route only when it is same-origin
+  with the configured Web UI URL and under `/app`. Store relative route values,
+  never full origins.
+- The shell may reload the WebView after daemon health recovers, but the Web UI
+  remains responsible for run/event deduplication through `/events` and `/runs`.
 - App Transport Security may allow local networking for `127.0.0.1`; do not add
   broad remote networking exceptions for the shell.
 
@@ -161,20 +168,25 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Missing local networking ATS allowance -> smoke script fails.
 - Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
   shows a user-visible failure state if health does not become ready.
+- Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
+  restore falls back to `/app/`.
 
 ### 5. Good/Base/Bad Cases
 
-- Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`
-  verifies bundle structure, and exercises daemon supervision through a
+- Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`,
+  verifies bundle structure, route recovery, and daemon supervision through a
   temporary `ASTRIA_STARCLAW_BIN`.
 - Base: user opens the unsigned app shell, which reuses an already-running
-  daemon or starts a local daemon.
+  daemon or starts a local daemon, then restores the last same-origin `/app`
+  route.
 - Bad: app shell requires cloud credentials, private signing keys, a separate
   frontend build pipeline, or silently replaces the CLI/browser launch path.
 
 ### 6. Tests Required
 
 - Run `scripts/smoke_macos_astria_shell.sh` on macOS when the shell changes.
+  The smoke must cover bundle structure, route recovery, daemon supervision,
+  attach, and launch failure.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect
   existing CLI launch readiness behavior.
 - Run `go test ./...` before committing mixed shell/documentation changes.

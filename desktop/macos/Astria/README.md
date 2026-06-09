@@ -8,6 +8,8 @@ The shell is intentionally thin in Phase13:
 - It does not replace the Astria Web UI.
 - It starts or attaches to the local StarClaw daemon through the existing
   `/health` readiness contract.
+- It restores the last same-origin `/app` route and reloads the WebView after
+  daemon health recovers.
 - It does not require signing, notarization, or cloud credentials for local
   development builds.
 
@@ -42,3 +44,6 @@ Point the app at a development daemon binary:
 ```bash
 ASTRIA_STARCLAW_BIN=/path/to/starclaw open build/desktop/macos/Astria.app
 ```
+
+The route recovery store persists only relative `/app` routes under
+`astria.lastWebRoute`; unsafe or external stored routes fall back to `/app/`.

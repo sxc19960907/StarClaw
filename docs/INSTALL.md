@@ -139,7 +139,8 @@ open build/desktop/macos/Astria.app
 
 This development shell hosts the daemon-served Web UI. It is not yet a signed
 release artifact, but it can start or reuse the local daemon through the same
-HTTP readiness contract used by `starclaw app`.
+HTTP readiness contract used by `starclaw app`. It restores only same-origin
+`/app` routes and falls back to `/app/` for unsafe stored routes.
 
 ## Uninstallation
 
