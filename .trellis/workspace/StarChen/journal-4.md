@@ -962,3 +962,36 @@ Added a sandbox-only fake Astria.app updater rehearsal that stages a candidate f
 ### Next Steps
 
 - None - task complete
+
+
+## Session 172: Astria sandbox updater health rehearsal
+
+**Date**: 2026-06-09
+**Task**: Astria sandbox updater health rehearsal
+**Branch**: `main`
+
+### Summary
+
+Added a sandbox-only post-update health rehearsal for fake Astria.app fixtures with app launch, daemon health, Desktop RPC capabilities, and Web UI readiness markers; included negative coverage for missing Desktop RPC marker and outside-sandbox marker paths; integrated the smoke into Astria local release validation and documented the boundary.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `51811a7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
