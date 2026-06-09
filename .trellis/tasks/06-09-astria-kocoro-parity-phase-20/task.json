@@ -1,0 +1,28 @@
+{
+  "id": "astria-kocoro-parity-phase-20",
+  "name": "astria-kocoro-parity-phase-20",
+  "title": "Astria Kocoro parity phase 20: production updater transaction safety",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-astria-staged-updater-transaction-plan"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
