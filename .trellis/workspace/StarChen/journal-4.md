@@ -467,3 +467,36 @@ Added local Astria Permission Help command and smoke-testable permission guidanc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 157: Astria multi-window route restoration
+
+**Date**: 2026-06-09
+**Task**: Astria multi-window route restoration
+**Branch**: `main`
+
+### Summary
+
+Added per-window Astria route restoration with conservative window route IDs, safe relative /app route persistence, shared-route fallback for new windows, and unsafe per-window fallback behavior. The Astria route smoke now covers window route isolation, shared fallback, unsafe route rejection, and spec documentation for multi-window state restoration.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `575010d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
