@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 138
+- **Total Sessions**: 139
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1867 | Active |
+| `journal-3.md` | ~1900 | Active |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 139 | 2026-06-09 | Astria daemon supervision launcher | `1939653` | `main` |
 | 138 | 2026-06-09 | Astria macOS shell skeleton | `ea505cb` | `main` |
 | 137 | 2026-06-09 | Phase 12 final gap review | `11e4e3a` | `main` |
 | 136 | 2026-06-09 | Event contract documentation | `e5d0d02`, `b17ac78` | `main` |

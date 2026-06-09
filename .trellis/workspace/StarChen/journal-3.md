@@ -1865,3 +1865,36 @@ Added the first standalone Astria macOS shell skeleton, unsigned local build/smo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 139: Astria daemon supervision launcher
+
+**Date**: 2026-06-09
+**Task**: Astria daemon supervision launcher
+**Branch**: `main`
+
+### Summary
+
+Implemented Astria macOS shell daemon supervision: health attach, local daemon launch, failure/crash states, smoke coverage, and documentation/spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1939653` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
