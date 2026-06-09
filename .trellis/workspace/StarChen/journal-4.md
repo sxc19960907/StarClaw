@@ -302,3 +302,36 @@ Added native Astria command model and SwiftUI commands for New Window, Reload As
 ### Next Steps
 
 - None - task complete
+
+
+## Session 152: Astria native diagnostics export and crash reports
+
+**Date**: 2026-06-09
+**Task**: Astria native diagnostics export and crash reports
+**Branch**: `main`
+
+### Summary
+
+Added local-only Astria diagnostics report export with redaction for API keys, bearer tokens, Desktop RPC socket/pidfile paths, native Export Diagnostics command wiring, smoke coverage, and macOS shell spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3814bb9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

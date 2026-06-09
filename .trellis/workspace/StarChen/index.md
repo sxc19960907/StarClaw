@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 151
+- **Total Sessions**: 152
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~304 | Active |
+| `journal-4.md` | ~337 | Active |
 | `journal-3.md` | ~1999 | Archived |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 152 | 2026-06-09 | Astria native diagnostics export and crash reports | `3814bb9` | `main` |
 | 151 | 2026-06-09 | Astria native menu Dock and window shell | `fc18ae0` | `main` |
 | 150 | 2026-06-09 | Astria Kocoro parity phase 15 closeout | `e8b55de` | `main` |
 | 149 | 2026-06-09 | Native desktop diagnostics and recovery UX | `53548bc` | `main` |
