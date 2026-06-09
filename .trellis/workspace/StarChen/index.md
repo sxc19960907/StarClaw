@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 173
+- **Total Sessions**: 174
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~1030 | Active |
+| `journal-4.md` | ~1066 | Active |
 | `journal-3.md` | ~1999 | Archived |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 174 | 2026-06-09 | Astria Kocoro parity phase 21 complete | `6be1191`, `51811a7`, `30eaf70`, `2a979b6` | `main` |
 | 173 | 2026-06-09 | Astria sandbox updater rollback rehearsal | `30eaf70` | `main` |
 | 172 | 2026-06-09 | Astria sandbox updater health rehearsal | `51811a7` | `main` |
 | 171 | 2026-06-09 | Astria sandbox updater rehearsal fixture | `6be1191` | `main` |

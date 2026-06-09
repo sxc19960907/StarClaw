@@ -1028,3 +1028,39 @@ Added a sandbox-only failed staged replacement rollback rehearsal for fake Astri
 ### Next Steps
 
 - None - task complete
+
+
+## Session 174: Astria Kocoro parity phase 21 complete
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 21 complete
+**Branch**: `main`
+
+### Summary
+
+Completed and archived Phase21 sandbox updater rehearsal. Added fixture replacement/rollback rehearsal, post-update health marker rehearsal, failed staged replacement rollback rehearsal, integrated all new smokes into Astria local release validation, and updated the Kocoro gap review to 97-98% local-first desktop parity with remaining delta in real signed/notarized app updater execution.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6be1191` | (see git log) |
+| `51811a7` | (see git log) |
+| `30eaf70` | (see git log) |
+| `2a979b6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
