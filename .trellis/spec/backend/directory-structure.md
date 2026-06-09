@@ -155,6 +155,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   The baseline command set is New Window, Reload Astria, Open Diagnostics, and
   Retry Daemon. Export Diagnostics is part of the diagnostics/crash-report
   boundary and writes a local redacted report.
+- Native clipboard/file affordance commands are local-only and user-triggered:
+  Copy Current Route copies only a safe relative `/app` route, Copy Support
+  Summary copies a redacted local support summary, and Reveal Diagnostics Folder
+  opens the Astria-owned diagnostics export directory in Finder.
 - New Window should open another `astria-main` window around the same local
   daemon instead of disabling macOS new-window behavior.
 - Reload Astria should refresh the hosted WebView without changing the
@@ -163,6 +167,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Export Diagnostics must generate a local-only report under Astria-owned app
   support/runtime storage. It must redact API keys, bearer tokens, raw Desktop
   RPC payloads, user prompts, socket paths, and pidfile paths.
+- Copy Support Summary must use the same redaction boundary as diagnostics
+  export. It must not include API keys, bearer tokens, raw Desktop RPC payloads,
+  user prompts, socket paths, pidfile paths, or full local filesystem paths.
+- Copy Current Route must reuse the route safety boundary: same-origin with the
+  configured Web UI URL and under `/app`, then stored/copied as a relative route
+  value. Unsafe routes fall back to `/app/`.
 - The shell must remain optional. `starclaw app`, `starclaw app --no-open`, and
   `starclaw daemon start` remain valid fallback paths.
 - Unsigned local builds must not require private signing, notarization, or
@@ -237,6 +247,13 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Desktop RPC diagnostic banners -> may describe local session state and retry
   guidance, but must not expose socket paths, pidfile paths, raw event payloads,
   API keys, provider headers, or user content.
+- Clipboard support summaries -> local-only and redacted; they may include app
+  version, safe route, daemon state labels, Desktop RPC severity, and diagnostics
+  URL, but must not include secrets, raw user content, raw Desktop RPC payloads,
+  socket paths, pidfile paths, or full local filesystem paths.
+- Reveal Diagnostics Folder -> opens only the Astria diagnostics directory
+  returned by the diagnostics exporter; it must not create remote shares or
+  upload artifacts.
 - Dead or malformed pidfile under the Astria runtime directory -> shell removes
   scoped pidfile/socket artifacts before relaunch.
 - Live pidfile under the Astria runtime directory -> shell does not remove
@@ -267,7 +284,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   verifies bundle structure, bundled daemon layout, route recovery, and daemon
   supervision through a temporary daemon binary. It also validates Desktop RPC
   capabilities, fallback cleanup, session lifecycle smoke paths, and native
-  command/export metadata.
+  command/export/clipboard/file affordance metadata.
 - Base: user opens the unsigned app shell, which reuses an already-running
   daemon or starts a local daemon, then restores the last same-origin `/app`
   route.
@@ -281,7 +298,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
   stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
   session connected/retry/mismatch diagnostics, native command metadata,
-  diagnostics export redaction, and launch failure.
+  diagnostics export redaction, clipboard/file affordance route safety and
+  support summary redaction, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` when
   touching Astria distribution boundaries. It must pass without Apple
   credentials.

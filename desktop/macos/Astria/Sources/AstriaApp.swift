@@ -31,9 +31,12 @@ enum AstriaNativeCommandSpec {
     static let reload = AstriaNativeCommand(id: "reload", title: "Reload Astria", key: "r", modifiers: [.command])
     static let diagnostics = AstriaNativeCommand(id: "diagnostics", title: "Open Diagnostics", key: "d", modifiers: [.command, .shift])
     static let exportDiagnostics = AstriaNativeCommand(id: "export_diagnostics", title: "Export Diagnostics", key: "e", modifiers: [.command, .shift])
+    static let copyCurrentRoute = AstriaNativeCommand(id: "copy_current_route", title: "Copy Current Route", key: "l", modifiers: [.command, .shift])
+    static let copySupportSummary = AstriaNativeCommand(id: "copy_support_summary", title: "Copy Support Summary", key: "c", modifiers: [.command, .shift])
+    static let revealDiagnosticsFolder = AstriaNativeCommand(id: "reveal_diagnostics_folder", title: "Reveal Diagnostics Folder", key: "f", modifiers: [.command, .shift])
     static let retryDaemon = AstriaNativeCommand(id: "retry_daemon", title: "Retry Daemon", key: "r", modifiers: [.command, .shift])
 
-    static let all = [newWindow, reload, diagnostics, exportDiagnostics, retryDaemon]
+    static let all = [newWindow, reload, diagnostics, exportDiagnostics, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, retryDaemon]
 }
 
 @MainActor
@@ -41,6 +44,9 @@ final class AstriaAppActions: ObservableObject {
     var reload: () -> Void = {}
     var openDiagnostics: () -> Void = {}
     var exportDiagnostics: () -> Void = {}
+    var copyCurrentRoute: () -> Void = {}
+    var copySupportSummary: () -> Void = {}
+    var revealDiagnosticsFolder: () -> Void = {}
     var retryDaemon: () -> Void = {}
 }
 
@@ -71,6 +77,23 @@ struct AstriaNativeCommands: Commands {
                 appActions.exportDiagnostics()
             }
             .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.exportDiagnostics.key)), modifiers: AstriaNativeCommandSpec.exportDiagnostics.modifiers)
+
+            Divider()
+
+            Button(AstriaNativeCommandSpec.copyCurrentRoute.title) {
+                appActions.copyCurrentRoute()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.copyCurrentRoute.key)), modifiers: AstriaNativeCommandSpec.copyCurrentRoute.modifiers)
+
+            Button(AstriaNativeCommandSpec.copySupportSummary.title) {
+                appActions.copySupportSummary()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.copySupportSummary.key)), modifiers: AstriaNativeCommandSpec.copySupportSummary.modifiers)
+
+            Button(AstriaNativeCommandSpec.revealDiagnosticsFolder.title) {
+                appActions.revealDiagnosticsFolder()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.revealDiagnosticsFolder.key)), modifiers: AstriaNativeCommandSpec.revealDiagnosticsFolder.modifiers)
 
             Divider()
 
@@ -317,6 +340,28 @@ struct AstriaRootView: View {
                 loadState.message = "Astria could not export diagnostics. \(error.localizedDescription)"
             }
         }
+        appActions.copyCurrentRoute = {
+            copyToPasteboard(AstriaSupportSummary.safeRoute(for: webURL, baseURL: config.webURL))
+            loadState.message = "Copied the current Astria route."
+        }
+        appActions.copySupportSummary = {
+            let summary = AstriaSupportSummary.text(
+                config: config,
+                currentURL: webURL,
+                daemonState: supervisor.state,
+                desktopRPCState: supervisor.desktopRPCSessionState
+            )
+            copyToPasteboard(summary)
+            loadState.message = "Copied a redacted Astria support summary."
+        }
+        appActions.revealDiagnosticsFolder = {
+            do {
+                let directory = try AstriaDiagnosticsExporter.diagnosticsDirectory(config: config)
+                NSWorkspace.shared.activateFileViewerSelecting([directory])
+            } catch {
+                loadState.message = "Astria could not open the diagnostics folder. \(error.localizedDescription)"
+            }
+        }
         appActions.retryDaemon = {
             supervisor.start()
         }
@@ -326,7 +371,15 @@ struct AstriaRootView: View {
         appActions.reload = {}
         appActions.openDiagnostics = {}
         appActions.exportDiagnostics = {}
+        appActions.copyCurrentRoute = {}
+        appActions.copySupportSummary = {}
+        appActions.revealDiagnosticsFolder = {}
         appActions.retryDaemon = {}
+    }
+
+    private func copyToPasteboard(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 }
 
@@ -613,8 +666,8 @@ enum AstriaDiagnosticsExporter {
             webURL: config.webURL.absoluteString,
             healthURL: config.healthURL.absoluteString,
             diagnosticsURL: config.diagnosticsURL.absoluteString,
-            daemonState: label(for: daemonState),
-            desktopRPCState: label(for: desktopRPCState),
+            daemonState: stateLabel(for: daemonState),
+            desktopRPCState: stateLabel(for: desktopRPCState),
             failureSummary: failureSummary.map { AstriaDiagnosticsRedactor.redact($0, config: config) },
             localOnly: true
         )
@@ -645,7 +698,7 @@ enum AstriaDiagnosticsExporter {
         }
     }
 
-    private static func label(for state: DaemonState) -> String {
+    static func stateLabel(for state: DaemonState) -> String {
         switch state {
         case .idle:
             return "idle"
@@ -668,8 +721,40 @@ enum AstriaDiagnosticsExporter {
         }
     }
 
-    private static func label(for state: DesktopRPCSessionState) -> String {
+    static func stateLabel(for state: DesktopRPCSessionState) -> String {
         DesktopRPCDiagnostics.severity(for: state)
+    }
+}
+
+enum AstriaSupportSummary {
+    static func safeRoute(for url: URL, baseURL: URL) -> String {
+        AstriaRouteStore.route(from: url, baseURL: baseURL) ?? "/app/"
+    }
+
+    static func text(config: LaunchConfig, currentURL: URL, daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> String {
+        let route = safeRoute(for: currentURL, baseURL: config.webURL)
+        let rawFailure = failureSummary(daemonState: daemonState, desktopRPCState: desktopRPCState)
+        let redactedFailure = rawFailure.map { AstriaDiagnosticsRedactor.redact($0, config: config) }
+        let lines = [
+            "Astria support summary",
+            "Local only: true",
+            "App version: \(config.appVersion)",
+            "Route: \(route)",
+            "Daemon state: \(AstriaDiagnosticsExporter.stateLabel(for: daemonState))",
+            "Desktop RPC state: \(DesktopRPCDiagnostics.severity(for: desktopRPCState))",
+            "Diagnostics: \(config.diagnosticsURL.absoluteString)",
+            redactedFailure.map { "Failure summary: \($0)" },
+        ].compactMap { $0 }
+        return AstriaDiagnosticsRedactor.redact(lines.joined(separator: "\n"), config: config)
+    }
+
+    private static func failureSummary(daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> String? {
+        switch daemonState {
+        case .failed(let message), .crashed(let message), .degraded(let message):
+            return message
+        default:
+            return DesktopRPCDiagnostics.bannerMessage(for: desktopRPCState)
+        }
     }
 }
 
@@ -1463,7 +1548,7 @@ enum AstriaNativeCommandSmoke {
     static func run() -> Int32 {
         let commands = AstriaNativeCommandSpec.all
         let ids = Set(commands.map(\.id))
-        if commands.count != 5 || ids.count != commands.count {
+        if commands.count != 8 || ids.count != commands.count {
             fputs("Astria native command smoke found missing or duplicate commands\n", stderr)
             return 1
         }
@@ -1472,6 +1557,9 @@ enum AstriaNativeCommandSmoke {
             "reload": ("Reload Astria", "r"),
             "diagnostics": ("Open Diagnostics", "d"),
             "export_diagnostics": ("Export Diagnostics", "e"),
+            "copy_current_route": ("Copy Current Route", "l"),
+            "copy_support_summary": ("Copy Support Summary", "c"),
+            "reveal_diagnostics_folder": ("Reveal Diagnostics Folder", "f"),
             "retry_daemon": ("Retry Daemon", "r"),
         ]
         for command in commands {
@@ -1541,6 +1629,41 @@ enum AstriaDiagnosticsExportSmoke {
         } catch {
             fputs("Astria diagnostics export smoke failed: \(error.localizedDescription)\n", stderr)
             return 1
+        }
+
+        let safeRoute = AstriaSupportSummary.safeRoute(
+            for: URL(string: "http://127.0.0.1:7533/app/?view=mission#runs")!,
+            baseURL: config.webURL
+        )
+        if safeRoute != "/app/?view=mission#runs" {
+            fputs("Astria diagnostics export smoke safe route = \(safeRoute)\n", stderr)
+            return 1
+        }
+        let unsafeRoute = AstriaSupportSummary.safeRoute(
+            for: URL(string: "https://example.com/app/?bad=1")!,
+            baseURL: config.webURL
+        )
+        if unsafeRoute != "/app/" {
+            fputs("Astria diagnostics export smoke unsafe route = \(unsafeRoute)\n", stderr)
+            return 1
+        }
+        let summary = AstriaSupportSummary.text(
+            config: config,
+            currentURL: URL(string: "http://127.0.0.1:7533/app/?view=mission#runs")!,
+            daemonState: .failed(sensitive),
+            desktopRPCState: .mismatch("token=hidden")
+        )
+        for required in ["Astria support summary", "Local only: true", "Route: /app/?view=mission#runs", "Daemon state: failed"] {
+            if !summary.contains(required) {
+                fputs("Astria diagnostics export smoke support summary missing \(required)\n", stderr)
+                return 1
+            }
+        }
+        for forbidden in ["sk-test-secret", "abc.def", "hidden", config.desktopRPCSocketPath, config.desktopRPCPidfilePath] {
+            if summary.contains(forbidden) {
+                fputs("Astria diagnostics export smoke support summary leaked \(forbidden)\n", stderr)
+                return 1
+            }
         }
         return 0
     }
