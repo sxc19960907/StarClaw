@@ -137,3 +137,36 @@ Closed Phase14 desktop RPC handshake and daemon reconciliation: all three child 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 147: Desktop RPC session lifecycle
+
+**Date**: 2026-06-09
+**Task**: Desktop RPC session lifecycle
+**Branch**: `main`
+
+### Summary
+
+Added Astria long-lived Desktop RPC session lifecycle monitoring with connected/reconnecting/degraded/mismatch states, bounded retry recovery, monitor cancellation on restart, session smoke coverage, and macOS shell spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d9b20e2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
