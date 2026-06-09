@@ -34,13 +34,14 @@ enum AstriaNativeCommandSpec {
     static let reload = AstriaNativeCommand(id: "reload", title: "Reload Astria", key: "r", modifiers: [.command])
     static let diagnostics = AstriaNativeCommand(id: "diagnostics", title: "Open Diagnostics", key: "d", modifiers: [.command, .shift])
     static let exportDiagnostics = AstriaNativeCommand(id: "export_diagnostics", title: "Export Diagnostics", key: "e", modifiers: [.command, .shift])
+    static let exportCrashSummary = AstriaNativeCommand(id: "export_crash_summary", title: "Export Crash Summary", key: "k", modifiers: [.command, .shift])
     static let copyCurrentRoute = AstriaNativeCommand(id: "copy_current_route", title: "Copy Current Route", key: "l", modifiers: [.command, .shift])
     static let copySupportSummary = AstriaNativeCommand(id: "copy_support_summary", title: "Copy Support Summary", key: "c", modifiers: [.command, .shift])
     static let revealDiagnosticsFolder = AstriaNativeCommand(id: "reveal_diagnostics_folder", title: "Reveal Diagnostics Folder", key: "f", modifiers: [.command, .shift])
     static let permissionHelp = AstriaNativeCommand(id: "permission_help", title: "Permission Help", key: "p", modifiers: [.command, .shift])
     static let retryDaemon = AstriaNativeCommand(id: "retry_daemon", title: "Retry Daemon", key: "r", modifiers: [.command, .shift])
 
-    static let all = [newWindow, reload, diagnostics, exportDiagnostics, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, permissionHelp, retryDaemon]
+    static let all = [newWindow, reload, diagnostics, exportDiagnostics, exportCrashSummary, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, permissionHelp, retryDaemon]
 }
 
 @MainActor
@@ -48,6 +49,7 @@ final class AstriaAppActions: ObservableObject {
     var reload: () -> Void = {}
     var openDiagnostics: () -> Void = {}
     var exportDiagnostics: () -> Void = {}
+    var exportCrashSummary: () -> Void = {}
     var copyCurrentRoute: () -> Void = {}
     var copySupportSummary: () -> Void = {}
     var revealDiagnosticsFolder: () -> Void = {}
@@ -82,6 +84,11 @@ struct AstriaNativeCommands: Commands {
                 appActions.exportDiagnostics()
             }
             .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.exportDiagnostics.key)), modifiers: AstriaNativeCommandSpec.exportDiagnostics.modifiers)
+
+            Button(AstriaNativeCommandSpec.exportCrashSummary.title) {
+                appActions.exportCrashSummary()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.exportCrashSummary.key)), modifiers: AstriaNativeCommandSpec.exportCrashSummary.modifiers)
 
             Divider()
 
@@ -126,6 +133,9 @@ struct AstriaApp: App {
         }
         if CommandLine.arguments.contains("--diagnostics-export-smoke") {
             Foundation.exit(AstriaDiagnosticsExportSmoke.run())
+        }
+        if CommandLine.arguments.contains("--crash-summary-smoke") {
+            Foundation.exit(AstriaCrashSummarySmoke.run())
         }
         if CommandLine.arguments.contains("--permission-helper-smoke") {
             Foundation.exit(AstriaPermissionHelperSmoke.run())
@@ -355,6 +365,18 @@ struct AstriaRootView: View {
                 loadState.message = "Astria could not export diagnostics. \(error.localizedDescription)"
             }
         }
+        appActions.exportCrashSummary = {
+            do {
+                let url = try AstriaCrashSummaryExporter.export(
+                    config: config,
+                    daemonState: supervisor.state,
+                    desktopRPCState: supervisor.desktopRPCSessionState
+                )
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            } catch {
+                loadState.message = "Astria could not export a crash summary. \(error.localizedDescription)"
+            }
+        }
         appActions.copyCurrentRoute = {
             copyToPasteboard(AstriaSupportSummary.safeRoute(for: webURL, baseURL: config.webURL))
             loadState.message = "Copied the current Astria route."
@@ -391,6 +413,7 @@ struct AstriaRootView: View {
         appActions.reload = {}
         appActions.openDiagnostics = {}
         appActions.exportDiagnostics = {}
+        appActions.exportCrashSummary = {}
         appActions.copyCurrentRoute = {}
         appActions.copySupportSummary = {}
         appActions.revealDiagnosticsFolder = {}
@@ -659,6 +682,7 @@ enum AstriaDiagnosticsRedactor {
         "token",
         "secret",
         "password",
+        "prompt",
     ]
 
     static func redact(_ value: String, config: LaunchConfig? = nil) -> String {
@@ -759,6 +783,80 @@ enum AstriaDiagnosticsExporter {
 
     static func stateLabel(for state: DesktopRPCSessionState) -> String {
         DesktopRPCDiagnostics.severity(for: state)
+    }
+}
+
+struct AstriaCrashSummaryReport: Encodable {
+    let generatedAt: String
+    let appVersion: String
+    let source: String
+    let daemonState: String
+    let desktopRPCState: String
+    let summary: String
+    let recentCrashCount: Int
+    let localOnly: Bool
+    let uploadReady: Bool
+}
+
+enum AstriaCrashSummaryExporter {
+    static func report(config: LaunchConfig, daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> AstriaCrashSummaryReport {
+        let rawSummary = crashSummary(daemonState: daemonState, desktopRPCState: desktopRPCState)
+        return AstriaCrashSummaryReport(
+            generatedAt: ISO8601DateFormatter().string(from: Date()),
+            appVersion: config.appVersion,
+            source: "astria-local-state",
+            daemonState: AstriaDiagnosticsExporter.stateLabel(for: daemonState),
+            desktopRPCState: AstriaDiagnosticsExporter.stateLabel(for: desktopRPCState),
+            summary: AstriaDiagnosticsRedactor.redact(rawSummary, config: config),
+            recentCrashCount: recentCrashCount(daemonState: daemonState),
+            localOnly: true,
+            uploadReady: false
+        )
+    }
+
+    static func text(config: LaunchConfig, daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> String {
+        let report = report(config: config, daemonState: daemonState, desktopRPCState: desktopRPCState)
+        let lines = [
+            "Astria crash summary",
+            "Local only: true",
+            "Upload ready: false",
+            "App version: \(report.appVersion)",
+            "Source: \(report.source)",
+            "Daemon state: \(report.daemonState)",
+            "Desktop RPC state: \(report.desktopRPCState)",
+            "Recent crash count: \(report.recentCrashCount)",
+            "Summary: \(report.summary)",
+        ]
+        return AstriaDiagnosticsRedactor.redact(lines.joined(separator: "\n"), config: config)
+    }
+
+    static func export(config: LaunchConfig, daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) throws -> URL {
+        let directory = try AstriaDiagnosticsExporter.diagnosticsDirectory(config: config)
+        let filename = "astria-crash-summary-\(Int(Date().timeIntervalSince1970)).json"
+        let url = directory.appendingPathComponent(filename)
+        let data = try JSONEncoder.sortedPrettyPrinted.encode(report(config: config, daemonState: daemonState, desktopRPCState: desktopRPCState))
+        try data.write(to: url, options: [.atomic])
+        return url
+    }
+
+    private static func crashSummary(daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> String {
+        switch daemonState {
+        case .crashed(let message):
+            return message
+        case .failed(let message):
+            return "Daemon failed before a crash artifact was available. \(message)"
+        case .degraded(let message):
+            return "Daemon is degraded. \(message)"
+        default:
+            return DesktopRPCDiagnostics.bannerMessage(for: desktopRPCState) ?? "No local crash state has been observed in this Astria session."
+        }
+    }
+
+    private static func recentCrashCount(daemonState: DaemonState) -> Int {
+        if case .crashed = daemonState {
+            return 1
+        }
+        return 0
     }
 }
 
@@ -1741,7 +1839,7 @@ enum AstriaNativeCommandSmoke {
     static func run() -> Int32 {
         let commands = AstriaNativeCommandSpec.all
         let ids = Set(commands.map(\.id))
-        if commands.count != 9 || ids.count != commands.count {
+        if commands.count != 10 || ids.count != commands.count {
             fputs("Astria native command smoke found missing or duplicate commands\n", stderr)
             return 1
         }
@@ -1750,6 +1848,7 @@ enum AstriaNativeCommandSmoke {
             "reload": ("Reload Astria", "r"),
             "diagnostics": ("Open Diagnostics", "d"),
             "export_diagnostics": ("Export Diagnostics", "e"),
+            "export_crash_summary": ("Export Crash Summary", "k"),
             "copy_current_route": ("Copy Current Route", "l"),
             "copy_support_summary": ("Copy Support Summary", "c"),
             "reveal_diagnostics_folder": ("Reveal Diagnostics Folder", "f"),
@@ -1902,6 +2001,69 @@ enum AstriaPermissionHelperSmoke {
         if !summary.banner.contains("review") {
             fputs("Astria permission helper smoke banner = \(summary.banner)\n", stderr)
             return 1
+        }
+        return 0
+    }
+}
+
+enum AstriaCrashSummarySmoke {
+    static func run() -> Int32 {
+        let runtime = "/tmp/astria-crash-summary-\(getpid())-\(UUID().uuidString.prefix(8))"
+        defer {
+            try? FileManager.default.removeItem(atPath: runtime)
+        }
+        let config = LaunchConfig.fromProcess(arguments: [
+            "Astria",
+            "--runtime-dir", runtime,
+        ], environment: [:])
+        let sensitive = "crashed with api_key=sk-test-secret Authorization: Bearer abc.def token=hidden prompt=private \(config.desktopRPCSocketPath) \(config.desktopRPCPidfilePath)"
+
+        do {
+            let url = try AstriaCrashSummaryExporter.export(
+                config: config,
+                daemonState: .crashed(sensitive),
+                desktopRPCState: .mismatch("token=hidden")
+            )
+            let body = try String(contentsOf: url)
+            for required in [
+                "\"localOnly\" : true",
+                "\"uploadReady\" : false",
+                "\"source\" : \"astria-local-state\"",
+                "\"daemonState\" : \"crashed\"",
+                "\"recentCrashCount\" : 1",
+            ] {
+                if !body.contains(required) {
+                    fputs("Astria crash summary smoke missing \(required)\n", stderr)
+                    return 1
+                }
+            }
+            for forbidden in ["sk-test-secret", "abc.def", "hidden", "private", config.desktopRPCSocketPath, config.desktopRPCPidfilePath] {
+                if body.contains(forbidden) {
+                    fputs("Astria crash summary smoke report leaked \(forbidden)\n", stderr)
+                    return 1
+                }
+            }
+        } catch {
+            fputs("Astria crash summary smoke failed: \(error.localizedDescription)\n", stderr)
+            return 1
+        }
+
+        let summary = AstriaCrashSummaryExporter.text(
+            config: config,
+            daemonState: .crashed(sensitive),
+            desktopRPCState: .mismatch("token=hidden")
+        )
+        for required in ["Astria crash summary", "Local only: true", "Upload ready: false", "Daemon state: crashed", "Recent crash count: 1"] {
+            if !summary.contains(required) {
+                fputs("Astria crash summary smoke text missing \(required)\n", stderr)
+                return 1
+            }
+        }
+        for forbidden in ["sk-test-secret", "abc.def", "hidden", "private", config.desktopRPCSocketPath, config.desktopRPCPidfilePath, "/Users/"] {
+            if summary.contains(forbidden) {
+                fputs("Astria crash summary smoke text leaked \(forbidden)\n", stderr)
+                return 1
+            }
         }
         return 0
     }
