@@ -1727,16 +1727,29 @@ async function runStreamingProvider(page) {
   await page.getByRole("button", { name: "Send" }).click();
 
   await page.locator("#stop-button:not([hidden])").waitFor();
+  await page.locator("#live-run-status:not([hidden])").waitFor();
+  await page.locator("#live-run-state", { hasText: "running" }).waitFor();
+  await page.locator("#live-run-id", { hasText: /[0-9a-f-]{8,}|web-/ }).waitFor();
   await page.locator("#chat-output").getByText("Fake provider").waitFor();
+  await page.locator("#live-run-event", { hasText: /Streaming text|Usage updated|Session started/ }).waitFor();
   await page.locator("#chat-output").getByText("Fake provider streamed response for GUI smoke.").waitFor();
   const summary = page.locator("#chat-output .run-summary").last();
   await summary.getByText("Run summary").waitFor();
   await summary.getByText("input_tokens: 11").waitFor();
   await summary.getByText("output_tokens: 7").waitFor();
+  await page.locator("#live-run-state", { hasText: "complete" }).waitFor();
+  await page.locator("#live-run-usage", { hasText: /input|in 11/ }).waitFor();
   const runID = await summary.getByRole("button", { name: "Open run" }).getAttribute("data-run-summary-run");
   const sessionID = await summary.getByRole("button", { name: "Open session" }).getAttribute("data-run-summary-session");
   assert(runID, "streaming run summary missing request id");
   assert(sessionID, "streaming run summary missing session id");
+  await page.locator("#live-session-id", { hasText: sessionID }).waitFor();
+  await page.waitForFunction(async ({ url, sessionID }) => {
+    const response = await fetch(`${url}/sessions/${sessionID}`);
+    if (!response.ok) return false;
+    const data = await response.json();
+    return JSON.stringify(data).includes("Fake provider streamed response for GUI smoke.");
+  }, { url: baseURL, sessionID });
 
   await page.getByRole("button", { name: "Refresh data" }).click();
   await summary.getByRole("button", { name: "Open session" }).click();
@@ -1747,7 +1760,7 @@ async function runStreamingProvider(page) {
   await page.getByRole("button", { name: "Runs", exact: true }).click();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
   await page.locator(`[data-run-id="${runID}"]`).getByRole("button", { name: "Open run" }).click();
-  assert(await page.locator("#run-detail").getByText(runID).count() >= 1, "streaming run detail missing run id");
+  await page.waitForFunction((id) => document.querySelector("#run-detail")?.textContent?.includes(id), runID);
   await page.locator("#run-detail").getByText("completed", { exact: true }).first().waitFor();
   assert(await page.locator("#run-detail").getByText(prompt).count() >= 1, "streaming run detail missing prompt");
   assert(await page.locator("#run-detail").getByText("Fake provider streamed response for GUI smoke.").count() >= 1, "streaming run detail missing response text");

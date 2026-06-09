@@ -2972,6 +2972,63 @@ textarea:focus {
   backdrop-filter: blur(14px);
 }
 
+.live-run-status {
+  display: grid;
+  grid-template-columns: 88px minmax(92px, 1fr) minmax(92px, 1fr) minmax(116px, 1fr) minmax(120px, 1.4fr);
+  gap: 8px;
+  border: 1px solid rgba(23, 25, 35, 0.07);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(49, 92, 255, 0.06), transparent 42%),
+    rgba(246, 245, 242, 0.72);
+  padding: 8px;
+}
+
+.live-run-status[hidden] {
+  display: none;
+}
+
+.live-run-status > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.live-run-status span {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.live-run-status strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-run-status[data-state="running"] {
+  border-color: rgba(49, 92, 255, 0.18);
+}
+
+.live-run-status[data-state="cancelled"],
+.live-run-status[data-state="error"] {
+  border-color: rgba(164, 61, 58, 0.22);
+  background:
+    linear-gradient(90deg, rgba(164, 61, 58, 0.06), transparent 42%),
+    rgba(255, 250, 250, 0.84);
+}
+
+.live-run-status[data-state="complete"] {
+  border-color: rgba(21, 147, 111, 0.2);
+  background:
+    linear-gradient(90deg, rgba(21, 147, 111, 0.07), transparent 42%),
+    rgba(255, 255, 255, 0.78);
+}
+
 .composer textarea {
   min-height: 48px;
   max-height: 180px;
@@ -5023,6 +5080,10 @@ textarea:focus {
 
   .composer {
     width: calc(100% - 28px);
+  }
+
+  .live-run-status {
+    grid-template-columns: 1fr 1fr;
   }
 
   .composer-controls,

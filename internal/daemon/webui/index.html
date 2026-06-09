@@ -522,6 +522,28 @@
           </div>
 
           <form class="composer" id="chat-form">
+            <div class="live-run-status" id="live-run-status" data-state="idle" hidden aria-live="polite">
+              <div>
+                <span>Stream</span>
+                <strong id="live-run-state">Idle</strong>
+              </div>
+              <div>
+                <span>Run</span>
+                <strong id="live-run-id">-</strong>
+              </div>
+              <div>
+                <span>Session</span>
+                <strong id="live-session-id">-</strong>
+              </div>
+              <div>
+                <span>Usage</span>
+                <strong id="live-run-usage">-</strong>
+              </div>
+              <div>
+                <span>Latest</span>
+                <strong id="live-run-event">Ready</strong>
+              </div>
+            </div>
             <textarea id="chat-input" rows="1" placeholder="Message Astria"></textarea>
             <div class="composer-controls">
               <select id="chat-agent" aria-label="Agent">

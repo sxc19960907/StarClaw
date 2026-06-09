@@ -57,6 +57,14 @@ const state = {
   activeAgentTestRequestID: "",
   activeAgentTestAbort: null,
   activeAbort: null,
+  liveRun: {
+    visible: false,
+    state: "idle",
+    runID: "",
+    sessionID: "",
+    usage: null,
+    latest: "Ready",
+  },
   activeSessionID: "",
   toolEvents: new Map(),
   toolDetails: new Map(),
@@ -550,6 +558,59 @@ function updateActiveSessionLabel() {
   }
   const session = state.sessions.find((item) => item.id === state.activeSessionID);
   label.textContent = session ? `Session: ${session.title || session.id}` : `Session: ${state.activeSessionID}`;
+}
+
+function resetLiveRunStatus() {
+  state.liveRun = {
+    visible: false,
+    state: "idle",
+    runID: "",
+    sessionID: "",
+    usage: null,
+    latest: "Ready",
+  };
+  renderLiveRunStatus();
+}
+
+function startLiveRunStatus(payload) {
+  state.liveRun = {
+    visible: true,
+    state: "running",
+    runID: payload?.request_id || "",
+    sessionID: payload?.session_id || "",
+    usage: null,
+    latest: "Connecting stream",
+  };
+  renderLiveRunStatus();
+}
+
+function updateLiveRunStatus(patch) {
+  state.liveRun = { ...state.liveRun, ...patch, visible: true };
+  renderLiveRunStatus();
+}
+
+function formatLiveUsage(usage) {
+  if (!usage) return "-";
+  const input = usage.input_tokens ?? usage.InputTokens;
+  const output = usage.output_tokens ?? usage.OutputTokens;
+  const total = usage.total_tokens ?? (Number(input || 0) + Number(output || 0));
+  const parts = [];
+  if (Number.isFinite(input)) parts.push(`in ${input}`);
+  if (Number.isFinite(output)) parts.push(`out ${output}`);
+  if (Number.isFinite(total) && parts.length) parts.push(`total ${total}`);
+  return parts.length ? parts.join(" · ") : "-";
+}
+
+function renderLiveRunStatus() {
+  const box = $("live-run-status");
+  if (!box) return;
+  box.hidden = !state.liveRun.visible;
+  box.dataset.state = state.liveRun.state || "idle";
+  setText("live-run-state", state.liveRun.state || "Idle");
+  setText("live-run-id", state.liveRun.runID || "-");
+  setText("live-session-id", state.liveRun.sessionID || "-");
+  setText("live-run-usage", formatLiveUsage(state.liveRun.usage));
+  setText("live-run-event", state.liveRun.latest || "-");
 }
 
 function setRunControls(isRunning) {
@@ -7568,11 +7629,18 @@ async function submitChat(event) {
   }
   state.activeRequestID = payload.request_id;
   state.activeAbort = abort;
+  startLiveRunStatus(payload);
   setRunControls(true);
   $("chat-input").value = "";
   try {
     const result = await streamMessage(payload, chatStreamRenderer(assistantMessage), abort.signal);
     renderDoneResult(result, assistantMessage);
+    updateLiveRunStatus({
+      state: "complete",
+      sessionID: result?.session_id || state.liveRun.sessionID,
+      usage: result?.usage || state.liveRun.usage,
+      latest: "Run complete",
+    });
     renderRunSummary(result, payload);
     if (result?.session_id) {
       state.activeSessionID = result.session_id;
@@ -7588,9 +7656,11 @@ async function submitChat(event) {
     if (error.name === "AbortError") {
       appendMessage("system", "Run cancelled.");
       stateLabel.textContent = "Cancelled";
+      updateLiveRunStatus({ state: "cancelled", latest: "Cancel requested" });
     } else {
       appendMessage("error", error.message);
       stateLabel.textContent = "Error";
+      updateLiveRunStatus({ state: "error", latest: error.message || "Stream error" });
     }
   } finally {
     state.activeRequestID = "";
@@ -7827,8 +7897,19 @@ function chatStreamRenderer(assistantMessage) {
   return {
     appendText(text) {
       appendAssistantText(assistantMessage, text);
+      updateLiveRunStatus({ state: "running", latest: "Streaming text" });
     },
     appendEvent(eventType, data) {
+      if (eventType === "session_started") {
+        updateLiveRunStatus({ sessionID: data.session_id || data.id || state.liveRun.sessionID, latest: "Session started" });
+      } else if (eventType === "usage") {
+        updateLiveRunStatus({ usage: data, latest: "Usage updated" });
+      } else if (eventType === "tool_call" || eventType === "tool_result" || eventType === "tool") {
+        const label = data.tool || data.name || eventType;
+        updateLiveRunStatus({ latest: `${eventType}: ${label}` });
+      } else {
+        updateLiveRunStatus({ latest: eventType || "Stream event" });
+      }
       if (eventType === "tool_call" || eventType === "tool_result" || eventType === "tool") {
         appendToolEvent(data, eventType);
       }
@@ -7946,6 +8027,7 @@ function handleSSEEvent(rawEvent, renderer, doneResult, streamState = newStreamE
 async function cancelActiveRun() {
   const requestID = state.activeRequestID;
   if (!requestID) return;
+  updateLiveRunStatus({ state: "cancelled", latest: "Cancelling run" });
   try {
     await fetch("/cancel", {
       method: "POST",
