@@ -1170,3 +1170,37 @@ Completed and archived Phase22 production updater decision gate. Added a credent
 ### Next Steps
 
 - None - task complete
+
+
+## Session 177: Astria Kocoro parity phase 23 streaming UX
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 23 streaming UX
+**Branch**: `main`
+
+### Summary
+
+Added a compact Chat live run status for streaming runs, wired SSE session/usage/tool updates into the Web UI, extended streaming smoke coverage, and archived the Phase 23 task after full validation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a2ed94e` | (see git log) |
+| `e2a40db` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
