@@ -269,3 +269,36 @@ Closed Phase15 long-lived Desktop RPC session and native event monitoring: all t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 151: Astria native menu Dock and window shell
+
+**Date**: 2026-06-09
+**Task**: Astria native menu Dock and window shell
+**Branch**: `main`
+
+### Summary
+
+Added native Astria command model and SwiftUI commands for New Window, Reload Astria, Open Diagnostics, and Retry Daemon; wired root-view actions, command smoke coverage, shell smoke integration, and macOS shell spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fc18ae0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
