@@ -929,3 +929,36 @@ Closed Astria Kocoro parity Phase20 after all three updater transaction-safety c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 171: Astria sandbox updater rehearsal fixture
+
+**Date**: 2026-06-09
+**Task**: Astria sandbox updater rehearsal fixture
+**Branch**: `main`
+
+### Summary
+
+Added a sandbox-only fake Astria.app updater rehearsal that stages a candidate fixture, replaces only the temporary install fixture, rolls back to the original fixture, rejects outside-sandbox touched paths, and passed release validation, Astria shell smoke, Go tests, diff check, and Trellis validation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6be1191` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
