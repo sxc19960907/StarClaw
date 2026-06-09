@@ -30,15 +30,17 @@ enum AstriaNativeCommandSpec {
     static let newWindow = AstriaNativeCommand(id: "new_window", title: "New Window", key: "n", modifiers: [.command])
     static let reload = AstriaNativeCommand(id: "reload", title: "Reload Astria", key: "r", modifiers: [.command])
     static let diagnostics = AstriaNativeCommand(id: "diagnostics", title: "Open Diagnostics", key: "d", modifiers: [.command, .shift])
+    static let exportDiagnostics = AstriaNativeCommand(id: "export_diagnostics", title: "Export Diagnostics", key: "e", modifiers: [.command, .shift])
     static let retryDaemon = AstriaNativeCommand(id: "retry_daemon", title: "Retry Daemon", key: "r", modifiers: [.command, .shift])
 
-    static let all = [newWindow, reload, diagnostics, retryDaemon]
+    static let all = [newWindow, reload, diagnostics, exportDiagnostics, retryDaemon]
 }
 
 @MainActor
 final class AstriaAppActions: ObservableObject {
     var reload: () -> Void = {}
     var openDiagnostics: () -> Void = {}
+    var exportDiagnostics: () -> Void = {}
     var retryDaemon: () -> Void = {}
 }
 
@@ -65,6 +67,11 @@ struct AstriaNativeCommands: Commands {
             }
             .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.diagnostics.key)), modifiers: AstriaNativeCommandSpec.diagnostics.modifiers)
 
+            Button(AstriaNativeCommandSpec.exportDiagnostics.title) {
+                appActions.exportDiagnostics()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.exportDiagnostics.key)), modifiers: AstriaNativeCommandSpec.exportDiagnostics.modifiers)
+
             Divider()
 
             Button(AstriaNativeCommandSpec.retryDaemon.title) {
@@ -83,6 +90,9 @@ struct AstriaApp: App {
     init() {
         if CommandLine.arguments.contains("--native-command-smoke") {
             Foundation.exit(AstriaNativeCommandSmoke.run())
+        }
+        if CommandLine.arguments.contains("--diagnostics-export-smoke") {
+            Foundation.exit(AstriaDiagnosticsExportSmoke.run())
         }
         if CommandLine.arguments.contains("--route-recovery-smoke") {
             Foundation.exit(AstriaRouteRecoverySmoke.run())
@@ -295,6 +305,18 @@ struct AstriaRootView: View {
         appActions.openDiagnostics = {
             NSWorkspace.shared.open(config.diagnosticsURL)
         }
+        appActions.exportDiagnostics = {
+            do {
+                let url = try AstriaDiagnosticsExporter.export(
+                    config: config,
+                    daemonState: supervisor.state,
+                    desktopRPCState: supervisor.desktopRPCSessionState
+                )
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            } catch {
+                loadState.message = "Astria could not export diagnostics. \(error.localizedDescription)"
+            }
+        }
         appActions.retryDaemon = {
             supervisor.start()
         }
@@ -303,6 +325,7 @@ struct AstriaRootView: View {
     private func clearNativeActions() {
         appActions.reload = {}
         appActions.openDiagnostics = {}
+        appActions.exportDiagnostics = {}
         appActions.retryDaemon = {}
     }
 }
@@ -523,6 +546,138 @@ enum DesktopRPCDiagnostics {
         default:
             return false
         }
+    }
+}
+
+struct AstriaDiagnosticsReport: Encodable {
+    let generatedAt: String
+    let appVersion: String
+    let webURL: String
+    let healthURL: String
+    let diagnosticsURL: String
+    let daemonState: String
+    let desktopRPCState: String
+    let failureSummary: String?
+    let localOnly: Bool
+}
+
+enum AstriaDiagnosticsRedactor {
+    private static let sensitiveKeys = [
+        "api_key",
+        "openai_api_key",
+        "authorization",
+        "bearer",
+        "token",
+        "secret",
+        "password",
+    ]
+
+    static func redact(_ value: String, config: LaunchConfig? = nil) -> String {
+        var redacted = value
+        if let config {
+            redacted = redacted.replacingOccurrences(of: config.desktopRPCSocketPath, with: "[redacted-desktop-rpc-socket]")
+            redacted = redacted.replacingOccurrences(of: config.desktopRPCPidfilePath, with: "[redacted-desktop-rpc-pidfile]")
+        }
+        redacted = redactBearerTokens(in: redacted)
+        for key in sensitiveKeys {
+            redacted = redactAssignments(in: redacted, key: key)
+        }
+        return redacted
+    }
+
+    private static func redactAssignments(in value: String, key: String) -> String {
+        let pattern = "(?i)(\(NSRegularExpression.escapedPattern(for: key))\\s*[:=]\\s*)([^\\s,;]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return value
+        }
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        return regex.stringByReplacingMatches(in: value, range: range, withTemplate: "$1[redacted]")
+    }
+
+    private static func redactBearerTokens(in value: String) -> String {
+        let pattern = "(?i)(bearer\\s+)([A-Za-z0-9._~+\\-/=]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return value
+        }
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        return regex.stringByReplacingMatches(in: value, range: range, withTemplate: "$1[redacted]")
+    }
+}
+
+enum AstriaDiagnosticsExporter {
+    static func report(config: LaunchConfig, daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> AstriaDiagnosticsReport {
+        let failureSummary = rawFailureSummary(daemonState: daemonState, desktopRPCState: desktopRPCState)
+        return AstriaDiagnosticsReport(
+            generatedAt: ISO8601DateFormatter().string(from: Date()),
+            appVersion: config.appVersion,
+            webURL: config.webURL.absoluteString,
+            healthURL: config.healthURL.absoluteString,
+            diagnosticsURL: config.diagnosticsURL.absoluteString,
+            daemonState: label(for: daemonState),
+            desktopRPCState: label(for: desktopRPCState),
+            failureSummary: failureSummary.map { AstriaDiagnosticsRedactor.redact($0, config: config) },
+            localOnly: true
+        )
+    }
+
+    static func export(config: LaunchConfig, daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) throws -> URL {
+        let directory = try diagnosticsDirectory(config: config)
+        let filename = "astria-diagnostics-\(Int(Date().timeIntervalSince1970)).json"
+        let url = directory.appendingPathComponent(filename)
+        let data = try JSONEncoder.sortedPrettyPrinted.encode(report(config: config, daemonState: daemonState, desktopRPCState: desktopRPCState))
+        try data.write(to: url, options: [.atomic])
+        return url
+    }
+
+    static func diagnosticsDirectory(config: LaunchConfig) throws -> URL {
+        let directory = URL(fileURLWithPath: config.runtimeDirectory, isDirectory: true)
+            .appendingPathComponent("diagnostics", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    private static func rawFailureSummary(daemonState: DaemonState, desktopRPCState: DesktopRPCSessionState) -> String? {
+        switch daemonState {
+        case .failed(let message), .crashed(let message), .degraded(let message):
+            return message
+        default:
+            return DesktopRPCDiagnostics.bannerMessage(for: desktopRPCState)
+        }
+    }
+
+    private static func label(for state: DaemonState) -> String {
+        switch state {
+        case .idle:
+            return "idle"
+        case .checking:
+            return "checking"
+        case .starting:
+            return "starting"
+        case .attached:
+            return "attached"
+        case .degraded:
+            return "degraded"
+        case .unavailable:
+            return "unavailable"
+        case .recovered:
+            return "recovered"
+        case .failed:
+            return "failed"
+        case .crashed:
+            return "crashed"
+        }
+    }
+
+    private static func label(for state: DesktopRPCSessionState) -> String {
+        DesktopRPCDiagnostics.severity(for: state)
+    }
+}
+
+extension JSONEncoder {
+    static var sortedPrettyPrinted: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
     }
 }
 
@@ -1308,7 +1463,7 @@ enum AstriaNativeCommandSmoke {
     static func run() -> Int32 {
         let commands = AstriaNativeCommandSpec.all
         let ids = Set(commands.map(\.id))
-        if commands.count != 4 || ids.count != commands.count {
+        if commands.count != 5 || ids.count != commands.count {
             fputs("Astria native command smoke found missing or duplicate commands\n", stderr)
             return 1
         }
@@ -1316,6 +1471,7 @@ enum AstriaNativeCommandSmoke {
             "new_window": ("New Window", "n"),
             "reload": ("Reload Astria", "r"),
             "diagnostics": ("Open Diagnostics", "d"),
+            "export_diagnostics": ("Export Diagnostics", "e"),
             "retry_daemon": ("Retry Daemon", "r"),
         ]
         for command in commands {
@@ -1338,6 +1494,52 @@ enum AstriaNativeCommandSmoke {
         }
         if AstriaNativeCommandSpec.retryDaemon.modifiers == AstriaNativeCommandSpec.reload.modifiers {
             fputs("Astria native command smoke retry shortcut conflicts with reload\n", stderr)
+            return 1
+        }
+        return 0
+    }
+}
+
+enum AstriaDiagnosticsExportSmoke {
+    static func run() -> Int32 {
+        let runtime = "/tmp/astria-diagnostics-\(getpid())-\(UUID().uuidString.prefix(8))"
+        defer {
+            try? FileManager.default.removeItem(atPath: runtime)
+        }
+        let config = LaunchConfig.fromProcess(arguments: [
+            "Astria",
+            "--runtime-dir", runtime,
+        ], environment: [:])
+        let sensitive = "failed with api_key=sk-test-secret Authorization: Bearer abc.def token=hidden \(config.desktopRPCSocketPath) \(config.desktopRPCPidfilePath)"
+        let redacted = AstriaDiagnosticsRedactor.redact(sensitive, config: config)
+        for forbidden in ["sk-test-secret", "abc.def", "hidden", config.desktopRPCSocketPath, config.desktopRPCPidfilePath] {
+            if redacted.contains(forbidden) {
+                fputs("Astria diagnostics export smoke redaction leaked \(forbidden)\n", stderr)
+                return 1
+            }
+        }
+
+        do {
+            let url = try AstriaDiagnosticsExporter.export(
+                config: config,
+                daemonState: .failed(sensitive),
+                desktopRPCState: .mismatch("token=hidden")
+            )
+            let body = try String(contentsOf: url)
+            for required in ["\"localOnly\" : true", "\"daemonState\" : \"failed\"", "\"desktopRPCState\" : \"mismatch\""] {
+                if !body.contains(required) {
+                    fputs("Astria diagnostics export smoke missing \(required)\n", stderr)
+                    return 1
+                }
+            }
+            for forbidden in ["sk-test-secret", "abc.def", "hidden", config.desktopRPCSocketPath, config.desktopRPCPidfilePath] {
+                if body.contains(forbidden) {
+                    fputs("Astria diagnostics export smoke report leaked \(forbidden)\n", stderr)
+                    return 1
+                }
+            }
+        } catch {
+            fputs("Astria diagnostics export smoke failed: \(error.localizedDescription)\n", stderr)
             return 1
         }
         return 0
