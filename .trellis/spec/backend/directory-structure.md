@@ -137,6 +137,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Main native window scene id: `astria-main`.
 - Route recovery storage key: `astria.lastWebRoute` stores a relative `/app`
   route only.
+- Per-window route recovery uses `astria.window.<window-id>.lastWebRoute` for
+  safe relative `/app` routes, with `astria.lastWebRoute` as the shared fallback
+  for new windows.
 - Development override env keys:
   - `ASTRIA_WEB_URL`
   - `ASTRIA_DIAGNOSTICS_URL`
@@ -165,6 +168,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   privacy/TCC permissions.
 - New Window should open another `astria-main` window around the same local
   daemon instead of disabling macOS new-window behavior.
+- Each native window may restore its own last safe `/app` route while sharing
+  the same configured local daemon/runtime boundary. New windows without a
+  window-specific route may fall back to the shared last safe route.
 - Reload Astria should refresh the hosted WebView without changing the
   persisted route. Retry Daemon should call the existing daemon supervision
   start path.
@@ -219,6 +225,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - The shell may persist the last useful Web UI route only when it is same-origin
   with the configured Web UI URL and under `/app`. Store relative route values,
   never full origins.
+- Window-specific route keys must use a conservative identifier whitelist and
+  store only the same safe relative route values as the shared route key.
 - The shell may reload the WebView after daemon health recovers, but the Web UI
   remains responsible for run/event deduplication through `/events` and `/runs`.
 - App Transport Security may allow local networking for `127.0.0.1`; do not add
@@ -284,6 +292,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
   restore falls back to `/app/`.
+- Unsafe window-specific routes -> restore falls back to the shared safe route
+  when available, otherwise `/app/`; unsafe full origins are never persisted.
 - Native command smoke -> verifies command ids, labels, shortcut metadata, and
   shortcut conflict boundaries without requiring UI automation.
 - Diagnostics export smoke -> verifies a local JSON report is written and does
@@ -311,7 +321,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   session connected/retry/mismatch diagnostics, native command metadata,
   diagnostics export redaction, clipboard/file affordance route safety and
   support summary redaction, permission helper guidance/unavailable-safe
-  behavior, and launch failure.
+  behavior, multi-window route isolation/fallback, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` when
   touching Astria distribution boundaries. It must pass without Apple
   credentials.

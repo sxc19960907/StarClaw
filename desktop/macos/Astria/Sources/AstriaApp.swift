@@ -285,6 +285,7 @@ struct AstriaRootView: View {
     @State private var loadState = WebLoadState()
     @State private var webURL: URL
     @State private var reloadToken = UUID()
+    @SceneStorage(AstriaRouteStore.windowIDStorageKey) private var windowRouteID = ""
     @StateObject private var supervisor: DaemonSupervisor
     @EnvironmentObject private var appActions: AstriaAppActions
 
@@ -303,7 +304,7 @@ struct AstriaRootView: View {
             if supervisor.state.isAttached {
                 AstriaWebView(url: webURL, reloadToken: reloadToken, loadState: $loadState) { navigatedURL in
                     if AstriaRouteStore.route(from: navigatedURL, baseURL: config.webURL) != nil {
-                        routeStore.persist(url: navigatedURL, baseURL: config.webURL)
+                        routeStore.persist(url: navigatedURL, baseURL: config.webURL, windowID: ensuredWindowRouteID())
                         webURL = navigatedURL
                     }
                 }
@@ -322,6 +323,7 @@ struct AstriaRootView: View {
             }
         }
         .task {
+            restoreWindowRouteIfNeeded()
             registerNativeActions()
             supervisor.start()
         }
@@ -329,7 +331,7 @@ struct AstriaRootView: View {
             clearNativeActions()
         }
         .onChange(of: supervisor.recoveryGeneration) { _ in
-            webURL = routeStore.restoredURL(baseURL: config.webURL)
+            webURL = routeStore.restoredURL(baseURL: config.webURL, windowID: ensuredWindowRouteID())
             reloadToken = UUID()
         }
     }
@@ -399,6 +401,21 @@ struct AstriaRootView: View {
     private func copyToPasteboard(_ value: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    private func ensuredWindowRouteID() -> String {
+        if windowRouteID.isEmpty {
+            windowRouteID = UUID().uuidString
+        }
+        return windowRouteID
+    }
+
+    private func restoreWindowRouteIfNeeded() {
+        let restored = routeStore.restoredURL(baseURL: config.webURL, windowID: ensuredWindowRouteID())
+        if webURL != restored {
+            webURL = restored
+            reloadToken = UUID()
+        }
     }
 }
 
@@ -1569,6 +1586,7 @@ struct DesktopRPCClient {
 
 struct AstriaRouteStore {
     static let key = "astria.lastWebRoute"
+    static let windowIDStorageKey = "astria.windowRouteID"
 
     private let defaults: UserDefaults
 
@@ -1576,14 +1594,24 @@ struct AstriaRouteStore {
         self.defaults = defaults
     }
 
-    func persist(url: URL, baseURL: URL) {
+    func persist(url: URL, baseURL: URL, windowID: String? = nil) {
         guard let route = Self.route(from: url, baseURL: baseURL) else {
             return
         }
         defaults.set(route, forKey: Self.key)
+        if let windowKey = Self.windowKey(for: windowID) {
+            defaults.set(route, forKey: windowKey)
+        }
     }
 
-    func restoredURL(baseURL: URL) -> URL {
+    func restoredURL(baseURL: URL, windowID: String? = nil) -> URL {
+        if
+            let windowKey = Self.windowKey(for: windowID),
+            let route = defaults.string(forKey: windowKey),
+            let url = Self.url(forRoute: route, baseURL: baseURL)
+        {
+            return url
+        }
         guard
             let route = defaults.string(forKey: Self.key),
             let url = Self.url(forRoute: route, baseURL: baseURL)
@@ -1591,6 +1619,19 @@ struct AstriaRouteStore {
             return baseURL
         }
         return url
+    }
+
+    private static func windowKey(for windowID: String?) -> String? {
+        guard let windowID else {
+            return nil
+        }
+        let allowed = windowID.unicodeScalars.allSatisfy { scalar in
+            CharacterSet.alphanumerics.contains(scalar) || scalar == "-" || scalar == "_"
+        }
+        guard allowed, !windowID.isEmpty, windowID.count <= 96 else {
+            return nil
+        }
+        return "astria.window.\(windowID).lastWebRoute"
     }
 
     static func route(from url: URL, baseURL: URL) -> String? {
@@ -2230,6 +2271,33 @@ enum AstriaRouteRecoverySmoke {
         defaults.set("/app#compact", forKey: AstriaRouteStore.key)
         guard store.restoredURL(baseURL: baseURL).absoluteString == "http://127.0.0.1:7533/app/#compact" else {
             fputs("Astria route smoke did not normalize /app route\n", stderr)
+            return 1
+        }
+
+        let windowAURL = URL(string: "http://127.0.0.1:7533/app/?window=a#runs")!
+        let windowBURL = URL(string: "http://127.0.0.1:7533/app/?window=b#runs")!
+        store.persist(url: windowAURL, baseURL: baseURL, windowID: "window-a")
+        store.persist(url: windowBURL, baseURL: baseURL, windowID: "window-b")
+        guard store.restoredURL(baseURL: baseURL, windowID: "window-a").absoluteString == windowAURL.absoluteString else {
+            fputs("Astria route smoke failed to restore window-a route\n", stderr)
+            return 1
+        }
+        guard store.restoredURL(baseURL: baseURL, windowID: "window-b").absoluteString == windowBURL.absoluteString else {
+            fputs("Astria route smoke failed to restore window-b route\n", stderr)
+            return 1
+        }
+        guard store.restoredURL(baseURL: baseURL, windowID: "window-c").absoluteString == windowBURL.absoluteString else {
+            fputs("Astria route smoke did not use global route fallback for a new window\n", stderr)
+            return 1
+        }
+        defaults.set("https://example.com/app/#bad", forKey: "astria.window.window-a.lastWebRoute")
+        guard store.restoredURL(baseURL: baseURL, windowID: "window-a").absoluteString == windowBURL.absoluteString else {
+            fputs("Astria route smoke did not fall back from unsafe window route\n", stderr)
+            return 1
+        }
+        store.persist(url: windowAURL, baseURL: baseURL, windowID: "../bad")
+        guard defaults.string(forKey: "astria.window.../bad.lastWebRoute") == nil else {
+            fputs("Astria route smoke accepted unsafe window id\n", stderr)
             return 1
         }
 
