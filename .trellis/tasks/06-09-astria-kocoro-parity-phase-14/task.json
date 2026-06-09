@@ -1,0 +1,30 @@
+{
+  "id": "astria-kocoro-parity-phase-14",
+  "name": "astria-kocoro-parity-phase-14",
+  "title": "Astria Kocoro parity phase 14: desktop RPC handshake and daemon reconciliation",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-desktop-rpc-launch-contract",
+    "06-09-desktop-rpc-capabilities-reconciliation",
+    "06-09-desktop-rpc-fallback-recovery"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
