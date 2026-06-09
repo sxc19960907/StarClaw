@@ -170,3 +170,36 @@ Added Astria long-lived Desktop RPC session lifecycle monitoring with connected/
 ### Next Steps
 
 - None - task complete
+
+
+## Session 148: Desktop RPC event monitoring
+
+**Date**: 2026-06-09
+**Task**: Desktop RPC event monitoring
+**Branch**: `main`
+
+### Summary
+
+Added daemon-side Desktop RPC event monitoring with bounded in-memory event retention, listener EventSink wiring, redacted /status event metadata, client status types, tests, and backend spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `05216a4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
