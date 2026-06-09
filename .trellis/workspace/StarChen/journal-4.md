@@ -500,3 +500,36 @@ Added per-window Astria route restoration with conservative window route IDs, sa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 158: Astria Kocoro parity phase 17 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 17 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Phase17 with a final Kocoro gap review after completing native clipboard/file affordances, permission helper guidance, and per-window route restoration. The review updates Astria/Kocoro parity to roughly 92-95% for local-first desktop platform behavior and recommends Phase18 focus on crash reporting, notifications, signed updater, and production release readiness.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ff01968` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
