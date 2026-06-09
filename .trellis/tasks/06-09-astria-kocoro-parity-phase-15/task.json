@@ -1,0 +1,30 @@
+{
+  "id": "astria-kocoro-parity-phase-15",
+  "name": "astria-kocoro-parity-phase-15",
+  "title": "Astria Kocoro parity phase 15: long-lived Desktop RPC session and native event monitoring",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-desktop-rpc-session-lifecycle",
+    "06-09-desktop-rpc-event-monitoring",
+    "06-09-native-desktop-diagnostics-recovery"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
