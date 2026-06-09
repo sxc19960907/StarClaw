@@ -566,3 +566,36 @@ Added a local Export Crash Summary command, redacted crash summary report/text m
 ### Next Steps
 
 - None - task complete
+
+
+## Session 160: Astria notification readiness
+
+**Date**: 2026-06-09
+**Task**: Astria notification readiness
+**Branch**: `main`
+
+### Summary
+
+Added notification readiness to Astria Permission Help using passive UserNotifications settings reads, readiness labels for ready/blocked/requires-explicit-request/unavailable-safe states, dedicated smoke coverage that avoids authorization requests or test sends, build script framework linkage, and backend spec documentation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5007b3a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
