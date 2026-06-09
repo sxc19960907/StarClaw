@@ -268,6 +268,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   manifest inputs into a local `plan_only` decision. It must require rollback
   and post-update health gate declarations, keep replacement disabled, and must
   not download, install, replace, or roll back the app or bundled daemon.
+- Updater rollback/health gate manifests must be credential-free JSON with
+  local-only status, replacement disabled, rollback gate id/source/target,
+  daemon compatibility guard, manual approval required, and post-update checks
+  for app launch, daemon health, Desktop RPC capabilities, and Web UI readiness.
 - Astria release compatibility manifests must be credential-free JSON with app
   version/build, daemon version, source tag, local-only status, replacement
   disabled, and compatibility min-version fields. App and daemon release
@@ -346,6 +350,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   post-update health gate -> returns a local no-replacement plan. Missing gate
   declarations or replacement-enabled metadata -> validation fails before any
   transaction is considered ready.
+- Astria rollback/health manifest with rollback source/target, daemon
+  compatibility guard, manual approval, and app/daemon/Desktop RPC/Web UI
+  health checks -> validation passes. Missing rollback target, missing manual
+  approval, or missing health checks -> validation fails.
 - Astria compatibility manifest with matching app and daemon versions ->
   validation passes. Missing app/build/daemon fields or mismatched app/daemon
   release versions -> validation fails.
@@ -381,6 +389,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Updater transaction plan smoke -> verifies valid no-replacement plan-only
   metadata with rollback and health gates, replacement-enabled rejection, and
   missing-gate rejection without requiring Apple credentials.
+- Updater rollback/health gates smoke -> verifies valid rollback/health
+  manifest acceptance plus missing rollback target, manual approval, and health
+  check rejection without requiring Apple credentials.
 
 ### 5. Good/Base/Bad Cases
 

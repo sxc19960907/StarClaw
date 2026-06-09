@@ -10,6 +10,7 @@ RUN_UPDATER_BOUNDARY_SMOKE=false
 RUN_UPDATER_DRY_RUN_SMOKE=false
 RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=false
 RUN_UPDATER_TRANSACTION_PLAN_SMOKE=false
+RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -25,6 +26,7 @@ for arg in "$@"; do
     --updater-dry-run-smoke) RUN_UPDATER_DRY_RUN_SMOKE=true ;;
     --astria-compatibility-manifest-smoke) RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=true ;;
     --updater-transaction-plan-smoke) RUN_UPDATER_TRANSACTION_PLAN_SMOKE=true ;;
+    --updater-rollback-health-gates-smoke) RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -431,6 +433,157 @@ JSON
   grep -Fq "missing app.build" "$tmp/missing.err" || fail "incomplete compatibility manifest failed for the wrong reason"
 }
 
+write_astria_rollback_health_manifest() {
+  local output="$1"
+  require_cmd node
+  node - <<'NODE' "$output"
+const fs = require("fs");
+const output = process.argv[2];
+const manifest = {
+  schema_version: "1",
+  product: "Astria",
+  local_only: true,
+  replacement: "disabled",
+  rollback: {
+    gate_id: "rollback-manifest-v1",
+    required: true,
+    source: "previous_app_bundle_snapshot",
+    restore_target: "astria_app_bundle",
+    daemon_compatibility_guard: "matching_release_version",
+    manual_approval_required: true,
+  },
+  post_update_health: {
+    gate_id: "astria-local-health-v1",
+    required: true,
+    checks: [
+      "app_launch",
+      "daemon_health",
+      "desktop_rpc_capabilities",
+      "web_ui_readiness",
+    ],
+  },
+};
+fs.writeFileSync(output, JSON.stringify(manifest, null, 2) + "\n");
+NODE
+}
+
+assert_astria_rollback_health_manifest() {
+  local manifest="$1"
+  require_cmd node
+  node - <<'NODE' "$manifest"
+const fs = require("fs");
+const manifestPath = process.argv[2];
+const requiredHealthChecks = new Set([
+  "app_launch",
+  "daemon_health",
+  "desktop_rpc_capabilities",
+  "web_ui_readiness",
+]);
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+let manifest;
+try {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+} catch (error) {
+  fail(`Astria rollback health manifest is not valid JSON: ${error.message}`);
+}
+
+for (const field of ["schema_version", "product", "local_only", "replacement", "rollback", "post_update_health"]) {
+  if (manifest[field] === undefined || manifest[field] === null) {
+    fail(`Astria rollback health manifest missing ${field}`);
+  }
+}
+if (manifest.product !== "Astria") fail("Astria rollback health manifest product must be Astria");
+if (manifest.local_only !== true) fail("Astria rollback health manifest must declare local_only=true");
+if (manifest.replacement !== "disabled") fail("Astria rollback health manifest must keep replacement disabled");
+
+for (const field of ["gate_id", "source", "restore_target", "daemon_compatibility_guard"]) {
+  if (typeof manifest.rollback[field] !== "string" || manifest.rollback[field].trim() === "") {
+    fail(`Astria rollback health manifest missing rollback.${field}`);
+  }
+}
+if (manifest.rollback.required !== true) {
+  fail("Astria rollback health manifest rollback.required must be true");
+}
+if (manifest.rollback.manual_approval_required !== true) {
+  fail("Astria rollback health manifest rollback.manual_approval_required must be true");
+}
+
+if (typeof manifest.post_update_health.gate_id !== "string" || manifest.post_update_health.gate_id.trim() === "") {
+  fail("Astria rollback health manifest missing post_update_health.gate_id");
+}
+if (manifest.post_update_health.required !== true) {
+  fail("Astria rollback health manifest post_update_health.required must be true");
+}
+if (!Array.isArray(manifest.post_update_health.checks)) {
+  fail("Astria rollback health manifest post_update_health.checks must be an array");
+}
+const checks = new Set(manifest.post_update_health.checks);
+for (const check of requiredHealthChecks) {
+  if (!checks.has(check)) {
+    fail(`Astria rollback health manifest missing post_update_health check ${check}`);
+  }
+}
+NODE
+}
+
+run_astria_updater_rollback_health_gates_smoke() {
+  echo "==> checking Astria updater rollback health gates smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local valid="$tmp/astria-rollback-health.json"
+  write_astria_rollback_health_manifest "$valid"
+  assert_astria_rollback_health_manifest "$valid"
+
+  local missing_rollback="$tmp/astria-rollback-health-missing-rollback.json"
+  cp "$valid" "$missing_rollback"
+  node - <<'NODE' "$missing_rollback"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+delete data.rollback.restore_target;
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_rollback_health_manifest "$missing_rollback") >/dev/null 2>"$tmp/missing-rollback.err"; then
+    fail "incomplete rollback gate unexpectedly passed validation"
+  fi
+  grep -Fq "missing rollback.restore_target" "$tmp/missing-rollback.err" || fail "incomplete rollback gate failed for the wrong reason"
+
+  local missing_approval="$tmp/astria-rollback-health-missing-approval.json"
+  cp "$valid" "$missing_approval"
+  node - <<'NODE' "$missing_approval"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.rollback.manual_approval_required = false;
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_rollback_health_manifest "$missing_approval") >/dev/null 2>"$tmp/missing-approval.err"; then
+    fail "rollback gate without manual approval unexpectedly passed validation"
+  fi
+  grep -Fq "rollback.manual_approval_required must be true" "$tmp/missing-approval.err" || fail "missing manual approval failed for the wrong reason"
+
+  local missing_health="$tmp/astria-rollback-health-missing-health.json"
+  cp "$valid" "$missing_health"
+  node - <<'NODE' "$missing_health"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.post_update_health.checks = data.post_update_health.checks.filter((check) => check !== "desktop_rpc_capabilities");
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_rollback_health_manifest "$missing_health") >/dev/null 2>"$tmp/missing-health.err"; then
+    fail "incomplete post-update health gate unexpectedly passed validation"
+  fi
+  grep -Fq "missing post_update_health check desktop_rpc_capabilities" "$tmp/missing-health.err" || fail "incomplete health gate failed for the wrong reason"
+}
+
 astria_updater_transaction_plan() {
   local metadata_file="$1"
   local manifest_file="$2"
@@ -676,12 +829,19 @@ if "$RUN_UPDATER_TRANSACTION_PLAN_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE"; then
+  run_astria_updater_rollback_health_gates_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
     assert_no_private_release_material
     assert_astria_updater_boundary
     run_astria_compatibility_manifest_smoke
+    run_astria_updater_rollback_health_gates_smoke
     run_astria_updater_transaction_plan_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
@@ -729,6 +889,7 @@ if "$ASTRIA_LOCAL"; then
   assert_no_private_release_material
   assert_astria_updater_boundary
   run_astria_compatibility_manifest_smoke
+  run_astria_updater_rollback_health_gates_smoke
   run_astria_updater_transaction_plan_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
