@@ -599,3 +599,36 @@ Added notification readiness to Astria Permission Help using passive UserNotific
 ### Next Steps
 
 - None - task complete
+
+
+## Session 161: Astria updater metadata boundary
+
+**Date**: 2026-06-09
+**Task**: Astria updater metadata boundary
+**Branch**: `main`
+
+### Summary
+
+Hardened Astria signed updater/release validation by allowing missing metadata as unavailable-safe, requiring present metadata to be signed JSON with checksum, signature, public key, and app/daemon compatibility fields, rejecting private fields and replacement flags, adding updater-boundary smoke coverage, and updating release/install/Astria docs plus backend spec.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7f53d53` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 160
+- **Total Sessions**: 161
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~601 | Active |
+| `journal-4.md` | ~634 | Active |
 | `journal-3.md` | ~1999 | Archived |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 161 | 2026-06-09 | Astria updater metadata boundary | `7f53d53` | `main` |
 | 160 | 2026-06-09 | Astria notification readiness | `5007b3a` | `main` |
 | 159 | 2026-06-09 | Astria local crash summary export | `0506632` | `main` |
 | 158 | 2026-06-09 | Astria Kocoro parity phase 17 closeout | `ff01968` | `main` |
