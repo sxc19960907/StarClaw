@@ -14,6 +14,7 @@ StarClaw/
 ├── tests/                  # Black-box integration tests
 ├── docs/                   # User-facing documentation
 ├── scripts/                # Build/CI helper scripts
+├── desktop/                # Optional native desktop shells
 ├── npm/                    # npm distribution package
 └── pkg/                    # (reserved for public library packages)
 ```
@@ -114,6 +115,78 @@ mux.HandleFunc("GET /app/", srv.handleWebApp)
 mux.HandleFunc("GET /app/assets/", srv.handleWebAsset)
 // Read-only local readiness API consumed by the embedded GUI.
 mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
+```
+
+## Scenario: macOS Astria Shell
+
+### 1. Scope / Trigger
+
+- Trigger: adding or changing the optional native macOS shell for Astria.
+- Scope: thin app wrapper under `desktop/macos/Astria/` that hosts the existing
+  daemon-served Web UI. The Go daemon and Web UI remain the runtime owners.
+
+### 2. Signatures
+
+- Swift source lives under `desktop/macos/Astria/Sources/`.
+- Bundle metadata lives in `desktop/macos/Astria/Info.plist`.
+- Local development build script: `scripts/build_macos_astria_shell.sh`.
+- Smoke script: `scripts/smoke_macos_astria_shell.sh`.
+- Default hosted URL: `http://127.0.0.1:7533/app/`.
+- Development override env keys:
+  - `ASTRIA_WEB_URL`
+  - `ASTRIA_DIAGNOSTICS_URL`
+
+### 3. Contracts
+
+- The shell must host the daemon Web UI; it must not duplicate the Web UI into
+  a second frontend implementation.
+- The shell must remain optional. `starclaw app`, `starclaw app --no-open`, and
+  `starclaw daemon start` remain valid fallback paths.
+- Unsigned local builds must not require private signing, notarization, or
+  update credentials.
+- Until a daemon-supervision task explicitly adds launch/attach behavior, the
+  shell must assume the daemon is started separately.
+- App Transport Security may allow local networking for `127.0.0.1`; do not add
+  broad remote networking exceptions for the shell.
+
+### 4. Validation & Error Matrix
+
+- Non-macOS host -> smoke script prints skipped and exits 0.
+- Missing `swiftc` on macOS -> build script exits non-zero with a clear message.
+- Missing bundle executable -> smoke script fails.
+- Missing `Info.plist` -> smoke script fails.
+- Missing local networking ATS allowance -> smoke script fails.
+- Daemon unavailable at runtime -> shell shows a user-visible waiting/error
+  state; it must not silently fail with a blank window.
+
+### 5. Good/Base/Bad Cases
+
+- Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`
+  and verifies bundle structure.
+- Base: user starts `starclaw app --no-open`, then opens the unsigned app shell
+  to view the daemon-served Astria UI.
+- Bad: app shell requires cloud credentials, private signing keys, a separate
+  frontend build pipeline, or silently replaces the CLI/browser launch path.
+
+### 6. Tests Required
+
+- Run `scripts/smoke_macos_astria_shell.sh` on macOS when the shell changes.
+- Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect
+  existing CLI launch readiness behavior.
+- Run `go test ./...` before committing mixed shell/documentation changes.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```swift
+let url = URL(string: "https://remote.example/app")!
+```
+
+#### Correct
+
+```swift
+let url = URL(string: "http://127.0.0.1:7533/app/")!
 ```
 
 ## Package Naming Rules

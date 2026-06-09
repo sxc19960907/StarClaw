@@ -115,6 +115,15 @@ starclaw doctor --json
 
 `starclaw app` reuses an already-running daemon. If the browser cannot be opened automatically, copy the printed Web UI URL manually. `starclaw app --check`, `starclaw doctor`, and the GUI Version page show the same local runtime context: Web UI, health, status, diagnostics, data, and config paths.
 
+**macOS shell skeleton:**
+```bash
+scripts/build_macos_astria_shell.sh
+```
+
+This builds an unsigned local `Astria.app` development shell under
+`build/desktop/macos/`. It hosts the same daemon-served Web UI and currently
+expects the daemon to be started separately with `starclaw app --no-open`.
+
 ### Local Runtime API
 
 The daemon exposes local HTTP endpoints for the embedded UI and for local integrations:
