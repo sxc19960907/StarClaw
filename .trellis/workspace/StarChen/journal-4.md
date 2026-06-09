@@ -863,3 +863,36 @@ Completed the second Phase20 child by adding credential-free Astria rollback and
 ### Next Steps
 
 - None - task complete
+
+
+## Session 169: Astria release acceptance gates
+
+**Date**: 2026-06-09
+**Task**: Astria release acceptance gates
+**Branch**: `main`
+
+### Summary
+
+Completed the third Phase20 child by adding credential-free Astria release acceptance manifest validation. Release validation now requires production readiness metadata for Developer ID signing, Hardened Runtime, notarization, stapling, updater metadata, compatibility, rollback/health gates, transaction plan references, replacement disabled state, and private material absence. Validation passed with Trellis validation, release acceptance smoke, Astria local release validation, macOS shell smoke, focused Go tests, go test ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0bfa83a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
