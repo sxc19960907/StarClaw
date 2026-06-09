@@ -163,6 +163,12 @@ ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" scripts/build_macos_astria_she
 The bundled daemon lives at `Astria.app/Contents/Resources/starclaw`. Unsigned
 development builds are not notarized release artifacts.
 
+When the shell starts the daemon itself, it also passes Desktop RPC socket and
+pidfile paths under `~/Library/Application Support/dev.starclaw.astria/` and
+validates `system.capabilities` before declaring the desktop handshake ready.
+Set `ASTRIA_RUNTIME_DIR=/tmp/astria-runtime` to keep these artifacts isolated
+for smoke testing.
+
 ## Uninstallation
 
 ### Binary

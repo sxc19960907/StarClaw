@@ -141,6 +141,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   - `ASTRIA_DIAGNOSTICS_URL`
   - `ASTRIA_HEALTH_URL`
   - `ASTRIA_STARCLAW_BIN`
+  - `ASTRIA_RUNTIME_DIR`
   - `ASTRIA_BUNDLED_STARCLAW_BIN` for build-time daemon copying
   - `ASTRIA_APP_VERSION` for build-time `CFBundleShortVersionString`
   - `ASTRIA_APP_BUILD` for build-time `CFBundleVersion`
@@ -156,12 +157,18 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Build-time bundled daemon copies must place the executable at
   `Contents/Resources/starclaw`. At runtime, explicit `ASTRIA_STARCLAW_BIN`
   overrides still take precedence, then the bundled daemon, then `PATH`.
+- Runtime Desktop RPC artifacts default under
+  `~/Library/Application Support/dev.starclaw.astria/` and may be isolated with
+  `ASTRIA_RUNTIME_DIR` for smoke tests.
 - Release-candidate app builds may set `ASTRIA_APP_VERSION` and
   `ASTRIA_APP_BUILD`; signed release artifacts must not mix app and daemon
   versions from different release tags.
 - The shell may start or attach to the local daemon through the existing HTTP
   readiness contract. Deeper pidfile/socket reconciliation belongs in a
   separately scoped task.
+- When the shell starts the daemon itself, it must pass paired `--rpc-socket`
+  and `--rpc-pidfile` arguments and validate Desktop RPC `system.capabilities`
+  before declaring the desktop handshake ready.
 - The shell may persist the last useful Web UI route only when it is same-origin
   with the configured Web UI URL and under `/app`. Store relative route values,
   never full origins.
@@ -184,6 +191,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Missing `Info.plist` -> smoke script fails.
 - Missing bundled daemon in a bundled-app smoke -> smoke script fails.
 - Missing local networking ATS allowance -> smoke script fails.
+- Desktop RPC `system.capabilities` protocol mismatch -> shell blocks
+  desktop-ready and surfaces a mismatch diagnostic.
+- Desktop RPC missing `system.ping` or `system.capabilities` -> shell blocks
+  desktop-ready and surfaces a missing capability diagnostic.
 - Unsigned development build -> allowed locally; do not present it as a signed
   distributable release artifact.
 - Missing update metadata -> no replacement; current app remains usable.
@@ -209,7 +220,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 
 - Run `scripts/smoke_macos_astria_shell.sh` on macOS when the shell changes.
   The smoke must cover bundle structure, route recovery, daemon supervision,
-  attach, bundled daemon resolution, and launch failure.
+  attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
+  and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
   when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect

@@ -41,6 +41,9 @@ app_path="$(ASTRIA_BUILD_DIR="$TMP_DIR/build/desktop/macos" ASTRIA_BUNDLED_STARC
 echo "==> checking Astria route recovery"
 "$app_path/Contents/MacOS/Astria" --route-recovery-smoke
 
+echo "==> checking Astria Desktop RPC validation"
+"$app_path/Contents/MacOS/Astria" --desktop-rpc-smoke
+
 mkdir -p "$SMOKE_HOME/.starclaw"
 cat > "$SMOKE_HOME/.starclaw/config.yaml" <<'YAML'
 provider: ollama
@@ -54,15 +57,17 @@ YAML
 curl -fsS -X POST "$BASE_URL/shutdown" >/dev/null 2>&1 || true
 
 echo "==> checking Astria bundled daemon supervision"
-env HOME="$SMOKE_HOME" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
+env HOME="$SMOKE_HOME" ASTRIA_RUNTIME_DIR="$TMP_DIR/runtime" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
 curl -fsS "$BASE_URL/health" >/dev/null || fail "daemon did not stay healthy after app supervision"
+[[ -S "$TMP_DIR/runtime/daemon.sock" ]] || fail "Desktop RPC socket was not created"
+[[ -f "$TMP_DIR/runtime/daemon.pid" ]] || fail "Desktop RPC pidfile was not created"
 
 echo "==> checking Astria daemon attach"
-env HOME="$SMOKE_HOME" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
+env HOME="$SMOKE_HOME" ASTRIA_RUNTIME_DIR="$TMP_DIR/runtime" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 8
 
 echo "==> checking Astria daemon launch failure"
 curl -fsS -X POST "$BASE_URL/shutdown" >/dev/null 2>&1 || true
-if env HOME="$SMOKE_HOME" ASTRIA_STARCLAW_BIN="$TMP_DIR/missing-starclaw" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 1 2>"$TMP_DIR/failed-launch.err"; then
+if env HOME="$SMOKE_HOME" ASTRIA_RUNTIME_DIR="$TMP_DIR/missing-runtime" ASTRIA_STARCLAW_BIN="$TMP_DIR/missing-starclaw" "$app_path/Contents/MacOS/Astria" --supervision-smoke --startup-timeout 1 2>"$TMP_DIR/failed-launch.err"; then
   fail "supervision smoke should fail with a missing daemon binary"
 fi
 grep -Fq "failed to launch daemon" "$TMP_DIR/failed-launch.err" || {

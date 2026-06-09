@@ -1278,6 +1278,10 @@ safePath, err := validatePath(args.Path, ".")
 - Codec must reject zero-length, malformed, partial, and oversized frames.
 - Broker pending requests must terminate on success, timeout, context cancellation, send failure, or disconnect. Pending requests must not hang after a Desktop disconnect.
 - Listener may handle Desktop-originated `system.*` requests locally and route daemon-originated request results back through the broker.
+- Astria's Desktop RPC client must validate `system.capabilities` before
+  treating a shell-launched daemon as desktop-ready. Required methods include
+  `system.ping` and `system.capabilities`; protocol version must match
+  `desktop_rpc.ProtocolVersion`.
 - `/status` may expose only `desktop_rpc.listening`, `desktop_rpc.connected`, and `desktop_rpc.pending`. Do not expose socket paths, raw frame payloads, request params, API keys, provider headers, or user content.
 
 ### Validation & Error Matrix
@@ -1290,6 +1294,9 @@ safePath, err := validatePath(args.Path, ".")
 - Socket bind failure -> daemon exits before HTTP readiness.
 - Pidfile write failure -> daemon exits and listener cleanup removes socket
   artifacts.
+- `system.capabilities` protocol mismatch -> Astria blocks desktop-ready and
+  surfaces upgrade/downgrade guidance.
+- Missing required `system.*` capability -> Astria blocks desktop-ready.
 - `/status` with Desktop RPC listener -> exposes booleans/counts only.
 
 ### Tests Required
@@ -1302,6 +1309,8 @@ safePath, err := validatePath(args.Path, ".")
 - Command tests for Desktop RPC launch flag pair validation.
 - Daemon listener wiring test proving pidfile write, status redaction, and
   cleanup.
+- macOS shell smoke proving successful `system.capabilities` reconciliation and
+  validation helper rejection for protocol/method/version mismatch.
 
 ---
 

@@ -1,10 +1,15 @@
 import SwiftUI
 import WebKit
+import Darwin
 
 private enum AstriaDefaults {
     static let webURL = "http://127.0.0.1:7533/app/"
     static let healthURL = "http://127.0.0.1:7533/health"
     static let diagnosticsURL = "http://127.0.0.1:7533/diagnostics"
+    static let bundleIdentifier = "dev.starclaw.astria"
+    static let desktopRPCProtocolVersion = "1.0.0"
+    static let desktopRPCSocketName = "daemon.sock"
+    static let desktopRPCPidfileName = "daemon.pid"
     static let startupTimeoutSeconds: TimeInterval = 5
     static let healthProbeTimeoutSeconds: TimeInterval = 0.5
     static let healthPollIntervalSeconds: TimeInterval = 0.12
@@ -17,6 +22,9 @@ struct AstriaApp: App {
     init() {
         if CommandLine.arguments.contains("--route-recovery-smoke") {
             Foundation.exit(AstriaRouteRecoverySmoke.run())
+        }
+        if CommandLine.arguments.contains("--desktop-rpc-smoke") {
+            Foundation.exit(AstriaDesktopRPCSmoke.run())
         }
         if CommandLine.arguments.contains("--supervision-smoke") {
             Foundation.exit(AstriaSupervisorSmoke.run())
@@ -50,6 +58,9 @@ struct LaunchConfig {
     let healthURL: URL
     let diagnosticsURL: URL
     let starclawBinary: String?
+    let desktopRPCSocketPath: String
+    let desktopRPCPidfilePath: String
+    let appVersion: String
     let startupTimeout: TimeInterval
     let healthProbeTimeout: TimeInterval
     let healthPollInterval: TimeInterval
@@ -67,6 +78,9 @@ struct LaunchConfig {
         let healthURLString = firstValue(after: "--health-url", in: arguments)
             ?? environment["ASTRIA_HEALTH_URL"]
             ?? AstriaDefaults.healthURL
+        let runtimeDir = firstValue(after: "--runtime-dir", in: arguments)
+            ?? environment["ASTRIA_RUNTIME_DIR"]
+            ?? defaultRuntimeDirectory()
         let startupTimeout = timeIntervalValue(
             firstValue(after: "--startup-timeout", in: arguments)
                 ?? environment["ASTRIA_STARTUP_TIMEOUT"],
@@ -79,6 +93,9 @@ struct LaunchConfig {
             diagnosticsURL: URL(string: diagnosticsURLString) ?? URL(string: AstriaDefaults.diagnosticsURL)!,
             starclawBinary: firstValue(after: "--starclaw-bin", in: arguments)
                 ?? environment["ASTRIA_STARCLAW_BIN"],
+            desktopRPCSocketPath: (runtimeDir as NSString).appendingPathComponent(AstriaDefaults.desktopRPCSocketName),
+            desktopRPCPidfilePath: (runtimeDir as NSString).appendingPathComponent(AstriaDefaults.desktopRPCPidfileName),
+            appVersion: bundleVersion(),
             startupTimeout: startupTimeout,
             healthProbeTimeout: AstriaDefaults.healthProbeTimeoutSeconds,
             healthPollInterval: AstriaDefaults.healthPollIntervalSeconds
@@ -101,6 +118,18 @@ struct LaunchConfig {
             return defaultValue
         }
         return parsed
+    }
+
+    private static func defaultRuntimeDirectory() -> String {
+        let manager = FileManager.default
+        if let support = manager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            return support.appendingPathComponent(AstriaDefaults.bundleIdentifier, isDirectory: true).path
+        }
+        return (NSTemporaryDirectory() as NSString).appendingPathComponent(AstriaDefaults.bundleIdentifier)
+    }
+
+    private static func bundleVersion() -> String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
     }
 }
 
@@ -343,6 +372,14 @@ final class DaemonSupervisor: ObservableObject {
     private func supervise() async {
         state = .checking
         if await isHealthy() {
+            if FileManager.default.fileExists(atPath: config.desktopRPCSocketPath) {
+                do {
+                    try await reconcileDesktopRPC()
+                } catch {
+                    state = .failed("Desktop RPC reconciliation failed: \(error.localizedDescription)")
+                    return
+                }
+            }
             state = .attached
             startHealthMonitor()
             return
@@ -360,6 +397,12 @@ final class DaemonSupervisor: ObservableObject {
 
         let becameHealthy = await waitForHealth()
         if becameHealthy {
+            do {
+                try await reconcileDesktopRPC()
+            } catch {
+                state = .failed("Desktop RPC reconciliation failed: \(error.localizedDescription)")
+                return
+            }
             state = .attached
             startHealthMonitor()
             return
@@ -411,6 +454,15 @@ final class DaemonSupervisor: ObservableObject {
         }
     }
 
+    private func reconcileDesktopRPC() async throws {
+        let socketPath = config.desktopRPCSocketPath
+        let appVersion = config.appVersion
+        try await Task.detached(priority: .userInitiated) {
+            let capabilities = try DesktopRPCClient(socketPath: socketPath).systemCapabilities()
+            try DesktopRPCReconciler.validate(capabilities: capabilities, appVersion: appVersion)
+        }.value
+    }
+
     private func startHealthMonitor() {
         healthMonitorTask?.cancel()
         healthMonitorTask = Task { [weak self] in
@@ -449,10 +501,18 @@ final class DaemonSupervisor: ObservableObject {
 
 enum DaemonLaunchSupport {
     static func launchDaemon(config: LaunchConfig, terminationHandler: ((Process) -> Void)? = nil) throws -> Process {
+        try FileManager.default.createDirectory(
+            atPath: (config.desktopRPCSocketPath as NSString).deletingLastPathComponent,
+            withIntermediateDirectories: true
+        )
         let process = Process()
         let resolved = resolveStarclawBinary(config: config)
         process.executableURL = resolved.executableURL
-        process.arguments = resolved.arguments + ["daemon", "start"]
+        process.arguments = resolved.arguments + [
+            "daemon", "start",
+            "--rpc-socket", config.desktopRPCSocketPath,
+            "--rpc-pidfile", config.desktopRPCPidfilePath,
+        ]
 
         let devNull = FileHandle(forWritingAtPath: "/dev/null")
         process.standardOutput = devNull
@@ -500,6 +560,201 @@ enum DaemonLaunchSupport {
             Thread.sleep(forTimeInterval: config.healthPollInterval)
         }
         return false
+    }
+}
+
+struct DesktopRPCCapabilities {
+    let version: String
+    let methods: [String]
+    let appVersion: String
+}
+
+enum DesktopRPCReconciler {
+    static func validate(capabilities: DesktopRPCCapabilities, appVersion: String) throws {
+        guard capabilities.version == AstriaDefaults.desktopRPCProtocolVersion else {
+            throw DesktopRPCError.protocolMismatch(expected: AstriaDefaults.desktopRPCProtocolVersion, got: capabilities.version)
+        }
+
+        let methods = Set(capabilities.methods)
+        for method in ["system.ping", "system.capabilities"] where !methods.contains(method) {
+            throw DesktopRPCError.missingMethod(method)
+        }
+
+        if isReleaseVersion(appVersion), isReleaseVersion(capabilities.appVersion), appVersion != capabilities.appVersion {
+            throw DesktopRPCError.versionMismatch(app: appVersion, daemon: capabilities.appVersion)
+        }
+    }
+
+    private static func isReleaseVersion(_ version: String) -> Bool {
+        let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed != "dev" && trimmed != "0" && trimmed != "0.0.0"
+    }
+}
+
+enum DesktopRPCError: LocalizedError {
+    case socketPathTooLong(String)
+    case connectFailed(String)
+    case writeFailed
+    case readFailed
+    case invalidFrame
+    case rpcError(String)
+    case protocolMismatch(expected: String, got: String)
+    case missingMethod(String)
+    case versionMismatch(app: String, daemon: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .socketPathTooLong(let path):
+            return "Desktop RPC socket path is too long: \(path)"
+        case .connectFailed(let path):
+            return "Could not connect to Desktop RPC socket at \(path)."
+        case .writeFailed:
+            return "Could not write Desktop RPC request."
+        case .readFailed:
+            return "Could not read Desktop RPC response."
+        case .invalidFrame:
+            return "Desktop RPC returned an invalid frame."
+        case .rpcError(let message):
+            return "Desktop RPC returned an error: \(message)"
+        case .protocolMismatch(let expected, let got):
+            return "Desktop RPC protocol mismatch: expected \(expected), got \(got)."
+        case .missingMethod(let method):
+            return "Desktop RPC missing required method \(method)."
+        case .versionMismatch(let app, let daemon):
+            return "Astria app version \(app) is not compatible with daemon version \(daemon)."
+        }
+    }
+}
+
+struct DesktopRPCClient {
+    let socketPath: String
+
+    func systemCapabilities() throws -> DesktopRPCCapabilities {
+        let fd = try connect()
+        defer {
+            close(fd)
+        }
+
+        let requestID = "astria_caps_\(UUID().uuidString)"
+        let payload: [String: Any] = [
+            "request_id": requestID,
+            "method": "system.capabilities",
+            "source": "astria",
+        ]
+        let frame: [String: Any] = [
+            "type": "desktop_rpc_request",
+            "payload": payload,
+        ]
+        try writeFrame(frame, to: fd)
+        let response = try readFrame(from: fd)
+
+        guard
+            let type = response["type"] as? String,
+            type == "desktop_rpc_result",
+            let resultPayload = response["payload"] as? [String: Any],
+            resultPayload["request_id"] as? String == requestID
+        else {
+            throw DesktopRPCError.invalidFrame
+        }
+        if let ok = resultPayload["ok"] as? Bool, !ok {
+            let error = resultPayload["error"] as? [String: Any]
+            throw DesktopRPCError.rpcError(error?["message"] as? String ?? "unknown")
+        }
+        guard
+            let result = resultPayload["result"] as? [String: Any],
+            let version = result["version"] as? String,
+            let methods = result["methods"] as? [String],
+            let platform = result["platform"] as? [String: Any]
+        else {
+            throw DesktopRPCError.invalidFrame
+        }
+
+        return DesktopRPCCapabilities(
+            version: version,
+            methods: methods,
+            appVersion: platform["app_version"] as? String ?? "dev"
+        )
+    }
+
+    private func connect() throws -> Int32 {
+        let maxPathLength = MemoryLayout.size(ofValue: sockaddr_un().sun_path)
+        guard socketPath.utf8.count < maxPathLength else {
+            throw DesktopRPCError.socketPathTooLong(socketPath)
+        }
+
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else {
+            throw DesktopRPCError.connectFailed(socketPath)
+        }
+
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = Array(socketPath.utf8) + [0]
+        withUnsafeMutableBytes(of: &address.sun_path) { rawBuffer in
+            rawBuffer.copyBytes(from: pathBytes)
+        }
+
+        let length = socklen_t(MemoryLayout<sa_family_t>.size + pathBytes.count)
+        let result = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(fd, $0, length)
+            }
+        }
+        guard result == 0 else {
+            close(fd)
+            throw DesktopRPCError.connectFailed(socketPath)
+        }
+        return fd
+    }
+
+    private func writeFrame(_ frame: [String: Any], to fd: Int32) throws {
+        let body = try JSONSerialization.data(withJSONObject: frame)
+        var length = UInt32(body.count).bigEndian
+        var data = Data(bytes: &length, count: 4)
+        data.append(body)
+        try data.withUnsafeBytes { rawBuffer in
+            guard let base = rawBuffer.baseAddress else {
+                throw DesktopRPCError.writeFailed
+            }
+            var sent = 0
+            while sent < rawBuffer.count {
+                let result = Darwin.write(fd, base.advanced(by: sent), rawBuffer.count - sent)
+                guard result > 0 else {
+                    throw DesktopRPCError.writeFailed
+                }
+                sent += result
+            }
+        }
+    }
+
+    private func readFrame(from fd: Int32) throws -> [String: Any] {
+        let header = try readExact(4, from: fd)
+        let length = header.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        guard length > 0, length <= 4 * 1024 * 1024 else {
+            throw DesktopRPCError.invalidFrame
+        }
+        let body = try readExact(Int(length), from: fd)
+        guard
+            let object = try JSONSerialization.jsonObject(with: Data(body)) as? [String: Any]
+        else {
+            throw DesktopRPCError.invalidFrame
+        }
+        return object
+    }
+
+    private func readExact(_ count: Int, from fd: Int32) throws -> [UInt8] {
+        var buffer = [UInt8](repeating: 0, count: count)
+        var offset = 0
+        while offset < count {
+            let result = buffer.withUnsafeMutableBytes { rawBuffer in
+                Darwin.read(fd, rawBuffer.baseAddress!.advanced(by: offset), count - offset)
+            }
+            guard result > 0 else {
+                throw DesktopRPCError.readFailed
+            }
+            offset += result
+        }
+        return buffer
     }
 }
 
@@ -594,6 +849,9 @@ enum AstriaSupervisorSmoke {
         let config = LaunchConfig.fromProcess()
 
         if DaemonLaunchSupport.isHealthy(url: config.healthURL, timeout: config.healthProbeTimeout) {
+            if FileManager.default.fileExists(atPath: config.desktopRPCSocketPath) {
+                return reconcile(config: config)
+            }
             return 0
         }
 
@@ -606,7 +864,7 @@ enum AstriaSupervisorSmoke {
         }
 
         if DaemonLaunchSupport.waitForHealth(config: config) {
-            return 0
+            return reconcile(config: config)
         }
 
         if process.isRunning {
@@ -615,6 +873,57 @@ enum AstriaSupervisorSmoke {
             fputs("Astria supervision smoke daemon exited before health\n", stderr)
         }
         return 1
+    }
+
+    private static func reconcile(config: LaunchConfig) -> Int32 {
+        do {
+            let capabilities = try DesktopRPCClient(socketPath: config.desktopRPCSocketPath).systemCapabilities()
+            try DesktopRPCReconciler.validate(capabilities: capabilities, appVersion: config.appVersion)
+            return 0
+        } catch {
+            fputs("Astria supervision smoke Desktop RPC reconciliation failed: \(error.localizedDescription)\n", stderr)
+            return 1
+        }
+    }
+}
+
+enum AstriaDesktopRPCSmoke {
+    static func run() -> Int32 {
+        let valid = DesktopRPCCapabilities(
+            version: AstriaDefaults.desktopRPCProtocolVersion,
+            methods: ["system.ping", "system.capabilities"],
+            appVersion: "dev"
+        )
+        do {
+            try DesktopRPCReconciler.validate(capabilities: valid, appVersion: "0.0.0")
+        } catch {
+            fputs("Astria Desktop RPC smoke rejected valid capabilities: \(error.localizedDescription)\n", stderr)
+            return 1
+        }
+
+        if accepts(DesktopRPCCapabilities(version: "9.9.9", methods: valid.methods, appVersion: "dev"), appVersion: "0.0.0") {
+            fputs("Astria Desktop RPC smoke accepted protocol mismatch\n", stderr)
+            return 1
+        }
+        if accepts(DesktopRPCCapabilities(version: valid.version, methods: ["system.ping"], appVersion: "dev"), appVersion: "0.0.0") {
+            fputs("Astria Desktop RPC smoke accepted missing capabilities method\n", stderr)
+            return 1
+        }
+        if accepts(DesktopRPCCapabilities(version: valid.version, methods: valid.methods, appVersion: "1.0.0"), appVersion: "2.0.0") {
+            fputs("Astria Desktop RPC smoke accepted release version mismatch\n", stderr)
+            return 1
+        }
+
+        return 0
+    }
+
+    private static func accepts(_ capabilities: DesktopRPCCapabilities, appVersion: String) -> Bool {
+        do {
+            try DesktopRPCReconciler.validate(capabilities: capabilities, appVersion: appVersion)
+            return true
+        } catch {
+            return false
+        }
     }
 }
 

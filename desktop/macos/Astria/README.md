@@ -8,6 +8,9 @@ The shell is intentionally thin in Phase13:
 - It does not replace the Astria Web UI.
 - It starts or attaches to the local StarClaw daemon through the existing
   `/health` readiness contract.
+- When Astria starts the daemon itself, it passes explicit Desktop RPC socket
+  and pidfile paths, then validates `system.capabilities` before treating the
+  desktop handshake as ready.
 - It restores the last same-origin `/app` route and reloads the WebView after
   daemon health recovers.
 - It does not require signing, notarization, or cloud credentials for local
@@ -61,6 +64,18 @@ Point the app at a development daemon binary:
 ```bash
 ASTRIA_STARCLAW_BIN=/path/to/starclaw open build/desktop/macos/Astria.app
 ```
+
+Override the Desktop RPC runtime directory during smoke testing:
+
+```bash
+ASTRIA_RUNTIME_DIR=/tmp/astria-runtime open build/desktop/macos/Astria.app
+```
+
+By default, Astria uses
+`~/Library/Application Support/dev.starclaw.astria/daemon.sock` and
+`~/Library/Application Support/dev.starclaw.astria/daemon.pid`. Existing
+HTTP-only daemons can still be attached as a fallback; daemon instances launched
+by Astria must pass Desktop RPC capability reconciliation.
 
 The route recovery store persists only relative `/app` routes under
 `astria.lastWebRoute`; unsafe or external stored routes fall back to `/app/`.

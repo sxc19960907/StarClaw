@@ -136,6 +136,9 @@ same daemon-served Web UI inside the app shell. The shell restores the last
 same-origin Astria route and reloads the WebView after daemon health recovers.
 Set `ASTRIA_BUNDLED_STARCLAW_BIN=/path/to/starclaw` to copy a local daemon into
 `Astria.app/Contents/Resources/starclaw` for bundled-app smoke testing.
+When Astria starts the daemon itself, it passes Desktop RPC socket/pidfile paths
+and validates `system.capabilities` before treating the desktop handshake as
+ready. Set `ASTRIA_RUNTIME_DIR` to isolate those runtime artifacts in tests.
 
 ### Local Runtime API
 
