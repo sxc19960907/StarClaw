@@ -1931,3 +1931,36 @@ Implemented Astria macOS shell route restoration, daemon health recovery banner 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 141: Astria packaging release boundary
+
+**Date**: 2026-06-09
+**Task**: Astria packaging release boundary
+**Branch**: `main`
+
+### Summary
+
+Implemented Astria macOS packaging boundary support: optional bundled daemon copy, bundle version metadata, bundled-daemon smoke coverage, optional release validator hook, and docs/spec for signing, notarization, updater, and app-daemon compatibility limits.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `48f7b8d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
