@@ -204,8 +204,8 @@ struct AstriaRootView: View {
                     supervisor.start()
                 }
             }
-            if let message = loadState.message ?? supervisor.state.bannerMessage {
-                StatusBanner(message: message, diagnosticsURL: config.diagnosticsURL, canRetry: supervisor.state.canRetry) {
+            if let message = loadState.message ?? supervisor.state.bannerMessage ?? DesktopRPCDiagnostics.bannerMessage(for: supervisor.desktopRPCSessionState) {
+                StatusBanner(message: message, diagnosticsURL: config.diagnosticsURL, canRetry: supervisor.state.canRetry || DesktopRPCDiagnostics.canRetry(supervisor.desktopRPCSessionState)) {
                     supervisor.start()
                 }
                     .padding(.top, 12)
@@ -398,6 +398,47 @@ enum DesktopRPCSessionState: Equatable {
     case reconnecting(Int)
     case degraded(String)
     case mismatch(String)
+}
+
+enum DesktopRPCDiagnostics {
+    static func bannerMessage(for state: DesktopRPCSessionState) -> String? {
+        switch state {
+        case .idle, .connected:
+            return nil
+        case .connecting:
+            return "Astria is validating the local Desktop RPC session."
+        case .reconnecting(let attempt):
+            return "Desktop RPC disconnected. Astria is retrying local session recovery (attempt \(attempt))."
+        case .degraded(let message):
+            return message
+        case .mismatch(let message):
+            return "Desktop RPC compatibility mismatch. Astria is using HTTP fallback. \(message)"
+        }
+    }
+
+    static func severity(for state: DesktopRPCSessionState) -> String {
+        switch state {
+        case .idle:
+            return "idle"
+        case .connecting, .reconnecting:
+            return "warning"
+        case .connected:
+            return "ready"
+        case .degraded:
+            return "degraded"
+        case .mismatch:
+            return "mismatch"
+        }
+    }
+
+    static func canRetry(_ state: DesktopRPCSessionState) -> Bool {
+        switch state {
+        case .degraded, .mismatch:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 @MainActor
@@ -1220,6 +1261,10 @@ enum AstriaDesktopRPCSmoke {
 
 enum AstriaDesktopRPCSessionSmoke {
     static func run() -> Int32 {
+        if !validateDiagnostics() {
+            return 1
+        }
+
         let runtime = "/tmp/astria-session-\(getpid())-\(UUID().uuidString.prefix(8))"
         let socketPath = (runtime as NSString).appendingPathComponent(AstriaDefaults.desktopRPCSocketName)
         defer {
@@ -1258,6 +1303,29 @@ enum AstriaDesktopRPCSessionSmoke {
         }
 
         return 0
+    }
+
+    private static func validateDiagnostics() -> Bool {
+        if DesktopRPCDiagnostics.bannerMessage(for: .connected) != nil || DesktopRPCDiagnostics.severity(for: .connected) != "ready" {
+            fputs("Astria Desktop RPC session smoke produced connected warning\n", stderr)
+            return false
+        }
+        let reconnecting = DesktopRPCDiagnostics.bannerMessage(for: .reconnecting(2)) ?? ""
+        if !reconnecting.contains("retrying local session recovery") || DesktopRPCDiagnostics.severity(for: .reconnecting(2)) != "warning" {
+            fputs("Astria Desktop RPC session smoke missing reconnecting diagnostic\n", stderr)
+            return false
+        }
+        let degraded = DesktopRPCDiagnostics.bannerMessage(for: .degraded("Desktop RPC disconnected; Astria is using HTTP fallback.")) ?? ""
+        if !degraded.contains("HTTP fallback") || !DesktopRPCDiagnostics.canRetry(.degraded("x")) {
+            fputs("Astria Desktop RPC session smoke missing degraded diagnostic\n", stderr)
+            return false
+        }
+        let mismatch = DesktopRPCDiagnostics.bannerMessage(for: .mismatch("expected 1.0.0")) ?? ""
+        if !mismatch.contains("compatibility mismatch") || DesktopRPCDiagnostics.severity(for: .mismatch("x")) != "mismatch" || !DesktopRPCDiagnostics.canRetry(.mismatch("x")) {
+            fputs("Astria Desktop RPC session smoke missing mismatch diagnostic\n", stderr)
+            return false
+        }
+        return true
     }
 
     private static func awaitProbe(socketPath: String, appVersion: String) -> DesktopRPCSessionProbeResult {

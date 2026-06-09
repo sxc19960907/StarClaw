@@ -179,6 +179,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Desktop RPC reconnect attempts must be bounded and cancellable. Restarting
   daemon supervision must cancel stale health/RPC monitor tasks before starting
   new ones.
+- The native shell must surface Desktop RPC session diagnostics for
+  reconnecting, degraded, and compatibility-mismatch states while keeping the
+  WebView usable when HTTP health is available.
 - If an already-running daemon is HTTP-healthy but lacks usable Desktop RPC,
   the shell may attach in degraded HTTP fallback mode while surfacing that state
   to the user.
@@ -214,6 +217,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Desktop RPC protocol/version mismatch after initial handshake -> shell
   surfaces compatibility mismatch and does not spin retries against the same
   daemon.
+- Desktop RPC diagnostic banners -> may describe local session state and retry
+  guidance, but must not expose socket paths, pidfile paths, raw event payloads,
+  API keys, provider headers, or user content.
 - Dead or malformed pidfile under the Astria runtime directory -> shell removes
   scoped pidfile/socket artifacts before relaunch.
 - Live pidfile under the Astria runtime directory -> shell does not remove
@@ -248,7 +254,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   The smoke must cover bundle structure, route recovery, daemon supervision,
   attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
   stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
-  session connected/retry/mismatch behavior, and launch failure.
+  session connected/retry/mismatch diagnostics, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
   when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect
