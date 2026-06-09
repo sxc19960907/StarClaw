@@ -434,3 +434,36 @@ Added native Copy Current Route, Copy Support Summary, and Reveal Diagnostics Fo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 156: Astria native permission helper guidance
+
+**Date**: 2026-06-09
+**Task**: Astria native permission helper guidance
+**Branch**: `main`
+
+### Summary
+
+Added local Astria Permission Help command and smoke-testable permission guidance for Calendar, Contacts, Reminders, file access, and notifications. The helper reads only non-prompting status boundaries where available, copies local guidance without requesting broad TCC access, updates the Astria shell smoke/build scripts, and documents the permission helper contract in the backend spec.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `424d663` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

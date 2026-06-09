@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 155
+- **Total Sessions**: 156
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~436 | Active |
+| `journal-4.md` | ~469 | Active |
 | `journal-3.md` | ~1999 | Archived |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 156 | 2026-06-09 | Astria native permission helper guidance | `424d663` | `main` |
 | 155 | 2026-06-09 | Astria native clipboard file affordances | `a022266` | `main` |
 | 154 | 2026-06-09 | Astria Kocoro parity phase 16 closeout | `dfaa4ca` | `main` |
 | 153 | 2026-06-09 | Astria signing notarization updater boundary | `0ad3d36` | `main` |
