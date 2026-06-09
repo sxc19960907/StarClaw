@@ -277,6 +277,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   Runtime, notarization, stapling, updater metadata, compatibility manifest,
   rollback/health manifest, and transaction plan requirements. They must reject
   private material references and must not require Apple credentials locally.
+- Astria production updater decision manifests must be credential-free JSON that
+  records the current updater strategy, keeps real app replacement disabled, and
+  lists all gates required before any future production replacement executor can
+  be scoped. The current accepted strategy is `cli_npm_only`; future
+  `sparkle_style_future` planning may be recorded only while replacement
+  remains disabled.
 - Sandbox updater rehearsals may exercise staged replacement and rollback only
   against disposable fake `Astria.app` fixtures under a temporary sandbox. They
   must reject touched paths outside the sandbox and must not mutate real Astria
@@ -381,6 +387,13 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   plan references, credential-free local validation, and replacement disabled ->
   validation passes. Missing production release declarations, missing safety
   artifact references, or private material references -> validation fails.
+- Astria production updater decision manifest with `strategy=cli_npm_only`,
+  `app_replacement=disabled`, credential-free local validation, and future gates
+  for signed/notarized/stapled app artifact, signed metadata, checksum,
+  compatibility, transaction, rollback/health, sandbox rehearsal, operator
+  approval, and relaunch plan -> validation passes. Replacement-enabled
+  decision, missing future gate, or private material reference -> validation
+  fails.
 - Sandbox updater rehearsal with fake current/candidate `Astria.app` fixtures
   under a temporary sandbox -> stages candidate, replaces the sandbox install
   fixture, rolls back to the previous fixture, and validates every touched path
@@ -436,6 +449,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Astria release acceptance gates smoke -> verifies valid production acceptance
   metadata plus missing notarization, missing transaction plan, and private
   material rejection without requiring Apple credentials.
+- Astria production updater decision smoke -> verifies current CLI/npm-only
+  strategy with app replacement disabled plus replacement-enabled, missing
+  future gate, and private material rejection without requiring Apple
+  credentials.
 - Sandbox updater rehearsal smoke -> verifies fixture-only staged replacement,
   rollback, and outside-sandbox path rejection without requiring Apple
   credentials or touching the installed app.

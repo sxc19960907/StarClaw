@@ -12,6 +12,7 @@ RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=false
 RUN_UPDATER_TRANSACTION_PLAN_SMOKE=false
 RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=false
 RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=false
+RUN_ASTRIA_PRODUCTION_UPDATER_DECISION_SMOKE=false
 RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=false
 RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE=false
 RUN_SANDBOX_UPDATER_ROLLBACK_REHEARSAL_SMOKE=false
@@ -32,6 +33,7 @@ for arg in "$@"; do
     --updater-transaction-plan-smoke) RUN_UPDATER_TRANSACTION_PLAN_SMOKE=true ;;
     --updater-rollback-health-gates-smoke) RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=true ;;
     --astria-release-acceptance-gates-smoke) RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=true ;;
+    --astria-production-updater-decision-smoke) RUN_ASTRIA_PRODUCTION_UPDATER_DECISION_SMOKE=true ;;
     --sandbox-updater-rehearsal-smoke) RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=true ;;
     --sandbox-updater-health-rehearsal-smoke) RUN_SANDBOX_UPDATER_HEALTH_REHEARSAL_SMOKE=true ;;
     --sandbox-updater-rollback-rehearsal-smoke) RUN_SANDBOX_UPDATER_ROLLBACK_REHEARSAL_SMOKE=true ;;
@@ -953,6 +955,184 @@ NODE
   grep -Fq "private material reference private_material.updater_private_key_committed" "$tmp/private.err" || fail "private material failed for the wrong reason"
 }
 
+write_astria_production_updater_decision_manifest() {
+  local output="$1"
+  require_cmd node
+  node - <<'NODE' "$output"
+const fs = require("fs");
+const output = process.argv[2];
+const manifest = {
+  schema_version: "1",
+  product: "Astria",
+  local_validation_credential_free: true,
+  strategy: "cli_npm_only",
+  app_replacement: "disabled",
+  rationale: "Real installed app replacement remains disabled until production updater gates are approved.",
+  future_replacement_required_gates: [
+    "signed_notarized_stapled_app",
+    "signed_updater_metadata",
+    "checksum_verification",
+    "compatibility_manifest",
+    "transaction_plan",
+    "rollback_health_gate",
+    "sandbox_rehearsal",
+    "operator_approval",
+    "post_replacement_relaunch_plan"
+  ],
+  private_material: {
+    signing_identity_committed: false,
+    notary_profile_committed: false,
+    updater_private_key_committed: false,
+    provisioning_profile_committed: false
+  }
+};
+fs.writeFileSync(output, JSON.stringify(manifest, null, 2) + "\n");
+NODE
+}
+
+assert_astria_production_updater_decision_manifest() {
+  local manifest="$1"
+  require_cmd node
+  node - <<'NODE' "$manifest"
+const fs = require("fs");
+const manifestPath = process.argv[2];
+const requiredFutureGates = new Set([
+  "signed_notarized_stapled_app",
+  "signed_updater_metadata",
+  "checksum_verification",
+  "compatibility_manifest",
+  "transaction_plan",
+  "rollback_health_gate",
+  "sandbox_rehearsal",
+  "operator_approval",
+  "post_replacement_relaunch_plan",
+]);
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+function walk(value, path = []) {
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    const lower = key.toLowerCase();
+    if (
+      lower.includes("private_key") ||
+      lower.includes("secret") ||
+      lower.includes("password") ||
+      lower.includes("notary_profile") ||
+      lower.includes("keychain_profile") ||
+      lower === "p8" ||
+      lower === "p12"
+    ) {
+      if (child !== false && child !== "absent") {
+        fail(`Astria production updater decision contains private material reference ${[...path, key].join(".")}`);
+      }
+    }
+    walk(child, [...path, key]);
+  }
+}
+
+let manifest;
+try {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+} catch (error) {
+  fail(`Astria production updater decision is not valid JSON: ${error.message}`);
+}
+
+walk(manifest);
+for (const field of ["schema_version", "product", "local_validation_credential_free", "strategy", "app_replacement", "future_replacement_required_gates"]) {
+  if (manifest[field] === undefined || manifest[field] === null) {
+    fail(`Astria production updater decision missing ${field}`);
+  }
+}
+if (manifest.schema_version !== "1") fail("Astria production updater decision schema_version must be 1");
+if (manifest.product !== "Astria") fail("Astria production updater decision product must be Astria");
+if (manifest.local_validation_credential_free !== true) {
+  fail("Astria production updater decision must declare local_validation_credential_free=true");
+}
+if (manifest.strategy !== "cli_npm_only" && manifest.strategy !== "sparkle_style_future") {
+  fail("Astria production updater decision strategy must be cli_npm_only or sparkle_style_future");
+}
+if (!Array.isArray(manifest.future_replacement_required_gates)) {
+  fail("Astria production updater decision future_replacement_required_gates must be an array");
+}
+const gates = new Set(manifest.future_replacement_required_gates);
+for (const gate of requiredFutureGates) {
+  if (!gates.has(gate)) {
+    fail(`Astria production updater decision missing future gate ${gate}`);
+  }
+}
+if (manifest.app_replacement !== "disabled") {
+  fail("Astria production updater decision must keep app_replacement disabled until real updater executor is explicitly scoped");
+}
+if (manifest.strategy === "cli_npm_only" && manifest.app_replacement !== "disabled") {
+  fail("Astria production updater decision cli_npm_only strategy cannot enable app replacement");
+}
+const privateMaterial = manifest.private_material || {};
+for (const field of ["signing_identity_committed", "notary_profile_committed", "updater_private_key_committed", "provisioning_profile_committed"]) {
+  if (privateMaterial[field] !== false) {
+    fail(`Astria production updater decision private_material.${field} must be false`);
+  }
+}
+NODE
+}
+
+run_astria_production_updater_decision_smoke() {
+  echo "==> checking Astria production updater decision smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local valid="$tmp/astria-production-updater-decision.json"
+  write_astria_production_updater_decision_manifest "$valid"
+  assert_astria_production_updater_decision_manifest "$valid"
+
+  local replacement_enabled="$tmp/astria-production-updater-decision-replacement.json"
+  cp "$valid" "$replacement_enabled"
+  node - <<'NODE' "$replacement_enabled"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.strategy = "sparkle_style_future";
+data.app_replacement = "enabled";
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_production_updater_decision_manifest "$replacement_enabled") >/dev/null 2>"$tmp/replacement.err"; then
+    fail "replacement-enabled production updater decision unexpectedly passed validation"
+  fi
+  grep -Fq "app_replacement disabled" "$tmp/replacement.err" || fail "replacement-enabled updater decision failed for the wrong reason"
+
+  local missing_gate="$tmp/astria-production-updater-decision-missing-gate.json"
+  cp "$valid" "$missing_gate"
+  node - <<'NODE' "$missing_gate"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.future_replacement_required_gates = data.future_replacement_required_gates.filter((gate) => gate !== "operator_approval");
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_production_updater_decision_manifest "$missing_gate") >/dev/null 2>"$tmp/missing-gate.err"; then
+    fail "production updater decision missing future gate unexpectedly passed validation"
+  fi
+  grep -Fq "missing future gate operator_approval" "$tmp/missing-gate.err" || fail "missing future gate failed for the wrong reason"
+
+  local private_material="$tmp/astria-production-updater-decision-private.json"
+  cp "$valid" "$private_material"
+  node - <<'NODE' "$private_material"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.private_material.signing_identity_committed = "Developer ID Application: Example";
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_production_updater_decision_manifest "$private_material") >/dev/null 2>"$tmp/private.err"; then
+    fail "production updater decision with private material unexpectedly passed validation"
+  fi
+  grep -Fq "private_material.signing_identity_committed must be false" "$tmp/private.err" || fail "private material decision failed for the wrong reason"
+}
+
 assert_sandbox_path() {
   local sandbox="$1"
   local path="$2"
@@ -1256,6 +1436,12 @@ if "$RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_ASTRIA_PRODUCTION_UPDATER_DECISION_SMOKE"; then
+  run_astria_production_updater_decision_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE"; then
   run_astria_sandbox_updater_rehearsal_smoke
   echo "validate_release_artifacts: ok"
@@ -1283,6 +1469,7 @@ if "$NPM_ONLY"; then
     run_astria_updater_rollback_health_gates_smoke
     run_astria_updater_transaction_plan_smoke
     run_astria_release_acceptance_gates_smoke
+    run_astria_production_updater_decision_smoke
     run_astria_sandbox_updater_rehearsal_smoke
     run_astria_sandbox_updater_health_rehearsal_smoke
     run_astria_sandbox_updater_rollback_rehearsal_smoke
@@ -1335,6 +1522,7 @@ if "$ASTRIA_LOCAL"; then
   run_astria_updater_rollback_health_gates_smoke
   run_astria_updater_transaction_plan_smoke
   run_astria_release_acceptance_gates_smoke
+  run_astria_production_updater_decision_smoke
   run_astria_sandbox_updater_rehearsal_smoke
   run_astria_sandbox_updater_health_rehearsal_smoke
   run_astria_sandbox_updater_rollback_rehearsal_smoke

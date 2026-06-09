@@ -118,6 +118,7 @@ scripts/validate_release_artifacts.sh --astria-compatibility-manifest-smoke
 scripts/validate_release_artifacts.sh --updater-rollback-health-gates-smoke
 scripts/validate_release_artifacts.sh --updater-transaction-plan-smoke
 scripts/validate_release_artifacts.sh --astria-release-acceptance-gates-smoke
+scripts/validate_release_artifacts.sh --astria-production-updater-decision-smoke
 scripts/validate_release_artifacts.sh --sandbox-updater-rehearsal-smoke
 scripts/validate_release_artifacts.sh --sandbox-updater-health-rehearsal-smoke
 scripts/validate_release_artifacts.sh --sandbox-updater-rollback-rehearsal-smoke
@@ -134,14 +135,16 @@ verifies a local `plan_only` staged updater decision with
 post-update health gate. The release-acceptance smoke verifies that production
 release metadata declares Developer ID signing, Hardened Runtime, notarization,
 stapling, updater metadata, compatibility, rollback/health gates, and a
-transaction plan while keeping local validation credential-free. The sandbox
-rehearsal smoke stages a candidate fixture, rehearses replacement, and rolls
-back inside a temporary directory while rejecting outside-sandbox paths. The
-sandbox health rehearsal smoke verifies simulated post-update app launch,
-daemon health, Desktop RPC capabilities, and Web UI readiness markers on the
-fixture, including negative coverage for missing markers and outside-sandbox
-paths. The sandbox rollback rehearsal smoke simulates a failed staged
-replacement, restores the previous fixture as the active install, verifies the
-failed candidate is not left active, and rejects outside-sandbox rollback state.
-These checks do not download, install, publish, notarize, staple, replace, or
-roll back the real app.
+transaction plan while keeping local validation credential-free. The production
+updater decision smoke verifies the current strategy remains `cli_npm_only`
+with real app replacement disabled, and rejects missing future production gates
+or private material references. The sandbox rehearsal smoke stages a candidate
+fixture, rehearses replacement, and rolls back inside a temporary directory
+while rejecting outside-sandbox paths. The sandbox health rehearsal smoke
+verifies simulated post-update app launch, daemon health, Desktop RPC
+capabilities, and Web UI readiness markers on the fixture, including negative
+coverage for missing markers and outside-sandbox paths. The sandbox rollback
+rehearsal smoke simulates a failed staged replacement, restores the previous
+fixture as the active install, verifies the failed candidate is not left active,
+and rejects outside-sandbox rollback state. These checks do not download,
+install, publish, notarize, staple, replace, or roll back the real app.

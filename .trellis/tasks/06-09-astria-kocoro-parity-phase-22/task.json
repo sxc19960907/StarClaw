@@ -1,0 +1,28 @@
+{
+  "id": "astria-kocoro-parity-phase-22",
+  "name": "astria-kocoro-parity-phase-22",
+  "title": "Astria Kocoro parity phase 22: production updater decision gate",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-astria-production-updater-decision-manifest"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
