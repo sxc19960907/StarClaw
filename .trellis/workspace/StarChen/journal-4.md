@@ -1064,3 +1064,36 @@ Completed and archived Phase21 sandbox updater rehearsal. Added fixture replacem
 ### Next Steps
 
 - None - task complete
+
+
+## Session 175: Astria production updater decision gate
+
+**Date**: 2026-06-09
+**Task**: Astria production updater decision gate
+**Branch**: `main`
+
+### Summary
+
+Added a credential-free Astria production updater decision smoke. The valid current strategy is cli_npm_only with app_replacement disabled; validation rejects replacement-enabled decisions, missing future production gates, and private material references; the gate is included in --npm-only --astria-local and documented in README/spec.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `47f4bda` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
