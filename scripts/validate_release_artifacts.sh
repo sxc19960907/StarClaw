@@ -9,6 +9,7 @@ ASTRIA_LOCAL=false
 RUN_UPDATER_BOUNDARY_SMOKE=false
 RUN_UPDATER_DRY_RUN_SMOKE=false
 RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=false
+RUN_UPDATER_TRANSACTION_PLAN_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -23,6 +24,7 @@ for arg in "$@"; do
     --updater-boundary-smoke) RUN_UPDATER_BOUNDARY_SMOKE=true ;;
     --updater-dry-run-smoke) RUN_UPDATER_DRY_RUN_SMOKE=true ;;
     --astria-compatibility-manifest-smoke) RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=true ;;
+    --updater-transaction-plan-smoke) RUN_UPDATER_TRANSACTION_PLAN_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -429,6 +431,204 @@ JSON
   grep -Fq "missing app.build" "$tmp/missing.err" || fail "incomplete compatibility manifest failed for the wrong reason"
 }
 
+astria_updater_transaction_plan() {
+  local metadata_file="$1"
+  local manifest_file="$2"
+  require_cmd node
+  node - <<'NODE' "$metadata_file" "$manifest_file"
+const fs = require("fs");
+const [metadataPath, manifestPath] = process.argv.slice(2);
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+function readJSON(path, label) {
+  try {
+    return JSON.parse(fs.readFileSync(path, "utf8"));
+  } catch (error) {
+    fail(`Astria updater transaction ${label} is not valid JSON: ${error.message}`);
+  }
+}
+
+const metadata = readJSON(metadataPath, "metadata");
+const manifest = readJSON(manifestPath, "compatibility manifest");
+const blockingReasons = [];
+const requiredChecks = [
+  "metadata_checksum",
+  "metadata_signature",
+  "public_key_identity",
+  "app_daemon_compatibility",
+  "rollback_gate",
+  "post_update_health_gate",
+  "replacement_disabled",
+];
+
+function requireString(value, name) {
+  if (typeof value !== "string" || value.trim() === "") {
+    blockingReasons.push(`missing ${name}`);
+  }
+}
+
+for (const field of ["version", "artifact_url", "checksum_sha256", "signature", "signature_algorithm", "public_key_id", "min_app_version", "min_daemon_version"]) {
+  requireString(metadata[field], `metadata.${field}`);
+}
+if (!/^[a-fA-F0-9]{64}$/.test(metadata.checksum_sha256 || "")) {
+  blockingReasons.push("metadata.checksum_sha256 must be a 64-character SHA-256 hex digest");
+}
+if (metadata.auto_install === true || metadata.replace_app === true || metadata.replacement_allowed === true) {
+  blockingReasons.push("replacement-enabled metadata is blocked before transactional replacement exists");
+}
+if (metadata.unavailable_safe !== true) {
+  blockingReasons.push("metadata.unavailable_safe must remain true");
+}
+if (manifest.product !== "Astria") {
+  blockingReasons.push("compatibility manifest product must be Astria");
+}
+if (manifest.local_only !== true) {
+  blockingReasons.push("compatibility manifest must remain local_only=true");
+}
+if (manifest.replacement !== "disabled") {
+  blockingReasons.push("compatibility manifest replacement must be disabled");
+}
+if (manifest.compatibility?.app_daemon_match !== true) {
+  blockingReasons.push("compatibility manifest must require matching app and daemon versions");
+}
+if (manifest.app?.version !== metadata.version) {
+  blockingReasons.push("metadata.version must match manifest.app.version");
+}
+if (manifest.daemon?.version !== metadata.version) {
+  blockingReasons.push("metadata.version must match manifest.daemon.version");
+}
+if (manifest.compatibility?.min_app_version !== metadata.min_app_version) {
+  blockingReasons.push("metadata.min_app_version must match manifest.compatibility.min_app_version");
+}
+if (manifest.compatibility?.min_daemon_version !== metadata.min_daemon_version) {
+  blockingReasons.push("metadata.min_daemon_version must match manifest.compatibility.min_daemon_version");
+}
+
+const transaction = metadata.transaction || {};
+const rollbackGate = transaction.rollback_gate || {};
+const postUpdateHealthGate = transaction.post_update_health_gate || {};
+requireString(transaction.staging_mode, "metadata.transaction.staging_mode");
+requireString(transaction.replacement_mode, "metadata.transaction.replacement_mode");
+requireString(rollbackGate.id, "metadata.transaction.rollback_gate.id");
+requireString(postUpdateHealthGate.id, "metadata.transaction.post_update_health_gate.id");
+if (transaction.staging_mode && transaction.staging_mode !== "plan_only") {
+  blockingReasons.push("metadata.transaction.staging_mode must be plan_only");
+}
+if (transaction.replacement_mode && transaction.replacement_mode !== "disabled") {
+  blockingReasons.push("metadata.transaction.replacement_mode must be disabled");
+}
+if (rollbackGate.required !== true) {
+  blockingReasons.push("metadata.transaction.rollback_gate.required must be true");
+}
+if (postUpdateHealthGate.required !== true) {
+  blockingReasons.push("metadata.transaction.post_update_health_gate.required must be true");
+}
+
+const plan = {
+  status: blockingReasons.length === 0 ? "planned_no_replacement" : "blocked",
+  planReady: blockingReasons.length === 0,
+  localOnly: true,
+  replacementEnabled: false,
+  version: metadata.version,
+  stagingMode: transaction.staging_mode || "missing",
+  replacementMode: transaction.replacement_mode || "missing",
+  rollbackGate: rollbackGate.id || "missing",
+  postUpdateHealthGate: postUpdateHealthGate.id || "missing",
+  requiredChecks,
+  blockingReasons,
+  metadata_file: metadataPath,
+  compatibility_manifest_file: manifestPath,
+};
+if (!plan.planReady) {
+  console.error(JSON.stringify(plan, null, 2));
+  process.exit(1);
+}
+console.log(JSON.stringify(plan, null, 2));
+NODE
+}
+
+run_astria_updater_transaction_plan_smoke() {
+  echo "==> checking Astria updater transaction plan smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local manifest="$tmp/astria-compatibility.json"
+  write_astria_compatibility_manifest "$manifest" "1.2.3" "456" "1.2.3" "v1.2.3"
+
+  local valid="$tmp/update-valid.json"
+  cat > "$valid" <<'JSON'
+{
+  "version": "1.2.3",
+  "artifact_url": "https://example.com/Astria-1.2.3.zip",
+  "checksum_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "signature": "signed-by-release-key",
+  "signature_algorithm": "ed25519",
+  "public_key_id": "astria-release-1",
+  "min_app_version": "1.2.3",
+  "min_daemon_version": "1.2.3",
+  "unavailable_safe": true,
+  "transaction": {
+    "staging_mode": "plan_only",
+    "replacement_mode": "disabled",
+    "rollback_gate": {
+      "id": "rollback-manifest-v1",
+      "required": true
+    },
+    "post_update_health_gate": {
+      "id": "astria-local-health-v1",
+      "required": true
+    }
+  }
+}
+JSON
+  local plan
+  plan="$(astria_updater_transaction_plan "$valid" "$manifest")"
+  for required in \
+    '"status": "planned_no_replacement"' \
+    '"planReady": true' \
+    '"localOnly": true' \
+    '"replacementEnabled": false' \
+    '"stagingMode": "plan_only"' \
+    '"rollbackGate": "rollback-manifest-v1"' \
+    '"postUpdateHealthGate": "astria-local-health-v1"'
+  do
+    grep -Fq "$required" <<<"$plan" || fail "valid transaction plan missing $required"
+  done
+
+  local replacement="$tmp/update-replacement.json"
+  cp "$valid" "$replacement"
+  node - <<'NODE' "$replacement"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.replace_app = true;
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (astria_updater_transaction_plan "$replacement" "$manifest") >/dev/null 2>"$tmp/replacement.err"; then
+    fail "replacement-enabled metadata unexpectedly produced a transaction plan"
+  fi
+  grep -Fq "replacement-enabled metadata is blocked" "$tmp/replacement.err" || fail "replacement transaction failed for the wrong reason"
+
+  local missing_gate="$tmp/update-missing-gate.json"
+  cp "$valid" "$missing_gate"
+  node - <<'NODE' "$missing_gate"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+delete data.transaction.rollback_gate;
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (astria_updater_transaction_plan "$missing_gate" "$manifest") >/dev/null 2>"$tmp/missing-gate.err"; then
+    fail "metadata missing rollback gate unexpectedly produced a transaction plan"
+  fi
+  grep -Fq "missing metadata.transaction.rollback_gate.id" "$tmp/missing-gate.err" || fail "missing rollback gate failed for the wrong reason"
+}
+
 find_one() {
   local pattern="$1"
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
@@ -470,12 +670,19 @@ if "$RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_UPDATER_TRANSACTION_PLAN_SMOKE"; then
+  run_astria_updater_transaction_plan_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
     assert_no_private_release_material
     assert_astria_updater_boundary
     run_astria_compatibility_manifest_smoke
+    run_astria_updater_transaction_plan_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -522,6 +729,7 @@ if "$ASTRIA_LOCAL"; then
   assert_no_private_release_material
   assert_astria_updater_boundary
   run_astria_compatibility_manifest_smoke
+  run_astria_updater_transaction_plan_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi

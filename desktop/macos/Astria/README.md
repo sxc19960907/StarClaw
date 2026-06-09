@@ -115,8 +115,13 @@ To validate the updater decision path without building release artifacts:
 ```bash
 scripts/validate_release_artifacts.sh --updater-dry-run-smoke
 scripts/validate_release_artifacts.sh --astria-compatibility-manifest-smoke
+scripts/validate_release_artifacts.sh --updater-transaction-plan-smoke
 ```
 
 The dry-run decision keeps `replacement="disabled"` even for valid metadata.
 The compatibility manifest smoke verifies that app and bundled daemon release
-versions match before a release candidate is considered compatible.
+versions match before a release candidate is considered compatible. The
+transaction-plan smoke verifies a local `plan_only` staged updater decision with
+`replacement_mode="disabled"`, a required rollback gate, and a required
+post-update health gate. It does not download, install, replace, or roll back
+the app.

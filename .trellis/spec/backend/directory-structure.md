@@ -264,6 +264,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Updater dry-run validation may parse verified metadata and emit a local
   decision containing version, checksum, signature algorithm, public key id, and
   app/daemon compatibility fields. The decision must keep replacement disabled.
+- Updater transaction planning may combine verified metadata and compatibility
+  manifest inputs into a local `plan_only` decision. It must require rollback
+  and post-update health gate declarations, keep replacement disabled, and must
+  not download, install, replace, or roll back the app or bundled daemon.
 - Astria release compatibility manifests must be credential-free JSON with app
   version/build, daemon version, source tag, local-only status, replacement
   disabled, and compatibility min-version fields. App and daemon release
@@ -337,6 +341,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Astria updater dry-run with valid metadata -> returns a verified dry-run
   decision with replacement disabled. Replacement-enabled metadata -> validation
   fails before any replacement path is considered.
+- Astria updater transaction plan with valid metadata, matching compatibility
+  manifest, `plan_only` staging, replacement disabled, rollback gate, and
+  post-update health gate -> returns a local no-replacement plan. Missing gate
+  declarations or replacement-enabled metadata -> validation fails before any
+  transaction is considered ready.
 - Astria compatibility manifest with matching app and daemon versions ->
   validation passes. Missing app/build/daemon fields or mismatched app/daemon
   release versions -> validation fails.
@@ -369,6 +378,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   requiring Apple credentials.
 - Astria compatibility manifest smoke -> verifies matching, mismatched, and
   incomplete manifest cases without requiring Apple credentials.
+- Updater transaction plan smoke -> verifies valid no-replacement plan-only
+  metadata with rollback and health gates, replacement-enabled rejection, and
+  missing-gate rejection without requiring Apple credentials.
 
 ### 5. Good/Base/Bad Cases
 
