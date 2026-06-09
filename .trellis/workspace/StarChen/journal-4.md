@@ -896,3 +896,36 @@ Completed the third Phase20 child by adding credential-free Astria release accep
 ### Next Steps
 
 - None - task complete
+
+
+## Session 170: Astria Kocoro parity phase 20 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 20 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Astria Kocoro parity Phase20 after all three updater transaction-safety children were archived. Recorded the final gap review, updating Astria/Kocoro local-first desktop platform parity to roughly 96-98% and recommending either sandbox-only updater rehearsal for Phase21 or a pivot to cloud/channel parity if local-first parity is considered effectively complete.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ce78413` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
