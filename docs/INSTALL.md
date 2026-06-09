@@ -134,13 +134,12 @@ development:
 
 ```bash
 scripts/build_macos_astria_shell.sh
-starclaw app --no-open
 open build/desktop/macos/Astria.app
 ```
 
 This development shell hosts the daemon-served Web UI. It is not yet a signed
-release artifact and does not start or supervise the daemon; that behavior is
-planned for the next standalone desktop app phase.
+release artifact, but it can start or reuse the local daemon through the same
+HTTP readiness contract used by `starclaw app`.
 
 ## Uninstallation
 

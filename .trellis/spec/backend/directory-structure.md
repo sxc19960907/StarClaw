@@ -135,6 +135,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Development override env keys:
   - `ASTRIA_WEB_URL`
   - `ASTRIA_DIAGNOSTICS_URL`
+  - `ASTRIA_HEALTH_URL`
+  - `ASTRIA_STARCLAW_BIN`
 
 ### 3. Contracts
 
@@ -144,8 +146,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   `starclaw daemon start` remain valid fallback paths.
 - Unsigned local builds must not require private signing, notarization, or
   update credentials.
-- Until a daemon-supervision task explicitly adds launch/attach behavior, the
-  shell must assume the daemon is started separately.
+- The shell may start or attach to the local daemon through the existing HTTP
+  readiness contract. Deeper pidfile/socket reconciliation belongs in a
+  separately scoped task.
 - App Transport Security may allow local networking for `127.0.0.1`; do not add
   broad remote networking exceptions for the shell.
 
@@ -156,15 +159,16 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Missing bundle executable -> smoke script fails.
 - Missing `Info.plist` -> smoke script fails.
 - Missing local networking ATS allowance -> smoke script fails.
-- Daemon unavailable at runtime -> shell shows a user-visible waiting/error
-  state; it must not silently fail with a blank window.
+- Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
+  shows a user-visible failure state if health does not become ready.
 
 ### 5. Good/Base/Bad Cases
 
 - Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`
-  and verifies bundle structure.
-- Base: user starts `starclaw app --no-open`, then opens the unsigned app shell
-  to view the daemon-served Astria UI.
+  verifies bundle structure, and exercises daemon supervision through a
+  temporary `ASTRIA_STARCLAW_BIN`.
+- Base: user opens the unsigned app shell, which reuses an already-running
+  daemon or starts a local daemon.
 - Bad: app shell requires cloud credentials, private signing keys, a separate
   frontend build pipeline, or silently replaces the CLI/browser launch path.
 

@@ -121,8 +121,8 @@ scripts/build_macos_astria_shell.sh
 ```
 
 This builds an unsigned local `Astria.app` development shell under
-`build/desktop/macos/`. It hosts the same daemon-served Web UI and currently
-expects the daemon to be started separately with `starclaw app --no-open`.
+`build/desktop/macos/`. It starts or reuses the local daemon, then hosts the
+same daemon-served Web UI inside the app shell.
 
 ### Local Runtime API
 

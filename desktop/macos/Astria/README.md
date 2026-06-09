@@ -6,11 +6,13 @@ The shell is intentionally thin in Phase13:
 
 - It hosts the existing daemon-served Web UI at `http://127.0.0.1:7533/app/`.
 - It does not replace the Astria Web UI.
-- It does not supervise or start the daemon yet.
+- It starts or attaches to the local StarClaw daemon through the existing
+  `/health` readiness contract.
 - It does not require signing, notarization, or cloud credentials for local
   development builds.
 
-The next Phase13 child task adds daemon supervision and launch/attach behavior.
+Deeper Kocoro-style pidfile/socket reconciliation is intentionally deferred to
+a later parity step.
 
 ## Local Build
 
@@ -21,12 +23,11 @@ scripts/build_macos_astria_shell.sh
 ```
 
 The script builds an unsigned app bundle under `build/desktop/macos/` and prints
-the resulting `.app` path. The app expects a StarClaw daemon to be reachable.
+the resulting `.app` path.
 
 For local testing:
 
 ```bash
-starclaw app --no-open
 open build/desktop/macos/Astria.app
 ```
 
@@ -34,4 +35,10 @@ Override the hosted URL during development:
 
 ```bash
 ASTRIA_WEB_URL=http://127.0.0.1:7533/app/ open build/desktop/macos/Astria.app
+```
+
+Point the app at a development daemon binary:
+
+```bash
+ASTRIA_STARCLAW_BIN=/path/to/starclaw open build/desktop/macos/Astria.app
 ```
