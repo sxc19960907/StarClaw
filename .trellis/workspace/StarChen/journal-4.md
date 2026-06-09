@@ -665,3 +665,36 @@ Closed Phase18 with a final Kocoro gap review after completing local crash summa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 163: Astria updater dry-run validation
+
+**Date**: 2026-06-09
+**Task**: Astria updater dry-run validation
+**Branch**: `main`
+
+### Summary
+
+Added Astria updater metadata dry-run validation with verified_dry_run decisions, replacement disabled output, success/failure smoke coverage for missing/valid/replacement-enabled metadata, fixed updater boundary failure propagation, and updated release/install/Astria docs plus backend spec.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `183d428` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
