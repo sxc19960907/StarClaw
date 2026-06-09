@@ -236,3 +236,36 @@ Surfaced Astria Desktop RPC session diagnostics in native banners with reconnect
 ### Next Steps
 
 - None - task complete
+
+
+## Session 150: Astria Kocoro parity phase 15 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 15 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Phase15 long-lived Desktop RPC session and native event monitoring: all three child tasks archived, final gap review recorded, and Kocoro parity estimate updated to roughly 88-92% for local-first desktop lifecycle behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e8b55de` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
