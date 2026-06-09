@@ -1,0 +1,31 @@
+{
+  "id": "astria-kocoro-parity-phase-13",
+  "name": "astria-kocoro-parity-phase-13",
+  "title": "Astria Kocoro parity phase 13: standalone desktop app shell",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-standalone-desktop-shell-plan",
+    "06-09-daemon-supervision-app-launcher",
+    "06-09-desktop-window-recovery",
+    "06-09-packaging-signing-update-boundary"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
