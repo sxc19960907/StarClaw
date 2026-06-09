@@ -533,3 +533,36 @@ Closed Phase17 with a final Kocoro gap review after completing native clipboard/
 ### Next Steps
 
 - None - task complete
+
+
+## Session 159: Astria local crash summary export
+
+**Date**: 2026-06-09
+**Task**: Astria local crash summary export
+**Branch**: `main`
+
+### Summary
+
+Added a local Export Crash Summary command, redacted crash summary report/text model, crash-summary smoke coverage, prompt redaction, and Astria shell spec updates. The summary is local-only, uploadReady=false, written under Astria diagnostics storage, and does not expose API keys, bearer tokens, raw prompts, Desktop RPC socket/pidfile paths, or private local paths.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0506632` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
