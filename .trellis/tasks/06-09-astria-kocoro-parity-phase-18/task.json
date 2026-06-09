@@ -1,0 +1,30 @@
+{
+  "id": "astria-kocoro-parity-phase-18",
+  "name": "astria-kocoro-parity-phase-18",
+  "title": "Astria Kocoro parity phase 18: production native reliability",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-astria-local-crash-reporter-summaries",
+    "06-09-astria-native-notification-readiness",
+    "06-09-astria-signed-updater-release-boundary"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
