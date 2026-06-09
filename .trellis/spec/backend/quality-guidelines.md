@@ -1267,10 +1267,30 @@ safePath, err := validatePath(args.Path, ".")
 
 - Transport uses Unix domain sockets with 4-byte big-endian length-prefixed JSON frames.
 - Supported system methods start with `system.ping` and `system.capabilities`.
+- `starclaw daemon start` supports optional Desktop RPC mode with paired flags:
+  `--rpc-socket <path>` and `--rpc-pidfile <path>`.
+- Passing only one Desktop RPC launch flag must fail before the HTTP server
+  starts. Daemon-only mode remains valid when neither flag is passed.
+- Desktop RPC listener startup must write the pidfile only after the Unix socket
+  is listening. Listener startup failure prevents daemon readiness.
+- Listener cleanup removes the configured socket and pidfile artifacts on daemon
+  shutdown.
 - Codec must reject zero-length, malformed, partial, and oversized frames.
 - Broker pending requests must terminate on success, timeout, context cancellation, send failure, or disconnect. Pending requests must not hang after a Desktop disconnect.
 - Listener may handle Desktop-originated `system.*` requests locally and route daemon-originated request results back through the broker.
 - `/status` may expose only `desktop_rpc.listening`, `desktop_rpc.connected`, and `desktop_rpc.pending`. Do not expose socket paths, raw frame payloads, request params, API keys, provider headers, or user content.
+
+### Validation & Error Matrix
+
+- No Desktop RPC flags -> daemon starts in HTTP-only mode.
+- `--rpc-socket` without `--rpc-pidfile` -> command returns a missing-pidfile
+  error and does not start the daemon.
+- `--rpc-pidfile` without `--rpc-socket` -> command returns a missing-socket
+  error and does not start the daemon.
+- Socket bind failure -> daemon exits before HTTP readiness.
+- Pidfile write failure -> daemon exits and listener cleanup removes socket
+  artifacts.
+- `/status` with Desktop RPC listener -> exposes booleans/counts only.
 
 ### Tests Required
 
@@ -1279,6 +1299,9 @@ safePath, err := validatePath(args.Path, ".")
 - Listener fake Desktop smoke tests for Desktop-originated `system.ping` / `system.capabilities`.
 - Listener fake Desktop smoke test for daemon-originated request/result flow.
 - Daemon `/status` test proving Desktop RPC exposes only state booleans/counts.
+- Command tests for Desktop RPC launch flag pair validation.
+- Daemon listener wiring test proving pidfile write, status redaction, and
+  cleanup.
 
 ---
 

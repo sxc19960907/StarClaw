@@ -115,6 +115,16 @@ starclaw doctor --json
 
 `starclaw app` reuses an already-running daemon. If the browser cannot be opened automatically, copy the printed Web UI URL manually. `starclaw app --check`, `starclaw doctor`, and the GUI Version page show the same local runtime context: Web UI, health, status, diagnostics, data, and config paths.
 
+For native desktop integration tests, the daemon can also start a local Desktop
+RPC listener:
+
+```bash
+starclaw daemon start --rpc-socket /tmp/starclaw/daemon.sock --rpc-pidfile /tmp/starclaw/daemon.pid
+```
+
+Both flags are required together. Ordinary CLI and browser launches do not need
+Desktop RPC flags.
+
 **macOS shell skeleton:**
 ```bash
 scripts/build_macos_astria_shell.sh

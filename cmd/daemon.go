@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/daemon"
+	"github.com/starclaw/starclaw/internal/daemon/desktop_rpc"
 	"github.com/starclaw/starclaw/internal/schedule"
 	"github.com/starclaw/starclaw/internal/tools"
 )
@@ -36,6 +37,8 @@ var daemonStatusURL = fmt.Sprintf("http://127.0.0.1:%d/status", daemonPort)
 var daemonDiagnosticsURL = fmt.Sprintf("http://127.0.0.1:%d/diagnostics", daemonPort)
 var daemonEnsureTimeout = 5 * time.Second
 var daemonHealthPollInterval = 120 * time.Millisecond
+var daemonRPCSocketPath string
+var daemonRPCPidfilePath string
 
 func daemonWebURLForPort(port int) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/app/", port)
@@ -182,10 +185,69 @@ func printAppLaunchReadiness(cmd *cobra.Command) error {
 	return nil
 }
 
+func validateDesktopRPCLaunchFlags(sockPath, pidfilePath string) (bool, error) {
+	sockPath = strings.TrimSpace(sockPath)
+	pidfilePath = strings.TrimSpace(pidfilePath)
+	switch {
+	case sockPath == "" && pidfilePath == "":
+		return false, nil
+	case sockPath == "":
+		return false, errors.New("--rpc-socket is required when --rpc-pidfile is set")
+	case pidfilePath == "":
+		return false, errors.New("--rpc-pidfile is required when --rpc-socket is set")
+	default:
+		return true, nil
+	}
+}
+
+func startDaemonDesktopRPCListener(ctx context.Context, srv *daemon.Server, sockPath, pidfilePath string, cancel context.CancelFunc) error {
+	enabled, err := validateDesktopRPCLaunchFlags(sockPath, pidfilePath)
+	if err != nil || !enabled {
+		return err
+	}
+	readyCh := make(chan struct{})
+	listener := desktop_rpc.NewListener(desktop_rpc.ListenerConfig{
+		SockPath:    sockPath,
+		PidfilePath: pidfilePath,
+		Platform:    desktop_rpc.DefaultPlatform(Version),
+		Broker:      srv.DesktopRPCBroker(),
+		ReadyCh:     readyCh,
+	})
+	srv.SetDesktopRPCListener(listener)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- listener.Run(ctx)
+	}()
+
+	select {
+	case <-readyCh:
+		go func() {
+			if err := <-errCh; err != nil && ctx.Err() == nil {
+				log.Printf("daemon: desktop rpc listener stopped: %v", err)
+				cancel()
+			}
+		}()
+		return nil
+	case err := <-errCh:
+		if err == nil {
+			return errors.New("desktop rpc listener stopped before ready")
+		}
+		return fmt.Errorf("desktop rpc listener: %w", err)
+	case <-ctx.Done():
+		return fmt.Errorf("desktop rpc listener: %w", ctx.Err())
+	}
+}
+
 var daemonStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the daemon server",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		desktopRPCEnabled, err := validateDesktopRPCLaunchFlags(daemonRPCSocketPath, daemonRPCPidfilePath)
+		if err != nil {
+			return err
+		}
+
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("config: %w", err)
@@ -230,14 +292,21 @@ var daemonStartCmd = &cobra.Command{
 			ScheduleManager: scheduleMgr,
 		}
 
+		srv := daemon.NewServer(daemonPort, deps, Version)
+		srv.SetCancelFunc(cancel)
+		if desktopRPCEnabled {
+			if err := startDaemonDesktopRPCListener(ctx, srv, daemonRPCSocketPath, daemonRPCPidfilePath, cancel); err != nil {
+				return err
+			}
+			log.Printf("daemon: desktop rpc listening")
+		}
+
 		// Start cron scheduler.
 		sched := daemon.NewScheduler(scheduleMgr, deps)
 		go sched.Start(ctx)
 		log.Println("daemon: cron scheduler started")
 
 		// Start HTTP server (blocks until ctx is cancelled).
-		srv := daemon.NewServer(daemonPort, deps, Version)
-		srv.SetCancelFunc(cancel)
 		log.Printf("daemon: starting server on localhost:%d", daemonPort)
 		log.Printf("daemon: web UI available at %s", daemonWebURL)
 		if err := srv.Start(ctx); err != nil {
@@ -359,6 +428,8 @@ func newAppCmd() *cobra.Command {
 var appCmd = newAppCmd()
 
 func init() {
+	daemonStartCmd.Flags().StringVar(&daemonRPCSocketPath, "rpc-socket", "", "Desktop RPC Unix socket path; requires --rpc-pidfile")
+	daemonStartCmd.Flags().StringVar(&daemonRPCPidfilePath, "rpc-pidfile", "", "Desktop RPC pidfile path; requires --rpc-socket")
 	daemonCmd.AddCommand(daemonStartCmd)
 	daemonCmd.AddCommand(daemonStopCmd)
 	daemonCmd.AddCommand(daemonStatusCmd)

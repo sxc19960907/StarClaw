@@ -127,6 +127,16 @@ starclaw doctor
 starclaw app --check
 ```
 
+Advanced native desktop integration can start the daemon with a paired Desktop
+RPC socket and pidfile:
+
+```bash
+starclaw daemon start --rpc-socket /tmp/starclaw/daemon.sock --rpc-pidfile /tmp/starclaw/daemon.pid
+```
+
+Passing only one of these flags fails before daemon startup. Standard
+`starclaw app` and browser workflows do not require them.
+
 ### macOS development shell
 
 The repository includes an unsigned Astria macOS shell skeleton for local

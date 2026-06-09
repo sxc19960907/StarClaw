@@ -2,12 +2,19 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/starclaw/starclaw/internal/daemon"
+	"github.com/starclaw/starclaw/internal/tools"
 )
 
 func TestDaemonOpenCmd(t *testing.T) {
@@ -273,6 +280,109 @@ func TestAppCmdBrowserOpenFailureKeepsManualURL(t *testing.T) {
 	}
 }
 
+func TestValidateDesktopRPCLaunchFlags(t *testing.T) {
+	tests := []struct {
+		name    string
+		sock    string
+		pidfile string
+		enabled bool
+		wantErr string
+	}{
+		{
+			name:    "disabled",
+			enabled: false,
+		},
+		{
+			name:    "missing pidfile",
+			sock:    "/tmp/daemon.sock",
+			wantErr: "--rpc-pidfile is required",
+		},
+		{
+			name:    "missing socket",
+			pidfile: "/tmp/daemon.pid",
+			wantErr: "--rpc-socket is required",
+		},
+		{
+			name:    "enabled",
+			sock:    "/tmp/daemon.sock",
+			pidfile: "/tmp/daemon.pid",
+			enabled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			enabled, err := validateDesktopRPCLaunchFlags(tt.sock, tt.pidfile)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if enabled != tt.enabled {
+				t.Fatalf("enabled = %v, want %v", enabled, tt.enabled)
+			}
+		})
+	}
+}
+
+func TestStartDaemonDesktopRPCListenerWritesPidfileAndStatus(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "sc-drpc-")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+	defer os.RemoveAll(dir)
+	sockPath := filepath.Join(dir, "daemon.sock")
+	pidfilePath := filepath.Join(dir, "daemon.pid")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	srv := daemon.NewServer(0, &daemon.ServerDeps{Registry: tools.RegisterLocalTools()}, "test-version")
+	if err := startDaemonDesktopRPCListener(ctx, srv, sockPath, pidfilePath, cancel); err != nil {
+		t.Fatalf("startDaemonDesktopRPCListener: %v", err)
+	}
+
+	pidfile, err := os.ReadFile(pidfilePath)
+	if err != nil {
+		t.Fatalf("read pidfile: %v", err)
+	}
+	if strings.TrimSpace(string(pidfile)) == "" {
+		t.Fatal("pidfile is empty")
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode status: %v", err)
+	}
+	desktopRPC, ok := body["desktop_rpc"].(map[string]any)
+	if !ok {
+		t.Fatalf("desktop_rpc missing in %#v", body)
+	}
+	if desktopRPC["listening"] != true {
+		t.Fatalf("desktop_rpc.listening = %#v, want true", desktopRPC["listening"])
+	}
+	if _, ok := desktopRPC["sock_path"]; ok {
+		t.Fatalf("desktop_rpc status exposed sock_path: %#v", desktopRPC)
+	}
+	if _, ok := desktopRPC["pidfile_path"]; ok {
+		t.Fatalf("desktop_rpc status exposed pidfile_path: %#v", desktopRPC)
+	}
+
+	cancel()
+	waitForMissingPath(t, sockPath)
+	waitForMissingPath(t, pidfilePath)
+}
+
 type daemonLaunchStub struct {
 	started     bool
 	openURL     func(string) error
@@ -321,4 +431,16 @@ func stubDaemonLaunch(t *testing.T) *daemonLaunchStub {
 	})
 
 	return stub
+}
+
+func waitForMissingPath(t *testing.T, path string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("path still exists: %s", path)
 }
