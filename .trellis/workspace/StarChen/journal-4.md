@@ -40,6 +40,45 @@ Added daemon Desktop RPC launch flags with paired socket/pidfile validation, lis
 - None - task complete
 
 
+## Session 177: Astria home progressive disclosure layout
+
+**Date**: 2026-06-09
+**Task**: Astria home progressive disclosure layout
+**Branch**: `main`
+
+### Summary
+
+Completed and archived the Astria Home progressive disclosure polish. The Home page now keeps the primary mission composer visible, moves strategy/workflow/context/review modules behind native disclosure controls, brings the secondary entry points into the desktop first viewport, and keeps mobile from being blocked by the sidebar or horizontal overflow.
+
+### Main Changes
+
+- Collapsed secondary Home modules into Plan, Context, and Review disclosure groups.
+- Tightened the Home hero, mission composer, capability ribbon, and sidebar spacing for a more workbench-like layout.
+- Updated Web UI smoke coverage to open hidden disclosure sections before interacting with migrated modules.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `498aea6` | feat: refine Astria home progressive disclosure |
+| `1b4e400` | chore(task): archive 06-09-astria-home-progressive-disclosure-layout |
+
+### Testing
+
+- [OK] `git diff --check`
+- [OK] Trellis task validate
+- [OK] `go test ./...`
+- [OK] `scripts/smoke_webui_core.sh`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Start Phase 23: streaming and long-run UX parity.
+
+
 ## Session 144: Desktop RPC capabilities reconciliation
 
 **Date**: 2026-06-09
