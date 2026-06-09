@@ -79,9 +79,16 @@ func (l *Listener) Status() Status {
 }
 
 type Status struct {
-	Listening bool `json:"listening"`
-	Connected bool `json:"connected"`
-	Pending   int  `json:"pending"`
+	Listening bool        `json:"listening"`
+	Connected bool        `json:"connected"`
+	Pending   int         `json:"pending"`
+	Events    EventStatus `json:"events,omitempty"`
+}
+
+type EventStatus struct {
+	Retained  int    `json:"retained"`
+	LastEvent string `json:"last_event,omitempty"`
+	LastTS    string `json:"last_ts,omitempty"`
 }
 
 func (l *Listener) Run(ctx context.Context) (retErr error) {

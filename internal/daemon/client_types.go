@@ -10,9 +10,16 @@ type StatusResponse struct {
 }
 
 type DesktopRPCStatus struct {
-	Listening bool `json:"listening"`
-	Connected bool `json:"connected"`
-	Pending   int  `json:"pending"`
+	Listening bool                  `json:"listening"`
+	Connected bool                  `json:"connected"`
+	Pending   int                   `json:"pending"`
+	Events    DesktopRPCEventStatus `json:"events,omitempty"`
+}
+
+type DesktopRPCEventStatus struct {
+	Retained  int    `json:"retained"`
+	LastEvent string `json:"last_event,omitempty"`
+	LastTS    string `json:"last_ts,omitempty"`
 }
 
 // CancelRequest cancels a running agent execution.

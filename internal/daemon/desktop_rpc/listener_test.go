@@ -147,6 +147,74 @@ func TestListenerDisconnectCancelsPending(t *testing.T) {
 	}
 }
 
+func TestListenerDispatchesDesktopEvents(t *testing.T) {
+	t.Parallel()
+	dir, err := os.MkdirTemp("/tmp", "starclaw-drpc-event")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	sockPath := filepath.Join(dir, "daemon.sock")
+	readyCh := make(chan struct{})
+	events := make(chan *DesktopEvent, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	listener := NewListener(ListenerConfig{
+		SockPath:    sockPath,
+		PidfilePath: filepath.Join(dir, "daemon.pid"),
+		Platform:    Platform{OS: "test-os", AppVersion: "test-version"},
+		Broker:      NewBroker(),
+		EventSink: func(evt *DesktopEvent) {
+			events <- evt
+		},
+		ReadyCh: readyCh,
+	})
+	done := make(chan error, 1)
+	go func() {
+		done <- listener.Run(ctx)
+	}()
+	select {
+	case <-readyCh:
+	case err := <-done:
+		t.Fatalf("listener exited before ready: %v", err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("listener did not become ready")
+	}
+
+	conn, err := net.Dial("unix", sockPath)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	payload, err := json.Marshal(&DesktopEvent{Event: EventDesktopOnline, TS: "2026-06-09T01:00:00Z"})
+	if err != nil {
+		t.Fatalf("marshal event: %v", err)
+	}
+	if err := WriteFrame(conn, &Frame{Type: FrameDesktopEvent, Payload: payload}); err != nil {
+		t.Fatalf("write event: %v", err)
+	}
+
+	select {
+	case evt := <-events:
+		if evt.Event != EventDesktopOnline || evt.TS != "2026-06-09T01:00:00Z" {
+			t.Fatalf("event = %#v", evt)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("event sink was not called")
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("listener shutdown: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("listener did not shut down")
+	}
+}
+
 func startTestListener(t *testing.T) (string, *Broker, func()) {
 	t.Helper()
 	dir, err := os.MkdirTemp("/tmp", "starclaw-drpc")

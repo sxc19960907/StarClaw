@@ -23,6 +23,7 @@ import (
 	"github.com/starclaw/starclaw/internal/agents"
 	"github.com/starclaw/starclaw/internal/client"
 	"github.com/starclaw/starclaw/internal/config"
+	"github.com/starclaw/starclaw/internal/daemon/desktop_rpc"
 	"github.com/starclaw/starclaw/internal/mcp"
 	"github.com/starclaw/starclaw/internal/permissions"
 	"github.com/starclaw/starclaw/internal/schedule"
@@ -192,8 +193,56 @@ func TestHandleStatus(t *testing.T) {
 	if _, ok := desktopRPC["pending"].(float64); !ok {
 		t.Errorf("expected desktop_rpc.pending number")
 	}
+	events, ok := desktopRPC["events"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected desktop_rpc.events object")
+	}
+	if _, ok := events["retained"].(float64); !ok {
+		t.Errorf("expected desktop_rpc.events.retained number")
+	}
 	if _, ok := desktopRPC["sock_path"]; ok {
 		t.Errorf("desktop_rpc status must not expose sock_path")
+	}
+}
+
+func TestHandleStatusDesktopRPCEventMetadata(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	s.RecordDesktopEvent(&desktop_rpc.DesktopEvent{
+		Event: desktop_rpc.EventDesktopOnline,
+		Data:  json.RawMessage(`{"secret":"hidden"}`),
+		TS:    "2026-06-09T01:00:00Z",
+	})
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/status")
+	if err != nil {
+		t.Fatalf("GET /status: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if strings.Contains(string(bodyBytes), "secret") || strings.Contains(string(bodyBytes), "hidden") {
+		t.Fatalf("status exposed raw desktop event payload: %s", bodyBytes)
+	}
+	var body map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	desktopRPC := body["desktop_rpc"].(map[string]interface{})
+	events := desktopRPC["events"].(map[string]interface{})
+	if events["retained"].(float64) != 1 {
+		t.Fatalf("retained = %#v, want 1", events["retained"])
+	}
+	if events["last_event"] != desktop_rpc.EventDesktopOnline {
+		t.Fatalf("last_event = %#v", events["last_event"])
+	}
+	if events["last_ts"] != "2026-06-09T01:00:00Z" {
+		t.Fatalf("last_ts = %#v", events["last_ts"])
 	}
 }
 

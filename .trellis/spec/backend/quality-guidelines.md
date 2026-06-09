@@ -1285,7 +1285,11 @@ safePath, err := validatePath(args.Path, ".")
   treating a shell-launched daemon as desktop-ready. Required methods include
   `system.ping` and `system.capabilities`; protocol version must match
   `desktop_rpc.ProtocolVersion`.
-- `/status` may expose only `desktop_rpc.listening`, `desktop_rpc.connected`, and `desktop_rpc.pending`. Do not expose socket paths, raw frame payloads, request params, API keys, provider headers, or user content.
+- `/status` may expose only Desktop RPC state booleans/counts and redacted
+  event-monitoring metadata such as retained event count, last event type, and
+  last event timestamp. Do not expose socket paths, pidfile paths, raw frame
+  payloads, event data, request params, API keys, provider headers, or user
+  content.
 
 ### Validation & Error Matrix
 
@@ -1305,7 +1309,8 @@ safePath, err := validatePath(args.Path, ".")
 - Live pidfile -> Astria must not remove scoped artifacts.
 - Healthy HTTP daemon with missing/broken Desktop RPC -> Astria may attach in
   degraded HTTP fallback mode, but must surface that state.
-- `/status` with Desktop RPC listener -> exposes booleans/counts only.
+- `/status` with Desktop RPC listener -> exposes booleans/counts and redacted
+  event metadata only.
 
 ### Tests Required
 
@@ -1313,7 +1318,10 @@ safePath, err := validatePath(args.Path, ".")
 - Broker not-connected, request/result correlation, timeout, context cancel, and disconnect cancellation tests.
 - Listener fake Desktop smoke tests for Desktop-originated `system.ping` / `system.capabilities`.
 - Listener fake Desktop smoke test for daemon-originated request/result flow.
-- Daemon `/status` test proving Desktop RPC exposes only state booleans/counts.
+- Daemon `/status` test proving Desktop RPC exposes only state booleans/counts
+  plus redacted event metadata.
+- Listener event test proving `desktop_event` frames call the configured
+  `EventSink`.
 - Command tests for Desktop RPC launch flag pair validation.
 - Daemon listener wiring test proving pidfile write, status redaction, and
   cleanup.

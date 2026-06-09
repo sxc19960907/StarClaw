@@ -51,6 +51,7 @@ type Server struct {
 	cloudLifecycle  *CloudLifecycleController
 	desktopRPC      *desktop_rpc.Broker
 	desktopListener *desktop_rpc.Listener
+	desktopEvents   *DesktopEventMonitor
 }
 
 // NewServer creates a new Server.
@@ -72,6 +73,7 @@ func NewServer(port int, deps *ServerDeps, version string) *Server {
 		channelAdapters: newDefaultChannelAdapterRegistry(),
 		cloudLifecycle:  NewCloudLifecycleController(context.Background(), nil),
 		desktopRPC:      desktop_rpc.NewBroker(),
+		desktopEvents:   NewDesktopEventMonitor(defaultDesktopEventMonitorLimit),
 	}
 	if deps != nil {
 		tools.RegisterCalendarTools(deps.Registry, s.desktopRPC)
@@ -132,6 +134,19 @@ func (s *Server) SetDesktopRPCListener(listener *desktop_rpc.Listener) {
 	s.desktopListener = listener
 }
 
+func (s *Server) RecordDesktopEvent(evt *desktop_rpc.DesktopEvent) {
+	if s.desktopEvents != nil {
+		s.desktopEvents.Record(evt)
+	}
+}
+
+func (s *Server) desktopEventStatus() desktop_rpc.EventStatus {
+	if s.desktopEvents == nil {
+		return desktop_rpc.EventStatus{}
+	}
+	return s.desktopEvents.Status()
+}
+
 // ---------------------------------------------------------------------------
 // Health / Status
 // ---------------------------------------------------------------------------
@@ -161,7 +176,9 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) desktopRPCStatus() desktop_rpc.Status {
 	if s.desktopListener != nil {
-		return s.desktopListener.Status()
+		status := s.desktopListener.Status()
+		status.Events = s.desktopEventStatus()
+		return status
 	}
 	pending := 0
 	connected := false
@@ -173,6 +190,7 @@ func (s *Server) desktopRPCStatus() desktop_rpc.Status {
 		Listening: false,
 		Connected: connected,
 		Pending:   pending,
+		Events:    s.desktopEventStatus(),
 	}
 }
 

@@ -211,6 +211,7 @@ func startDaemonDesktopRPCListener(ctx context.Context, srv *daemon.Server, sock
 		PidfilePath: pidfilePath,
 		Platform:    desktop_rpc.DefaultPlatform(Version),
 		Broker:      srv.DesktopRPCBroker(),
+		EventSink:   srv.RecordDesktopEvent,
 		ReadyCh:     readyCh,
 	})
 	srv.SetDesktopRPCListener(listener)
