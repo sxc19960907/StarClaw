@@ -21,6 +21,10 @@ scripts/smoke_macos_astria_shell.sh
 scripts/validate_release_artifacts.sh --npm-only --astria-local
 ```
 
+The `--astria-local` validator is credential-free. It checks the npm dry-run,
+Astria shell smoke, absence of committed signing/notarization private material,
+and the unavailable-safe updater boundary.
+
 If GoReleaser is installed, validate the full artifact set:
 
 ```bash

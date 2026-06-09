@@ -95,3 +95,14 @@ identities, notarization credentials, keychain profiles, or update private keys.
 Astria does not auto-update itself in this phase. Future updater metadata must
 be checksum/signature verified, unavailable-safe, and must not replace the app
 with a daemon version that is incompatible with the app release.
+
+Run the local distribution boundary validator on macOS before release work:
+
+```bash
+scripts/validate_release_artifacts.sh --npm-only --astria-local
+```
+
+This does not require Apple credentials. It confirms the unsigned app smoke
+passes, private signing/notarization material is absent from the repository, and
+no Astria updater metadata is present before checksum/signature validation
+exists.

@@ -211,6 +211,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Astria does not auto-update itself in this phase. Future updater metadata must
   be unavailable-safe and checksum/signature verified before replacing the app
   or bundled daemon.
+- Release validation with `scripts/validate_release_artifacts.sh --npm-only
+  --astria-local` must remain credential-free. It should run the Astria smoke,
+  verify private signing/notarization material is absent, and reject Astria
+  updater metadata until checksum/signature validation exists.
 
 ### 4. Validation & Error Matrix
 
@@ -244,6 +248,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Missing update metadata -> no replacement; current app remains usable.
 - App/daemon release version mismatch -> reject the release-candidate artifact
   or rebuild from matching release inputs.
+- Committed `.p8`, `.p12`, provisioning profile, private key, notary/keychain
+  profile, or updater private material -> release validation fails.
+- Astria updater metadata without checksum/signature validation -> release
+  validation fails; missing updater metadata remains non-fatal.
 - Daemon unavailable at runtime -> shell attempts `starclaw daemon start`, then
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
@@ -274,6 +282,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
   session connected/retry/mismatch diagnostics, native command metadata,
   diagnostics export redaction, and launch failure.
+- Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` when
+  touching Astria distribution boundaries. It must pass without Apple
+  credentials.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
   when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect

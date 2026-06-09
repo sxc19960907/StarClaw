@@ -47,6 +47,40 @@ assert_archive_contains() {
   esac
 }
 
+assert_no_private_release_material() {
+  echo "==> checking private release material boundary"
+  local found
+  found="$(
+    find "$ROOT_DIR" \
+      \( -path "$ROOT_DIR/.git" -o -path "$ROOT_DIR/build" -o -path "$ROOT_DIR/dist" -o -path "$ROOT_DIR/node_modules" -o -path "$ROOT_DIR/npm/node_modules" \) -prune \
+      -o -type f \( \
+        -name "*.p8" -o \
+        -name "*.p12" -o \
+        -name "*.cer" -o \
+        -name "*.mobileprovision" -o \
+        -name "*.provisionprofile" -o \
+        -name "*.key" -o \
+        -name "*notary*profile*" -o \
+        -name "*keychain*profile*" \
+      \) -print
+  )"
+  [[ -z "$found" ]] || fail "private signing/notarization material must not be committed: $found"
+}
+
+assert_astria_updater_boundary() {
+  echo "==> checking Astria updater boundary"
+  local metadata
+  metadata="$(
+    find "$ROOT_DIR/desktop/macos/Astria" -type f \( \
+      -iname "*appcast*.xml" -o \
+      -iname "*sparkle*.xml" -o \
+      -iname "*update*.json" -o \
+      -iname "*updater*.json" \
+    \) -print
+  )"
+  [[ -z "$metadata" ]] || fail "Astria updater metadata is not supported yet; future metadata must add checksum/signature validation first: $metadata"
+}
+
 find_one() {
   local pattern="$1"
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
@@ -73,6 +107,8 @@ NODE
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
+    assert_no_private_release_material
+    assert_astria_updater_boundary
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -116,6 +152,8 @@ apk="$(find_one "starclaw_*_linux_*.apk")"
 validate_npm_package
 
 if "$ASTRIA_LOCAL"; then
+  assert_no_private_release_material
+  assert_astria_updater_boundary
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi

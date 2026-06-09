@@ -163,6 +163,22 @@ ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" scripts/build_macos_astria_she
 The bundled daemon lives at `Astria.app/Contents/Resources/starclaw`. Unsigned
 development builds are not notarized release artifacts.
 
+Validate the local Astria distribution boundary without Apple credentials:
+
+```bash
+scripts/validate_release_artifacts.sh --npm-only --astria-local
+```
+
+This checks the npm package shape, runs the Astria shell smoke, verifies that
+private signing/notarization material is not committed, and confirms Astria has
+no updater metadata until checksum/signature validation is implemented.
+
+A signed distributable Astria build requires a Developer ID Application
+identity, Hardened Runtime, notarization with `notarytool`, stapling, and
+release-matched app/daemon inputs. Do not commit signing identities, keychain
+profiles, Apple credentials, notarization secrets, or updater private keys.
+Missing updater metadata is intentionally non-fatal for local builds.
+
 When the shell starts the daemon itself, it also passes Desktop RPC socket and
 pidfile paths under `~/Library/Application Support/dev.starclaw.astria/` and
 validates `system.capabilities` before declaring the desktop handshake ready.
