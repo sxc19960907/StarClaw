@@ -1,0 +1,30 @@
+{
+  "id": "astria-kocoro-parity-phase-17",
+  "name": "astria-kocoro-parity-phase-17",
+  "title": "Astria Kocoro parity phase 17: native OS tool depth",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "StarChen",
+  "assignee": "StarChen",
+  "createdAt": "2026-06-09",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "06-09-astria-native-clipboard-file-affordances",
+    "06-09-astria-native-permission-helper-flows",
+    "06-09-astria-multi-window-state-restoration"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
