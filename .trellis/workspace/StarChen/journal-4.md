@@ -632,3 +632,36 @@ Hardened Astria signed updater/release validation by allowing missing metadata a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 162: Astria Kocoro parity phase 18 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 18 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Phase18 with a final Kocoro gap review after completing local crash summaries, notification readiness, and signed updater metadata boundary validation. The review updates Astria/Kocoro parity to roughly 94-96% for local-first desktop platform behavior and recommends Phase19 focus on verified updater dry-run flow, release compatibility manifests, and optional user-approved local OS crash artifact collection.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `66338f3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
