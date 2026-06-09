@@ -41,6 +41,9 @@ app_path="$(ASTRIA_BUILD_DIR="$TMP_DIR/build/desktop/macos" ASTRIA_BUNDLED_STARC
 echo "==> checking Astria route recovery"
 "$app_path/Contents/MacOS/Astria" --route-recovery-smoke
 
+echo "==> checking Astria native commands"
+"$app_path/Contents/MacOS/Astria" --native-command-smoke
+
 echo "==> checking Astria Desktop RPC validation"
 "$app_path/Contents/MacOS/Astria" --desktop-rpc-smoke
 

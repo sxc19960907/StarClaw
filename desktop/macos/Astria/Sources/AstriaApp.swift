@@ -3,6 +3,7 @@ import WebKit
 import Darwin
 
 private enum AstriaDefaults {
+    static let mainWindowID = "astria-main"
     static let webURL = "http://127.0.0.1:7533/app/"
     static let healthURL = "http://127.0.0.1:7533/health"
     static let diagnosticsURL = "http://127.0.0.1:7533/diagnostics"
@@ -18,11 +19,71 @@ private enum AstriaDefaults {
     static let desktopRPCRetryLimit = 3
 }
 
+struct AstriaNativeCommand: Equatable {
+    let id: String
+    let title: String
+    let key: String
+    let modifiers: EventModifiers
+}
+
+enum AstriaNativeCommandSpec {
+    static let newWindow = AstriaNativeCommand(id: "new_window", title: "New Window", key: "n", modifiers: [.command])
+    static let reload = AstriaNativeCommand(id: "reload", title: "Reload Astria", key: "r", modifiers: [.command])
+    static let diagnostics = AstriaNativeCommand(id: "diagnostics", title: "Open Diagnostics", key: "d", modifiers: [.command, .shift])
+    static let retryDaemon = AstriaNativeCommand(id: "retry_daemon", title: "Retry Daemon", key: "r", modifiers: [.command, .shift])
+
+    static let all = [newWindow, reload, diagnostics, retryDaemon]
+}
+
+@MainActor
+final class AstriaAppActions: ObservableObject {
+    var reload: () -> Void = {}
+    var openDiagnostics: () -> Void = {}
+    var retryDaemon: () -> Void = {}
+}
+
+struct AstriaNativeCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+    @EnvironmentObject private var appActions: AstriaAppActions
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button(AstriaNativeCommandSpec.newWindow.title) {
+                openWindow(id: AstriaDefaults.mainWindowID)
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.newWindow.key)), modifiers: AstriaNativeCommandSpec.newWindow.modifiers)
+        }
+
+        CommandMenu("Astria") {
+            Button(AstriaNativeCommandSpec.reload.title) {
+                appActions.reload()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.reload.key)), modifiers: AstriaNativeCommandSpec.reload.modifiers)
+
+            Button(AstriaNativeCommandSpec.diagnostics.title) {
+                appActions.openDiagnostics()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.diagnostics.key)), modifiers: AstriaNativeCommandSpec.diagnostics.modifiers)
+
+            Divider()
+
+            Button(AstriaNativeCommandSpec.retryDaemon.title) {
+                appActions.retryDaemon()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.retryDaemon.key)), modifiers: AstriaNativeCommandSpec.retryDaemon.modifiers)
+        }
+    }
+}
+
 @main
 struct AstriaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var appActions = AstriaAppActions()
 
     init() {
+        if CommandLine.arguments.contains("--native-command-smoke") {
+            Foundation.exit(AstriaNativeCommandSmoke.run())
+        }
         if CommandLine.arguments.contains("--route-recovery-smoke") {
             Foundation.exit(AstriaRouteRecoverySmoke.run())
         }
@@ -41,12 +102,13 @@ struct AstriaApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Astria") {
+        WindowGroup("Astria", id: AstriaDefaults.mainWindowID) {
             AstriaRootView(config: LaunchConfig.fromProcess())
+                .environmentObject(appActions)
                 .frame(minWidth: 1040, minHeight: 720)
         }
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            AstriaNativeCommands()
         }
     }
 }
@@ -178,6 +240,7 @@ struct AstriaRootView: View {
     @State private var webURL: URL
     @State private var reloadToken = UUID()
     @StateObject private var supervisor: DaemonSupervisor
+    @EnvironmentObject private var appActions: AstriaAppActions
 
     private let routeStore: AstriaRouteStore
 
@@ -213,12 +276,34 @@ struct AstriaRootView: View {
             }
         }
         .task {
+            registerNativeActions()
             supervisor.start()
+        }
+        .onDisappear {
+            clearNativeActions()
         }
         .onChange(of: supervisor.recoveryGeneration) { _ in
             webURL = routeStore.restoredURL(baseURL: config.webURL)
             reloadToken = UUID()
         }
+    }
+
+    private func registerNativeActions() {
+        appActions.reload = {
+            reloadToken = UUID()
+        }
+        appActions.openDiagnostics = {
+            NSWorkspace.shared.open(config.diagnosticsURL)
+        }
+        appActions.retryDaemon = {
+            supervisor.start()
+        }
+    }
+
+    private func clearNativeActions() {
+        appActions.reload = {}
+        appActions.openDiagnostics = {}
+        appActions.retryDaemon = {}
     }
 }
 
@@ -1216,6 +1301,46 @@ enum AstriaSupervisorSmoke {
             fputs("Astria supervision smoke Desktop RPC reconciliation failed: \(error.localizedDescription)\n", stderr)
             return 1
         }
+    }
+}
+
+enum AstriaNativeCommandSmoke {
+    static func run() -> Int32 {
+        let commands = AstriaNativeCommandSpec.all
+        let ids = Set(commands.map(\.id))
+        if commands.count != 4 || ids.count != commands.count {
+            fputs("Astria native command smoke found missing or duplicate commands\n", stderr)
+            return 1
+        }
+        let expected: [String: (title: String, key: String)] = [
+            "new_window": ("New Window", "n"),
+            "reload": ("Reload Astria", "r"),
+            "diagnostics": ("Open Diagnostics", "d"),
+            "retry_daemon": ("Retry Daemon", "r"),
+        ]
+        for command in commands {
+            guard let want = expected[command.id] else {
+                fputs("Astria native command smoke found unexpected command \(command.id)\n", stderr)
+                return 1
+            }
+            if command.title != want.title || command.key != want.key {
+                fputs("Astria native command smoke command \(command.id) = \(command.title)/\(command.key)\n", stderr)
+                return 1
+            }
+            if command.modifiers.isEmpty {
+                fputs("Astria native command smoke command \(command.id) has no shortcut modifiers\n", stderr)
+                return 1
+            }
+        }
+        if AstriaNativeCommandSpec.diagnostics.modifiers == AstriaNativeCommandSpec.reload.modifiers {
+            fputs("Astria native command smoke diagnostics shortcut conflicts with reload\n", stderr)
+            return 1
+        }
+        if AstriaNativeCommandSpec.retryDaemon.modifiers == AstriaNativeCommandSpec.reload.modifiers {
+            fputs("Astria native command smoke retry shortcut conflicts with reload\n", stderr)
+            return 1
+        }
+        return 0
     }
 }
 

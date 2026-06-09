@@ -134,6 +134,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Optional bundled daemon path inside the app:
   `Contents/Resources/starclaw`.
 - Default hosted URL: `http://127.0.0.1:7533/app/`.
+- Main native window scene id: `astria-main`.
 - Route recovery storage key: `astria.lastWebRoute` stores a relative `/app`
   route only.
 - Development override env keys:
@@ -150,6 +151,14 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 
 - The shell must host the daemon Web UI; it must not duplicate the Web UI into
   a second frontend implementation.
+- Native menu/window commands should be modeled in Swift and smoke-testable.
+  The baseline command set is New Window, Reload Astria, Open Diagnostics, and
+  Retry Daemon.
+- New Window should open another `astria-main` window around the same local
+  daemon instead of disabling macOS new-window behavior.
+- Reload Astria should refresh the hosted WebView without changing the
+  persisted route. Retry Daemon should call the existing daemon supervision
+  start path.
 - The shell must remain optional. `starclaw app`, `starclaw app --no-open`, and
   `starclaw daemon start` remain valid fallback paths.
 - Unsigned local builds must not require private signing, notarization, or
@@ -235,13 +244,16 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   shows a user-visible failure state if health does not become ready.
 - Unsafe stored route such as `https://example.com/app` or `/diagnostics` ->
   restore falls back to `/app/`.
+- Native command smoke -> verifies command ids, labels, shortcut metadata, and
+  shortcut conflict boundaries without requiring UI automation.
 
 ### 5. Good/Base/Bad Cases
 
 - Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`,
   verifies bundle structure, bundled daemon layout, route recovery, and daemon
   supervision through a temporary daemon binary. It also validates Desktop RPC
-  capabilities, fallback cleanup, and session lifecycle smoke paths.
+  capabilities, fallback cleanup, session lifecycle smoke paths, and native
+  command metadata.
 - Base: user opens the unsigned app shell, which reuses an already-running
   daemon or starts a local daemon, then restores the last same-origin `/app`
   route.
@@ -254,7 +266,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   The smoke must cover bundle structure, route recovery, daemon supervision,
   attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
   stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
-  session connected/retry/mismatch diagnostics, and launch failure.
+  session connected/retry/mismatch diagnostics, native command metadata, and
+  launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
   when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect
