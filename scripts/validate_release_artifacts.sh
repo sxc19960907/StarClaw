@@ -11,6 +11,7 @@ RUN_UPDATER_DRY_RUN_SMOKE=false
 RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=false
 RUN_UPDATER_TRANSACTION_PLAN_SMOKE=false
 RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=false
+RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -27,6 +28,7 @@ for arg in "$@"; do
     --astria-compatibility-manifest-smoke) RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=true ;;
     --updater-transaction-plan-smoke) RUN_UPDATER_TRANSACTION_PLAN_SMOKE=true ;;
     --updater-rollback-health-gates-smoke) RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=true ;;
+    --astria-release-acceptance-gates-smoke) RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -782,6 +784,169 @@ NODE
   grep -Fq "missing metadata.transaction.rollback_gate.id" "$tmp/missing-gate.err" || fail "missing rollback gate failed for the wrong reason"
 }
 
+write_astria_release_acceptance_manifest() {
+  local output="$1"
+  require_cmd node
+  node - <<'NODE' "$output"
+const fs = require("fs");
+const output = process.argv[2];
+const manifest = {
+  schema_version: "1",
+  product: "Astria",
+  local_validation_credential_free: true,
+  replacement: "disabled",
+  distribution: {
+    developer_id_application: "required",
+    hardened_runtime: "required",
+    notarization: "required",
+    stapling: "required",
+  },
+  artifacts: {
+    updater_metadata: "astria-updater-metadata.json",
+    compatibility_manifest: "astria-compatibility.json",
+    rollback_health_manifest: "astria-rollback-health.json",
+    transaction_plan: "astria-updater-transaction-plan.json",
+  },
+  private_material: {
+    signing_identity_committed: false,
+    notary_profile_committed: false,
+    updater_private_key_committed: false,
+    provisioning_profile_committed: false,
+  },
+};
+fs.writeFileSync(output, JSON.stringify(manifest, null, 2) + "\n");
+NODE
+}
+
+assert_astria_release_acceptance_manifest() {
+  local manifest="$1"
+  require_cmd node
+  node - <<'NODE' "$manifest"
+const fs = require("fs");
+const manifestPath = process.argv[2];
+
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+function walk(value, path = []) {
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    const lower = key.toLowerCase();
+    if (
+      lower.includes("private_key") ||
+      lower.includes("secret") ||
+      lower.includes("password") ||
+      lower.includes("notary_profile") ||
+      lower.includes("keychain_profile") ||
+      lower === "p8" ||
+      lower === "p12"
+    ) {
+      if (child !== false && child !== "absent") {
+        fail(`Astria release acceptance manifest contains private material reference ${[...path, key].join(".")}`);
+      }
+    }
+    walk(child, [...path, key]);
+  }
+}
+
+function requireString(value, name) {
+  if (typeof value !== "string" || value.trim() === "") {
+    fail(`Astria release acceptance manifest missing ${name}`);
+  }
+}
+
+let manifest;
+try {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+} catch (error) {
+  fail(`Astria release acceptance manifest is not valid JSON: ${error.message}`);
+}
+
+walk(manifest);
+for (const field of ["schema_version", "product", "local_validation_credential_free", "replacement", "distribution", "artifacts"]) {
+  if (manifest[field] === undefined || manifest[field] === null) {
+    fail(`Astria release acceptance manifest missing ${field}`);
+  }
+}
+if (manifest.product !== "Astria") fail("Astria release acceptance manifest product must be Astria");
+if (manifest.local_validation_credential_free !== true) {
+  fail("Astria release acceptance manifest must declare local_validation_credential_free=true");
+}
+if (manifest.replacement !== "disabled") {
+  fail("Astria release acceptance manifest must keep replacement disabled");
+}
+for (const field of ["developer_id_application", "hardened_runtime", "notarization", "stapling"]) {
+  if (manifest.distribution[field] !== "required") {
+    fail(`Astria release acceptance manifest distribution.${field} must be required`);
+  }
+}
+for (const field of ["updater_metadata", "compatibility_manifest", "rollback_health_manifest", "transaction_plan"]) {
+  requireString(manifest.artifacts[field], `artifacts.${field}`);
+}
+const privateMaterial = manifest.private_material || {};
+for (const field of ["signing_identity_committed", "notary_profile_committed", "updater_private_key_committed", "provisioning_profile_committed"]) {
+  if (privateMaterial[field] !== false) {
+    fail(`Astria release acceptance manifest private_material.${field} must be false`);
+  }
+}
+NODE
+}
+
+run_astria_release_acceptance_gates_smoke() {
+  echo "==> checking Astria release acceptance gates smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local valid="$tmp/astria-release-acceptance.json"
+  write_astria_release_acceptance_manifest "$valid"
+  assert_astria_release_acceptance_manifest "$valid"
+
+  local missing_distribution="$tmp/astria-release-acceptance-missing-distribution.json"
+  cp "$valid" "$missing_distribution"
+  node - <<'NODE' "$missing_distribution"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+delete data.distribution.notarization;
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_release_acceptance_manifest "$missing_distribution") >/dev/null 2>"$tmp/missing-distribution.err"; then
+    fail "acceptance manifest missing notarization unexpectedly passed validation"
+  fi
+  grep -Fq "distribution.notarization must be required" "$tmp/missing-distribution.err" || fail "missing notarization failed for the wrong reason"
+
+  local missing_transaction="$tmp/astria-release-acceptance-missing-transaction.json"
+  cp "$valid" "$missing_transaction"
+  node - <<'NODE' "$missing_transaction"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+delete data.artifacts.transaction_plan;
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_release_acceptance_manifest "$missing_transaction") >/dev/null 2>"$tmp/missing-transaction.err"; then
+    fail "acceptance manifest missing transaction plan unexpectedly passed validation"
+  fi
+  grep -Fq "missing artifacts.transaction_plan" "$tmp/missing-transaction.err" || fail "missing transaction plan failed for the wrong reason"
+
+  local private_material="$tmp/astria-release-acceptance-private.json"
+  cp "$valid" "$private_material"
+  node - <<'NODE' "$private_material"
+const fs = require("fs");
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, "utf8"));
+data.private_material.updater_private_key_committed = "AuthKey_DO_NOT_COMMIT.p8";
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
+NODE
+  if (assert_astria_release_acceptance_manifest "$private_material") >/dev/null 2>"$tmp/private.err"; then
+    fail "acceptance manifest with private material unexpectedly passed validation"
+  fi
+  grep -Fq "private material reference private_material.updater_private_key_committed" "$tmp/private.err" || fail "private material failed for the wrong reason"
+}
+
 find_one() {
   local pattern="$1"
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
@@ -835,6 +1000,12 @@ if "$RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE"; then
+  run_astria_release_acceptance_gates_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
@@ -843,6 +1014,7 @@ if "$NPM_ONLY"; then
     run_astria_compatibility_manifest_smoke
     run_astria_updater_rollback_health_gates_smoke
     run_astria_updater_transaction_plan_smoke
+    run_astria_release_acceptance_gates_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -891,6 +1063,7 @@ if "$ASTRIA_LOCAL"; then
   run_astria_compatibility_manifest_smoke
   run_astria_updater_rollback_health_gates_smoke
   run_astria_updater_transaction_plan_smoke
+  run_astria_release_acceptance_gates_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi
