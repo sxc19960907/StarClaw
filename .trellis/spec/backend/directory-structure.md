@@ -172,6 +172,13 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - When the shell starts the daemon itself, it must pass paired `--rpc-socket`
   and `--rpc-pidfile` arguments and validate Desktop RPC `system.capabilities`
   before declaring the desktop handshake ready.
+- After a successful Desktop RPC handshake, the shell must keep a long-lived
+  app-side session monitor. The monitor may use `system.capabilities` probes
+  until a richer event stream exists, but it must distinguish connected,
+  reconnecting, degraded, and compatibility-mismatch states.
+- Desktop RPC reconnect attempts must be bounded and cancellable. Restarting
+  daemon supervision must cancel stale health/RPC monitor tasks before starting
+  new ones.
 - If an already-running daemon is HTTP-healthy but lacks usable Desktop RPC,
   the shell may attach in degraded HTTP fallback mode while surfacing that state
   to the user.
@@ -201,6 +208,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   desktop-ready and surfaces a mismatch diagnostic.
 - Desktop RPC missing `system.ping` or `system.capabilities` -> shell blocks
   desktop-ready and surfaces a missing capability diagnostic.
+- Desktop RPC disconnect after initial handshake -> shell retries within its
+  configured bound, then keeps the Web UI usable through degraded HTTP fallback
+  if daemon health is still available.
+- Desktop RPC protocol/version mismatch after initial handshake -> shell
+  surfaces compatibility mismatch and does not spin retries against the same
+  daemon.
 - Dead or malformed pidfile under the Astria runtime directory -> shell removes
   scoped pidfile/socket artifacts before relaunch.
 - Live pidfile under the Astria runtime directory -> shell does not remove
@@ -221,7 +234,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 
 - Good: `scripts/smoke_macos_astria_shell.sh` builds an unsigned `Astria.app`,
   verifies bundle structure, bundled daemon layout, route recovery, and daemon
-  supervision through a temporary daemon binary.
+  supervision through a temporary daemon binary. It also validates Desktop RPC
+  capabilities, fallback cleanup, and session lifecycle smoke paths.
 - Base: user opens the unsigned app shell, which reuses an already-running
   daemon or starts a local daemon, then restores the last same-origin `/app`
   route.
@@ -233,8 +247,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Run `scripts/smoke_macos_astria_shell.sh` on macOS when the shell changes.
   The smoke must cover bundle structure, route recovery, daemon supervision,
   attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
-  stale Desktop RPC artifact recovery, unsafe cleanup refusal, and launch
-  failure.
+  stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
+  session connected/retry/mismatch behavior, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
   when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect

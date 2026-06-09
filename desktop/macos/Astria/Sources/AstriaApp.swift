@@ -13,6 +13,9 @@ private enum AstriaDefaults {
     static let startupTimeoutSeconds: TimeInterval = 5
     static let healthProbeTimeoutSeconds: TimeInterval = 0.5
     static let healthPollIntervalSeconds: TimeInterval = 0.12
+    static let desktopRPCPollIntervalSeconds: TimeInterval = 2.0
+    static let desktopRPCRetryDelaySeconds: TimeInterval = 0.25
+    static let desktopRPCRetryLimit = 3
 }
 
 @main
@@ -28,6 +31,9 @@ struct AstriaApp: App {
         }
         if CommandLine.arguments.contains("--desktop-rpc-fallback-smoke") {
             Foundation.exit(AstriaDesktopRPCFallbackSmoke.run())
+        }
+        if CommandLine.arguments.contains("--desktop-rpc-session-smoke") {
+            Foundation.exit(AstriaDesktopRPCSessionSmoke.run())
         }
         if CommandLine.arguments.contains("--supervision-smoke") {
             Foundation.exit(AstriaSupervisorSmoke.run())
@@ -68,6 +74,9 @@ struct LaunchConfig {
     let startupTimeout: TimeInterval
     let healthProbeTimeout: TimeInterval
     let healthPollInterval: TimeInterval
+    let desktopRPCPollInterval: TimeInterval
+    let desktopRPCRetryDelay: TimeInterval
+    let desktopRPCRetryLimit: Int
 
     static func fromProcess(
         arguments: [String] = CommandLine.arguments,
@@ -90,6 +99,21 @@ struct LaunchConfig {
                 ?? environment["ASTRIA_STARTUP_TIMEOUT"],
             defaultValue: AstriaDefaults.startupTimeoutSeconds
         )
+        let rpcPollInterval = timeIntervalValue(
+            firstValue(after: "--desktop-rpc-poll-interval", in: arguments)
+                ?? environment["ASTRIA_DESKTOP_RPC_POLL_INTERVAL"],
+            defaultValue: AstriaDefaults.desktopRPCPollIntervalSeconds
+        )
+        let rpcRetryDelay = timeIntervalValue(
+            firstValue(after: "--desktop-rpc-retry-delay", in: arguments)
+                ?? environment["ASTRIA_DESKTOP_RPC_RETRY_DELAY"],
+            defaultValue: AstriaDefaults.desktopRPCRetryDelaySeconds
+        )
+        let rpcRetryLimit = intValue(
+            firstValue(after: "--desktop-rpc-retry-limit", in: arguments)
+                ?? environment["ASTRIA_DESKTOP_RPC_RETRY_LIMIT"],
+            defaultValue: AstriaDefaults.desktopRPCRetryLimit
+        )
 
         return LaunchConfig(
             webURL: URL(string: webURLString) ?? URL(string: AstriaDefaults.webURL)!,
@@ -103,7 +127,10 @@ struct LaunchConfig {
             appVersion: bundleVersion(),
             startupTimeout: startupTimeout,
             healthProbeTimeout: AstriaDefaults.healthProbeTimeoutSeconds,
-            healthPollInterval: AstriaDefaults.healthPollIntervalSeconds
+            healthPollInterval: AstriaDefaults.healthPollIntervalSeconds,
+            desktopRPCPollInterval: rpcPollInterval,
+            desktopRPCRetryDelay: rpcRetryDelay,
+            desktopRPCRetryLimit: rpcRetryLimit
         )
     }
 
@@ -120,6 +147,13 @@ struct LaunchConfig {
 
     private static func timeIntervalValue(_ value: String?, defaultValue: TimeInterval) -> TimeInterval {
         guard let value, let parsed = TimeInterval(value), parsed > 0 else {
+            return defaultValue
+        }
+        return parsed
+    }
+
+    private static func intValue(_ value: String?, defaultValue: Int) -> Int {
+        guard let value, let parsed = Int(value), parsed > 0 else {
             return defaultValue
         }
         return parsed
@@ -357,15 +391,26 @@ enum DaemonState: Equatable {
     }
 }
 
+enum DesktopRPCSessionState: Equatable {
+    case idle
+    case connecting
+    case connected
+    case reconnecting(Int)
+    case degraded(String)
+    case mismatch(String)
+}
+
 @MainActor
 final class DaemonSupervisor: ObservableObject {
     @Published private(set) var state: DaemonState = .idle
+    @Published private(set) var desktopRPCSessionState: DesktopRPCSessionState = .idle
     @Published private(set) var recoveryGeneration = 0
 
     private let config: LaunchConfig
     private var childProcess: Process?
     private var launchTask: Task<Void, Never>?
     private var healthMonitorTask: Task<Void, Never>?
+    private var desktopRPCMonitorTask: Task<Void, Never>?
 
     init(config: LaunchConfig) {
         self.config = config
@@ -373,6 +418,8 @@ final class DaemonSupervisor: ObservableObject {
 
     func start() {
         launchTask?.cancel()
+        healthMonitorTask?.cancel()
+        stopDesktopRPCMonitor()
         launchTask = Task { [weak self] in
             guard let self else {
                 return
@@ -398,6 +445,7 @@ final class DaemonSupervisor: ObservableObject {
                 return
             }
             state = .attached
+            startDesktopRPCMonitor()
             startHealthMonitor()
             return
         }
@@ -421,6 +469,7 @@ final class DaemonSupervisor: ObservableObject {
                 return
             }
             state = .attached
+            startDesktopRPCMonitor()
             startHealthMonitor()
             return
         }
@@ -442,6 +491,7 @@ final class DaemonSupervisor: ObservableObject {
 
     private func handleDaemonExit(status: Int32) {
         childProcess = nil
+        stopDesktopRPCMonitor()
         if state == .attached {
             state = .crashed("The daemon process started by Astria exited with status \(status). Retry to start it again.")
         }
@@ -473,12 +523,92 @@ final class DaemonSupervisor: ObservableObject {
     }
 
     private func reconcileDesktopRPC() async throws {
+        desktopRPCSessionState = .connecting
         let socketPath = config.desktopRPCSocketPath
         let appVersion = config.appVersion
         try await Task.detached(priority: .userInitiated) {
             let capabilities = try DesktopRPCClient(socketPath: socketPath).systemCapabilities()
             try DesktopRPCReconciler.validate(capabilities: capabilities, appVersion: appVersion)
         }.value
+        desktopRPCSessionState = .connected
+    }
+
+    private func startDesktopRPCMonitor() {
+        desktopRPCMonitorTask?.cancel()
+        desktopRPCMonitorTask = Task { [weak self] in
+            guard let self else {
+                return
+            }
+            await self.monitorDesktopRPC()
+        }
+    }
+
+    private func stopDesktopRPCMonitor() {
+        desktopRPCMonitorTask?.cancel()
+        desktopRPCMonitorTask = nil
+        desktopRPCSessionState = .idle
+    }
+
+    private func monitorDesktopRPC() async {
+        let pollNanoseconds = UInt64(max(config.desktopRPCPollInterval, 0.1) * 1_000_000_000)
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+            if Task.isCancelled {
+                return
+            }
+            let result = await DesktopRPCSessionProbe.probe(
+                socketPath: config.desktopRPCSocketPath,
+                appVersion: config.appVersion
+            )
+            switch result {
+            case .connected:
+                desktopRPCSessionState = .connected
+                if case .degraded = state, await isHealthy() {
+                    state = .attached
+                }
+            case .mismatch(let message):
+                desktopRPCSessionState = .mismatch(message)
+                state = .degraded("Desktop RPC compatibility mismatch; Astria is using HTTP fallback. \(message)")
+                return
+            case .recoverableFailure(let message):
+                let recovered = await retryDesktopRPC(after: message)
+                if !recovered {
+                    return
+                }
+            }
+        }
+    }
+
+    private func retryDesktopRPC(after message: String) async -> Bool {
+        let result = await DesktopRPCSessionRecovery.recover(
+            socketPath: config.desktopRPCSocketPath,
+            appVersion: config.appVersion,
+            retryLimit: config.desktopRPCRetryLimit,
+            retryDelay: config.desktopRPCRetryDelay
+        ) { attempt in
+            await MainActor.run {
+                self.desktopRPCSessionState = .reconnecting(attempt)
+            }
+        }
+        switch result {
+        case .connected:
+            desktopRPCSessionState = .connected
+            if case .degraded = state, await isHealthy() {
+                state = .attached
+            }
+            return true
+        case .mismatch(let message):
+            desktopRPCSessionState = .mismatch(message)
+            state = .degraded("Desktop RPC compatibility mismatch; Astria is using HTTP fallback. \(message)")
+            return false
+        case .recoverableFailure(let recoveredMessage):
+            let degradedMessage = "Desktop RPC disconnected; Astria is using the healthy daemon over HTTP fallback. \(message); \(recoveredMessage)"
+            desktopRPCSessionState = .degraded(degradedMessage)
+            if await isHealthy() {
+                state = .degraded(degradedMessage)
+            }
+            return false
+        }
     }
 
     private func startHealthMonitor() {
@@ -728,6 +858,62 @@ enum DesktopRPCError: LocalizedError {
         case .unsafeArtifactPath(let path):
             return "Refusing to remove Desktop RPC artifact outside Astria runtime ownership: \(path)"
         }
+    }
+}
+
+enum DesktopRPCSessionProbeResult: Equatable {
+    case connected
+    case recoverableFailure(String)
+    case mismatch(String)
+}
+
+enum DesktopRPCSessionProbe {
+    static func probe(socketPath: String, appVersion: String) async -> DesktopRPCSessionProbeResult {
+        await Task.detached(priority: .utility) {
+            do {
+                let capabilities = try DesktopRPCClient(socketPath: socketPath).systemCapabilities()
+                try DesktopRPCReconciler.validate(capabilities: capabilities, appVersion: appVersion)
+                return .connected
+            } catch let error as DesktopRPCError {
+                switch error {
+                case .protocolMismatch, .missingMethod, .versionMismatch:
+                    return .mismatch(error.localizedDescription)
+                default:
+                    return .recoverableFailure(error.localizedDescription)
+                }
+            } catch {
+                return .recoverableFailure(error.localizedDescription)
+            }
+        }.value
+    }
+}
+
+enum DesktopRPCSessionRecovery {
+    static func recover(
+        socketPath: String,
+        appVersion: String,
+        retryLimit: Int,
+        retryDelay: TimeInterval,
+        onAttempt: @escaping (Int) async -> Void = { _ in }
+    ) async -> DesktopRPCSessionProbeResult {
+        let attempts = max(retryLimit, 1)
+        let delay = UInt64(max(retryDelay, 0.05) * 1_000_000_000)
+        var lastResult: DesktopRPCSessionProbeResult = .recoverableFailure("Desktop RPC reconnect did not run")
+        for attempt in 1...attempts {
+            await onAttempt(attempt)
+            try? await Task.sleep(nanoseconds: delay)
+            if Task.isCancelled {
+                return .recoverableFailure("Desktop RPC reconnect cancelled")
+            }
+            let result = await DesktopRPCSessionProbe.probe(socketPath: socketPath, appVersion: appVersion)
+            switch result {
+            case .connected, .mismatch:
+                return result
+            case .recoverableFailure:
+                lastResult = result
+            }
+        }
+        return lastResult
     }
 }
 
@@ -1028,6 +1214,203 @@ enum AstriaDesktopRPCSmoke {
             return true
         } catch {
             return false
+        }
+    }
+}
+
+enum AstriaDesktopRPCSessionSmoke {
+    static func run() -> Int32 {
+        let runtime = "/tmp/astria-session-\(getpid())-\(UUID().uuidString.prefix(8))"
+        let socketPath = (runtime as NSString).appendingPathComponent(AstriaDefaults.desktopRPCSocketName)
+        defer {
+            try? FileManager.default.removeItem(atPath: runtime)
+        }
+
+        do {
+            try FileManager.default.createDirectory(atPath: runtime, withIntermediateDirectories: true)
+            try runCapabilitiesServer(socketPath: socketPath, protocolVersion: AstriaDefaults.desktopRPCProtocolVersion)
+            let connected = awaitProbe(socketPath: socketPath, appVersion: "0.0.0")
+            guard connected == .connected else {
+                fputs("Astria Desktop RPC session smoke did not connect: \(connected)\n", stderr)
+                return 1
+            }
+
+            let missing = awaitProbe(socketPath: socketPath, appVersion: "0.0.0")
+            guard case .recoverableFailure = missing else {
+                fputs("Astria Desktop RPC session smoke did not classify missing socket as recoverable: \(missing)\n", stderr)
+                return 1
+            }
+            let recoveredMissing = awaitRecover(socketPath: socketPath, retryLimit: 2)
+            guard case .recoverableFailure = recoveredMissing.result, recoveredMissing.attempts == [1, 2] else {
+                fputs("Astria Desktop RPC session smoke did not bound reconnect attempts: \(recoveredMissing)\n", stderr)
+                return 1
+            }
+
+            try runCapabilitiesServer(socketPath: socketPath, protocolVersion: "9.9.9")
+            let mismatch = awaitProbe(socketPath: socketPath, appVersion: "0.0.0")
+            guard case .mismatch = mismatch else {
+                fputs("Astria Desktop RPC session smoke did not classify protocol mismatch: \(mismatch)\n", stderr)
+                return 1
+            }
+        } catch {
+            fputs("Astria Desktop RPC session smoke failed: \(error.localizedDescription)\n", stderr)
+            return 1
+        }
+
+        return 0
+    }
+
+    private static func awaitProbe(socketPath: String, appVersion: String) -> DesktopRPCSessionProbeResult {
+        let semaphore = DispatchSemaphore(value: 0)
+        final class Box {
+            var result: DesktopRPCSessionProbeResult = .recoverableFailure("probe did not complete")
+        }
+        let box = Box()
+        Task {
+            box.result = await DesktopRPCSessionProbe.probe(socketPath: socketPath, appVersion: appVersion)
+            semaphore.signal()
+        }
+        if semaphore.wait(timeout: .now() + 5) == .timedOut {
+            return .recoverableFailure("probe timed out")
+        }
+        return box.result
+    }
+
+    private static func awaitRecover(socketPath: String, retryLimit: Int) -> (result: DesktopRPCSessionProbeResult, attempts: [Int]) {
+        let semaphore = DispatchSemaphore(value: 0)
+        final class Box {
+            var result: DesktopRPCSessionProbeResult = .recoverableFailure("recovery did not complete")
+            var attempts: [Int] = []
+        }
+        let box = Box()
+        Task {
+            box.result = await DesktopRPCSessionRecovery.recover(
+                socketPath: socketPath,
+                appVersion: "0.0.0",
+                retryLimit: retryLimit,
+                retryDelay: 0.05
+            ) { attempt in
+                box.attempts.append(attempt)
+            }
+            semaphore.signal()
+        }
+        if semaphore.wait(timeout: .now() + 5) == .timedOut {
+            return (.recoverableFailure("recovery timed out"), box.attempts)
+        }
+        return (box.result, box.attempts)
+    }
+
+    private static func runCapabilitiesServer(socketPath: String, protocolVersion: String) throws {
+        let maxPathLength = MemoryLayout.size(ofValue: sockaddr_un().sun_path)
+        guard socketPath.utf8.count < maxPathLength else {
+            throw DesktopRPCError.socketPathTooLong(socketPath)
+        }
+        try? FileManager.default.removeItem(atPath: socketPath)
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else {
+            throw DesktopRPCError.connectFailed(socketPath)
+        }
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = Array(socketPath.utf8) + [0]
+        withUnsafeMutableBytes(of: &address.sun_path) { rawBuffer in
+            rawBuffer.copyBytes(from: pathBytes)
+        }
+        let length = socklen_t(MemoryLayout<sa_family_t>.size + pathBytes.count)
+        let bindResult = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.bind(fd, $0, length)
+            }
+        }
+        guard bindResult == 0 else {
+            close(fd)
+            throw DesktopRPCError.connectFailed(socketPath)
+        }
+        guard listen(fd, 1) == 0 else {
+            close(fd)
+            throw DesktopRPCError.connectFailed(socketPath)
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let conn = accept(fd, nil, nil)
+            defer {
+                close(fd)
+                try? FileManager.default.removeItem(atPath: socketPath)
+            }
+            guard conn >= 0 else {
+                return
+            }
+            defer {
+                close(conn)
+            }
+            guard let request = try? readFrame(from: conn),
+                  let payload = request["payload"] as? [String: Any],
+                  let requestID = payload["request_id"] as? String
+            else {
+                return
+            }
+            let response: [String: Any] = [
+                "type": "desktop_rpc_result",
+                "payload": [
+                    "request_id": requestID,
+                    "ok": true,
+                    "result": [
+                        "version": protocolVersion,
+                        "methods": ["system.ping", "system.capabilities"],
+                        "platform": [
+                            "os": "macOS",
+                            "os_version": "",
+                            "app_version": "dev",
+                        ],
+                    ],
+                ],
+            ]
+            try? writeFrame(response, to: conn)
+        }
+    }
+
+    private static func readFrame(from fd: Int32) throws -> [String: Any] {
+        let header = try readExact(4, from: fd)
+        let length = header.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        let body = try readExact(Int(length), from: fd)
+        guard let object = try JSONSerialization.jsonObject(with: Data(body)) as? [String: Any] else {
+            throw DesktopRPCError.invalidFrame
+        }
+        return object
+    }
+
+    private static func readExact(_ count: Int, from fd: Int32) throws -> [UInt8] {
+        var buffer = [UInt8](repeating: 0, count: count)
+        var offset = 0
+        while offset < count {
+            let result = buffer.withUnsafeMutableBytes { rawBuffer in
+                Darwin.read(fd, rawBuffer.baseAddress!.advanced(by: offset), count - offset)
+            }
+            guard result > 0 else {
+                throw DesktopRPCError.readFailed
+            }
+            offset += result
+        }
+        return buffer
+    }
+
+    private static func writeFrame(_ frame: [String: Any], to fd: Int32) throws {
+        let body = try JSONSerialization.data(withJSONObject: frame)
+        var length = UInt32(body.count).bigEndian
+        var data = Data(bytes: &length, count: 4)
+        data.append(body)
+        try data.withUnsafeBytes { rawBuffer in
+            guard let base = rawBuffer.baseAddress else {
+                throw DesktopRPCError.writeFailed
+            }
+            var sent = 0
+            while sent < rawBuffer.count {
+                let result = Darwin.write(fd, base.advanced(by: sent), rawBuffer.count - sent)
+                guard result > 0 else {
+                    throw DesktopRPCError.writeFailed
+                }
+                sent += result
+            }
         }
     }
 }

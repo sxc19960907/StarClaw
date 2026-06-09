@@ -47,6 +47,9 @@ echo "==> checking Astria Desktop RPC validation"
 echo "==> checking Astria Desktop RPC fallback recovery"
 "$app_path/Contents/MacOS/Astria" --desktop-rpc-fallback-smoke
 
+echo "==> checking Astria Desktop RPC session lifecycle"
+"$app_path/Contents/MacOS/Astria" --desktop-rpc-session-smoke
+
 mkdir -p "$SMOKE_HOME/.starclaw"
 cat > "$SMOKE_HOME/.starclaw/config.yaml" <<'YAML'
 provider: ollama
