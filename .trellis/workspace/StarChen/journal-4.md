@@ -731,3 +731,36 @@ Added credential-free Astria release compatibility manifest generation and valid
 ### Next Steps
 
 - None - task complete
+
+
+## Session 165: Astria local crash artifact collection
+
+**Date**: 2026-06-09
+**Task**: Astria local crash artifact collection
+**Branch**: `main`
+
+### Summary
+
+Added a user-triggered Astria crash artifact export boundary. The native shell now lets users select local crash files, writes local-only redacted support JSON, refuses unapproved collection in smoke coverage, and extends diagnostics redaction for Desktop RPC payloads and private local paths. Validation passed with Trellis task validation, macOS Astria smoke, release artifact validation, focused Go tests, go test ./..., and git diff --check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a28c597` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
