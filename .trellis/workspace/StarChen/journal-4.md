@@ -698,3 +698,36 @@ Added Astria updater metadata dry-run validation with verified_dry_run decisions
 ### Next Steps
 
 - None - task complete
+
+
+## Session 164: Astria release compatibility manifests
+
+**Date**: 2026-06-09
+**Task**: Astria release compatibility manifests
+**Branch**: `main`
+
+### Summary
+
+Added credential-free Astria release compatibility manifest generation and validation to release checks. The manifest records app version/build, daemon version, source tag, local-only and replacement-disabled state, rejects missing/mismatched app-daemon versions, adds manifest smoke coverage to --astria-local validation, and updates release/install/Astria docs plus backend spec.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `796d1b7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
