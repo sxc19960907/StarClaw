@@ -1964,3 +1964,36 @@ Implemented Astria macOS packaging boundary support: optional bundled daemon cop
 ### Next Steps
 
 - None - task complete
+
+
+## Session 142: Astria Kocoro parity phase 13 closeout
+
+**Date**: 2026-06-09
+**Task**: Astria Kocoro parity phase 13 closeout
+**Branch**: `main`
+
+### Summary
+
+Closed Phase13 after all four standalone desktop shell children were archived. Recorded final Kocoro gap review: Astria now has a thin macOS shell, daemon supervision, window recovery, bundled-daemon packaging boundary, and unsigned smoke validation; remaining gap is Desktop RPC pidfile/socket capability reconciliation, runtime version enforcement, signed distribution, updater, and deeper native OS integrations.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f8c8eb2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
