@@ -995,3 +995,36 @@ Added a sandbox-only post-update health rehearsal for fake Astria.app fixtures w
 ### Next Steps
 
 - None - task complete
+
+
+## Session 173: Astria sandbox updater rollback rehearsal
+
+**Date**: 2026-06-09
+**Task**: Astria sandbox updater rollback rehearsal
+**Branch**: `main`
+
+### Summary
+
+Added a sandbox-only failed staged replacement rollback rehearsal for fake Astria.app fixtures. The smoke snapshots the previous install fixture, simulates candidate validation failure, restores the previous fixture as active install, verifies the failed candidate is not left active, rejects outside-sandbox rollback state, and is included in Astria local release validation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `30eaf70` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
