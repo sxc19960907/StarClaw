@@ -250,66 +250,7 @@
               <button type="button" data-home-action="mcp">MCP</button>
             </div>
 
-            <div class="strategy-matrix" aria-label="Strategy matrix">
-              <div class="section-heading compact">
-                <span>Strategy Matrix</span>
-                <strong>选择执行策略</strong>
-              </div>
-              <div class="strategy-grid" id="strategy-matrix">
-                <button type="button" data-strategy="direct"><span>Fast</span><strong>Quick Run</strong><small>直接进入本地执行。</small></button>
-                <button type="button" data-strategy="research"><span>Deep</span><strong>Research Brief</strong><small>先形成证据链和判断。</small></button>
-                <button type="button" data-strategy="council"><span>Swarm</span><strong>Agent Council</strong><small>拆给多智能体协作。</small></button>
-                <button type="button" data-strategy="guarded"><span>Gate</span><strong>Human Approval</strong><small>高风险动作先排队审查。</small></button>
-                <button type="button" data-strategy="memory"><span>Recall</span><strong>Memory Capture</strong><small>先沉淀上下文再继续。</small></button>
-                <button type="button" data-strategy="tooling"><span>Tools</span><strong>MCP Tooling</strong><small>检查工具 dock 和能力。</small></button>
-              </div>
-              <div class="strategy-brief" id="strategy-brief" aria-live="polite">
-                <div>
-                  <span class="board-kicker">Strategy</span>
-                  <strong>默认使用 Quick Run。</strong>
-                </div>
-                <p>策略会决定 Astria 如何组织上下文、审批、工具和多智能体协作。</p>
-              </div>
-            </div>
-
-            <div class="workflow-recipes" aria-label="Workflow recipes">
-              <div class="section-heading compact">
-                <span>Workflow Recipes</span>
-                <strong>选择一个工作流起点</strong>
-              </div>
-              <div class="recipe-grid" id="workflow-recipes">
-                <button type="button" data-recipe="code-review"><span>Review</span><strong>代码评审</strong><small>检查改动、风险和测试缺口。</small></button>
-                <button type="button" data-recipe="feature-plan"><span>Plan</span><strong>功能规划</strong><small>拆解 PRD、设计和实施路径。</small></button>
-                <button type="button" data-recipe="file-intake"><span>Files</span><strong>文件理解</strong><small>读取文档或归档后再进入任务。</small></button>
-                <button type="button" data-recipe="research-brief"><span>Research</span><strong>调研简报</strong><small>形成带证据链的结论。</small></button>
-                <button type="button" data-recipe="mcp-setup"><span>MCP</span><strong>工具接入</strong><small>规划并测试新的 MCP dock。</small></button>
-                <button type="button" data-recipe="inbox-triage"><span>Inbox</span><strong>任务分拣</strong><small>审核外部任务并转成运行。</small></button>
-                <button type="button" data-recipe="memory-update"><span>Memory</span><strong>记忆更新</strong><small>提炼决策、偏好和风险。</small></button>
-              </div>
-              <div class="workflow-brief" id="workflow-brief" aria-live="polite">
-                <div>
-                  <span class="board-kicker">Workflow brief</span>
-                  <strong>选择一个工作流，Astria 会生成可执行简报。</strong>
-                </div>
-                <p>简报会把目标、上下文材料、关联面板和下一步检查点放在同一个工作包里。</p>
-              </div>
-            </div>
-
-            <div class="prompt-suggestion-dock" aria-label="Prompt Suggestion Dock">
-              <div class="section-heading compact">
-                <span>Prompt Suggestion Dock</span>
-                <strong>下一步提示建议</strong>
-              </div>
-              <div class="prompt-suggestion-grid" id="prompt-suggestion-dock">
-                <button type="button" data-home-prompt="Continue the current Astria mission. Review the workspace state, identify the next useful action, and explain the validation needed.">
-                  <span>Loading</span>
-                  <strong>正在生成下一步提示</strong>
-                  <small>Astria 会从当前工作区状态里整理可直接使用的 prompt。</small>
-                </button>
-              </div>
-            </div>
-
-            <div class="mission-board" aria-label="Recommended next actions">
+            <div class="mission-board primary-mission-board" aria-label="Recommended next actions">
               <div class="board-section">
                 <span class="board-kicker">Next orbit</span>
                 <button class="board-run" type="button" id="home-latest-run" data-panel="runs">
@@ -332,64 +273,7 @@
               </div>
             </div>
 
-            <div class="workspace-hub" aria-label="Workspace session hub">
-              <div class="section-heading compact">
-                <span>Workspace Hub</span>
-                <strong>当前工作区上下文</strong>
-              </div>
-              <div class="workspace-hub-grid" id="workspace-session-hub">
-                <button type="button" data-panel="chat">
-                  <span>Session</span>
-                  <strong>等待会话</strong>
-                  <small>最近会话会显示在这里。</small>
-                </button>
-                <button type="button" data-panel="runs">
-                  <span>Runs</span>
-                  <strong>Mission Control</strong>
-                  <small>运行健康度会在加载后更新。</small>
-                </button>
-                <button type="button" data-panel="memory">
-                  <span>Memory</span>
-                  <strong>记忆星图</strong>
-                  <small>记忆状态会在加载后更新。</small>
-                </button>
-                <button type="button" data-panel="intake">
-                  <span>Files</span>
-                  <strong>文件星舱</strong>
-                  <small>本地文件入口。</small>
-                </button>
-              </div>
-            </div>
-
-            <div class="knowledge-curation" aria-label="Knowledge curation console">
-              <div class="section-heading compact">
-                <span>Knowledge Curation</span>
-                <strong>长期上下文沉淀</strong>
-              </div>
-              <div class="knowledge-curation-grid" id="knowledge-curation-grid">
-                <button type="button" data-panel="memory">
-                  <span>Loading</span>
-                  <strong>正在整理知识候选</strong>
-                  <small>Astria 会从记忆、会话和运行中汇总可审核上下文。</small>
-                </button>
-              </div>
-            </div>
-
-            <div class="tool-dock-inspector" aria-label="Tool Dock Inspector">
-              <div class="section-heading compact">
-                <span>Tool Dock Inspector</span>
-                <strong>MCP 能力检查</strong>
-              </div>
-              <div class="tool-dock-grid" id="tool-dock-inspector-grid">
-                <button type="button" data-panel="mcp">
-                  <span>Loading</span>
-                  <strong>正在检查工具 dock</strong>
-                  <small>Astria 会从 MCP 配置中汇总工具能力和连接状态。</small>
-                </button>
-              </div>
-            </div>
-
-            <div class="focus-brief" id="focus-brief" aria-label="Current mission focus">
+            <div class="focus-brief primary-focus-brief" id="focus-brief" aria-label="Current mission focus">
               <div>
                 <span class="board-kicker">Focus Brief</span>
                 <strong>当前任务焦点</strong>
@@ -397,78 +281,229 @@
               <p>选择工作流或恢复最近工作后，这里会汇总阶段、会话、运行和下一步动作。</p>
             </div>
 
-            <div class="approval-center" aria-label="Approval Center">
-              <div class="section-heading compact">
-                <span>Approval Center</span>
-                <strong>人工确认控制台</strong>
-              </div>
-              <div class="approval-center-grid" id="approval-center-grid">
-                <button type="button" data-panel="permissions">
-                  <span>Loading</span>
-                  <strong>正在汇总审批和风险</strong>
-                  <small>Astria 会从确认请求、权限、诊断、收件箱和运行状态中建立控制台。</small>
-                </button>
-              </div>
-            </div>
+            <div class="home-disclosure-stack" aria-label="Secondary workbench areas">
+              <details class="home-disclosure" id="home-planning-disclosure">
+                <summary>
+                  <span>
+                    <small>Plan</small>
+                    <strong>策略、工作流和提示建议</strong>
+                  </span>
+                  <em>展开</em>
+                </summary>
+                <div class="home-disclosure-content">
+                  <div class="strategy-matrix" aria-label="Strategy matrix">
+                    <div class="section-heading compact">
+                      <span>Strategy Matrix</span>
+                      <strong>选择执行策略</strong>
+                    </div>
+                    <div class="strategy-grid" id="strategy-matrix">
+                      <button type="button" data-strategy="direct"><span>Fast</span><strong>Quick Run</strong><small>直接进入本地执行。</small></button>
+                      <button type="button" data-strategy="research"><span>Deep</span><strong>Research Brief</strong><small>先形成证据链和判断。</small></button>
+                      <button type="button" data-strategy="council"><span>Swarm</span><strong>Agent Council</strong><small>拆给多智能体协作。</small></button>
+                      <button type="button" data-strategy="guarded"><span>Gate</span><strong>Human Approval</strong><small>高风险动作先排队审查。</small></button>
+                      <button type="button" data-strategy="memory"><span>Recall</span><strong>Memory Capture</strong><small>先沉淀上下文再继续。</small></button>
+                      <button type="button" data-strategy="tooling"><span>Tools</span><strong>MCP Tooling</strong><small>检查工具 dock 和能力。</small></button>
+                    </div>
+                    <div class="strategy-brief" id="strategy-brief" aria-live="polite">
+                      <div>
+                        <span class="board-kicker">Strategy</span>
+                        <strong>默认使用 Quick Run。</strong>
+                      </div>
+                      <p>策略会决定 Astria 如何组织上下文、审批、工具和多智能体协作。</p>
+                    </div>
+                  </div>
 
-            <div class="review-queue" aria-label="Review queue next actions">
-              <div class="section-heading compact">
-                <span>Review Queue</span>
-                <strong>待处理队列</strong>
-              </div>
-              <div class="review-queue-list" id="review-queue-list">
-                <button type="button" data-panel="diagnostics">
-                  <span>Loading</span>
-                  <strong>正在校准下一步动作</strong>
-                  <small>Astria 会从运行、收件箱、记忆和工作区状态中聚合事项。</small>
-                </button>
-              </div>
-            </div>
+                  <div class="workflow-recipes" aria-label="Workflow recipes">
+                    <div class="section-heading compact">
+                      <span>Workflow Recipes</span>
+                      <strong>选择一个工作流起点</strong>
+                    </div>
+                    <div class="recipe-grid" id="workflow-recipes">
+                      <button type="button" data-recipe="code-review"><span>Review</span><strong>代码评审</strong><small>检查改动、风险和测试缺口。</small></button>
+                      <button type="button" data-recipe="feature-plan"><span>Plan</span><strong>功能规划</strong><small>拆解 PRD、设计和实施路径。</small></button>
+                      <button type="button" data-recipe="file-intake"><span>Files</span><strong>文件理解</strong><small>读取文档或归档后再进入任务。</small></button>
+                      <button type="button" data-recipe="research-brief"><span>Research</span><strong>调研简报</strong><small>形成带证据链的结论。</small></button>
+                      <button type="button" data-recipe="mcp-setup"><span>MCP</span><strong>工具接入</strong><small>规划并测试新的 MCP dock。</small></button>
+                      <button type="button" data-recipe="inbox-triage"><span>Inbox</span><strong>任务分拣</strong><small>审核外部任务并转成运行。</small></button>
+                      <button type="button" data-recipe="memory-update"><span>Memory</span><strong>记忆更新</strong><small>提炼决策、偏好和风险。</small></button>
+                    </div>
+                    <div class="workflow-brief" id="workflow-brief" aria-live="polite">
+                      <div>
+                        <span class="board-kicker">Workflow brief</span>
+                        <strong>选择一个工作流，Astria 会生成可执行简报。</strong>
+                      </div>
+                      <p>简报会把目标、上下文材料、关联面板和下一步检查点放在同一个工作包里。</p>
+                    </div>
+                  </div>
 
-            <div class="workspace-health" aria-label="Workspace health strip">
-              <div class="section-heading compact">
-                <span>Workspace Health</span>
-                <strong>运行准备状态</strong>
-              </div>
-              <div class="workspace-health-grid" id="workspace-health-strip">
-                <button type="button" data-panel="diagnostics"><span>Diagnostics</span><strong>Checking</strong><small>Runtime readiness</small></button>
-                <button type="button" data-panel="permissions"><span>Permissions</span><strong>Policy</strong><small>Tool guardrails</small></button>
-                <button type="button" data-panel="mcp"><span>MCP</span><strong>Docks</strong><small>Tool connections</small></button>
-                <button type="button" data-panel="memory"><span>Memory</span><strong>Context</strong><small>Durable facts</small></button>
-              </div>
-            </div>
+                  <div class="prompt-suggestion-dock" aria-label="Prompt Suggestion Dock">
+                    <div class="section-heading compact">
+                      <span>Prompt Suggestion Dock</span>
+                      <strong>下一步提示建议</strong>
+                    </div>
+                    <div class="prompt-suggestion-grid" id="prompt-suggestion-dock">
+                      <button type="button" data-home-prompt="Continue the current Astria mission. Review the workspace state, identify the next useful action, and explain the validation needed.">
+                        <span>Loading</span>
+                        <strong>正在生成下一步提示</strong>
+                        <small>Astria 会从当前工作区状态里整理可直接使用的 prompt。</small>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </details>
 
-            <div class="constellation-cards">
-              <button class="constellation-card" type="button" data-panel="memory">
-                <span>Memory Map</span>
-                <strong>记忆星图</strong>
-                <small>让 Astria 记住项目中的重要人物、决策和上下文。</small>
-              </button>
-              <button class="constellation-card" type="button" data-panel="runs">
-                <span>Mission Orbit</span>
-                <strong>任务轨道</strong>
-                <small>查看每次运行的状态、工具调用、确认和结果。</small>
-              </button>
-              <button class="constellation-card" type="button" data-panel="mcp">
-                <span>MCP Docking</span>
-                <strong>MCP 星港</strong>
-                <small>连接外部工具，管理权限，并扩展 Astria 能力。</small>
-              </button>
-              <button class="constellation-card" type="button" data-panel="council">
-                <span>Agent Council</span>
-                <strong>智能体议会</strong>
-                <small>把规划、调研和评审意见分开，再汇总成一个可执行方案。</small>
-              </button>
-              <button class="constellation-card" type="button" data-panel="inbox">
-                <span>Channel Inbox</span>
-                <strong>收件星门</strong>
-                <small>外部渠道任务先进入审批队列，再转成可追踪运行。</small>
-              </button>
-              <button class="constellation-card" type="button" data-panel="intake">
-                <span>File Intake</span>
-                <strong>文件星舱</strong>
-                <small>读取本地文档、检查归档内容，再把结果送入普通任务流。</small>
-              </button>
+              <details class="home-disclosure" id="home-context-disclosure">
+                <summary>
+                  <span>
+                    <small>Context</small>
+                    <strong>工作区上下文和工具入口</strong>
+                  </span>
+                  <em>展开</em>
+                </summary>
+                <div class="home-disclosure-content">
+                  <div class="workspace-hub" aria-label="Workspace session hub">
+                    <div class="section-heading compact">
+                      <span>Workspace Hub</span>
+                      <strong>当前工作区上下文</strong>
+                    </div>
+                    <div class="workspace-hub-grid" id="workspace-session-hub">
+                      <button type="button" data-panel="chat">
+                        <span>Session</span>
+                        <strong>等待会话</strong>
+                        <small>最近会话会显示在这里。</small>
+                      </button>
+                      <button type="button" data-panel="runs">
+                        <span>Runs</span>
+                        <strong>Mission Control</strong>
+                        <small>运行健康度会在加载后更新。</small>
+                      </button>
+                      <button type="button" data-panel="memory">
+                        <span>Memory</span>
+                        <strong>记忆星图</strong>
+                        <small>记忆状态会在加载后更新。</small>
+                      </button>
+                      <button type="button" data-panel="intake">
+                        <span>Files</span>
+                        <strong>文件星舱</strong>
+                        <small>本地文件入口。</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="constellation-cards">
+                    <button class="constellation-card" type="button" data-panel="memory">
+                      <span>Memory Map</span>
+                      <strong>记忆星图</strong>
+                      <small>让 Astria 记住项目中的重要人物、决策和上下文。</small>
+                    </button>
+                    <button class="constellation-card" type="button" data-panel="runs">
+                      <span>Mission Orbit</span>
+                      <strong>任务轨道</strong>
+                      <small>查看每次运行的状态、工具调用、确认和结果。</small>
+                    </button>
+                    <button class="constellation-card" type="button" data-panel="mcp">
+                      <span>MCP Docking</span>
+                      <strong>MCP 星港</strong>
+                      <small>连接外部工具，管理权限，并扩展 Astria 能力。</small>
+                    </button>
+                    <button class="constellation-card" type="button" data-panel="council">
+                      <span>Agent Council</span>
+                      <strong>智能体议会</strong>
+                      <small>把规划、调研和评审意见分开，再汇总成一个可执行方案。</small>
+                    </button>
+                    <button class="constellation-card" type="button" data-panel="inbox">
+                      <span>Channel Inbox</span>
+                      <strong>收件星门</strong>
+                      <small>外部渠道任务先进入审批队列，再转成可追踪运行。</small>
+                    </button>
+                    <button class="constellation-card" type="button" data-panel="intake">
+                      <span>File Intake</span>
+                      <strong>文件星舱</strong>
+                      <small>读取本地文档、检查归档内容，再把结果送入普通任务流。</small>
+                    </button>
+                  </div>
+                </div>
+              </details>
+
+              <details class="home-disclosure" id="home-review-disclosure">
+                <summary>
+                  <span>
+                    <small>Review</small>
+                    <strong>知识、审批和运行健康</strong>
+                  </span>
+                  <em>展开</em>
+                </summary>
+                <div class="home-disclosure-content">
+                  <div class="knowledge-curation" aria-label="Knowledge curation console">
+                    <div class="section-heading compact">
+                      <span>Knowledge Curation</span>
+                      <strong>长期上下文沉淀</strong>
+                    </div>
+                    <div class="knowledge-curation-grid" id="knowledge-curation-grid">
+                      <button type="button" data-panel="memory">
+                        <span>Loading</span>
+                        <strong>正在整理知识候选</strong>
+                        <small>Astria 会从记忆、会话和运行中汇总可审核上下文。</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="tool-dock-inspector" aria-label="Tool Dock Inspector">
+                    <div class="section-heading compact">
+                      <span>Tool Dock Inspector</span>
+                      <strong>MCP 能力检查</strong>
+                    </div>
+                    <div class="tool-dock-grid" id="tool-dock-inspector-grid">
+                      <button type="button" data-panel="mcp">
+                        <span>Loading</span>
+                        <strong>正在检查工具 dock</strong>
+                        <small>Astria 会从 MCP 配置中汇总工具能力和连接状态。</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="approval-center" aria-label="Approval Center">
+                    <div class="section-heading compact">
+                      <span>Approval Center</span>
+                      <strong>人工确认控制台</strong>
+                    </div>
+                    <div class="approval-center-grid" id="approval-center-grid">
+                      <button type="button" data-panel="permissions">
+                        <span>Loading</span>
+                        <strong>正在汇总审批和风险</strong>
+                        <small>Astria 会从确认请求、权限、诊断、收件箱和运行状态中建立控制台。</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="review-queue" aria-label="Review queue next actions">
+                    <div class="section-heading compact">
+                      <span>Review Queue</span>
+                      <strong>待处理队列</strong>
+                    </div>
+                    <div class="review-queue-list" id="review-queue-list">
+                      <button type="button" data-panel="diagnostics">
+                        <span>Loading</span>
+                        <strong>正在校准下一步动作</strong>
+                        <small>Astria 会从运行、收件箱、记忆和工作区状态中聚合事项。</small>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="workspace-health" aria-label="Workspace health strip">
+                    <div class="section-heading compact">
+                      <span>Workspace Health</span>
+                      <strong>运行准备状态</strong>
+                    </div>
+                    <div class="workspace-health-grid" id="workspace-health-strip">
+                      <button type="button" data-panel="diagnostics"><span>Diagnostics</span><strong>Checking</strong><small>Runtime readiness</small></button>
+                      <button type="button" data-panel="permissions"><span>Permissions</span><strong>Policy</strong><small>Tool guardrails</small></button>
+                      <button type="button" data-panel="mcp"><span>MCP</span><strong>Docks</strong><small>Tool connections</small></button>
+                      <button type="button" data-panel="memory"><span>Memory</span><strong>Context</strong><small>Durable facts</small></button>
+                    </div>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         </section>

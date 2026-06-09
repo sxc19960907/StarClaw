@@ -330,6 +330,13 @@ async function boot(page) {
   await page.goto(`${baseURL}/app/`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Astria Stellar Workbench" }).waitFor();
   await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").waitFor();
+  async function openHomeDisclosure(selector) {
+    const disclosure = page.locator(selector);
+    await disclosure.waitFor();
+    if (!(await disclosure.evaluate((node) => node.open))) {
+      await disclosure.locator("summary").click();
+    }
+  }
   await page.getByRole("button", { name: "Open Command Center" }).click();
   await page.getByLabel("Command search").fill("memory");
   await page.locator("#command-center-list").getByRole("button", { name: /Memory Map/ }).click();
@@ -338,6 +345,7 @@ async function boot(page) {
   await page.getByLabel("Command search").fill("review");
   await page.locator("#command-center-list").getByRole("button", { name: /代码评审/ }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-planning-disclosure");
   await page.locator("#strategy-matrix").getByRole("button", { name: /Research Brief/ }).click();
   const strategyPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
   assert(strategyPrompt.includes("Prepare a research brief"), "research strategy should prefill home prompt");
@@ -347,6 +355,7 @@ async function boot(page) {
   await page.locator("#panel-runs.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-planning-disclosure");
   await page.locator("#prompt-suggestion-dock").getByRole("button", { name: /Research Brief next prompt|Default/ }).click();
   const suggestionPrompt = await page.getByPlaceholder("请输入任务，交给 Astria 来帮您完成").inputValue();
   assert(suggestionPrompt.includes("Prepare a research brief"), "prompt suggestion should seed home prompt");
@@ -357,6 +366,7 @@ async function boot(page) {
   await page.locator("#workflow-stage-rail").getByRole("button", { name: /Running.*Daemon execution/ }).waitFor();
   await page.locator("#focus-brief").getByText("代码评审").waitFor();
   await page.locator("#focus-brief .board-kicker").getByText("draft", { exact: true }).waitFor();
+  await openHomeDisclosure("#home-review-disclosure");
   await page.locator("#workspace-health-strip").getByRole("button", { name: /Diagnostics/ }).waitFor();
   await page.locator("#workspace-health-strip").getByRole("button", { name: /Permissions/ }).waitFor();
   await page.locator("#workspace-health-strip").getByRole("button", { name: /MCP/ }).waitFor();
@@ -364,22 +374,27 @@ async function boot(page) {
   await page.locator("#panel-memory.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-review-disclosure");
   await page.locator("#review-queue-list").getByRole("button", { name: /Permissions/ }).click();
   await page.locator("#panel-permissions.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-review-disclosure");
   await page.locator("#approval-center-grid").getByRole("button", { name: /Permissions/ }).click();
   await page.locator("#panel-permissions.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-review-disclosure");
   await page.locator("#knowledge-curation-grid").getByRole("button", { name: /Low context/ }).click();
   await page.locator("#panel-memory.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-review-disclosure");
   await page.locator("#tool-dock-inspector-grid").getByRole("button", { name: /No tool docks/ }).click();
   await page.locator("#panel-mcp.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-planning-disclosure");
   await page.locator("#workflow-brief").getByText("一份按严重程度排序的评审报告").waitFor();
   await page.locator("#workflow-brief").getByText("当前 git diff").waitFor();
   await page.locator("#workflow-recipes").getByRole("button", { name: /文件理解/ }).click();
@@ -390,6 +405,7 @@ async function boot(page) {
   await page.locator("#panel-intake.active").waitFor();
   await page.getByRole("button", { name: "Home" }).click();
   await page.locator("#panel-home.active").waitFor();
+  await openHomeDisclosure("#home-context-disclosure");
   await page.locator("#workspace-session-hub").getByRole("button", { name: /Session/ }).waitFor();
   await page.locator("#workspace-session-hub").getByRole("button", { name: /Runs/ }).waitFor();
   await page.locator("#workspace-session-hub").getByRole("button", { name: /Memory/ }).waitFor();
@@ -1395,6 +1411,11 @@ async function runRuns(page) {
   await page.getByRole("button", { name: "Runs", exact: true }).click();
   await page.locator(`[data-run-id="${runID}"]`).waitFor();
   await page.getByRole("button", { name: "Home" }).click();
+  const workspaceDisclosure = page.locator("#home-context-disclosure");
+  await workspaceDisclosure.waitFor();
+  if (!(await workspaceDisclosure.evaluate((node) => node.open))) {
+    await workspaceDisclosure.locator("summary").click();
+  }
   await page.locator("#workspace-session-hub").getByRole("button", { name: /webui smoke session|sess_/ }).click();
   await page.locator("#panel-chat.active").waitFor();
   assert(await page.locator(`[data-session-id="${sessionID}"].active`).count() === 1, "workspace hub should resume latest session");

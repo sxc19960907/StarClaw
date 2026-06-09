@@ -2039,7 +2039,8 @@ function renderRunQualityScorecard() {
     <div class="row-actions">
       <button type="button" data-quality-select="${escapeHTML(card.id)}">Quality brief</button>
       <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
-      ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>`}
+      ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : ""}
+      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
     </div>
   </article>`).join("");
   renderRunQualityDetail(cards.find((card) => card.id === state.selectedRunQuality) || cards[0]);
@@ -2072,7 +2073,8 @@ function renderRunQualityDetail(card) {
       <p>${escapeHTML(card.route)}</p>
       <div class="run-detail-actions">
         <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
-        ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>`}
+        ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : ""}
+        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
       </div>
     </section>
   </div>`;
