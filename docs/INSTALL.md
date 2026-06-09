@@ -167,7 +167,9 @@ When the shell starts the daemon itself, it also passes Desktop RPC socket and
 pidfile paths under `~/Library/Application Support/dev.starclaw.astria/` and
 validates `system.capabilities` before declaring the desktop handshake ready.
 Set `ASTRIA_RUNTIME_DIR=/tmp/astria-runtime` to keep these artifacts isolated
-for smoke testing.
+for smoke testing. Stale `daemon.sock` and `daemon.pid` files are cleaned only
+inside the configured Astria runtime directory; healthy HTTP-only daemons remain
+usable through a visible fallback mode.
 
 ## Uninstallation
 

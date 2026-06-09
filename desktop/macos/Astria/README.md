@@ -77,6 +77,11 @@ By default, Astria uses
 HTTP-only daemons can still be attached as a fallback; daemon instances launched
 by Astria must pass Desktop RPC capability reconciliation.
 
+Before launching its own daemon, Astria removes stale `daemon.sock` and
+`daemon.pid` only inside this runtime directory. If a healthy daemon was started
+outside Astria and has no usable Desktop RPC socket, the shell keeps the Web UI
+open over HTTP and shows a degraded fallback banner.
+
 The route recovery store persists only relative `/app` routes under
 `astria.lastWebRoute`; unsafe or external stored routes fall back to `/app/`.
 

@@ -160,6 +160,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Runtime Desktop RPC artifacts default under
   `~/Library/Application Support/dev.starclaw.astria/` and may be isolated with
   `ASTRIA_RUNTIME_DIR` for smoke tests.
+- The shell may delete only `<runtime-dir>/daemon.sock` and
+  `<runtime-dir>/daemon.pid`. It must not delete parent directories, arbitrary
+  paths, or files outside its configured runtime directory.
 - Release-candidate app builds may set `ASTRIA_APP_VERSION` and
   `ASTRIA_APP_BUILD`; signed release artifacts must not mix app and daemon
   versions from different release tags.
@@ -169,6 +172,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - When the shell starts the daemon itself, it must pass paired `--rpc-socket`
   and `--rpc-pidfile` arguments and validate Desktop RPC `system.capabilities`
   before declaring the desktop handshake ready.
+- If an already-running daemon is HTTP-healthy but lacks usable Desktop RPC,
+  the shell may attach in degraded HTTP fallback mode while surfacing that state
+  to the user.
 - The shell may persist the last useful Web UI route only when it is same-origin
   with the configured Web UI URL and under `/app`. Store relative route values,
   never full origins.
@@ -195,6 +201,12 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   desktop-ready and surfaces a mismatch diagnostic.
 - Desktop RPC missing `system.ping` or `system.capabilities` -> shell blocks
   desktop-ready and surfaces a missing capability diagnostic.
+- Dead or malformed pidfile under the Astria runtime directory -> shell removes
+  scoped pidfile/socket artifacts before relaunch.
+- Live pidfile under the Astria runtime directory -> shell does not remove
+  pidfile or socket artifacts.
+- Healthy HTTP daemon without usable Desktop RPC -> shell keeps the Web UI
+  usable and shows degraded fallback.
 - Unsigned development build -> allowed locally; do not present it as a signed
   distributable release artifact.
 - Missing update metadata -> no replacement; current app remains usable.
@@ -221,7 +233,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Run `scripts/smoke_macos_astria_shell.sh` on macOS when the shell changes.
   The smoke must cover bundle structure, route recovery, daemon supervision,
   attach, bundled daemon resolution, Desktop RPC capabilities reconciliation,
-  and launch failure.
+  stale Desktop RPC artifact recovery, unsafe cleanup refusal, and launch
+  failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` on macOS
   when touching release validation boundaries.
 - Run `go test ./cmd -run 'Test.*App|Test.*Doctor' -count=1` to protect

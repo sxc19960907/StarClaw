@@ -26,6 +26,9 @@ struct AstriaApp: App {
         if CommandLine.arguments.contains("--desktop-rpc-smoke") {
             Foundation.exit(AstriaDesktopRPCSmoke.run())
         }
+        if CommandLine.arguments.contains("--desktop-rpc-fallback-smoke") {
+            Foundation.exit(AstriaDesktopRPCFallbackSmoke.run())
+        }
         if CommandLine.arguments.contains("--supervision-smoke") {
             Foundation.exit(AstriaSupervisorSmoke.run())
         }
@@ -58,6 +61,7 @@ struct LaunchConfig {
     let healthURL: URL
     let diagnosticsURL: URL
     let starclawBinary: String?
+    let runtimeDirectory: String
     let desktopRPCSocketPath: String
     let desktopRPCPidfilePath: String
     let appVersion: String
@@ -93,6 +97,7 @@ struct LaunchConfig {
             diagnosticsURL: URL(string: diagnosticsURLString) ?? URL(string: AstriaDefaults.diagnosticsURL)!,
             starclawBinary: firstValue(after: "--starclaw-bin", in: arguments)
                 ?? environment["ASTRIA_STARCLAW_BIN"],
+            runtimeDirectory: runtimeDir,
             desktopRPCSocketPath: (runtimeDir as NSString).appendingPathComponent(AstriaDefaults.desktopRPCSocketName),
             desktopRPCPidfilePath: (runtimeDir as NSString).appendingPathComponent(AstriaDefaults.desktopRPCPidfileName),
             appVersion: bundleVersion(),
@@ -257,6 +262,7 @@ enum DaemonState: Equatable {
     case checking
     case starting
     case attached
+    case degraded(String)
     case unavailable
     case recovered
     case failed(String)
@@ -264,7 +270,7 @@ enum DaemonState: Equatable {
 
     var isAttached: Bool {
         switch self {
-        case .attached, .unavailable, .recovered:
+        case .attached, .degraded, .unavailable, .recovered:
             return true
         default:
             return false
@@ -297,6 +303,8 @@ enum DaemonState: Equatable {
             return "Starting StarClaw daemon"
         case .attached:
             return "Opening Astria"
+        case .degraded:
+            return "Opening Astria with HTTP fallback"
         case .unavailable:
             return "Reconnecting to StarClaw daemon"
         case .recovered:
@@ -318,6 +326,8 @@ enum DaemonState: Equatable {
             return "No healthy daemon was found, so Astria is starting one locally."
         case .attached:
             return "The local daemon is healthy."
+        case .degraded(let message):
+            return message
         case .unavailable:
             return "The local daemon is temporarily unavailable. Astria will reload when it recovers."
         case .recovered:
@@ -333,6 +343,8 @@ enum DaemonState: Equatable {
             return "Astria is checking the local daemon."
         case .starting:
             return "Astria is starting the local daemon."
+        case .degraded(let message):
+            return message
         case .unavailable:
             return "Local daemon connection lost. Astria will recover when health returns."
         case .recovered:
@@ -376,9 +388,14 @@ final class DaemonSupervisor: ObservableObject {
                 do {
                     try await reconcileDesktopRPC()
                 } catch {
-                    state = .failed("Desktop RPC reconciliation failed: \(error.localizedDescription)")
+                    state = .degraded("Desktop RPC reconciliation failed; Astria is using the healthy daemon over HTTP. \(error.localizedDescription)")
+                    startHealthMonitor()
                     return
                 }
+            } else {
+                state = .degraded("Desktop RPC is not available on the healthy daemon. Astria is using HTTP fallback.")
+                startHealthMonitor()
+                return
             }
             state = .attached
             startHealthMonitor()
@@ -415,7 +432,8 @@ final class DaemonSupervisor: ObservableObject {
     }
 
     private func launchDaemon() throws -> Process {
-        try DaemonLaunchSupport.launchDaemon(config: config) { [weak self] proc in
+        try AstriaRuntimeArtifacts(config: config).cleanStaleArtifacts()
+        return try DaemonLaunchSupport.launchDaemon(config: config) { [weak self] proc in
             Task { @MainActor [weak self] in
                 self?.handleDaemonExit(status: proc.terminationStatus)
             }
@@ -492,10 +510,94 @@ final class DaemonSupervisor: ObservableObject {
             }
 
             sawUnavailable = true
-            if state == .attached || state == .recovered {
+            switch state {
+            case .attached, .degraded, .recovered:
                 state = .unavailable
+            default:
+                break
             }
         }
+    }
+}
+
+struct AstriaRuntimeArtifacts {
+    let runtimeDirectory: String
+    let socketPath: String
+    let pidfilePath: String
+
+    init(config: LaunchConfig) {
+        runtimeDirectory = config.runtimeDirectory
+        socketPath = config.desktopRPCSocketPath
+        pidfilePath = config.desktopRPCPidfilePath
+    }
+
+    init(runtimeDirectory: String) {
+        self.runtimeDirectory = runtimeDirectory
+        socketPath = (runtimeDirectory as NSString).appendingPathComponent(AstriaDefaults.desktopRPCSocketName)
+        pidfilePath = (runtimeDirectory as NSString).appendingPathComponent(AstriaDefaults.desktopRPCPidfileName)
+    }
+
+    func cleanStaleArtifacts() throws {
+        try FileManager.default.createDirectory(atPath: runtimeDirectory, withIntermediateDirectories: true)
+
+        switch pidfileState() {
+        case .live:
+            return
+        case .dead, .malformed:
+            try removeOwnedArtifact(pidfilePath)
+            try removeOwnedArtifact(socketPath)
+        case .missing:
+            break
+        }
+
+        if FileManager.default.fileExists(atPath: socketPath) {
+            do {
+                let capabilities = try DesktopRPCClient(socketPath: socketPath).systemCapabilities()
+                try DesktopRPCReconciler.validate(capabilities: capabilities, appVersion: "0.0.0")
+            } catch {
+                try removeOwnedArtifact(socketPath)
+            }
+        }
+    }
+
+    func isOwnedArtifact(_ path: String) -> Bool {
+        let standardizedRuntime = (runtimeDirectory as NSString).standardizingPath
+        let standardizedPath = (path as NSString).standardizingPath
+        return standardizedPath == (standardizedRuntime as NSString).appendingPathComponent(AstriaDefaults.desktopRPCSocketName)
+            || standardizedPath == (standardizedRuntime as NSString).appendingPathComponent(AstriaDefaults.desktopRPCPidfileName)
+    }
+
+    func removeOwnedArtifact(_ path: String) throws {
+        guard isOwnedArtifact(path) else {
+            throw DesktopRPCError.unsafeArtifactPath(path)
+        }
+        do {
+            try FileManager.default.removeItem(atPath: path)
+        } catch CocoaError.fileNoSuchFile {
+        } catch {
+            throw error
+        }
+    }
+
+    private func pidfileState() -> PidfileState {
+        guard let contents = try? String(contentsOfFile: pidfilePath) else {
+            return .missing
+        }
+        let trimmed = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pid = Int32(trimmed), pid > 0 else {
+            return .malformed
+        }
+        if kill(pid, 0) == 0 || errno == EPERM {
+            return .live
+        }
+        return .dead
+    }
+
+    private enum PidfileState {
+        case missing
+        case live
+        case dead
+        case malformed
     }
 }
 
@@ -601,6 +703,7 @@ enum DesktopRPCError: LocalizedError {
     case protocolMismatch(expected: String, got: String)
     case missingMethod(String)
     case versionMismatch(app: String, daemon: String)
+    case unsafeArtifactPath(String)
 
     var errorDescription: String? {
         switch self {
@@ -622,6 +725,8 @@ enum DesktopRPCError: LocalizedError {
             return "Desktop RPC missing required method \(method)."
         case .versionMismatch(let app, let daemon):
             return "Astria app version \(app) is not compatible with daemon version \(daemon)."
+        case .unsafeArtifactPath(let path):
+            return "Refusing to remove Desktop RPC artifact outside Astria runtime ownership: \(path)"
         }
     }
 }
@@ -924,6 +1029,67 @@ enum AstriaDesktopRPCSmoke {
         } catch {
             return false
         }
+    }
+}
+
+enum AstriaDesktopRPCFallbackSmoke {
+    static func run() -> Int32 {
+        let manager = FileManager.default
+        let runtime = (NSTemporaryDirectory() as NSString).appendingPathComponent("astria-fallback-smoke-\(UUID().uuidString)")
+        let artifacts = AstriaRuntimeArtifacts(runtimeDirectory: runtime)
+        defer {
+            try? manager.removeItem(atPath: runtime)
+        }
+
+        do {
+            try manager.createDirectory(atPath: runtime, withIntermediateDirectories: true)
+            try "999999\n".write(toFile: artifacts.pidfilePath, atomically: true, encoding: .utf8)
+            try "stale".write(toFile: artifacts.socketPath, atomically: true, encoding: .utf8)
+            try artifacts.cleanStaleArtifacts()
+            if manager.fileExists(atPath: artifacts.pidfilePath) || manager.fileExists(atPath: artifacts.socketPath) {
+                fputs("Astria Desktop RPC fallback smoke did not remove dead pidfile artifacts\n", stderr)
+                return 1
+            }
+
+            try manager.createDirectory(atPath: runtime, withIntermediateDirectories: true)
+            try "\(getpid())\n".write(toFile: artifacts.pidfilePath, atomically: true, encoding: .utf8)
+            try "live".write(toFile: artifacts.socketPath, atomically: true, encoding: .utf8)
+            try artifacts.cleanStaleArtifacts()
+            if !manager.fileExists(atPath: artifacts.pidfilePath) || !manager.fileExists(atPath: artifacts.socketPath) {
+                fputs("Astria Desktop RPC fallback smoke removed live pid artifacts\n", stderr)
+                return 1
+            }
+            try artifacts.removeOwnedArtifact(artifacts.pidfilePath)
+            try artifacts.removeOwnedArtifact(artifacts.socketPath)
+
+            try "stale".write(toFile: artifacts.socketPath, atomically: true, encoding: .utf8)
+            try artifacts.cleanStaleArtifacts()
+            if manager.fileExists(atPath: artifacts.socketPath) {
+                fputs("Astria Desktop RPC fallback smoke did not remove stale socket under runtime\n", stderr)
+                return 1
+            }
+
+            let outside = (NSTemporaryDirectory() as NSString).appendingPathComponent("astria-outside-\(UUID().uuidString)")
+            try "outside".write(toFile: outside, atomically: true, encoding: .utf8)
+            defer {
+                try? manager.removeItem(atPath: outside)
+            }
+            do {
+                try artifacts.removeOwnedArtifact(outside)
+                fputs("Astria Desktop RPC fallback smoke removed unsafe path\n", stderr)
+                return 1
+            } catch DesktopRPCError.unsafeArtifactPath {
+                if !manager.fileExists(atPath: outside) {
+                    fputs("Astria Desktop RPC fallback smoke deleted unsafe path despite error\n", stderr)
+                    return 1
+                }
+            }
+        } catch {
+            fputs("Astria Desktop RPC fallback smoke failed: \(error.localizedDescription)\n", stderr)
+            return 1
+        }
+
+        return 0
     }
 }
 

@@ -139,6 +139,9 @@ Set `ASTRIA_BUNDLED_STARCLAW_BIN=/path/to/starclaw` to copy a local daemon into
 When Astria starts the daemon itself, it passes Desktop RPC socket/pidfile paths
 and validates `system.capabilities` before treating the desktop handshake as
 ready. Set `ASTRIA_RUNTIME_DIR` to isolate those runtime artifacts in tests.
+Stale Desktop RPC artifacts are cleaned only inside the configured Astria
+runtime directory; healthy HTTP-only daemons remain usable through a visible
+fallback mode.
 
 ### Local Runtime API
 

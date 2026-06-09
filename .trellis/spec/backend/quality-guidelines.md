@@ -1275,6 +1275,9 @@ safePath, err := validatePath(args.Path, ".")
   is listening. Listener startup failure prevents daemon readiness.
 - Listener cleanup removes the configured socket and pidfile artifacts on daemon
   shutdown.
+- Astria may clean stale Desktop RPC artifacts only for the exact
+  `<runtime-dir>/daemon.sock` and `<runtime-dir>/daemon.pid` paths under its
+  configured runtime directory. It must not delete arbitrary paths.
 - Codec must reject zero-length, malformed, partial, and oversized frames.
 - Broker pending requests must terminate on success, timeout, context cancellation, send failure, or disconnect. Pending requests must not hang after a Desktop disconnect.
 - Listener may handle Desktop-originated `system.*` requests locally and route daemon-originated request results back through the broker.
@@ -1297,6 +1300,11 @@ safePath, err := validatePath(args.Path, ".")
 - `system.capabilities` protocol mismatch -> Astria blocks desktop-ready and
   surfaces upgrade/downgrade guidance.
 - Missing required `system.*` capability -> Astria blocks desktop-ready.
+- Dead or malformed pidfile under Astria runtime directory -> Astria may remove
+  the scoped pidfile and socket before launching its daemon.
+- Live pidfile -> Astria must not remove scoped artifacts.
+- Healthy HTTP daemon with missing/broken Desktop RPC -> Astria may attach in
+  degraded HTTP fallback mode, but must surface that state.
 - `/status` with Desktop RPC listener -> exposes booleans/counts only.
 
 ### Tests Required
@@ -1311,6 +1319,8 @@ safePath, err := validatePath(args.Path, ".")
   cleanup.
 - macOS shell smoke proving successful `system.capabilities` reconciliation and
   validation helper rejection for protocol/method/version mismatch.
+- macOS shell smoke proving stale artifact cleanup, live pid preservation, and
+  unsafe cleanup refusal.
 
 ---
 

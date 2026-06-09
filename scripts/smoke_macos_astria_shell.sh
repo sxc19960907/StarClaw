@@ -44,6 +44,9 @@ echo "==> checking Astria route recovery"
 echo "==> checking Astria Desktop RPC validation"
 "$app_path/Contents/MacOS/Astria" --desktop-rpc-smoke
 
+echo "==> checking Astria Desktop RPC fallback recovery"
+"$app_path/Contents/MacOS/Astria" --desktop-rpc-fallback-smoke
+
 mkdir -p "$SMOKE_HOME/.starclaw"
 cat > "$SMOKE_HOME/.starclaw/config.yaml" <<'YAML'
 provider: ollama
