@@ -277,6 +277,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   Runtime, notarization, stapling, updater metadata, compatibility manifest,
   rollback/health manifest, and transaction plan requirements. They must reject
   private material references and must not require Apple credentials locally.
+- Sandbox updater rehearsals may exercise staged replacement and rollback only
+  against disposable fake `Astria.app` fixtures under a temporary sandbox. They
+  must reject touched paths outside the sandbox and must not mutate real Astria
+  app bundles, `/Applications`, user Application Support, real bundled daemons,
+  or production release artifacts.
 - Astria release compatibility manifests must be credential-free JSON with app
   version/build, daemon version, source tag, local-only status, replacement
   disabled, and compatibility min-version fields. App and daemon release
@@ -364,6 +369,11 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   plan references, credential-free local validation, and replacement disabled ->
   validation passes. Missing production release declarations, missing safety
   artifact references, or private material references -> validation fails.
+- Sandbox updater rehearsal with fake current/candidate `Astria.app` fixtures
+  under a temporary sandbox -> stages candidate, replaces the sandbox install
+  fixture, rolls back to the previous fixture, and validates every touched path
+  stays under the sandbox. Any touched path outside the sandbox -> validation
+  fails.
 - Astria compatibility manifest with matching app and daemon versions ->
   validation passes. Missing app/build/daemon fields or mismatched app/daemon
   release versions -> validation fails.
@@ -405,6 +415,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Astria release acceptance gates smoke -> verifies valid production acceptance
   metadata plus missing notarization, missing transaction plan, and private
   material rejection without requiring Apple credentials.
+- Sandbox updater rehearsal smoke -> verifies fixture-only staged replacement,
+  rollback, and outside-sandbox path rejection without requiring Apple
+  credentials or touching the installed app.
 
 ### 5. Good/Base/Bad Cases
 

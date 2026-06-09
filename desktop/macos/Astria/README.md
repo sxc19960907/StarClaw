@@ -118,6 +118,7 @@ scripts/validate_release_artifacts.sh --astria-compatibility-manifest-smoke
 scripts/validate_release_artifacts.sh --updater-rollback-health-gates-smoke
 scripts/validate_release_artifacts.sh --updater-transaction-plan-smoke
 scripts/validate_release_artifacts.sh --astria-release-acceptance-gates-smoke
+scripts/validate_release_artifacts.sh --sandbox-updater-rehearsal-smoke
 ```
 
 The dry-run decision keeps `replacement="disabled"` even for valid metadata.
@@ -131,5 +132,8 @@ verifies a local `plan_only` staged updater decision with
 post-update health gate. The release-acceptance smoke verifies that production
 release metadata declares Developer ID signing, Hardened Runtime, notarization,
 stapling, updater metadata, compatibility, rollback/health gates, and a
-transaction plan while keeping local validation credential-free. These checks do
-not download, install, publish, notarize, staple, replace, or roll back the app.
+transaction plan while keeping local validation credential-free. The sandbox
+rehearsal smoke stages a candidate fixture, rehearses replacement, and rolls
+back inside a temporary directory while rejecting outside-sandbox paths. These
+checks do not download, install, publish, notarize, staple, replace, or roll
+back the real app.

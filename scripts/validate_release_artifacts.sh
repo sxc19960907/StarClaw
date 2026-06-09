@@ -12,6 +12,7 @@ RUN_ASTRIA_COMPATIBILITY_MANIFEST_SMOKE=false
 RUN_UPDATER_TRANSACTION_PLAN_SMOKE=false
 RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=false
 RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=false
+RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=false
 
 fail() {
   echo "validate_release_artifacts: $*" >&2
@@ -29,6 +30,7 @@ for arg in "$@"; do
     --updater-transaction-plan-smoke) RUN_UPDATER_TRANSACTION_PLAN_SMOKE=true ;;
     --updater-rollback-health-gates-smoke) RUN_UPDATER_ROLLBACK_HEALTH_GATES_SMOKE=true ;;
     --astria-release-acceptance-gates-smoke) RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE=true ;;
+    --sandbox-updater-rehearsal-smoke) RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE=true ;;
     *) fail "unknown argument: $arg" ;;
   esac
 done
@@ -947,6 +949,77 @@ NODE
   grep -Fq "private material reference private_material.updater_private_key_committed" "$tmp/private.err" || fail "private material failed for the wrong reason"
 }
 
+assert_sandbox_path() {
+  local sandbox="$1"
+  local path="$2"
+  local sandbox_real
+  local path_real
+  sandbox_real="$(cd "$sandbox" && pwd -P)"
+  if [[ -e "$path" ]]; then
+    path_real="$(cd "$(dirname "$path")" && pwd -P)/$(basename "$path")"
+  else
+    path_real="$(cd "$(dirname "$path")" && pwd -P)/$(basename "$path")"
+  fi
+  case "$path_real" in
+    "$sandbox_real"/*) ;;
+    *) fail "sandbox updater rehearsal touched path outside sandbox: $path_real" ;;
+  esac
+}
+
+write_astria_fixture_bundle() {
+  local bundle="$1"
+  local version="$2"
+  mkdir -p "$bundle/Contents/Resources"
+  cat > "$bundle/Contents/Info.plist" <<PLIST
+CFBundleName=Astria
+CFBundleShortVersionString=$version
+PLIST
+  printf '%s\n' "$version" > "$bundle/Contents/Resources/version.txt"
+}
+
+run_astria_sandbox_updater_rehearsal_smoke() {
+  echo "==> checking Astria sandbox updater rehearsal smoke"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  local sandbox="$tmp/sandbox"
+  local current="$sandbox/current/Astria.app"
+  local candidate="$sandbox/candidate/Astria.app"
+  local staging="$sandbox/staging/Astria.app"
+  local install="$sandbox/install/Astria.app"
+  local rollback="$sandbox/rollback/Astria.app"
+  mkdir -p "$sandbox/current" "$sandbox/candidate" "$sandbox/staging" "$sandbox/install" "$sandbox/rollback"
+
+  write_astria_fixture_bundle "$current" "1.0.0"
+  write_astria_fixture_bundle "$candidate" "1.1.0"
+  cp -R "$current" "$install"
+
+  local touched=("$current" "$candidate" "$staging" "$install" "$rollback")
+  for path in "${touched[@]}"; do
+    assert_sandbox_path "$sandbox" "$path"
+  done
+
+  cp -R "$candidate" "$staging"
+  rm -rf "$rollback"
+  mv "$install" "$rollback"
+  cp -R "$staging" "$install"
+
+  grep -Fxq "1.1.0" "$install/Contents/Resources/version.txt" || fail "sandbox updater rehearsal did not install candidate fixture"
+  grep -Fxq "1.0.0" "$rollback/Contents/Resources/version.txt" || fail "sandbox updater rehearsal did not preserve rollback fixture"
+
+  rm -rf "$install"
+  cp -R "$rollback" "$install"
+  grep -Fxq "1.0.0" "$install/Contents/Resources/version.txt" || fail "sandbox updater rehearsal did not roll back fixture"
+
+  local outside="$tmp/outside/Astria.app"
+  mkdir -p "$(dirname "$outside")"
+  if (assert_sandbox_path "$sandbox" "$outside") >/dev/null 2>"$tmp/outside.err"; then
+    fail "sandbox updater rehearsal unexpectedly allowed outside path"
+  fi
+  grep -Fq "outside sandbox" "$tmp/outside.err" || fail "sandbox outside-path guard failed for the wrong reason"
+}
+
 find_one() {
   local pattern="$1"
   find "$DIST_DIR" -maxdepth 2 -type f -name "$pattern" | sort | head -n 1
@@ -1006,6 +1079,12 @@ if "$RUN_ASTRIA_RELEASE_ACCEPTANCE_GATES_SMOKE"; then
   exit 0
 fi
 
+if "$RUN_SANDBOX_UPDATER_REHEARSAL_SMOKE"; then
+  run_astria_sandbox_updater_rehearsal_smoke
+  echo "validate_release_artifacts: ok"
+  exit 0
+fi
+
 if "$NPM_ONLY"; then
   validate_npm_package
   if "$ASTRIA_LOCAL"; then
@@ -1015,6 +1094,7 @@ if "$NPM_ONLY"; then
     run_astria_updater_rollback_health_gates_smoke
     run_astria_updater_transaction_plan_smoke
     run_astria_release_acceptance_gates_smoke
+    run_astria_sandbox_updater_rehearsal_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
   fi
@@ -1064,6 +1144,7 @@ if "$ASTRIA_LOCAL"; then
   run_astria_updater_rollback_health_gates_smoke
   run_astria_updater_transaction_plan_smoke
   run_astria_release_acceptance_gates_smoke
+  run_astria_sandbox_updater_rehearsal_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
 fi
