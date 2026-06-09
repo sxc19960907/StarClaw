@@ -47,6 +47,9 @@ echo "==> checking Astria native commands"
 echo "==> checking Astria diagnostics export"
 "$app_path/Contents/MacOS/Astria" --diagnostics-export-smoke
 
+echo "==> checking Astria permission helper"
+"$app_path/Contents/MacOS/Astria" --permission-helper-smoke
+
 echo "==> checking Astria Desktop RPC validation"
 "$app_path/Contents/MacOS/Astria" --desktop-rpc-smoke
 

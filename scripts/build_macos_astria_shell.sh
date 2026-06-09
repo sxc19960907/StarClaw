@@ -32,6 +32,9 @@ swiftc \
   -target "$(uname -m)-apple-macosx13.0" \
   -framework SwiftUI \
   -framework WebKit \
+  -framework AppKit \
+  -framework Contacts \
+  -framework EventKit \
   -o "$MACOS_DIR/$APP_NAME" \
   "$SRC_DIR/Sources/"*.swift
 

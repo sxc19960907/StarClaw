@@ -1,6 +1,9 @@
 import SwiftUI
 import WebKit
+import AppKit
+import Contacts
 import Darwin
+import EventKit
 
 private enum AstriaDefaults {
     static let mainWindowID = "astria-main"
@@ -34,9 +37,10 @@ enum AstriaNativeCommandSpec {
     static let copyCurrentRoute = AstriaNativeCommand(id: "copy_current_route", title: "Copy Current Route", key: "l", modifiers: [.command, .shift])
     static let copySupportSummary = AstriaNativeCommand(id: "copy_support_summary", title: "Copy Support Summary", key: "c", modifiers: [.command, .shift])
     static let revealDiagnosticsFolder = AstriaNativeCommand(id: "reveal_diagnostics_folder", title: "Reveal Diagnostics Folder", key: "f", modifiers: [.command, .shift])
+    static let permissionHelp = AstriaNativeCommand(id: "permission_help", title: "Permission Help", key: "p", modifiers: [.command, .shift])
     static let retryDaemon = AstriaNativeCommand(id: "retry_daemon", title: "Retry Daemon", key: "r", modifiers: [.command, .shift])
 
-    static let all = [newWindow, reload, diagnostics, exportDiagnostics, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, retryDaemon]
+    static let all = [newWindow, reload, diagnostics, exportDiagnostics, copyCurrentRoute, copySupportSummary, revealDiagnosticsFolder, permissionHelp, retryDaemon]
 }
 
 @MainActor
@@ -47,6 +51,7 @@ final class AstriaAppActions: ObservableObject {
     var copyCurrentRoute: () -> Void = {}
     var copySupportSummary: () -> Void = {}
     var revealDiagnosticsFolder: () -> Void = {}
+    var openPermissionHelp: () -> Void = {}
     var retryDaemon: () -> Void = {}
 }
 
@@ -95,6 +100,11 @@ struct AstriaNativeCommands: Commands {
             }
             .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.revealDiagnosticsFolder.key)), modifiers: AstriaNativeCommandSpec.revealDiagnosticsFolder.modifiers)
 
+            Button(AstriaNativeCommandSpec.permissionHelp.title) {
+                appActions.openPermissionHelp()
+            }
+            .keyboardShortcut(KeyEquivalent(Character(AstriaNativeCommandSpec.permissionHelp.key)), modifiers: AstriaNativeCommandSpec.permissionHelp.modifiers)
+
             Divider()
 
             Button(AstriaNativeCommandSpec.retryDaemon.title) {
@@ -116,6 +126,9 @@ struct AstriaApp: App {
         }
         if CommandLine.arguments.contains("--diagnostics-export-smoke") {
             Foundation.exit(AstriaDiagnosticsExportSmoke.run())
+        }
+        if CommandLine.arguments.contains("--permission-helper-smoke") {
+            Foundation.exit(AstriaPermissionHelperSmoke.run())
         }
         if CommandLine.arguments.contains("--route-recovery-smoke") {
             Foundation.exit(AstriaRouteRecoverySmoke.run())
@@ -362,6 +375,11 @@ struct AstriaRootView: View {
                 loadState.message = "Astria could not open the diagnostics folder. \(error.localizedDescription)"
             }
         }
+        appActions.openPermissionHelp = {
+            let summary = AstriaPermissionHelper.summary()
+            copyToPasteboard(summary.text)
+            loadState.message = "Copied local Astria permission guidance. \(summary.banner)"
+        }
         appActions.retryDaemon = {
             supervisor.start()
         }
@@ -374,6 +392,7 @@ struct AstriaRootView: View {
         appActions.copyCurrentRoute = {}
         appActions.copySupportSummary = {}
         appActions.revealDiagnosticsFolder = {}
+        appActions.openPermissionHelp = {}
         appActions.retryDaemon = {}
     }
 
@@ -754,6 +773,139 @@ enum AstriaSupportSummary {
             return message
         default:
             return DesktopRPCDiagnostics.bannerMessage(for: desktopRPCState)
+        }
+    }
+}
+
+struct AstriaPermissionItem: Equatable {
+    let id: String
+    let title: String
+    let status: String
+    let guidance: String
+}
+
+struct AstriaPermissionSummary {
+    let items: [AstriaPermissionItem]
+
+    var banner: String {
+        let needsReview = items.contains { $0.status == "denied" || $0.status == "restricted" || $0.status == "not_determined" || $0.status == "unsupported" }
+        return needsReview ? "Some desktop permissions may need review before native tools can use them." : "Desktop permission guidance is available."
+    }
+
+    var text: String {
+        let rows = items.map { item in
+            "- \(item.title): \(item.status). \(item.guidance)"
+        }
+        return (["Astria permission helper", "Local only: true", "No permissions were requested by this check."] + rows).joined(separator: "\n")
+    }
+}
+
+enum AstriaPermissionHelper {
+    static func summary() -> AstriaPermissionSummary {
+        AstriaPermissionSummary(items: [
+            calendarItem(),
+            contactsItem(),
+            remindersItem(),
+            fileAccessItem(),
+            notificationsItem(),
+        ])
+    }
+
+    static func summary(statuses: [String: String]) -> AstriaPermissionSummary {
+        AstriaPermissionSummary(items: [
+            item(id: "calendar", title: "Calendar", status: statuses["calendar", default: "unknown"]),
+            item(id: "contacts", title: "Contacts", status: statuses["contacts", default: "unknown"]),
+            item(id: "reminders", title: "Reminders", status: statuses["reminders", default: "unknown"]),
+            item(id: "file_access", title: "File Access", status: statuses["file_access", default: "manual"]),
+            item(id: "notifications", title: "Notifications", status: statuses["notifications", default: "unknown"]),
+        ])
+    }
+
+    private static func calendarItem() -> AstriaPermissionItem {
+        return item(id: "calendar", title: "Calendar", status: eventKitStatus(EKEventStore.authorizationStatus(for: .event)))
+    }
+
+    private static func contactsItem() -> AstriaPermissionItem {
+        item(id: "contacts", title: "Contacts", status: contactsStatus(CNContactStore.authorizationStatus(for: .contacts)))
+    }
+
+    private static func remindersItem() -> AstriaPermissionItem {
+        item(id: "reminders", title: "Reminders", status: eventKitStatus(EKEventStore.authorizationStatus(for: .reminder)))
+    }
+
+    private static func fileAccessItem() -> AstriaPermissionItem {
+        item(id: "file_access", title: "File Access", status: "manual")
+    }
+
+    private static func notificationsItem() -> AstriaPermissionItem {
+        item(id: "notifications", title: "Notifications", status: "check_in_system_settings")
+    }
+
+    private static func item(id: String, title: String, status: String) -> AstriaPermissionItem {
+        AstriaPermissionItem(id: id, title: title, status: status, guidance: guidance(for: id, status: status))
+    }
+
+    private static func eventKitStatus(_ status: EKAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined:
+            return "not_determined"
+        case .restricted:
+            return "restricted"
+        case .denied:
+            return "denied"
+        case .authorized:
+            return "granted"
+        case .fullAccess:
+            return "granted"
+        case .writeOnly:
+            return "write_only"
+        @unknown default:
+            return "unknown"
+        }
+    }
+
+    private static func contactsStatus(_ status: CNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined:
+            return "not_determined"
+        case .restricted:
+            return "restricted"
+        case .denied:
+            return "denied"
+        case .authorized:
+            return "granted"
+        @unknown default:
+            return "unknown"
+        }
+    }
+
+    private static func guidance(for id: String, status: String) -> String {
+        switch id {
+        case "calendar":
+            return guidance(status: status, service: "Calendar", nativeTool: "calendar tools")
+        case "contacts":
+            return guidance(status: status, service: "Contacts", nativeTool: "contact tools")
+        case "reminders":
+            return guidance(status: status, service: "Reminders", nativeTool: "reminder tools")
+        case "file_access":
+            return "Astria uses user-selected files or Astria-owned support folders. Grant broader file access in System Settings only when a future native tool explicitly asks."
+        case "notifications":
+            return "Astria does not request notification permission from this helper. Enable notifications in System Settings only when notification tools are intentionally used."
+        default:
+            return "Review this local permission before enabling native desktop automation."
+        }
+    }
+
+    private static func guidance(status: String, service: String, nativeTool: String) -> String {
+        switch status {
+        case "granted", "write_only", "limited":
+            return "\(service) access is available for local \(nativeTool)."
+        case "denied", "restricted":
+            return "Open System Settings > Privacy & Security > \(service) and allow Astria before using \(nativeTool)."
+        case "not_determined":
+            return "Astria has not requested \(service) access. Use the explicit permission request tool only when a task needs \(nativeTool)."
+        default:
+            return "\(service) status is unavailable in this build; continue with web/daemon fallback until an explicit native tool requests it."
         }
     }
 }
@@ -1548,7 +1700,7 @@ enum AstriaNativeCommandSmoke {
     static func run() -> Int32 {
         let commands = AstriaNativeCommandSpec.all
         let ids = Set(commands.map(\.id))
-        if commands.count != 8 || ids.count != commands.count {
+        if commands.count != 9 || ids.count != commands.count {
             fputs("Astria native command smoke found missing or duplicate commands\n", stderr)
             return 1
         }
@@ -1560,6 +1712,7 @@ enum AstriaNativeCommandSmoke {
             "copy_current_route": ("Copy Current Route", "l"),
             "copy_support_summary": ("Copy Support Summary", "c"),
             "reveal_diagnostics_folder": ("Reveal Diagnostics Folder", "f"),
+            "permission_help": ("Permission Help", "p"),
             "retry_daemon": ("Retry Daemon", "r"),
         ]
         for command in commands {
@@ -1664,6 +1817,50 @@ enum AstriaDiagnosticsExportSmoke {
                 fputs("Astria diagnostics export smoke support summary leaked \(forbidden)\n", stderr)
                 return 1
             }
+        }
+        return 0
+    }
+}
+
+enum AstriaPermissionHelperSmoke {
+    static func run() -> Int32 {
+        let summary = AstriaPermissionHelper.summary(statuses: [
+            "calendar": "not_determined",
+            "contacts": "denied",
+            "reminders": "granted",
+            "file_access": "manual",
+            "notifications": "check_in_system_settings",
+        ])
+        if summary.items.count != 5 {
+            fputs("Astria permission helper smoke item count = \(summary.items.count)\n", stderr)
+            return 1
+        }
+        for required in [
+            "Astria permission helper",
+            "Local only: true",
+            "No permissions were requested by this check.",
+            "Calendar: not_determined",
+            "Contacts: denied",
+            "Reminders: granted",
+            "File Access: manual",
+            "Notifications: check_in_system_settings",
+            "explicit permission request tool",
+            "System Settings > Privacy & Security > Contacts",
+        ] {
+            if !summary.text.contains(required) {
+                fputs("Astria permission helper smoke missing \(required)\n", stderr)
+                return 1
+            }
+        }
+        for forbidden in ["requestAccess", "api_key", "bearer", "daemon.sock", "daemon.pid", "/Users/"] {
+            if summary.text.localizedCaseInsensitiveContains(forbidden) {
+                fputs("Astria permission helper smoke leaked or promised \(forbidden)\n", stderr)
+                return 1
+            }
+        }
+        if !summary.banner.contains("review") {
+            fputs("Astria permission helper smoke banner = \(summary.banner)\n", stderr)
+            return 1
         }
         return 0
     }

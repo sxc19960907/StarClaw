@@ -159,6 +159,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   Copy Current Route copies only a safe relative `/app` route, Copy Support
   Summary copies a redacted local support summary, and Reveal Diagnostics Folder
   opens the Astria-owned diagnostics export directory in Finder.
+- Permission Help is a local helper boundary for future native desktop tools.
+  It may show/copy status and guidance for Calendar, Contacts, Reminders, file
+  access, and notifications, but it must not silently request broad macOS
+  privacy/TCC permissions.
 - New Window should open another `astria-main` window around the same local
   daemon instead of disabling macOS new-window behavior.
 - Reload Astria should refresh the hosted WebView without changing the
@@ -173,6 +177,10 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Copy Current Route must reuse the route safety boundary: same-origin with the
   configured Web UI URL and under `/app`, then stored/copied as a relative route
   value. Unsafe routes fall back to `/app/`.
+- Permission helper guidance must be unavailable-safe in unsigned development
+  builds. It may read non-prompting status APIs and explain how to use System
+  Settings or future explicit request tools, but actual permission prompts must
+  remain user-triggered by the specific native tool that needs access.
 - The shell must remain optional. `starclaw app`, `starclaw app --no-open`, and
   `starclaw daemon start` remain valid fallback paths.
 - Unsigned local builds must not require private signing, notarization, or
@@ -254,6 +262,9 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
 - Reveal Diagnostics Folder -> opens only the Astria diagnostics directory
   returned by the diagnostics exporter; it must not create remote shares or
   upload artifacts.
+- Permission Help -> local-only guidance and status text; it must not call
+  broad request-access APIs, add cloud auth, emit telemetry, expose file paths,
+  or bypass daemon tool permissions/approval.
 - Dead or malformed pidfile under the Astria runtime directory -> shell removes
   scoped pidfile/socket artifacts before relaunch.
 - Live pidfile under the Astria runtime directory -> shell does not remove
@@ -284,7 +295,7 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   verifies bundle structure, bundled daemon layout, route recovery, and daemon
   supervision through a temporary daemon binary. It also validates Desktop RPC
   capabilities, fallback cleanup, session lifecycle smoke paths, and native
-  command/export/clipboard/file affordance metadata.
+  command/export/clipboard/file/permission helper metadata.
 - Base: user opens the unsigned app shell, which reuses an already-running
   daemon or starts a local daemon, then restores the last same-origin `/app`
   route.
@@ -299,7 +310,8 @@ mux.HandleFunc("GET /diagnostics", srv.handleDiagnostics)
   stale Desktop RPC artifact recovery, unsafe cleanup refusal, Desktop RPC
   session connected/retry/mismatch diagnostics, native command metadata,
   diagnostics export redaction, clipboard/file affordance route safety and
-  support summary redaction, and launch failure.
+  support summary redaction, permission helper guidance/unavailable-safe
+  behavior, and launch failure.
 - Run `scripts/validate_release_artifacts.sh --npm-only --astria-local` when
   touching Astria distribution boundaries. It must pass without Apple
   credentials.
