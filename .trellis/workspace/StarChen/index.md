@@ -7,8 +7,8 @@
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `journal-3.md`
-- **Total Sessions**: 142
+- **Active File**: `journal-4.md`
+- **Total Sessions**: 143
 - **Last Active**: 2026-06-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,8 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1999 | Active |
+| `journal-4.md` | ~40 | Active |
+| `journal-3.md` | ~1999 | Archived |
 | `journal-2.md` | ~1992 | Archived |
 | `journal-1.md` | ~1978 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 143 | 2026-06-09 | Desktop RPC launch contract | `273237e` | `main` |
 | 142 | 2026-06-09 | Astria Kocoro parity phase 13 closeout | `f8c8eb2` | `main` |
 | 141 | 2026-06-09 | Astria packaging release boundary | `48f7b8d` | `main` |
 | 140 | 2026-06-09 | Astria desktop window recovery | `1a3e956` | `main` |
