@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astria by StarClaw</title>
+    <meta
+      name="description"
+      content="Astria is a local-first AI agent desktop workspace powered by the StarClaw daemon."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Astria home">
+        <span class="brand-mark">A</span>
+        <span>
+          <strong>Astria</strong>
+          <small>by StarClaw</small>
+        </span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#workflow">Workflow</a>
+        <a href="#security">Security</a>
+        <a href="#download">Download</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">macOS desktop beta</p>
+          <h1>Local AI agent work, visible from first prompt to final run.</h1>
+          <p class="lead">
+            Astria is a desktop command center for StarClaw: configure your own
+            model endpoint, launch tasks, watch tool calls, inspect runs, and
+            keep the local daemon under your control.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="https://github.com/sxc19960907/StarClaw/releases/download/v0.3.0-beta.1/Astria-v0.3.0-beta.1-macos-arm64.dmg">
+              Download beta DMG
+            </a>
+            <a class="button secondary" href="https://github.com/sxc19960907/StarClaw/releases/tag/v0.3.0-beta.1">
+              View release
+            </a>
+          </div>
+          <dl class="release-strip" aria-label="Release details">
+            <div>
+              <dt>Version</dt>
+              <dd>v0.3.0-beta.1</dd>
+            </div>
+            <div>
+              <dt>Platform</dt>
+              <dd>macOS arm64</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>Internal beta</dd>
+            </div>
+          </dl>
+        </div>
+        <figure class="hero-media">
+          <img src="./assets/astria-home.png" alt="Astria desktop task workspace" />
+        </figure>
+      </section>
+
+      <section class="section intro-grid" aria-label="Product highlights">
+        <article>
+          <span class="kicker">01</span>
+          <h2>Bring your own model</h2>
+          <p>
+            Astria ships without bundled credentials. Add your Base URL, model,
+            and API key, test the connection, then run against your chosen
+            provider.
+          </p>
+        </article>
+        <article>
+          <span class="kicker">02</span>
+          <h2>Watch the work happen</h2>
+          <p>
+            Tool calls, streaming output, run status, and session history stay
+            visible so a task never feels like a black box.
+          </p>
+        </article>
+        <article>
+          <span class="kicker">03</span>
+          <h2>Local-first control</h2>
+          <p>
+            The StarClaw daemon runs locally, validates ownership before reuse
+            or shutdown, and keeps diagnostics focused on your machine.
+          </p>
+        </article>
+      </section>
+
+      <section id="workflow" class="section split">
+        <div class="section-copy">
+          <p class="eyebrow">Workflow</p>
+          <h2>From setup to observability in one desktop surface.</h2>
+          <p>
+            Start with a connector check, launch a new task, watch the response
+            stream in, then inspect the run. Astria is designed for repeated
+            work, not one-off demos.
+          </p>
+          <ol class="steps">
+            <li><span>Configure</span> Add model endpoint, model name, and key.</li>
+            <li><span>Test</span> Confirm auth, model, network, and response shape.</li>
+            <li><span>Run</span> Launch tasks with visible tool activity.</li>
+            <li><span>Review</span> Open run history, traces, and session context.</li>
+          </ol>
+        </div>
+        <figure class="panel-shot">
+          <img src="./assets/astria-tool-call.png" alt="Astria tool-call run view" />
+        </figure>
+      </section>
+
+      <section id="security" class="section security-band">
+        <div>
+          <p class="eyebrow">Trust boundary</p>
+          <h2>No hidden model account. No mystery daemon.</h2>
+        </div>
+        <div class="security-grid">
+          <p>
+            API keys are user-supplied and redacted from diagnostics, connection
+            test errors, logs, and UI detail surfaces.
+          </p>
+          <p>
+            The local app confirms that port 7533 belongs to StarClaw before it
+            reuses, reports, or stops a daemon.
+          </p>
+          <p>
+            Update replacement is disabled for the beta. The macOS artifact is
+            unsigned and should be treated as an internal trial build.
+          </p>
+        </div>
+      </section>
+
+      <section id="download" class="section download-card">
+        <div>
+          <p class="eyebrow">Download</p>
+          <h2>Astria v0.3.0-beta.1</h2>
+          <p>
+            Internal macOS arm64 beta. The DMG is unsigned and not notarized;
+            public distribution still requires signing, notarization, stapling,
+            and stable release metadata.
+          </p>
+        </div>
+        <div class="download-actions">
+          <a class="button primary" href="https://github.com/sxc19960907/StarClaw/releases/download/v0.3.0-beta.1/Astria-v0.3.0-beta.1-macos-arm64.dmg">
+            Download DMG
+          </a>
+          <code>368a31066884f30a3a0ca46741c12925e17820618f398ef90e3a793387139356</code>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>StarClaw is the CLI and daemon. Astria is the desktop workspace.</span>
+      <a href="https://github.com/sxc19960907/StarClaw">GitHub</a>
+    </footer>
+  </body>
+</html>

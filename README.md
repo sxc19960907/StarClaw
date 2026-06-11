@@ -20,6 +20,14 @@ The current internal beta is **v0.3.0-beta.1** for macOS arm64.
 
 This DMG is unsigned and not notarized. It is suitable for internal beta testing only. macOS may show a security prompt on first launch.
 
+### Product Website
+
+The static Astria product site lives in `website/`. Preview it locally with:
+
+```bash
+python3 -m http.server 8766 --directory website
+```
+
 ### Start With Astria
 
 1. Download the DMG from the beta release.
