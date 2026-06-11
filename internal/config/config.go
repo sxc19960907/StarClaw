@@ -140,14 +140,14 @@ func Load() (*Config, error) {
 	viper.AddConfigPath(dir)
 
 	// Set defaults
-	viper.SetDefault("endpoint", "https://api.anthropic.com")
+	viper.SetDefault("endpoint", "")
 	viper.SetDefault("provider", "anthropic")
 	viper.SetDefault("openai_api_key", "")
-	viper.SetDefault("openai_endpoint", "https://api.openai.com/v1")
-	viper.SetDefault("openai_model", "gpt-4o")
-	viper.SetDefault("ollama_endpoint", "http://localhost:11434")
-	viper.SetDefault("ollama_model", "llama3.1")
-	viper.SetDefault("model_tier", "medium")
+	viper.SetDefault("openai_endpoint", "")
+	viper.SetDefault("openai_model", "")
+	viper.SetDefault("ollama_endpoint", "")
+	viper.SetDefault("ollama_model", "")
+	viper.SetDefault("model_tier", "")
 	viper.SetDefault("agent.max_iterations", 25)
 	viper.SetDefault("agent.temperature", 0)
 	viper.SetDefault("agent.max_tokens", 8192)
@@ -263,19 +263,21 @@ func loadLocalConfig(v *viper.Viper) error {
 func SaveDefault(dir string) error {
 	configPath := filepath.Join(dir, "config.yaml")
 
-	defaultConfig := `endpoint: "https://api.anthropic.com"
+	defaultConfig := `# LLM connector settings are user supplied.
+# Fill provider, endpoint/base URL, model, and API key before running real tasks.
+endpoint: ""
 api_key: ""
 provider: "anthropic"  # "anthropic", "openai", or "ollama"
-model_tier: "medium"
+model_tier: ""  # Anthropic-compatible model name, e.g. claude-4-sonnet-20250514 or deepseek-v4-flash
 
 # OpenAI configuration (used when provider is "openai")
 # openai_api_key: ""
-# openai_endpoint: "https://api.openai.com/v1"
-# openai_model: "gpt-4o"
+# openai_endpoint: ""
+# openai_model: ""
 
 # Ollama configuration (used when provider is "ollama")
-# ollama_endpoint: "http://localhost:11434"
-# ollama_model: "llama3.1"
+# ollama_endpoint: ""
+# ollama_model: ""
 
 agent:
   max_iterations: 25
@@ -385,13 +387,6 @@ func LoadFromPath(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to inspect config: %w", err)
 	}
 
-	// Set defaults for missing values
-	if cfg.Endpoint == "" {
-		cfg.Endpoint = "https://api.anthropic.com"
-	}
-	if cfg.ModelTier == "" {
-		cfg.ModelTier = "medium"
-	}
 	if cfg.Agent.MaxIterations == 0 {
 		cfg.Agent.MaxIterations = 25
 	}
@@ -413,7 +408,7 @@ func LoadFromPath(configPath string) (*Config, error) {
 	if cfg.Agent.ThinkingBudget == 0 {
 		cfg.Agent.ThinkingBudget = 10000
 	}
-	if cfg.Agent.Model == "" {
+	if cfg.Agent.Model == "" && cfg.ModelTier != "" {
 		cfg.Agent.Model = cfg.ModelTier
 	}
 

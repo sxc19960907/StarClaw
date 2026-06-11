@@ -175,8 +175,9 @@ struct AstriaApp: App {
         WindowGroup("Astria", id: AstriaDefaults.mainWindowID) {
             AstriaRootView(config: LaunchConfig.fromProcess())
                 .environmentObject(appActions)
-                .frame(minWidth: 1040, minHeight: 720)
+                .frame(minWidth: 1400, minHeight: 860)
         }
+        .defaultSize(width: 1440, height: 900)
         .commands {
             AstriaNativeCommands()
         }

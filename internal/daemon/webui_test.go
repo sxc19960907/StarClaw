@@ -49,6 +49,9 @@ func TestWebUIRoutes(t *testing.T) {
 				"Astria",
 				"/app/assets/styles.css",
 				"/app/assets/app.js",
+				"填写你自己的 LLM Base URL、模型名和 API key",
+				"data-connector-setup-card",
+				"id=\"config-test-button\"",
 			},
 		},
 		{
@@ -63,7 +66,7 @@ func TestWebUIRoutes(t *testing.T) {
 			path:             "/app/assets/app.js",
 			wantStatus:       http.StatusOK,
 			wantContentType:  "text/javascript",
-			wantBodyContains: []string{"refreshAll", "renderRuntimeRecovery", "/trace", "Recovered"},
+			wantBodyContains: []string{"refreshAll", "renderRuntimeRecovery", "/trace", "Recovered", "function configReadiness", "function ensureProviderReadyForLaunch", "function connectorTestMessage", "function testProviderConnection"},
 		},
 		{
 			name:       "unknown path remains not found",
@@ -138,6 +141,8 @@ func TestWebUITraceAndRecoveryRenderersSanitizePayloads(t *testing.T) {
 		"function secretLikeValue(value)",
 		"formatToolPayload(safeRenderPayload(step.metadata))",
 		"formatToolPayload(safeRenderPayload(item.attributes))",
+		"function structuredToolResultRedactions(structuredEvents)",
+		"redactedToolResults.get(tool)",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("app.js missing safe-render marker %q", want)
@@ -241,9 +246,10 @@ func TestWebUIConsumesRunLifecycleRecoveryEvents(t *testing.T) {
 		`source.addEventListener("run_started"`,
 		`source.addEventListener("run_completed"`,
 		`source.addEventListener("run_error"`,
-		`handleRunLifecycleEvent("run_started", parseEventData(event.data))`,
-		`handleRunLifecycleEvent("run_completed", parseEventData(event.data))`,
-		`handleRunLifecycleEvent("run_error", parseEventData(event.data))`,
+		`handleRunLifecycleEvent("run_started", rememberMissionEvent("run_started", event))`,
+		`handleRunLifecycleEvent("run_completed", rememberMissionEvent("run_completed", event))`,
+		`handleRunLifecycleEvent("run_error", rememberMissionEvent("run_error", event))`,
+		"function rememberMissionEvent(type, event)",
 		"function handleRunLifecycleEvent(eventType, eventPayload)",
 		"function lifecycleRunSummary(eventType, eventPayload)",
 		"function safeLifecyclePayload(eventPayload)",
@@ -276,6 +282,91 @@ func TestWebUIConsumesRunLifecycleRecoveryEvents(t *testing.T) {
 	}
 }
 
+func TestWebUIMissionGraphHydratesRunObservatory(t *testing.T) {
+	s := newTestServer(t, newTestServerDeps(t))
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	script, err := fetchWebUIAsset(t, ts.URL+"/app/assets/app.js")
+	if err != nil {
+		t.Fatalf("fetch app.js: %v", err)
+	}
+	for _, want := range []string{
+		"missionRunDetail: null",
+		"missionRunTrace: []",
+		"memoryStatus: null",
+		"missionEvents: []",
+		"function contextReadinessModel()",
+		"function missionRunTelemetry(run)",
+		"function missionLatestApproval(steps, control)",
+		"function missionTraceSummary(trace)",
+		"function missionGraphFromState()",
+		"function renderMissionGraph()",
+		"function renderMissionInspector(graph = missionGraphFromState())",
+		"function missionInspectorLatestRows(graph)",
+		"function renderObservationLog(graph = missionGraphFromState())",
+		"async function hydrateHomeMissionRun(options = {})",
+		"function resultArtifactRuns()",
+		"function resultArtifactSummary(run)",
+		"function renderArtifactDependentViews()",
+		"api(`/runs/${encodedRunID}`)",
+		"api(`/runs/${encodedRunID}/trace`)",
+		`api("/memory/status").catch(() => null)`,
+		`for (const type of ["tool_status", "usage", "budget_status", "run_status"])`,
+		`class="mission-inspector-feed"`,
+		`data-panel="results"`,
+		"hydrateHomeMissionRun({ force: true })",
+		"renderArtifactDependentViews()",
+		`data-star-node="${key}"`,
+		`data-star-map-status`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("app.js missing mission graph hydration marker %q", want)
+		}
+	}
+
+	html, err := fetchWebUIAsset(t, ts.URL+"/app/")
+	if err != nil {
+		t.Fatalf("fetch app html: %v", err)
+	}
+	for _, want := range []string{
+		`id="home-observation-log"`,
+		`id="home-mission-inspector"`,
+		`data-star-node="target"`,
+		`data-star-node="context"`,
+		`data-star-node="tool"`,
+		`data-star-node="artifact"`,
+		`data-star-node="gate"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("index.html missing mission graph hook %q", want)
+		}
+	}
+	if got := strings.Count(html, `class="nav-item`); got != 5 {
+		t.Fatalf("index.html should expose five primary nav items, got %d", got)
+	}
+	for _, want := range []string{
+		`data-panel="home" aria-label="任务台"`,
+		`data-panel="runs" aria-label="运行"`,
+		`data-panel="results" aria-label="产物"`,
+		`data-panel="memory" aria-label="上下文"`,
+		`data-panel="settings" aria-label="系统"`,
+		`class="nav-metric-store" hidden`,
+		`class="sidebar-tool-button" type="button" data-panel="manage"`,
+		`id="rail-toggle-button"`,
+		`aria-label="侧边快捷栏"`,
+		`id="mission-control-board"`,
+		`id="run-detail" class="run-detail"`,
+		`id="artifact-readiness-board"`,
+		`id="context-readiness-board"`,
+		`id="system-status-board"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("index.html missing navigation reframe marker %q", want)
+		}
+	}
+}
+
 func TestWebUIPhase5RuntimeLayoutAndNavigationHooks(t *testing.T) {
 	s := newTestServer(t, newTestServerDeps(t))
 	ts := httptest.NewServer(s.Handler())
@@ -293,12 +384,20 @@ func TestWebUIPhase5RuntimeLayoutAndNavigationHooks(t *testing.T) {
 		`event.target.closest("[data-data-draft]")`,
 		`event.target.closest("[data-data-insight]")`,
 		`renderRunTrace(state.currentRunTrace, state.currentRunTraceError)`,
-		`Trace unavailable: ${escapeHTML(error)}`,
+		`function runObserverModel(run)`,
+		`class="run-observer-card`,
+		`function renderArtifactReadinessBoard(entries)`,
+		`class="artifact-review-card`,
+		`function renderContextReadinessBoard()`,
+		`class="context-readiness-summary`,
+		`function renderSystemStatusBoard()`,
+		`class="system-status-summary`,
+		`Trace 不可用：${escapeHTML(error)}`,
 		`runID: latestRun?.id || ""`,
 		`runID: completedRun.id || ""`,
 		`data-run-open="${escapeHTML(card.runID)}"`,
 		`data-run-open="${escapeHTML(asset.runID)}"`,
-		`Prompt available in the explicit Prompt section.`,
+		`Prompt 可在明确的 Prompt 区域查看。`,
 		`[REDACTED: use Copy prompt for local operator review]`,
 		`step.id === "runtime-recovery"`,
 	} {

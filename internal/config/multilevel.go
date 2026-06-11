@@ -93,13 +93,7 @@ func LoadMultiLevel() (*Config, *ConfigSource, error) {
 
 func defaultConfig() *Config {
 	return &Config{
-		Endpoint:       "https://api.anthropic.com",
-		Provider:       "anthropic",
-		OpenAIEndpoint: "https://api.openai.com/v1",
-		OpenAIModel:    "gpt-4o",
-		OllamaEndpoint: "http://localhost:11434",
-		OllamaModel:    "llama3.1",
-		ModelTier:      "medium",
+		Provider: "anthropic",
 		Agent: AgentConfig{
 			MaxIterations:         25,
 			MaxTokens:             8192,

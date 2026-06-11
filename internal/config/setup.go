@@ -17,11 +17,11 @@ func SetupWizard() (*Config, error) {
 	fmt.Println()
 
 	// API Endpoint
-	fmt.Print("API Endpoint [https://api.anthropic.com]: ")
+	fmt.Print("API Endpoint / Base URL: ")
 	endpoint, _ := reader.ReadString('\n')
 	endpoint = strings.TrimSpace(endpoint)
 	if endpoint == "" {
-		endpoint = "https://api.anthropic.com"
+		return nil, fmt.Errorf("API endpoint is required")
 	}
 
 	// API Key
@@ -36,12 +36,12 @@ func SetupWizard() (*Config, error) {
 		return nil, fmt.Errorf("API key is required")
 	}
 
-	// Model Tier
-	fmt.Print("Model Tier [medium]: ")
+	// Model name
+	fmt.Print("Model name (for Anthropic-compatible endpoint): ")
 	modelTier, _ := reader.ReadString('\n')
 	modelTier = strings.TrimSpace(modelTier)
 	if modelTier == "" {
-		modelTier = "medium"
+		return nil, fmt.Errorf("model name is required")
 	}
 
 	cfg := &Config{

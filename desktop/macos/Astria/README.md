@@ -30,6 +30,16 @@ scripts/build_macos_astria_shell.sh
 The script builds an unsigned app bundle under `build/desktop/macos/` and prints
 the resulting `.app` path.
 
+Build a local drag-install DMG:
+
+```bash
+scripts/build_macos_astria_dmg.sh
+```
+
+The DMG is written to `build/desktop/macos/Astria.dmg` by default. It contains
+`Astria.app` and an `Applications` symlink for the standard drag-install flow.
+This is still an unsigned local development artifact; it is not notarized.
+
 Build with a bundled local daemon binary:
 
 ```bash
@@ -46,6 +56,11 @@ Set app version metadata for release-candidate smoke builds:
 ```bash
 ASTRIA_APP_VERSION=0.1.0 ASTRIA_APP_BUILD=1 scripts/build_macos_astria_shell.sh
 ```
+
+The same version and bundled daemon environment variables are honored by the
+DMG build because it calls the app build script unless `ASTRIA_SKIP_APP_BUILD=1`
+is set. Override the output with `ASTRIA_DMG_DIR`, `ASTRIA_DMG_NAME`,
+`ASTRIA_DMG_VOLUME_NAME`, or `ASTRIA_DMG_PATH`.
 
 For local testing:
 
@@ -99,13 +114,17 @@ with a daemon version that is incompatible with the app release.
 Run the local distribution boundary validator on macOS before release work:
 
 ```bash
+scripts/smoke_macos_astria_window_layout.sh
+scripts/smoke_macos_astria_dmg.sh
 scripts/validate_release_artifacts.sh --npm-only --astria-local
 ```
 
 This does not require Apple credentials. It confirms the unsigned app smoke
-passes, private signing/notarization material is absent from the repository, and
-Astria updater metadata is either absent or conforms to the signed JSON boundary:
-`version`, `artifact_url`, `checksum_sha256`, `signature`,
+passes, the desktop window cannot be shrunk below the stable layout minimum,
+and local DMG smoke passes. It also confirms private signing/notarization
+material is absent from the repository, and Astria updater metadata is either
+absent or conforms to the signed JSON boundary: `version`, `artifact_url`,
+`checksum_sha256`, `signature`,
 `signature_algorithm`, `public_key_id`, `min_app_version`,
 `min_daemon_version`, and `unavailable_safe=true`. Metadata must not enable app
 replacement until a verified updater implementation exists.

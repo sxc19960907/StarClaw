@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -104,7 +105,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt string, messages [
 	}
 
 	// Create request
-	reqURL := c.baseURL + "/v1/chat/completions"
+	reqURL := openAIChatCompletionsURL(c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -322,7 +323,7 @@ func (c *OpenAIClient) StreamChat(ctx context.Context, systemPrompt string, mess
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	reqURL := c.baseURL + "/v1/chat/completions"
+	reqURL := openAIChatCompletionsURL(c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -346,4 +347,12 @@ func (c *OpenAIClient) StreamChat(ctx context.Context, systemPrompt string, mess
 	}
 
 	return ParseOpenAIStreamWithOptions(ctx, resp.Body, onDelta, StreamParseOptions{IdleTimeout: c.StreamIdleTimeout()})
+}
+
+func openAIChatCompletionsURL(baseURL string) string {
+	base := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if strings.HasSuffix(base, "/v1") {
+		return base + "/chat/completions"
+	}
+	return base + "/v1/chat/completions"
 }

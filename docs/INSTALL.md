@@ -163,16 +163,28 @@ ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" scripts/build_macos_astria_she
 The bundled daemon lives at `Astria.app/Contents/Resources/starclaw`. Unsigned
 development builds are not notarized release artifacts.
 
+To package the unsigned local app into a drag-install DMG on macOS:
+
+```bash
+ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" scripts/build_macos_astria_dmg.sh
+```
+
+The default output is `build/desktop/macos/Astria.dmg`. The image includes
+`Astria.app` plus an `Applications` symlink, but it remains a development DMG
+until it is signed, notarized, and stapled outside the repository.
+
 Validate the local Astria distribution boundary without Apple credentials:
 
 ```bash
+scripts/smoke_macos_astria_dmg.sh
 scripts/validate_release_artifacts.sh --npm-only --astria-local
 ```
 
 This checks the npm package shape, runs the Astria shell smoke, verifies that
-private signing/notarization material is not committed, and confirms Astria
-updater metadata is either absent or has checksum, signature, release
-compatibility, and unavailable-safe fields.
+the local DMG mounts with the expected app bundle, verifies that private
+signing/notarization material is not committed, and confirms Astria updater
+metadata is either absent or has checksum, signature, release compatibility, and
+unavailable-safe fields.
 
 A signed distributable Astria build requires a Developer ID Application
 identity, Hardened Runtime, notarization with `notarytool`, stapling, and

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/starclaw/starclaw/internal/client"
+	"github.com/starclaw/starclaw/internal/session"
 )
 
 // blackboxMockClient is a scriptable mock that returns responses based on call count.
@@ -100,6 +101,40 @@ func TestAgentLoop_ToolCallThenResponse(t *testing.T) {
 	}
 	if len(handler.toolCalls) != 1 {
 		t.Errorf("Expected 1 tool call, got %d", len(handler.toolCalls))
+	}
+}
+
+func TestAgentLoop_ToolCallThenResponsePersistsFinalAssistantMessage(t *testing.T) {
+	mock := &blackboxMockClient{
+		responses: []blackboxResponse{
+			{
+				toolCalls: []client.ToolUse{
+					{ID: "toolu_1", Name: "echo", Input: []byte(`{"text":"test"}`)},
+				},
+			},
+			{text: "I called echo and got: test"},
+		},
+	}
+	reg := NewToolRegistry()
+	reg.Register(&MockTool{name: "echo", description: "Echo"})
+	mgr := session.NewManager(t.TempDir())
+	sess := mgr.NewSession()
+
+	loop := NewAgentLoop(mock, reg)
+	loop.SetSession(sess)
+	loop.SetSessionManager(mgr)
+
+	if _, err := loop.Run(context.Background(), "echo test"); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	got := sess.Messages
+	if len(got) == 0 {
+		t.Fatal("session messages were not persisted")
+	}
+	last := got[len(got)-1]
+	if last.Role != "assistant" || last.Content != "I called echo and got: test" {
+		t.Fatalf("last persisted message = %#v, want final assistant response", last)
 	}
 }
 

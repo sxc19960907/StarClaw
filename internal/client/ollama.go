@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -100,7 +101,7 @@ func (c *OllamaClient) Chat(ctx context.Context, systemPrompt string, messages [
 	}
 
 	// Create request
-	reqURL := c.endpoint + "/v1/chat/completions"
+	reqURL := ollamaChatCompletionsURL(c.endpoint)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -248,7 +249,7 @@ func (c *OllamaClient) StreamChat(ctx context.Context, systemPrompt string, mess
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	reqURL := c.endpoint + "/v1/chat/completions"
+	reqURL := ollamaChatCompletionsURL(c.endpoint)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -270,4 +271,12 @@ func (c *OllamaClient) StreamChat(ctx context.Context, systemPrompt string, mess
 	}
 
 	return ParseOpenAIStreamWithOptions(ctx, resp.Body, onDelta, StreamParseOptions{IdleTimeout: c.StreamIdleTimeout()})
+}
+
+func ollamaChatCompletionsURL(endpoint string) string {
+	base := strings.TrimRight(strings.TrimSpace(endpoint), "/")
+	if strings.HasSuffix(base, "/v1") {
+		return base + "/chat/completions"
+	}
+	return base + "/v1/chat/completions"
 }

@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -280,6 +282,84 @@ func TestAppCmdBrowserOpenFailureKeepsManualURL(t *testing.T) {
 	}
 }
 
+func TestDaemonPortFromEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		env  string
+		want int
+	}{
+		{name: "default", want: defaultDaemonPort},
+		{name: "valid override", env: "18432", want: 18432},
+		{name: "invalid text", env: "abc", want: defaultDaemonPort},
+		{name: "zero", env: "0", want: defaultDaemonPort},
+		{name: "too high", env: "65536", want: defaultDaemonPort},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("STARCLAW_DAEMON_PORT", tt.env)
+			if got := daemonPortFromEnv(); got != tt.want {
+				t.Fatalf("daemonPortFromEnv() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEnsureDaemonRunningRejectsForeignServiceOnDaemonPort(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			_, _ = fmt.Fprint(w, `{"status":"ok"}`)
+		case "/version":
+			_, _ = fmt.Fprint(w, `{"name":"not-starclaw","web_url":"http://example.invalid/"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	restoreURLs := overrideDaemonPortForTest(t, server.URL)
+	defer restoreURLs()
+
+	restore := stubDaemonLaunch(t)
+	restore.isHealthy = nil
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	started, err := ensureDaemonRunning(ctx)
+	if err == nil {
+		t.Fatal("ensureDaemonRunning should reject a non-StarClaw service on the daemon port")
+	}
+	if started {
+		t.Fatal("ensureDaemonRunning should not report a started StarClaw daemon")
+	}
+	if restore.started {
+		t.Fatal("ensureDaemonRunning should not start another daemon while the port is occupied")
+	}
+	if !strings.Contains(err.Error(), "another local service") {
+		t.Fatalf("error = %q, want foreign service detail", err)
+	}
+}
+
+func TestRequireOwnedDaemonAcceptsStarClawIdentity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/version":
+			_, _ = fmt.Fprintf(w, `{"version":"test","web_url":%q,"health_url":%q,"launch_command":"starclaw app"}`, daemonWebURL, daemonHealthURL)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	restoreURLs := overrideDaemonPortForTest(t, server.URL)
+	defer restoreURLs()
+
+	if err := requireOwnedDaemon(context.Background()); err != nil {
+		t.Fatalf("requireOwnedDaemon rejected StarClaw identity: %v", err)
+	}
+}
+
 func TestValidateDesktopRPCLaunchFlags(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -388,6 +468,38 @@ type daemonLaunchStub struct {
 	openURL     func(string) error
 	isHealthy   func(context.Context) bool
 	startDaemon func() error
+}
+
+func overrideDaemonPortForTest(t *testing.T, baseURL string) func() {
+	t.Helper()
+	parts := strings.Split(strings.TrimPrefix(baseURL, "http://127.0.0.1:"), "/")
+	port, err := strconv.Atoi(parts[0])
+	if err != nil {
+		t.Fatalf("parse test server port from %q: %v", baseURL, err)
+	}
+
+	origPort := daemonPort
+	origWebURL := daemonWebURL
+	origHealthURL := daemonHealthURL
+	origStatusURL := daemonStatusURL
+	origVersionURL := daemonVersionURL
+	origDiagnosticsURL := daemonDiagnosticsURL
+
+	daemonPort = port
+	daemonWebURL = daemonWebURLForPort(port)
+	daemonHealthURL = fmt.Sprintf("http://127.0.0.1:%d/health", port)
+	daemonStatusURL = fmt.Sprintf("http://127.0.0.1:%d/status", port)
+	daemonVersionURL = fmt.Sprintf("http://127.0.0.1:%d/version", port)
+	daemonDiagnosticsURL = fmt.Sprintf("http://127.0.0.1:%d/diagnostics", port)
+
+	return func() {
+		daemonPort = origPort
+		daemonWebURL = origWebURL
+		daemonHealthURL = origHealthURL
+		daemonStatusURL = origStatusURL
+		daemonVersionURL = origVersionURL
+		daemonDiagnosticsURL = origDiagnosticsURL
+	}
 }
 
 func stubDaemonLaunch(t *testing.T) *daemonLaunchStub {

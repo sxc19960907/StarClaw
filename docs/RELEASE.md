@@ -10,6 +10,7 @@ go vet ./...
 scripts/smoke_app_launch.sh
 scripts/smoke_release_local.sh
 scripts/smoke_npm_install.sh
+scripts/smoke_webui_desktop_layout.sh
 scripts/smoke_webui_core.sh
 ```
 
@@ -18,12 +19,15 @@ and daemon supervision smoke:
 
 ```bash
 scripts/smoke_macos_astria_shell.sh
+scripts/smoke_macos_astria_window_layout.sh
+scripts/smoke_macos_astria_dmg.sh
 scripts/validate_release_artifacts.sh --npm-only --astria-local
 ```
 
 The `--astria-local` validator is credential-free. It checks the npm dry-run,
-Astria shell smoke, absence of committed signing/notarization private material,
-and the unavailable-safe updater boundary.
+Astria shell, desktop window layout, and DMG smoke, absence of committed
+signing/notarization private material, and the unavailable-safe updater
+boundary.
 
 If GoReleaser is installed, validate the full artifact set:
 
@@ -47,10 +51,15 @@ ASTRIA_BUNDLED_STARCLAW_BIN="$PWD/build/starclaw" \
 ASTRIA_APP_VERSION="${VERSION:-0.0.0}" \
 ASTRIA_APP_BUILD="${BUILD_NUMBER:-0}" \
 scripts/build_macos_astria_shell.sh
+scripts/build_macos_astria_dmg.sh
 scripts/smoke_macos_astria_shell.sh
+scripts/smoke_macos_astria_window_layout.sh
+scripts/smoke_macos_astria_dmg.sh
 ```
 
-The future signed release artifact shape is `Astria.app` with the launcher at
+The local DMG is written to `build/desktop/macos/Astria.dmg` by default and
+contains `Astria.app` plus an `Applications` symlink. The future signed release
+artifact shape is the same app bundle inside the DMG, with the launcher at
 `Contents/MacOS/Astria` and the bundled daemon at
 `Contents/Resources/starclaw`. The app and bundled daemon should come from the
 same StarClaw release tag.

@@ -33,9 +33,6 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	if deps == nil {
 		return RunAgentResponse{}, fmt.Errorf("deps is required")
 	}
-	if deps.LLMClient == nil {
-		return RunAgentResponse{}, fmt.Errorf("LLM client not configured in deps")
-	}
 	if deps.Registry == nil {
 		return RunAgentResponse{}, fmt.Errorf("registry not configured in deps")
 	}
@@ -53,6 +50,13 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 		}
 	}
 	effectiveCfg := effectiveRunConfig(deps, agentCfg)
+	llmClient := deps.LLMClient
+	if deps.LLMClientFactory != nil {
+		llmClient = deps.LLMClientFactory(effectiveCfg)
+	}
+	if llmClient == nil {
+		return RunAgentResponse{}, fmt.Errorf("LLM client not configured in deps")
+	}
 	registry := filteredRegistry(deps.Registry, effectiveCfg.Tools)
 	routing := agent.RecommendRoute(agent.RoutingInput{
 		Prompt:      req.Text,
@@ -99,7 +103,7 @@ func RunAgentWithApproval(ctx context.Context, deps *ServerDeps, req RunAgentReq
 	}
 
 	// --- Create and configure agent loop ---
-	loop := agent.NewAgentLoop(deps.LLMClient, registry)
+	loop := agent.NewAgentLoop(llmClient, registry)
 	loop.SetMaxIterations(effectiveCfg.Agent.MaxIterations)
 	loop.SetMaxTokens(effectiveCfg.Agent.MaxTokens)
 	loop.SetResultTruncation(effectiveCfg.Tools.ResultTruncation)

@@ -46,17 +46,18 @@ type RunAgentResponse struct {
 
 // ServerDeps aggregates all dependencies the daemon server needs.
 type ServerDeps struct {
-	StarclawDir     string
-	ConfigPath      string
-	Config          *config.Config
-	AgentsDir       string
-	SkillsDir       string
-	InstructionsDir string
-	LLMClient       client.LLMClient
-	Registry        *agent.ToolRegistry
-	ScheduleManager *schedule.Manager
-	MCPTester       func(name string, server mcp.MCPServerConfig) ([]mcp.RemoteTool, error)
-	MemoryPreflight agent.MemoryPreflightProvider
+	StarclawDir      string
+	ConfigPath       string
+	Config           *config.Config
+	AgentsDir        string
+	SkillsDir        string
+	InstructionsDir  string
+	LLMClient        client.LLMClient
+	LLMClientFactory func(*config.Config) client.LLMClient
+	Registry         *agent.ToolRegistry
+	ScheduleManager  *schedule.Manager
+	MCPTester        func(name string, server mcp.MCPServerConfig) ([]mcp.RemoteTool, error)
+	MemoryPreflight  agent.MemoryPreflightProvider
 }
 
 // ApprovalDecision represents the user's response to a tool approval request.

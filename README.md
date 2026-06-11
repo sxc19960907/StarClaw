@@ -128,6 +128,7 @@ Desktop RPC flags.
 **macOS shell skeleton:**
 ```bash
 scripts/build_macos_astria_shell.sh
+scripts/build_macos_astria_dmg.sh
 ```
 
 This builds an unsigned local `Astria.app` development shell under
@@ -142,6 +143,14 @@ ready. Set `ASTRIA_RUNTIME_DIR` to isolate those runtime artifacts in tests.
 Stale Desktop RPC artifacts are cleaned only inside the configured Astria
 runtime directory; healthy HTTP-only daemons remain usable through a visible
 fallback mode.
+On macOS, `scripts/build_macos_astria_dmg.sh` packages the same unsigned app as
+`build/desktop/macos/Astria.dmg` with an `Applications` symlink for local
+drag-install testing. A distributable DMG still requires Developer ID signing,
+notarization, and stapling outside this local build path.
+Use `scripts/smoke_macos_astria_window_layout.sh` to verify the desktop shell
+does not shrink below the stable layout minimum.
+Use `scripts/smoke_webui_desktop_layout.sh` to verify the embedded Astria Web UI
+does not overflow at the desktop shell's minimum supported viewport.
 
 ### Local Runtime API
 

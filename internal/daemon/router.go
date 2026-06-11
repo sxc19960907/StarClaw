@@ -100,6 +100,7 @@ func (r *Router) registerSkillRoutes(mux *http.ServeMux) {
 func (r *Router) registerConfigRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /config", r.srv.handleGetConfig)
 	mux.HandleFunc("PATCH /config", r.srv.handlePatchConfig)
+	mux.HandleFunc("POST /config/test", r.srv.handleTestConfig)
 	mux.HandleFunc("POST /mcp/test", r.srv.handleTestMCPServer)
 }
 

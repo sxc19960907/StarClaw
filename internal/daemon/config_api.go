@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -10,7 +11,6 @@ import (
 	"github.com/starclaw/starclaw/internal/config"
 	"github.com/starclaw/starclaw/internal/mcp"
 	"github.com/starclaw/starclaw/internal/permissions"
-	"gopkg.in/yaml.v3"
 )
 
 var mcpServerNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
@@ -94,23 +94,20 @@ func newMCPServerViews(cfg *config.Config) []mcpServerView {
 }
 
 func readDaemonConfig(path string, fallback *config.Config) (*config.Config, error) {
-	data, err := os.ReadFile(path)
+	cfg, err := config.LoadFromPath(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			if fallback != nil {
 				copy := *fallback
+				applyProviderDefaults(&copy)
 				return &copy, nil
 			}
 			return &config.Config{}, nil
 		}
-		return nil, fmt.Errorf("read config: %w", err)
+		return nil, err
 	}
-	var cfg config.Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse config yaml: %w", err)
-	}
-	applyProviderDefaults(&cfg)
-	return &cfg, nil
+	applyProviderDefaults(cfg)
+	return cfg, nil
 }
 
 type providerConfigPatch struct {
@@ -309,23 +306,5 @@ func cleanStringList(values []string) []string {
 func applyProviderDefaults(cfg *config.Config) {
 	if cfg.Provider == "" {
 		cfg.Provider = "anthropic"
-	}
-	if cfg.Endpoint == "" {
-		cfg.Endpoint = "https://api.anthropic.com"
-	}
-	if cfg.ModelTier == "" {
-		cfg.ModelTier = "medium"
-	}
-	if cfg.OpenAIEndpoint == "" {
-		cfg.OpenAIEndpoint = "https://api.openai.com/v1"
-	}
-	if cfg.OpenAIModel == "" {
-		cfg.OpenAIModel = "gpt-4o"
-	}
-	if cfg.OllamaEndpoint == "" {
-		cfg.OllamaEndpoint = "http://localhost:11434"
-	}
-	if cfg.OllamaModel == "" {
-		cfg.OllamaModel = "llama3.1"
 	}
 }

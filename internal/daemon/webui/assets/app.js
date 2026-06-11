@@ -12,6 +12,10 @@ const state = {
   currentRunDetail: null,
   currentRunTrace: [],
   currentRunTraceError: "",
+  missionRunDetail: null,
+  missionRunTrace: [],
+  missionRunTraceError: "",
+  missionRunHydrating: "",
   currentCouncilRun: null,
   selectedComparisonLane: "",
   selectedRunQuality: "",
@@ -45,6 +49,7 @@ const state = {
   config: null,
   permissions: null,
   memory: null,
+  memoryStatus: null,
   version: null,
   updateCheck: null,
   editingAgent: "",
@@ -63,12 +68,21 @@ const state = {
     runID: "",
     sessionID: "",
     usage: null,
-    latest: "Ready",
+    latest: "就绪",
   },
+  starMap: {
+    state: "calm",
+    active: "target",
+    timer: null,
+    signature: "",
+    decayTimer: null,
+  },
+  railCollapsed: false,
   activeSessionID: "",
   toolEvents: new Map(),
   toolDetails: new Map(),
   approvals: new Map(),
+  missionEvents: [],
   eventSource: null,
   eventStream: {
     lastEventID: "",
@@ -81,127 +95,127 @@ const state = {
   homeMode: "general",
   workflowStrategy: "direct",
   workflowStage: "draft",
-  workflowStageLabel: "General mission",
+  workflowStageLabel: "通用任务",
   memoryCategory: "all",
   editingMCPServer: "",
   runFilter: "all",
 };
 
 const views = {
-  home: ["首页", "Launch local missions from Astria."],
-  chat: ["消息", "Work with Astria from the local daemon."],
-  manage: ["管理", "Configure agent resources and local automation."],
-  settings: ["设置", "Inspect daemon setup, permissions, and build state."],
-  agents: ["智能体", "Inspect named agents available to the daemon."],
-  skills: ["技能", "Review installed skills exposed to Astria."],
-  mcp: ["MCP 星港", "Inspect configured MCP servers and docking readiness."],
-  memory: ["记忆星图", "Review source sessions and draft memory candidates."],
-  sources: ["来源登记", "Inspect freshness and reliability for knowledge sources."],
-  reconcile: ["知识校验", "Resolve stale, conflicting, weak, or sensitive knowledge."],
-  citation: ["引用校准", "Plan source coverage, citations, and evidence gaps."],
-  council: ["智能体议会", "Coordinate planner, researcher, and reviewer roles."],
-  quality: ["运行质量", "Score recent runs by evidence, budget posture, risk, and next action."],
-  compare: ["比较工作台", "Compare runs, agents, memory, and council evidence."],
-  promptlab: ["Prompt Lab", "Test prompt variants across agents and context sources."],
-  budget: ["预算守卫", "Plan token caps, model fallback, complexity routing, and stop rules."],
-  reuse: ["复用星库", "Start from reusable prompts, agents, sources, and outcomes."],
-  results: ["结果星库", "Review saved reports, evidence briefs, and reusable outcomes."],
-  playbooks: ["实践手册", "Launch from reviewed local best-practice patterns."],
-  starter: ["启动套件", "Launch from prebuilt Astria workflow kits."],
-  share: ["交接包", "Package local work into reviewed handoff starters."],
-  snapshot: ["工作区快照", "Plan local resume, evidence, source, and privacy snapshot packs."],
-  browser: ["浏览器规划", "Plan reviewed browser inspection and evidence missions."],
-  data: ["数据洞察", "Plan reviewed data analysis and knowledge capture missions."],
-  delivery: ["主动投递", "Monitor scheduled work and outbound channel readiness."],
-  inbox: ["收件箱", "Review inbound channel tasks before running them."],
-  intake: ["文件星舱", "Inspect local documents and archives before a run."],
-  schedules: ["定时任务", "Create and manage cron-based local tasks."],
-  runs: ["运行", "Inspect recent daemon executions."],
-  diagnostics: ["诊断", "Inspect daemon readiness and setup checks."],
-  config: ["连接器", "Repair provider setup for daemon runs."],
-  permissions: ["权限", "Review local tool policy."],
-  version: ["版本", "Inspect build and update status."],
+  home: ["任务台", "从 Astria 启动本地 Agent 任务。"],
+  chat: ["对话", "通过本地 daemon 与 Astria 协作。"],
+  manage: ["更多功能", "管理 Agent 资源、本地自动化和上下文星图。"],
+  settings: ["系统", "检查 daemon 设置、权限和构建状态。"],
+  agents: ["智能体", "检查 daemon 可用的命名 Agent。"],
+  skills: ["技能", "查看 Astria 已加载技能。"],
+  mcp: ["MCP 星港", "检查 MCP 服务器和工具 dock 就绪状态。"],
+  memory: ["记忆星图", "复查来源会话并起草记忆候选。"],
+  sources: ["来源登记", "检查知识来源的鲜度和可靠性。"],
+  reconcile: ["知识校验", "解决过期、冲突、薄弱或敏感知识。"],
+  citation: ["引用校准", "规划来源覆盖、引用和证据缺口。"],
+  council: ["智能体议会", "协调规划者、研究者和审阅者角色。"],
+  quality: ["运行质量", "按证据、预算姿态、风险和下一步评估运行。"],
+  compare: ["路径比较台", "比较运行、Agent、记忆和评议证据。"],
+  promptlab: ["Prompt 实验室", "跨 Agent、证据和交付路径测试 Prompt 变体。"],
+  budget: ["预算守卫", "规划 token 上限、模型 fallback、复杂度路由和停止规则。"],
+  reuse: ["复用星库", "从可复用 Prompt、Agent、来源和产物启动。"],
+  results: ["产物星库", "复查已保存报告、证据简报和可复用产物。"],
+  playbooks: ["实践手册", "从审核过的本地最佳实践路径启动。"],
+  starter: ["启动套件", "从预制 Astria 工作流套件启动。"],
+  share: ["交接包", "把本地工作打包成可审核、可复制的交接材料。"],
+  snapshot: ["工作区快照", "规划本地续接、证据、来源和隐私快照包。"],
+  browser: ["浏览器规划器", "规划可审核的浏览器检查和证据任务。"],
+  data: ["数据规划器", "规划可审核的数据分析和知识沉淀任务。"],
+  delivery: ["主动交付", "监控定时任务和出站渠道就绪状态。"],
+  inbox: ["收件箱", "执行前审核进入渠道的任务。"],
+  intake: ["文件星舱", "在运行前检查本地文档和归档。"],
+  schedules: ["定时任务", "创建和管理 cron 本地任务。"],
+  runs: ["运行", "观测最近的 daemon 执行。"],
+  diagnostics: ["诊断", "检查 daemon 就绪状态和设置检查。"],
+  config: ["连接器", "修复 daemon 运行所需的 provider 设置。"],
+  permissions: ["权限", "复查本地工具策略。"],
+  version: ["版本", "检查构建和更新状态。"],
 };
 
 const homeActions = {
   publish: {
-    title: "Publish resource",
-    status: "Ready",
+    title: "发布资源",
+    status: "就绪",
     description: "整理当前项目中可以交付或发布的资源，并生成打包清单。",
     prompt: "Prepare a publishable resource from the current project and list the files you would package.",
     notice: "已为发布资源任务预填提示，可以直接启动。",
   },
   browser: {
-    title: "Browser probe",
-    status: "Ready",
+    title: "浏览器检查",
+    status: "就绪",
     description: "用于网页检查、截图、表单验证和变更摘要；从 Chat 中按需请求浏览器操作。",
     prompt: "Use browser automation to inspect the relevant page and summarize what changed.",
     notice: "已为浏览器检查预填提示，Astria 会在需要操作网页时说明动作。",
   },
   data: {
-    title: "Data signal",
-    status: "Ready",
+    title: "数据信号",
+    status: "就绪",
     description: "从当前工作区的数据、日志或导出文件里找出关键结论。",
     prompt: "Analyze the local data or logs in this workspace and return the key signal.",
     notice: "数据分析会从当前工作区上下文开始。",
   },
   writing: {
-    title: "Writing pass",
-    status: "Ready",
+    title: "写作润色",
+    status: "就绪",
     description: "起草、润色或压缩文字交付物，适合 PRD、说明、汇报和发布稿。",
     prompt: "Draft a concise, polished write-up for this task.",
   },
   research: {
-    title: "Research orbit",
-    status: "Ready",
+    title: "调研轨道",
+    status: "就绪",
     description: "进行带证据链的调研，并输出可追踪来源和结论。",
     prompt: "Run deep research for this task and produce an evidence-backed brief.",
   },
   council: {
-    title: "Agent Council",
-    status: "Ready",
+    title: "Agent 议会",
+    status: "就绪",
     description: "多智能体规划和评审模式。启动一个议会运行，分别生成规划、调研和评审意见。",
     prompt: "Split this task across multiple named agents and propose a coordination plan.",
     panel: "council",
     notice: "Agent Council 会先生成可审核的角色贡献，不会自动执行代码改动。",
   },
   desktop: {
-    title: "Desktop control",
-    status: "Guarded",
+    title: "桌面控制",
+    status: "受控",
     description: "需要操作本机 UI 时使用；Astria 会先说明动作并等待授权。",
     prompt: "Use desktop control only if needed and explain the intended action first.",
     notice: "桌面控制需要明确授权，Astria 会先说明动作。",
   },
   files: {
-    title: "File Intake",
-    status: "Ready",
+    title: "文件星舱",
+    status: "就绪",
     description: "读取本地文档、检查归档内容，并把结果送入普通任务流。",
     prompt: "Inspect local files and recommend the safest next edit.",
     panel: "intake",
-    notice: "已打开 File Intake。",
+    notice: "已打开文件星舱。",
   },
   mcp: {
-    title: "MCP Starport",
-    status: "Ready",
+    title: "MCP 星港",
+    status: "就绪",
     description: "查看配置的 MCP 服务器、连接测试和可用工具。",
     prompt: "Review MCP docking options and suggest the first server to connect.",
     panel: "mcp",
-    notice: "已打开 MCP Starport。",
+    notice: "已打开 MCP 星港。",
   },
   memory: {
-    title: "Memory Map",
-    status: "Ready",
+    title: "记忆星图",
+    status: "就绪",
     description: "查看记忆文件、会话来源，并审核写入 MEMORY.md 的候选内容。",
     prompt: "Create a memory map for this project: people, decisions, recurring tasks, and useful files.",
     panel: "memory",
-    notice: "已打开 Memory Map。",
+    notice: "已打开记忆星图。",
   },
 };
 
 const workflowRecipes = {
   "code-review": {
     title: "代码评审",
-    status: "Review",
+    status: "审查",
     description: "检查当前改动的风险、回归点和测试缺口。",
     prompt: "Review the current working tree like a senior engineer. Lead with concrete findings, include file/line references where possible, and call out missing tests or risky behavior.",
     outcome: "一份按严重程度排序的评审报告，包含文件位置、行为风险和测试缺口。",
@@ -210,7 +224,7 @@ const workflowRecipes = {
   },
   "feature-plan": {
     title: "功能规划",
-    status: "Plan",
+    status: "规划",
     description: "把一个产品想法拆成 PRD、设计和可验证实施步骤。",
     prompt: "Turn this feature idea into a concise PRD, technical design, implementation plan, and validation checklist. Keep the scope shippable and aligned with the current codebase.",
     outcome: "一份可落地的 PRD、设计边界、实施顺序和验收清单。",
@@ -219,8 +233,9 @@ const workflowRecipes = {
   },
   "file-intake": {
     title: "文件理解",
-    status: "Files",
+    status: "文件",
     description: "先进入 File Intake 读取文档或归档，再把结果送入任务。",
+    displayPrompt: "先进入文件星舱读取相关本地文档或归档，再总结重要内容并提出下一步动作。",
     prompt: "Use File Intake to inspect the relevant local document or archive, then summarize the important content and propose the next action.",
     panel: "intake",
     outcome: "把本地文件内容整理成可引用上下文，再决定是否进入 Chat 或 run。",
@@ -229,7 +244,7 @@ const workflowRecipes = {
   },
   "research-brief": {
     title: "调研简报",
-    status: "Research",
+    status: "调研",
     description: "生成带证据链的调研结论和行动建议。",
     prompt: "Prepare a research brief for this topic. Separate facts, assumptions, tradeoffs, and recommended next steps. Include sources if external research is needed.",
     outcome: "一份区分事实、假设、取舍和建议的证据链简报。",
@@ -248,7 +263,7 @@ const workflowRecipes = {
   },
   "inbox-triage": {
     title: "任务分拣",
-    status: "Inbox",
+    status: "收件",
     description: "审核外部渠道任务，决定拒绝、重试或转成运行。",
     prompt: "Triage the pending Inbox items. Identify which should become runs, which need more context, and which should be rejected.",
     panel: "inbox",
@@ -258,7 +273,7 @@ const workflowRecipes = {
   },
   "memory-update": {
     title: "记忆更新",
-    status: "Memory",
+    status: "记忆",
     description: "从最近工作中提炼决策、偏好、命令和风险。",
     prompt: "Draft a memory update from recent work. Categorize decisions, preferences, commands, architecture notes, people, and risks. Do not write memory without review.",
     panel: "memory",
@@ -270,62 +285,62 @@ const workflowRecipes = {
 
 const workflowStrategies = {
   direct: {
-    title: "Quick Run",
-    status: "Fast",
+    title: "快速运行",
+    status: "快速",
     description: "最短路径进入本地执行，适合范围清楚、风险较低的任务。",
     prompt: "Execute this task directly in the current workspace. Keep the scope tight, report the changed files, and run the relevant validation.",
     panel: "runs",
-    stageLabel: "Quick local execution",
+    stageLabel: "快速本地执行",
     outcome: "Astria 直接推进任务，并在运行记录中保留结果。",
     checks: ["确认范围", "执行最小改动", "验证并汇报"],
   },
   research: {
-    title: "Research Brief",
-    status: "Deep",
+    title: "调研简报",
+    status: "深潜",
     description: "先做证据链、方案取舍和上下文归纳，再进入执行。",
     prompt: "Prepare a research brief before implementation. Separate facts, assumptions, options, tradeoffs, and recommended next steps.",
     panel: "runs",
-    stageLabel: "Research before execution",
+    stageLabel: "先调研再执行",
     outcome: "先形成可审查的研究简报，减少盲目执行。",
     checks: ["列出证据", "标注假设", "给出建议路径"],
   },
   council: {
-    title: "Agent Council",
-    status: "Swarm",
+    title: "Agent 议会",
+    status: "协作",
     description: "把复杂任务拆给规划、调研和评审角色，再合并成执行方案。",
     prompt: "Coordinate this task through multiple named agents. Ask planner, researcher, and reviewer roles for input, then synthesize a concrete plan.",
     panel: "council",
-    stageLabel: "Council strategy",
+    stageLabel: "议会策略",
     outcome: "多智能体先分工评估，再收敛到一个可执行方案。",
     checks: ["拆分角色", "合并观点", "保留评审意见"],
   },
   guarded: {
-    title: "Human Approval",
-    status: "Gate",
+    title: "人工确认",
+    status: "闸门",
     description: "高风险命令、文件写入或外部动作先进入人工确认路径。",
     prompt: "Plan this task with explicit approval gates. Identify risky commands, file writes, network calls, and rollback points before acting.",
     panel: "permissions",
-    stageLabel: "Guarded approval path",
+    stageLabel: "受控确认路径",
     outcome: "先标记风险动作和回滚点，再推进需要授权的步骤。",
     checks: ["识别风险", "设置审批点", "准备回滚"],
   },
   memory: {
-    title: "Memory Capture",
-    status: "Recall",
+    title: "记忆捕获",
+    status: "回忆",
     description: "先从最近工作中提炼项目事实、偏好和风险，再继续任务。",
     prompt: "Draft a memory capture before continuing. Extract decisions, preferences, commands, risks, and project facts without writing durable memory until reviewed.",
     panel: "memory",
-    stageLabel: "Memory capture strategy",
+    stageLabel: "记忆捕获策略",
     outcome: "把上下文沉淀成可审核记忆，降低后续重复解释。",
     checks: ["提炼事实", "检查冲突", "审核后写入"],
   },
   tooling: {
-    title: "MCP Tooling",
-    status: "Tools",
+    title: "MCP 工具接入",
+    status: "工具",
     description: "先检查 MCP dock、外部工具和连接状态，再启动工具密集任务。",
     prompt: "Review the required tools for this task. Check MCP docks, missing environment keys, safety boundaries, and a minimal connection test plan.",
     panel: "mcp",
-    stageLabel: "Tooling readiness",
+    stageLabel: "工具就绪检查",
     outcome: "先确认工具 dock 和权限边界，再进入执行。",
     checks: ["检查 dock", "确认 env", "测试连接"],
   },
@@ -356,14 +371,14 @@ function hideToast() {
   $("toast").classList.remove("visible");
 }
 
-async function copyText(text, successMessage = "Copied.") {
+async function copyText(text, successMessage = "已复制。") {
   await navigator.clipboard.writeText(text);
   showToast(successMessage);
 }
 
 function markButtonCopied(button) {
   const label = button.textContent;
-  button.textContent = "Copied";
+  button.textContent = "已复制";
   button.disabled = true;
   clearTimeout(button.copyFeedbackTimer);
   button.copyFeedbackTimer = setTimeout(() => {
@@ -417,6 +432,111 @@ function escapeHTML(value) {
     .replaceAll('"', "&quot;");
 }
 
+const panelDisplayNames = {
+  agents: "智能体",
+  browser: "浏览器规划器",
+  budget: "预算守卫",
+  chat: "对话",
+  citation: "引用校准",
+  compare: "路径比较台",
+  council: "智能体议会",
+  data: "数据规划器",
+  delivery: "主动交付",
+  diagnostics: "诊断",
+  inbox: "收件箱",
+  intake: "文件星舱",
+  memory: "记忆星图",
+  mcp: "MCP 星港",
+  promptlab: "Prompt 实验室",
+  results: "产物星库",
+  reuse: "复用星库",
+  runs: "运行",
+  schedules: "定时任务",
+  share: "交接包",
+  snapshot: "工作区快照",
+  sources: "来源登记",
+};
+
+function panelName(panel) {
+  return panelDisplayNames[panel] || views[panel]?.[0] || panel || "-";
+}
+
+const uiTermLabels = {
+  Agent: "Agent",
+  Agents: "Agent",
+  Anomaly: "异常",
+  Browser: "浏览器",
+  Budget: "预算",
+  Channels: "渠道",
+  "Chart brief": "图表简报",
+  Citation: "引用",
+  Command: "命令",
+  Completion: "完成度",
+  Context: "上下文",
+  Council: "议会",
+  Data: "数据",
+  Delivery: "交付",
+  Direct: "直接执行",
+  Evidence: "证据",
+  Fallback: "降级",
+  Handoff: "交接",
+  "Handoff pack": "交接包",
+  Knowledge: "知识",
+  Latest: "最近运行",
+  Memory: "记忆",
+  Monitor: "监控",
+  Outcome: "结果",
+  Prompt: "Prompt",
+  Profile: "画像",
+  Readiness: "就绪度",
+  Research: "研究",
+  Results: "产物",
+  Retry: "重试",
+  Reuse: "复用",
+  "Run report": "运行报告",
+  Runs: "运行",
+  Schedules: "定时任务",
+  Share: "交接",
+  "Stop rules": "停止规则",
+  "Token cap": "Token 上限",
+  Trend: "趋势",
+  Usage: "用量",
+  ready: "就绪",
+  review: "待复查",
+  seed: "待建立",
+  draft: "草稿",
+  targeted: "已定向",
+  guarded: "受保护",
+  saveable: "可保存",
+  schedulable: "可定时",
+  manual: "手动",
+  synthesized: "已综合",
+  recovered: "已恢复",
+  active: "活跃",
+  completed: "完成",
+  failed: "失败",
+  error: "失败",
+  running: "运行中",
+  queued: "排队中",
+  pending: "等待中",
+  unknown: "未知",
+  default: "默认",
+  no_local_memory: "尚无本地记忆",
+  degraded: "降级可用",
+};
+
+function uiTerm(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  return uiTermLabels[text] || text;
+}
+
+function uiCount(count, singular, plural, zero) {
+  const n = Number(count || 0);
+  if (n === 0 && zero) return zero;
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
 function renderEmpty(target, message) {
   target.innerHTML = `<div class="empty-state">${escapeHTML(message)}</div>`;
 }
@@ -437,52 +557,52 @@ function renderError(target, message) {
 function commandCenterItems() {
   const recipeItems = Object.entries(workflowRecipes).map(([id, recipe]) => ({
     id: `recipe:${id}`,
-    type: "Workflow",
+    type: "工作流",
     title: recipe.title,
     detail: recipe.description || recipe.outcome || "",
     run: () => selectWorkflowRecipe(id),
   }));
   const panelItems = [
-    ["home", "Home", "Return to Astria launch workspace."],
-    ["chat", "Chat", "Open the current conversation surface."],
-    ["runs", "Mission Control", "Review recent runs and status filters."],
-    ["intake", "File Intake", "Inspect local documents and archives."],
-    ["memory", "Memory Map", "Review durable context candidates."],
-    ["mcp", "MCP Starport", "Manage configured tool docks."],
-    ["council", "Agent Council", "Coordinate planner, researcher, and reviewer roles."],
-    ["inbox", "Inbox", "Triage external channel work."],
-    ["schedules", "Schedules", "Manage recurring local tasks."],
+    ["home", "任务台", "回到 Astria 本地任务入口。"],
+    ["chat", "对话", "打开当前对话与执行表面。"],
+    ["runs", "运行", "查看最近运行、状态筛选和事件轨道。"],
+    ["intake", "文件星舱", "检查本地文档和归档。"],
+    ["memory", "记忆星图", "复查长期上下文候选。"],
+    ["mcp", "MCP 星港", "管理已配置的工具 dock。"],
+    ["council", "Agent 议会", "协调规划、调研和评审角色。"],
+    ["inbox", "收件箱", "分拣外部渠道任务。"],
+    ["schedules", "定时任务", "管理周期性本地任务。"],
   ].map(([panel, title, detail]) => ({
     id: `panel:${panel}`,
-    type: "Panel",
+    type: "面板",
     title,
     detail,
     run: () => switchPanel(panel),
   }));
   const actionItems = [
-    ["research", "Deep research", "Prepare an evidence-backed brief."],
-    ["mcp", "Plan MCP setup", "Draft a first tool dock connection."],
-    ["memory", "Draft memory map", "Prepare reviewed memory candidates."],
-    ["council", "Start Agent Council", "Split work across named roles."],
+    ["research", "深度调研", "准备带证据链的简报。"],
+    ["mcp", "规划 MCP 接入", "起草第一个工具 dock 连接。"],
+    ["memory", "起草记忆星图", "准备待审记忆候选。"],
+    ["council", "启动 Agent 议会", "把工作拆给命名角色。"],
   ].map(([action, title, detail]) => ({
     id: `action:${action}`,
-    type: "Action",
+    type: "动作",
     title,
     detail,
     run: () => runHomeAction(action),
   }));
   const recentSessionItems = state.sessions.slice(0, 3).map((session) => ({
     id: `session:${session.id}`,
-    type: "Recent",
+    type: "最近",
     title: session.title || session.id,
-    detail: `${session.msg_count ?? 0} messages · resume session`,
+    detail: `${session.msg_count ?? 0} 条消息 · 继续会话`,
     run: () => selectSession(session.id),
   }));
   const recentRunItems = state.runs.slice(0, 3).map((run) => ({
     id: `run:${run.id}`,
-    type: "Recent",
+    type: "最近",
     title: run.prompt && run.id ? `${run.prompt} · ${run.id}` : run.prompt || run.id,
-    detail: `${run.status || "unknown"} · ${run.agent || "default"} · open run`,
+    detail: `${run.status || "unknown"} · ${run.agent || "默认"} · 打开运行`,
     run: () => selectRun(run.id),
   }));
   return [...recentSessionItems, ...recentRunItems, ...recipeItems, ...panelItems, ...actionItems];
@@ -512,7 +632,7 @@ function renderCommandCenterList() {
     return !query || haystack.includes(query);
   }).slice(0, 16);
   if (!items.length) {
-    renderEmpty(list, "No matching commands.");
+    renderEmpty(list, "没有匹配的快速指令。");
     return;
   }
   list.innerHTML = items.map((item) => `<button type="button" data-command-id="${escapeHTML(item.id)}">
@@ -532,15 +652,33 @@ function runCommandCenterItem(id) {
 function statusLabel(status) {
   switch (status) {
     case "ready":
-      return "Ready";
+      return "就绪";
     case "warning":
-      return "Warning";
+      return "警告";
     case "needs_setup":
-      return "Needs setup";
+      return "需要设置";
     case "error":
-      return "Error";
+      return "错误";
     default:
-      return "Unknown";
+      return "未知";
+  }
+}
+
+function liveStateLabel(value) {
+  switch (value) {
+    case "idle":
+      return "空闲";
+    case "running":
+      return "运行中";
+    case "complete":
+    case "completed":
+      return "已完成";
+    case "cancelled":
+      return "已取消";
+    case "error":
+      return "错误";
+    default:
+      return value || "空闲";
   }
 }
 
@@ -553,7 +691,7 @@ function updateActiveSessionLabel() {
   const label = $("active-session-label");
   if (!label) return;
   if (!state.activeSessionID) {
-    label.textContent = "No session selected";
+    label.textContent = "未选择会话";
     return;
   }
   const session = state.sessions.find((item) => item.id === state.activeSessionID);
@@ -567,9 +705,10 @@ function resetLiveRunStatus() {
     runID: "",
     sessionID: "",
     usage: null,
-    latest: "Ready",
+    latest: "就绪",
   };
   renderLiveRunStatus();
+  setStarMapActivity("calm", { label: "静默星图", hold: 0 });
 }
 
 function startLiveRunStatus(payload) {
@@ -579,14 +718,867 @@ function startLiveRunStatus(payload) {
     runID: payload?.request_id || "",
     sessionID: payload?.session_id || "",
     usage: null,
-    latest: "Connecting stream",
+    latest: "正在连接事件流",
   };
   renderLiveRunStatus();
+  setStarMapActivity("running", { label: "目标已锁定", active: "target" });
 }
 
 function updateLiveRunStatus(patch) {
   state.liveRun = { ...state.liveRun, ...patch, visible: true };
   renderLiveRunStatus();
+}
+
+function setStarMapActivity(kind, options = {}) {
+  const map = document.querySelector("[data-star-map]");
+  const status = document.querySelector("[data-star-map-status]");
+  if (!map) return;
+  if (state.starMap.timer) {
+    clearTimeout(state.starMap.timer);
+    state.starMap.timer = null;
+  }
+  const normalized = {
+    idle: "calm",
+    cancelled: "error",
+    complete: "complete",
+    completed: "complete",
+    approval_resolved: "complete",
+  }[kind] || kind || "calm";
+  const active = options.active || starMapActiveForState(normalized);
+  state.starMap.state = normalized;
+  state.starMap.active = active;
+  map.dataset.starState = normalized;
+  map.dataset.starActive = active;
+  if (status) status.textContent = options.label || starMapLabel(normalized);
+  document.querySelectorAll("[data-star-step]").forEach((step) => {
+    step.classList.toggle("active", step.dataset.starStep === active);
+  });
+  const hold = Number.isFinite(options.hold) ? options.hold : starMapHoldForState(normalized);
+  if (normalized !== "calm" && hold > 0) {
+    state.starMap.timer = setTimeout(() => {
+      setStarMapActivity("calm", { label: "静默星图", hold: 0 });
+    }, hold);
+  }
+}
+
+const STAR_DECAY_POINTS = {
+  target: { x: 50, y: 50, tone: "cyan" },
+  context: { x: 16, y: 30, tone: "gold" },
+  tool: { x: 84, y: 36, tone: "blue" },
+  artifact: { x: 78, y: 76, tone: "green" },
+  gate: { x: 18, y: 78, tone: "rose" },
+};
+
+function missionGraphSignature(graph) {
+  const runID = graph.run?.id || state.activeRunID || state.liveRun.runID || "idle";
+  const latestEvent = graph.latest?.event?.type || graph.latest?.tool?.title || graph.latest?.trace?.title || "";
+  return [runID, graph.mapState, graph.active, graph.metrics.traceCount, graph.metrics.toolCount, latestEvent].join("|");
+}
+
+function shouldSpawnStarDecay(previous, graph) {
+  if (!previous) return false;
+  if (graph.mapState === "calm" && !graph.run) return false;
+  if (previous.runID && previous.runID !== graph.run?.id) return true;
+  if (["complete", "error"].includes(graph.mapState) && previous.mapState !== graph.mapState) return true;
+  if (previous.active !== graph.active && ["tool", "artifact", "gate"].includes(previous.active)) return true;
+  return previous.mapState === "tool" && graph.mapState !== "tool";
+}
+
+function renderStarDecay(previous, graph) {
+  const field = document.querySelector("[data-star-decay-field]");
+  if (!field || !shouldSpawnStarDecay(previous, graph)) return;
+  const staleNode = previous.active || "context";
+  const point = STAR_DECAY_POINTS[staleNode] || STAR_DECAY_POINTS.context;
+  const label = previous.label || previous.mapState || "stale";
+  const burst = document.createElement("span");
+  burst.className = `star-decay-burst ${point.tone}`;
+  burst.style.left = `${point.x}%`;
+  burst.style.top = `${point.y}%`;
+  burst.innerHTML = `<i></i><b></b><em>${escapeHTML(compactText(label, 12))}</em>`;
+  field.appendChild(burst);
+  while (field.children.length > 4) {
+    field.firstElementChild?.remove();
+  }
+  window.setTimeout(() => burst.remove(), 3400);
+}
+
+function starMapActiveForState(kind) {
+  switch (kind) {
+    case "context":
+    case "running":
+      return "context";
+    case "tool":
+      return "tool";
+    case "artifact":
+    case "complete":
+      return "artifact";
+    case "approval":
+      return "gate";
+    case "error":
+      return "target";
+    default:
+      return "target";
+  }
+}
+
+function starMapLabel(kind) {
+  switch (kind) {
+    case "running":
+      return "运行点亮";
+    case "context":
+      return "上下文唤醒";
+    case "tool":
+      return "工具链路";
+    case "artifact":
+      return "产物形成";
+    case "approval":
+      return "审核星门";
+    case "complete":
+      return "轨道完成";
+    case "error":
+      return "路径断裂";
+    default:
+      return "静默星图";
+  }
+}
+
+function starMapHoldForState(kind) {
+  if (kind === "complete" || kind === "error") return 3200;
+  if (kind === "approval") return 0;
+  return 1800;
+}
+
+function activeMissionRun() {
+  if (state.currentRunDetail?.id) return state.currentRunDetail;
+  if (state.missionRunDetail?.id) return state.missionRunDetail;
+  if (state.activeRunID) {
+    return state.runs.find((run) => run.id === state.activeRunID) || state.runs[0] || null;
+  }
+  return state.runs[0] || null;
+}
+
+function contextReadinessModel() {
+  const mcpServers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
+  const enabledMCP = mcpServers.filter((server) => !server.disabled);
+  const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
+  const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
+  const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
+  const memoryReady = state.memoryStatus?.ready || memoryFacts.length > 0 || memoryEntries.length > 0;
+  const sessionReady = Boolean(state.activeSessionID || state.sessions.length);
+  const intakeReady = Boolean(state.intakeResult);
+  const signals = [
+    {
+      id: "agents",
+      label: "Agent",
+      value: state.agents.length,
+      ready: state.agents.length > 0,
+      detail: state.agents.length ? `${state.agents.length} 个配置` : "使用默认 Agent",
+      panel: "agents",
+    },
+    {
+      id: "skills",
+      label: "Skill",
+      value: state.skills.length,
+      ready: state.skills.length > 0,
+      detail: state.skills.length ? `${state.skills.length} 个已加载` : "暂无技能",
+      panel: "skills",
+    },
+    {
+      id: "mcp",
+      label: "MCP",
+      value: enabledMCP.length,
+      ready: enabledMCP.length > 0,
+      detail: mcpServers.length ? `${enabledMCP.length}/${mcpServers.length} 启用` : "未配置 dock",
+      panel: "mcp",
+    },
+    {
+      id: "memory",
+      label: "记忆",
+      value: memoryFacts.length || memoryEntries.length || Number(state.memoryStatus?.local_facts || 0),
+      ready: memoryReady,
+      warning: memoryWarnings.length > 0 || state.memoryStatus?.provider === "degraded",
+      detail: memoryWarnings.length
+        ? `${memoryWarnings.length} 条警告`
+        : state.memoryStatus?.reason
+          ? uiTerm(state.memoryStatus.reason)
+          : memoryReady
+            ? `${memoryFacts.length || memoryEntries.length || state.memoryStatus?.local_facts || 0} 条可用`
+            : "未注入",
+      panel: "memory",
+    },
+    {
+      id: "session",
+      label: "会话",
+      value: state.sessions.length,
+      ready: sessionReady,
+      detail: state.activeSessionID ? "当前会话" : state.sessions.length ? `${state.sessions.length} 条历史` : "新会话",
+      panel: "chat",
+    },
+    {
+      id: "intake",
+      label: "输入",
+      value: intakeReady ? 1 : 0,
+      ready: intakeReady,
+      detail: intakeReady ? "文件已解析" : "按需接入",
+      panel: "intake",
+    },
+  ];
+  const ready = signals.filter((item) => item.ready).length;
+  const warnings = signals.filter((item) => item.warning).length;
+  const count = signals.reduce((total, item) => total + Number(item.value || 0), 0);
+  const percent = Math.max(18, Math.min(100, Math.round((ready / signals.length) * 100) - warnings * 7));
+  const primary = signals.find((item) => item.warning) || [...signals].reverse().find((item) => item.ready) || signals[0];
+  return {
+    signals,
+    ready,
+    total: signals.length,
+    warnings,
+    count,
+    percent,
+    primary,
+    label: warnings ? "需复查" : ready ? `${ready}/${signals.length} 就绪` : "待接入",
+  };
+}
+
+function renderContextReadinessBoard() {
+  const target = $("context-readiness-board");
+  if (!target) return;
+  const model = contextReadinessModel();
+  const primary = model.primary || {};
+  const signalCards = model.signals.map((signal) => {
+    const tone = signal.warning ? "warning" : signal.ready ? "ready" : "idle";
+    return `<button type="button" class="context-signal-card ${escapeHTML(tone)}" data-panel="${escapeHTML(signal.panel)}">
+      <span>${escapeHTML(signal.label)}</span>
+      <strong>${escapeHTML(String(signal.value ?? 0))}</strong>
+      <small>${escapeHTML(signal.detail || "")}</small>
+    </button>`;
+  }).join("");
+  target.innerHTML = `<section class="context-readiness-summary ${escapeHTML(model.warnings ? "warning" : model.ready ? "ready" : "idle")}">
+    <div>
+      <span>Context bundle</span>
+      <strong>${escapeHTML(model.label)}</strong>
+      <small>${escapeHTML(primary.detail || "选择上下文后再启动任务。")}</small>
+    </div>
+    <b>${escapeHTML(String(model.percent))}%</b>
+  </section>
+  <div class="context-signal-grid">${signalCards}</div>`;
+}
+
+function missionRunTelemetry(run) {
+  const runID = run?.id || state.activeRunID || state.liveRun.runID || "";
+  const related = state.missionEvents.filter((event) => !event.runID || !runID || event.runID === runID);
+  return {
+    usage: [...related].reverse().find((event) => event.type === "usage")?.data || null,
+    budget: [...related].reverse().find((event) => event.type === "budget_status")?.data || null,
+    runtime: [...related].reverse().find((event) => event.type === "run_status")?.data || null,
+    tool: [...related].reverse().find((event) => event.type === "tool_status") || null,
+    events: related,
+  };
+}
+
+function missionTraceToolEvents(trace) {
+  return trace
+    .filter((item) => /tool|mcp/i.test(item.name || item.phase || ""))
+    .map((item) => ({
+      type: "trace_tool",
+      at: item.timestamp,
+      data: item.attributes || {},
+      trace: item,
+    }));
+}
+
+function missionToolName(event) {
+  const data = event?.data || event?.trace?.attributes || {};
+  return data.tool || data.name || data.server || data.mcp_server || event?.trace?.name || "";
+}
+
+function missionLatestApproval(steps, control) {
+  const controlItem = [...control].reverse().find((item) => item.status === "approval_required" || item.action === "approval" || item.action === "replay");
+  if (controlItem) {
+    return {
+      title: controlItem.action || "approval",
+      detail: `${uiTerm(controlItem.status || "pending")} ${controlItem.reason || ""}`.trim(),
+    };
+  }
+  const step = [...steps].reverse().find((item) => item.status === "waiting_approval" || item.metadata?.approval_id);
+  if (step) {
+    return {
+      title: step.title || step.id || "approval",
+      detail: `${uiTerm(step.status || "pending")} · ${formatTimestamp(step.updated_at)}`,
+    };
+  }
+  const pending = state.approvals.values().next().value;
+  if (pending) {
+    return {
+      title: pending.tool || pending.id || "approval",
+      detail: pending.reason || "等待本地确认",
+    };
+  }
+  return null;
+}
+
+function missionTraceSummary(trace) {
+  const latest = [...trace].reverse().find((item) => item.name || item.phase);
+  if (!latest) return null;
+  return {
+    title: latest.name || latest.event_id || "trace_event",
+    detail: `${latest.phase || "event"} · ${formatTimestamp(latest.timestamp)}`,
+  };
+}
+
+function missionGraphFromState() {
+  const run = activeMissionRun();
+  const runStatus = runHealthGroup(run);
+  const events = Array.isArray(run?.events) ? run.events : [];
+  const trace = Array.isArray(state.currentRunTrace) && run?.id === state.activeRunID
+    ? state.currentRunTrace
+    : Array.isArray(state.missionRunTrace) && run?.id === state.missionRunDetail?.id
+      ? state.missionRunTrace
+      : [];
+  const steps = Array.isArray(run?.steps) ? run.steps : [];
+  const control = Array.isArray(run?.control) ? run.control : [];
+  const telemetry = missionRunTelemetry(run);
+  const usage = run?.usage || run?.response?.usage || telemetry.usage || state.liveRun.usage || {};
+  const context = contextReadinessModel();
+  const toolEvents = [
+    ...events.filter((event) => ["tool_call", "tool_result", "tool_status", "tool"].includes(event.type)),
+    ...state.missionEvents.filter((event) => event.type === "tool_status"),
+    ...missionTraceToolEvents(trace),
+  ];
+  const lastTool = missionToolName([...toolEvents].reverse().find((event) => missionToolName(event))) || "";
+  const latestTool = [...toolEvents].reverse().find((event) => missionToolName(event));
+  const approvalCount = state.approvals.size + control.filter((item) => item.status === "approval_required").length + steps.filter((step) => step.status === "waiting_approval").length;
+  const artifactReady = runStatus === "completed" || Boolean(run?.response?.messages?.length) || Boolean(run?.response && !run?.response?.error);
+  const artifactCount = resultArtifactRuns().length;
+  const active = missionActiveNode(run, { toolEvents, approvalCount, artifactReady, runStatus });
+  const mapState = missionMapState(run, { active, runStatus, approvalCount });
+  return {
+    run,
+    status: run?.status || state.liveRun.state || "idle",
+    runStatus,
+    active,
+    mapState,
+    nodes: {
+      target: {
+        label: run ? "当前目标" : "目标",
+        meta: run ? compactText(runPrompt(run) || run.id || "run", 24) : "等待任务",
+      },
+      context: {
+        label: "上下文",
+        meta: context.label,
+      },
+      tool: {
+        label: "工具",
+        meta: lastTool || context.signals.find((item) => item.id === "mcp")?.detail || `${state.skills.length} 技能`,
+      },
+      artifact: {
+        label: "产物",
+        meta: artifactReady ? `${Math.max(1, artifactCount)} 个可复查` : `${formatUsage(usage) || "等待结果"}`,
+      },
+      gate: {
+        label: "审核",
+        meta: approvalCount ? `${approvalCount} 待确认` : "clear",
+      },
+    },
+    metrics: {
+      contextCount: context.count,
+      contextReady: context.ready,
+      contextTotal: context.total,
+      contextWarnings: context.warnings,
+      contextPercent: context.percent,
+      enabledMCP: context.signals.find((item) => item.id === "mcp")?.value || 0,
+      memoryCount: context.signals.find((item) => item.id === "memory")?.value || 0,
+      memoryWarnings: context.signals.find((item) => item.id === "memory")?.warning ? 1 : 0,
+      traceCount: trace.length || run?.trace_events || 0,
+      toolCount: toolEvents.length,
+      approvalCount,
+      artifactCount,
+      usage,
+      budget: telemetry.budget,
+      runtime: telemetry.runtime,
+    },
+    context,
+    latest: {
+      trace: missionTraceSummary(trace),
+      tool: latestTool ? {
+        title: missionToolName(latestTool),
+        detail: missionEventDetail(latestTool),
+      } : null,
+      approval: missionLatestApproval(steps, control),
+      event: [...events, ...telemetry.events].reverse().find((event) => event.type) || null,
+    },
+    events: missionObservationEvents(run, { events: [...events, ...telemetry.events], trace, steps, control, toolEvents }),
+  };
+}
+
+function missionActiveNode(run, detail) {
+  if (detail.approvalCount) return "gate";
+  if (!run) return state.starMap.active || "target";
+  if (detail.runStatus === "failed") return "target";
+  if (detail.artifactReady) return "artifact";
+  if (detail.toolEvents.length) return "tool";
+  if (run.session_id || detail.runStatus === "running") return "context";
+  return "target";
+}
+
+function missionMapState(run, detail) {
+  if (detail.approvalCount) return "approval";
+  if (!run) return state.starMap.state || "calm";
+  if (detail.runStatus === "failed") return "error";
+  if (detail.runStatus === "completed") return "complete";
+  if (detail.active === "tool") return "tool";
+  if (detail.active === "artifact") return "artifact";
+  if (detail.active === "context") return "context";
+  if (detail.runStatus === "running") return "running";
+  return "calm";
+}
+
+function missionObservationEvents(run, detail) {
+  const rows = [];
+  if (run) {
+    rows.push({
+      id: "OBS-1",
+      kind: "RUN",
+      tone: detail.runStatus === "failed" ? "error" : detail.runStatus === "completed" ? "result" : "run",
+      time: formatTimestamp(run.started_at) || "now",
+      title: `运行${uiTerm(run.status || "recorded")}`,
+      detail: `${run.agent || "default"} · ${runPrompt(run) || run.id || "本地运行"}`,
+    });
+  } else {
+    rows.push({ id: "OBS-1", kind: "READY", tone: "idle", time: "standby", title: "目标星待命", detail: "描述任务后，Astria 会创建一条本地 run 轨道。" });
+  }
+  const latestEvent = [...detail.events].reverse().find((event) => event.type);
+  const latestTrace = [...detail.trace].reverse().find((event) => event.name);
+  if (latestEvent) {
+    rows.push({
+      id: "OBS-2",
+      kind: missionObservationKind(latestEvent.type),
+      tone: missionObservationTone(latestEvent.type),
+      time: formatTimestamp(latestEvent.at) || "live",
+      title: runEventLabel(latestEvent.type),
+      detail: missionEventDetail(latestEvent),
+    });
+  } else if (latestTrace) {
+    rows.push({
+      id: "OBS-2",
+      kind: "TRACE",
+      tone: "trace",
+      time: formatTimestamp(latestTrace.timestamp) || "trace",
+      title: latestTrace.name || "Trace",
+      detail: latestTrace.phase || latestTrace.event_id || "结构化事件已记录。",
+    });
+  } else {
+    rows.push({ id: "OBS-2", kind: "READ", tone: "idle", time: "queued", title: "上下文星待命", detail: "Agent、记忆、MCP、文件和会话会在运行中接入。" });
+  }
+  const latestStep = [...detail.steps].reverse().find((step) => step.status);
+  const latestControl = [...detail.control].reverse().find((item) => item.action || item.status);
+  if (latestStep) {
+    rows.push({
+      id: "OBS-3",
+      kind: "STEP",
+      tone: latestStep.status === "waiting_approval" ? "approval" : "run",
+      time: formatTimestamp(latestStep.updated_at) || "step",
+      title: latestStep.title || latestStep.id || "工作流阶段",
+      detail: `${uiTerm(latestStep.status)} · ${formatTimestamp(latestStep.updated_at)}`,
+    });
+  } else if (latestControl) {
+    rows.push({
+      id: "OBS-3",
+      kind: latestControl.status === "approval_required" ? "APPROVAL" : "CONTROL",
+      tone: latestControl.status === "approval_required" ? "approval" : "tool",
+      time: formatTimestamp(latestControl.updated_at || latestControl.at) || "gate",
+      title: `控制：${latestControl.action || "decision"}`,
+      detail: `${uiTerm(latestControl.status)} ${latestControl.reason || ""}`.trim(),
+    });
+  } else {
+    rows.push({ id: "OBS-3", kind: "TOOL", tone: "idle", time: "waiting", title: "活动叠层待命", detail: "工具调用、审批、用量和产物会在这里形成观测序列。" });
+  }
+  return rows.slice(0, 3);
+}
+
+function missionObservationKind(type) {
+  if (["tool_call", "tool_result", "tool_status", "tool"].includes(type)) return "TOOL";
+  if (["approval_needed", "approval_resolved"].includes(type)) return "APPROVAL";
+  if (type === "usage" || type === "budget_status") return "BUDGET";
+  if (type === "run_status") return "RUN";
+  if (type === "memory.saved" || type === "context" || type === "source") return "READ";
+  return "EVENT";
+}
+
+function missionObservationTone(type) {
+  if (["approval_needed", "budget_status"].includes(type)) return "approval";
+  if (["tool_call", "tool_result", "tool_status", "tool"].includes(type)) return "tool";
+  if (["usage", "run_status"].includes(type)) return "run";
+  if (["approval_resolved", "memory.saved"].includes(type)) return "result";
+  return "trace";
+}
+
+function missionEventDetail(event) {
+  const data = event?.data || {};
+  if (data.tool) {
+    return `${data.tool} · ${uiTerm(data.status || (data.is_error ? "error" : "observed"))}`;
+  }
+  if (event?.type === "budget_status") return data.status || data.detail || formatToolPayload(safeRenderPayload(data));
+  if (event?.type === "run_status") return data.status || data.detail || data.reason || "运行状态已更新";
+  if (data.status) return uiTerm(data.status);
+  if (data.input_tokens || data.output_tokens) return formatLiveUsage(data);
+  if (data.preview) return String(data.preview);
+  return formatTimestamp(event?.at) || "事件已记录。";
+}
+
+function compactText(value, max = 32) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1))}…`;
+}
+
+function renderMissionGraph() {
+  const map = document.querySelector("[data-star-map]");
+  if (!map) return;
+  const graph = missionGraphFromState();
+  const previous = state.starMap.signature
+    ? {
+        signature: state.starMap.signature,
+        runID: state.starMap.runID,
+        mapState: state.starMap.state,
+        active: state.starMap.active,
+        label: state.starMap.label,
+      }
+    : null;
+  const nextSignature = missionGraphSignature(graph);
+  if (nextSignature !== state.starMap.signature) {
+    renderStarDecay(previous, graph);
+  }
+  map.dataset.starState = graph.mapState;
+  map.dataset.starActive = graph.active;
+  state.starMap.state = graph.mapState;
+  state.starMap.active = graph.active;
+  state.starMap.runID = graph.run?.id || state.activeRunID || state.liveRun.runID || "";
+  state.starMap.label = missionGraphStatusLabel(graph);
+  state.starMap.signature = nextSignature;
+  const status = document.querySelector("[data-star-map-status]");
+  if (status) status.textContent = missionGraphStatusLabel(graph);
+  for (const [key, node] of Object.entries(graph.nodes)) {
+    const target = document.querySelector(`[data-star-node="${key}"]`);
+    if (!target) continue;
+    const label = target.querySelector("span");
+    const meta = target.querySelector("small");
+    if (label) label.textContent = node.label;
+    if (meta) meta.textContent = node.meta;
+  }
+  document.querySelectorAll("[data-star-step]").forEach((step) => {
+    step.classList.toggle("active", step.dataset.starStep === graph.active);
+  });
+  renderMissionMapOverlay(graph);
+  renderObservationLog(graph);
+  renderMissionInspector(graph);
+}
+
+function setMissionOverlayText(selector, value) {
+  const target = document.querySelector(selector);
+  if (target) target.textContent = value;
+}
+
+function missionOrbitPercent(graph) {
+  if (graph.metrics.approvalCount) return 72;
+  if (graph.runStatus === "completed") return 100;
+  if (graph.runStatus === "failed") return 34;
+  if (graph.active === "artifact") return 84;
+  if (graph.active === "tool") return 62;
+  if (graph.active === "context") return Math.max(38, Number(graph.metrics.contextPercent || 0));
+  if (graph.run) return 22;
+  return Math.min(18, Number(graph.metrics.contextPercent || 0));
+}
+
+function renderMissionMapOverlay(graph) {
+  const title = graph.run ? runPrompt(graph.run) || graph.run.id || "当前本地运行" : "等待新的本地任务";
+  const detail = graph.run
+    ? `${uiTerm(graph.status)} · ${graph.nodes.context.meta} · ${graph.nodes.tool.meta}`
+    : "星图负责关系判断；观测日志负责过程证据；Inspector 负责当前选中星体。";
+  const percent = Math.max(0, Math.min(100, Math.round(missionOrbitPercent(graph))));
+  setMissionOverlayText("[data-mission-object-title]", compactText(title, 34));
+  setMissionOverlayText("[data-mission-object-detail]", compactText(detail, 72));
+  setMissionOverlayText("[data-mission-object-target]", compactText(graph.nodes.target.meta, 16));
+  setMissionOverlayText("[data-mission-object-context]", compactText(graph.nodes.context.meta, 16));
+  setMissionOverlayText("[data-mission-object-tool]", compactText(graph.nodes.tool.meta, 16));
+  setMissionOverlayText("[data-mission-object-artifact]", compactText(graph.nodes.artifact.meta, 16));
+  setMissionOverlayText("[data-mission-orbit-percent]", `${percent}%`);
+  setMissionOverlayText("[data-mission-orbit-label]", missionGraphStatusLabel(graph));
+  const meter = document.querySelector("[data-mission-orbit-meter]");
+  if (meter) meter.style.width = `${percent}%`;
+  renderMissionMotionOverlay(graph, percent);
+}
+
+function missionGraphStatusLabel(graph) {
+  if (graph.metrics.approvalCount) return `${graph.metrics.approvalCount} 个审核门`;
+  if (graph.run) return `${uiTerm(graph.status)} · ${graph.metrics.traceCount} trace`;
+  if (graph.metrics.contextReady) return `上下文 ${graph.metrics.contextReady}/${graph.metrics.contextTotal}`;
+  return "静默星图";
+}
+
+function missionMotionModel(graph, orbitPercent) {
+  const activeHealth = Math.max(8, Math.min(96, orbitPercent || 0));
+  const reviewHealth = graph.metrics.approvalCount ? 58 : graph.runStatus === "failed" ? 34 : 12;
+  const decayHealth = graph.run ? Math.max(12, 42 - Math.min(30, graph.metrics.traceCount * 3)) : 22;
+  const hasToolMotion = graph.active === "tool" || graph.metrics.toolCount > 0;
+  const hasArtifactMotion = graph.active === "artifact" || graph.runStatus === "completed" || graph.metrics.artifactCount > 0;
+  const hasRetryMotion = graph.runStatus === "failed" || graph.metrics.approvalCount > 0;
+  const hasMemoryMotion = graph.metrics.memoryCount > 0 || graph.events.some((event) => event.kind === "READ");
+  const focusTrail = ["target"];
+  if (graph.metrics.contextReady || graph.active === "context" || hasToolMotion || hasArtifactMotion) focusTrail.push("context");
+  if (hasToolMotion || hasArtifactMotion) focusTrail.push("tool");
+  if (hasArtifactMotion) focusTrail.push("artifact");
+  if (hasMemoryMotion) focusTrail.push("memory");
+  return {
+    activeHealth,
+    reviewHealth,
+    decayHealth,
+    focusTrail: focusTrail.join(" / "),
+    hasToolMotion,
+    hasArtifactMotion,
+    hasRetryMotion,
+    hasMemoryMotion,
+    hasSpawnMotion: graph.runStatus === "running" || graph.metrics.traceCount > 1,
+    mode: graph.metrics.approvalCount ? "review" : graph.runStatus === "failed" ? "retry" : hasArtifactMotion ? "artifact" : hasToolMotion ? "tool" : graph.active,
+  };
+}
+
+function setMotionToggle(selector, enabled) {
+  const target = document.querySelector(selector);
+  if (target) target.classList.toggle("active", Boolean(enabled));
+}
+
+function setHealthValue(barSelector, labelSelector, value) {
+  const safeValue = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  const bar = document.querySelector(barSelector);
+  const label = document.querySelector(labelSelector);
+  if (bar) bar.style.setProperty("--health", `${safeValue}%`);
+  if (label) label.textContent = String(safeValue);
+}
+
+function renderMissionMotionOverlay(graph, orbitPercent) {
+  const map = document.querySelector("[data-star-map]");
+  if (!map) return;
+  const motion = missionMotionModel(graph, orbitPercent);
+  map.dataset.motionMode = motion.mode;
+  map.dataset.motionMemory = motion.hasMemoryMotion ? "active" : "idle";
+  map.dataset.motionSpawn = motion.hasSpawnMotion ? "active" : "idle";
+  const focusTrail = document.querySelector("[data-focus-trail]");
+  if (focusTrail) focusTrail.textContent = motion.focusTrail;
+  setMotionToggle('[data-causal-chip="context"]', motion.hasToolMotion || graph.active === "context");
+  setMotionToggle('[data-causal-chip="edit"]', motion.hasArtifactMotion);
+  setMotionToggle('[data-causal-chip="retry"]', motion.hasRetryMotion);
+  setHealthValue("[data-health-active]", "[data-health-active-label]", motion.activeHealth);
+  setHealthValue("[data-health-review]", "[data-health-review-label]", motion.reviewHealth);
+  setHealthValue("[data-health-decay]", "[data-health-decay-label]", motion.decayHealth);
+}
+
+function renderObservationLog(graph = missionGraphFromState()) {
+  const target = $("home-observation-log");
+  if (!target) return;
+  target.innerHTML = graph.events.map((item, index) => `<div class="observation-row ${escapeHTML(item.tone || "idle")} ${index === graph.events.length - 1 ? "latest" : ""}">
+    <span class="observation-time">${escapeHTML(item.time || item.id)}</span>
+    <span class="observation-kind">${escapeHTML(item.kind || "EVENT")}</span>
+    <div class="observation-copy">
+      <strong>${escapeHTML(compactText(item.title, 28))}</strong>
+      <small>${escapeHTML(compactText(item.detail || "", 96))}</small>
+    </div>
+  </div>`).join("");
+}
+
+function renderMissionInspector(graph = missionGraphFromState()) {
+  const target = $("home-mission-inspector");
+  if (!target) return;
+  const run = graph.run;
+  const title = run ? compactText(runPrompt(run) || run.id || "当前运行", 46) : "等待任务星体";
+  const tag = run?.id || "local";
+  const runAction = run?.id ? `<button type="button" data-run-open="${escapeHTML(run.id)}">观测运行</button>` : `<button type="button" data-panel="chat">打开对话</button>`;
+  const contextSignals = graph.context.signals.map((item) => `<button type="button" class="${item.ready ? "ready" : ""} ${item.warning ? "warning" : ""}" data-panel="${escapeHTML(item.panel)}">
+      <span>${escapeHTML(item.label)}</span>
+      <strong>${escapeHTML(item.detail)}</strong>
+    </button>`).join("");
+  const latestResult = resultArtifactRuns()[0];
+  const artifactPreview = latestResult ? resultArtifactSummary(latestResult) : "";
+  const telemetryLine = [
+    graph.metrics.budget?.status ? `预算：${uiTerm(graph.metrics.budget.status)}` : "",
+    graph.metrics.runtime?.status ? `运行：${uiTerm(graph.metrics.runtime.status)}` : "",
+    formatUsage(graph.metrics.usage) !== "-" ? `用量：${formatUsage(graph.metrics.usage)}` : "",
+  ].filter(Boolean).join(" · ");
+  const latestRows = missionInspectorLatestRows(graph);
+  const latestHTML = latestRows.map((item) => `<button type="button" class="${escapeHTML(item.tone || "")}" ${item.action}>
+      <span>${escapeHTML(item.label)}</span>
+      <strong>${escapeHTML(compactText(item.title, 42))}</strong>
+      <small>${escapeHTML(compactText(item.detail || "", 78))}</small>
+    </button>`).join("");
+  const quality = missionInspectorQualityModel(graph);
+  const motion = missionMotionModel(graph, Math.round(missionOrbitPercent(graph)));
+  const budgetStatus = graph.metrics.budget?.status ? uiTerm(graph.metrics.budget.status) : graph.run ? "跟随运行" : "待规划";
+  const runtimeStatus = graph.metrics.runtime?.status ? uiTerm(graph.metrics.runtime.status) : uiTerm(graph.status);
+  const usageLabel = formatUsage(graph.metrics.usage) !== "-" ? formatUsage(graph.metrics.usage) : "未捕获";
+  const resultAction = artifactPreview ? `<button type="button" data-panel="results">打开产物</button>` : "";
+  const contextAction = graph.metrics.approvalCount
+    ? `<button type="button" data-panel="permissions">审核门</button>`
+    : `<button type="button" data-panel="memory">上下文</button>`;
+  target.innerHTML = `<div class="mission-inspector-head">
+      <div>
+        <span class="board-kicker">Inspector</span>
+        <strong>${escapeHTML(title)}</strong>
+      </div>
+      <span>${escapeHTML(compactText(tag, 18))}</span>
+    </div>
+    <div class="mission-inspector-body">
+      <div class="mission-inspector-card ${escapeHTML(graph.runStatus)}">
+        <strong>${escapeHTML(run ? `状态：${uiTerm(graph.status)}` : "暂无活动运行")}</strong>
+        <small>${escapeHTML(run ? `${run.agent || "default"} · ${run.channel || "local"} · ${formatTimestamp(run.started_at)}` : "发起任务后会显示真实 run、trace、上下文和审核状态。")}</small>
+      </div>
+      <section class="mission-inspector-section">
+        <div class="mission-inspector-section-head">
+          <span>Context bundle</span>
+          <strong>${escapeHTML(`${graph.metrics.contextReady}/${graph.metrics.contextTotal}`)}</strong>
+        </div>
+        <div class="mission-inspector-meter" aria-label="上下文完整度"><i style="width:${escapeHTML(String(contextReadinessPercent(graph)))}%"></i></div>
+        <div class="mission-context-signals" aria-label="上下文就绪信号">
+          ${contextSignals}
+        </div>
+      </section>
+      <section class="mission-inspector-section compact">
+        <div class="mission-inspector-section-head">
+          <span>Budget / quality</span>
+          <strong>${escapeHTML(String(quality.score))}</strong>
+        </div>
+        <div class="mission-inspector-status-grid">
+          <button type="button" data-panel="budget"><span>预算</span><strong>${escapeHTML(budgetStatus)}</strong></button>
+          <button type="button" data-panel="quality"><span>质量</span><strong>${escapeHTML(quality.label)}</strong></button>
+          <button type="button" data-panel="runs"><span>运行</span><strong>${escapeHTML(runtimeStatus)}</strong></button>
+          <button type="button" data-panel="runs"><span>用量</span><strong>${escapeHTML(usageLabel)}</strong></button>
+        </div>
+        <small class="mission-inspector-caption">${escapeHTML(quality.detail)}</small>
+      </section>
+      <div class="mission-inspector-grid">
+        <span>Trace</span><b>${escapeHTML(String(graph.metrics.traceCount))}</b>
+        <span>工具</span><b>${escapeHTML(String(graph.metrics.toolCount))}</b>
+        <span>产物</span><b>${escapeHTML(String(graph.metrics.artifactCount))}</b>
+        <span>审核</span><b>${escapeHTML(String(graph.metrics.approvalCount))}</b>
+      </div>
+      <section class="mission-inspector-section compact">
+        <div class="mission-inspector-section-head">
+          <span>Live signals</span>
+          <strong>${escapeHTML(compactText(graph.active, 12))}</strong>
+        </div>
+        <div class="mission-inspector-feed" aria-label="最新运行信号">
+          ${latestHTML}
+        </div>
+      </section>
+      <section class="mission-inspector-section compact">
+        <div class="mission-inspector-section-head">
+          <span>Motion grammar</span>
+          <strong>${escapeHTML(motion.mode)}</strong>
+        </div>
+        <div class="mission-motion-grid">
+          <span class="${motion.hasToolMotion ? "active" : ""}">tool</span>
+          <span class="${motion.hasArtifactMotion ? "active" : ""}">edit</span>
+          <span class="${motion.hasSpawnMotion ? "active" : ""}">spawn</span>
+          <span class="${motion.hasMemoryMotion ? "active" : ""}">memory</span>
+          <span class="${motion.decayHealth < 34 ? "active" : ""}">fade</span>
+        </div>
+        <small class="mission-inspector-caption">${escapeHTML(`路径：${motion.focusTrail} · active ${Math.round(motion.activeHealth)} / review ${Math.round(motion.reviewHealth)} / remote ${Math.round(motion.decayHealth)}`)}</small>
+      </section>
+      ${telemetryLine ? `<div class="mission-inspector-note">${escapeHTML(telemetryLine)}</div>` : ""}
+      ${artifactPreview ? `<div class="mission-inspector-note result">${escapeHTML(compactText(artifactPreview, 110))}</div>` : ""}
+      <div class="mission-inspector-actions">
+        ${runAction}
+        ${resultAction}
+        ${contextAction}
+      </div>
+    </div>`;
+}
+
+function missionInspectorQualityModel(graph) {
+  let score = 42;
+  if (graph.run) score += 10;
+  if (graph.metrics.contextReady) score += Math.min(18, graph.metrics.contextReady * 4);
+  if (graph.metrics.traceCount) score += Math.min(12, graph.metrics.traceCount * 2);
+  if (graph.metrics.toolCount) score += Math.min(10, graph.metrics.toolCount * 2);
+  if (graph.metrics.artifactCount) score += 8;
+  if (graph.metrics.approvalCount) score -= 6;
+  if (graph.runStatus === "failed") score -= 18;
+  if (graph.runStatus === "completed") score += 8;
+  score = Math.max(12, Math.min(96, score));
+  const label = score >= 78 ? "可交付" : score >= 58 ? "可复查" : graph.metrics.approvalCount ? "待审核" : "待运行";
+  const detail = graph.run
+    ? `${graph.metrics.traceCount} trace，${graph.metrics.toolCount} 个工具信号，${graph.metrics.contextReady}/${graph.metrics.contextTotal} 上下文就绪。`
+    : "质量评分会随上下文、trace、工具事件、产物和审核状态更新。";
+  return { score, label, detail };
+}
+
+function missionInspectorLatestRows(graph) {
+  const rows = [];
+  const runID = graph.run?.id || "";
+  if (graph.latest.trace) {
+    rows.push({
+      label: "Trace",
+      title: graph.latest.trace.title,
+      detail: graph.latest.trace.detail,
+      action: runID ? `data-run-open="${escapeHTML(runID)}"` : `data-panel="runs"`,
+      tone: "trace",
+    });
+  } else {
+    rows.push({
+      label: "Trace",
+      title: "尚未记录",
+      detail: "运行开始后显示结构化 trace phase。",
+      action: `data-panel="runs"`,
+      tone: "",
+    });
+  }
+  if (graph.latest.tool) {
+    rows.push({
+      label: "工具",
+      title: graph.latest.tool.title,
+      detail: graph.latest.tool.detail,
+      action: `data-panel="mcp"`,
+      tone: "tool",
+    });
+  } else {
+    rows.push({
+      label: "工具",
+      title: graph.nodes.tool.meta,
+      detail: "工具事件会从 run events、trace 和 daemon SSE 汇入。",
+      action: `data-panel="mcp"`,
+      tone: "",
+    });
+  }
+  if (graph.latest.approval) {
+    rows.push({
+      label: "审核",
+      title: graph.latest.approval.title,
+      detail: graph.latest.approval.detail,
+      action: `data-panel="permissions"`,
+      tone: "warning",
+    });
+  } else if (graph.latest.event) {
+    rows.push({
+      label: "事件",
+      title: runEventLabel(graph.latest.event.type),
+      detail: missionEventDetail(graph.latest.event),
+      action: runID ? `data-run-open="${escapeHTML(runID)}"` : `data-panel="runs"`,
+      tone: "event",
+    });
+  } else {
+    rows.push({
+      label: "事件",
+      title: "等待活动",
+      detail: "审批、预算、用量和运行状态会在这里出现。",
+      action: `data-panel="runs"`,
+      tone: "",
+    });
+  }
+  return rows;
+}
+
+function contextReadinessPercent(graph) {
+  const score = Number(graph.metrics.contextPercent || 0);
+  return Math.max(graph.run ? 36 : 18, Math.min(100, score));
 }
 
 function formatLiveUsage(usage) {
@@ -606,7 +1598,7 @@ function renderLiveRunStatus() {
   if (!box) return;
   box.hidden = !state.liveRun.visible;
   box.dataset.state = state.liveRun.state || "idle";
-  setText("live-run-state", state.liveRun.state || "Idle");
+  setText("live-run-state", liveStateLabel(state.liveRun.state));
   setText("live-run-id", state.liveRun.runID || "-");
   setText("live-session-id", state.liveRun.sessionID || "-");
   setText("live-run-usage", formatLiveUsage(state.liveRun.usage));
@@ -614,7 +1606,7 @@ function renderLiveRunStatus() {
 }
 
 function setRunControls(isRunning) {
-  if (isRunning) $("chat-state").textContent = "Running";
+  if (isRunning) $("chat-state").textContent = "运行中";
   $("chat-input").disabled = isRunning;
   if ($("home-task-input")) $("home-task-input").disabled = isRunning;
   $("chat-agent").disabled = isRunning;
@@ -645,10 +1637,10 @@ function renderEmptyThread() {
   state.approvals.clear();
   const diagnostics = state.diagnostics || {};
   const needsSetup = diagnostics.status && diagnostics.status !== "ready";
-  const title = needsSetup ? "Astria needs setup." : "Astria is ready.";
+  const title = needsSetup ? "Astria 需要设置。" : "Astria 已就绪。";
   const subtitle = needsSetup
-    ? (diagnostics.summary || "Open Diagnostics or Config to finish setup.")
-    : "Start a local task or choose an agent from the composer.";
+    ? (diagnostics.summary || "打开诊断或连接器完成设置。")
+    : "从输入框发起本地任务，或选择一个 Agent 继续。";
   $("chat-output").innerHTML = `<div class="empty-thread">
     <div class="assistant-mark" aria-hidden="true">S</div>
     <div>
@@ -666,7 +1658,7 @@ async function selectSession(sessionID) {
   });
   if (state.activeSessionID) {
     const session = state.sessions.find((item) => item.id === state.activeSessionID);
-    $("chat-state").textContent = "Session selected";
+    $("chat-state").textContent = "已选择会话";
     updateActiveSessionLabel();
     switchPanel("chat");
     try {
@@ -677,12 +1669,14 @@ async function selectSession(sessionID) {
         <div class="assistant-mark" aria-hidden="true">S</div>
         <div>
           <strong>${escapeHTML(session?.title || state.activeSessionID)}</strong>
-          <span>${escapeHTML(error.message)}. Next message will still try to continue this session.</span>
+          <span>${escapeHTML(error.message)}。下一条消息仍会尝试继续此会话。</span>
         </div>
       </div>`;
     }
   }
 }
+
+window.selectSession = selectSession;
 
 function renderSessionThread(session) {
   const messages = Array.isArray(session.messages) ? session.messages : [];
@@ -694,8 +1688,8 @@ function renderSessionThread(session) {
     $("chat-output").innerHTML = `<div class="empty-thread">
       <div class="assistant-mark" aria-hidden="true">S</div>
       <div>
-        <strong>${escapeHTML(session.title || session.id || "Selected session")}</strong>
-        <span>This session has no saved messages yet.</span>
+        <strong>${escapeHTML(session.title || session.id || "已选择会话")}</strong>
+        <span>这个会话还没有保存的消息。</span>
       </div>
     </div>`;
     return;
@@ -709,7 +1703,7 @@ function renderSessionThread(session) {
 function startNewChat() {
   state.activeSessionID = "";
   $("chat-new-session").checked = true;
-  $("chat-state").textContent = "Ready";
+  $("chat-state").textContent = "就绪";
   updateActiveSessionLabel();
   document.querySelectorAll("[data-session-id]").forEach((item) => item.classList.remove("active"));
   renderEmptyThread();
@@ -729,6 +1723,10 @@ function seedMissionPrompt(prompt, panel = "home") {
   $("home-task-input").focus();
 }
 
+function displayPromptFor(item) {
+  return item?.displayPrompt || item?.prompt || "";
+}
+
 function runHomeAction(name) {
   const action = homeActions[name];
   if (!action) return;
@@ -742,7 +1740,7 @@ function runHomeAction(name) {
   } else if (action.panel) {
     switchPanel(action.panel);
   } else {
-    seedMissionPrompt(action.prompt || "");
+    seedMissionPrompt(displayPromptFor(action));
   }
   if (action.notice) showToast(action.notice);
 }
@@ -753,7 +1751,7 @@ function selectWorkflowRecipe(id) {
   state.homeMode = `recipe:${id}`;
   state.workflowStage = "draft";
   state.workflowStageLabel = recipe.title || "Workflow draft";
-  $("home-task-input").value = recipe.prompt || "";
+  $("home-task-input").value = displayPromptFor(recipe);
   renderHomeMode();
   renderWorkflowBrief(id);
   renderWorkflowStageRail();
@@ -771,7 +1769,7 @@ function selectWorkflowStrategy(id) {
   state.homeMode = `strategy:${id}`;
   state.workflowStage = "draft";
   state.workflowStageLabel = strategy.stageLabel || strategy.title || "Strategy draft";
-  $("home-task-input").value = strategy.prompt || "";
+  $("home-task-input").value = displayPromptFor(strategy);
   renderHomeMode();
   renderWorkflowBrief("");
   renderStrategyMatrix();
@@ -854,12 +1852,12 @@ function renderHomeMode() {
       ? workflowStrategies[state.homeMode.slice("strategy:".length)]
     : homeActions[state.homeMode];
   const mode = action || {
-    title: "General mission",
-    status: "Ready",
+    title: "通用任务",
+    status: "就绪",
     description: "直接描述目标，Astria 会从当前工作区和默认智能体开始。",
   };
-  setText("home-mode-kicker", mode.status || "Ready");
-  setText("home-mode-title", mode.title || "General mission");
+  setText("home-mode-kicker", mode.status || "就绪");
+  setText("home-mode-title", mode.title || "通用任务");
   setText("home-mode-description", mode.description || "");
   const route = $("home-mode-route");
   if (!route) return;
@@ -874,25 +1872,31 @@ function renderHomeMode() {
 }
 
 function currentWorkflowStage() {
+  if ((state.homeMode.startsWith("recipe:") || state.homeMode.startsWith("strategy:")) && state.workflowStage === "draft") {
+    return {
+      stage: "draft",
+      label: state.workflowStageLabel || "通用任务",
+    };
+  }
   const memoryFacts = Array.isArray(state.memory?.facts) ? state.memory.facts : [];
   const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
   const latestRun = state.runs[0];
   if (memoryFacts.length || memoryWarnings.length) {
     return {
       stage: "memory",
-      label: memoryWarnings.length ? `${memoryWarnings.length} memory warning${memoryWarnings.length === 1 ? "" : "s"}` : `${memoryFacts.length} memory fact${memoryFacts.length === 1 ? "" : "s"}`,
+      label: memoryWarnings.length ? `${memoryWarnings.length} 条记忆警告` : `${memoryFacts.length} 条记忆事实`,
     };
   }
   if (latestRun) {
     const group = runHealthGroup(latestRun);
     if (group === "running") {
-      return { stage: "running", label: latestRun.prompt || latestRun.id || "Running mission" };
+      return { stage: "running", label: latestRun.prompt || latestRun.id || "运行中任务" };
     }
-    return { stage: "review", label: latestRun.prompt || latestRun.id || "Review latest run" };
+    return { stage: "review", label: latestRun.prompt || latestRun.id || "复查最近运行" };
   }
   return {
     stage: state.workflowStage || "draft",
-    label: state.workflowStageLabel || "General mission",
+    label: state.workflowStageLabel || "通用任务",
   };
 }
 
@@ -903,10 +1907,10 @@ function renderWorkflowStageRail() {
   const order = ["draft", "running", "review", "memory"];
   const activeIndex = order.indexOf(current.stage);
   const stages = [
-    ["draft", "Draft", "Recipe and prompt"],
-    ["running", "Running", "Daemon execution"],
-    ["review", "Review", "Mission Control"],
-    ["memory", "Memory", "Durable context"],
+    ["draft", "草稿", "工作流和 Prompt"],
+    ["running", "运行", "Daemon 执行"],
+    ["review", "复查", "运行观测"],
+    ["memory", "记忆", "长期上下文"],
   ];
   rail.innerHTML = stages.map(([key, label, hint], index) => {
     const active = current.stage === key;
@@ -928,21 +1932,21 @@ function renderFocusBrief() {
   const strategy = workflowStrategies[state.workflowStrategy] || workflowStrategies.direct;
   const latestSession = state.sessions[0];
   const latestRun = state.runs[0];
-  const title = recipe?.title || stage.label || strategy.title || "General mission";
+  const title = recipe?.title || stage.label || strategy.title || "通用任务";
   const context = latestRun
-    ? `${latestRun.status || "unknown"} run · ${latestRun.agent || "default"}`
+    ? `${latestRun.status || "unknown"} 运行 · ${latestRun.agent || "default"}`
     : latestSession
-      ? `${latestSession.msg_count ?? 0} message session`
-      : `${strategy.title || "Strategy"} · No recent work yet`;
+      ? `${latestSession.msg_count ?? 0} 条消息会话`
+      : `${strategy.title || "策略"} · 暂无最近工作`;
   const next = stage.stage === "memory"
-    ? "Review memory candidates"
+    ? "复查记忆候选"
     : stage.stage === "review"
-      ? "Open Mission Control"
+      ? "打开运行观测"
       : stage.stage === "running"
-        ? "Monitor active run"
-        : "Draft or launch the next mission";
-  const runAction = latestRun?.id ? `<button type="button" data-run-open="${escapeHTML(latestRun.id)}">Open run</button>` : "";
-  const sessionAction = latestSession?.id ? `<button type="button" data-session-resume="${escapeHTML(latestSession.id)}">Resume session</button>` : "";
+        ? "监控进行中的运行"
+        : "起草或发起下一次任务";
+  const runAction = latestRun?.id ? `<button type="button" data-run-open="${escapeHTML(latestRun.id)}">观测运行</button>` : "";
+  const sessionAction = latestSession?.id ? `<button type="button" data-session-resume="${escapeHTML(latestSession.id)}">恢复会话</button>` : "";
   target.innerHTML = `<div class="focus-brief-head">
       <div>
         <span class="board-kicker">${escapeHTML(stage.stage)}</span>
@@ -951,15 +1955,15 @@ function renderFocusBrief() {
       <small>${escapeHTML(next)}</small>
     </div>
     <div class="focus-brief-grid">
-      <span>Context</span><strong>${escapeHTML(context)}</strong>
-      <span>Strategy</span><strong>${escapeHTML(strategy.title || "Quick Run")}</strong>
-      <span>Session</span><strong>${escapeHTML(latestSession?.title || latestSession?.id || "No session")}</strong>
-      <span>Run</span><strong>${escapeHTML(latestRun?.prompt || latestRun?.id || "No run")}</strong>
+      <span>上下文</span><strong>${escapeHTML(context)}</strong>
+      <span>策略</span><strong>${escapeHTML(strategy.title || "Quick Run")}</strong>
+      <span>会话</span><strong>${escapeHTML(latestSession?.title || latestSession?.id || "暂无会话")}</strong>
+      <span>运行</span><strong>${escapeHTML(latestRun?.prompt || latestRun?.id || "暂无运行")}</strong>
     </div>
     <div class="focus-brief-actions">
       ${runAction}
       ${sessionAction}
-      <button type="button" data-panel="${stage.stage === "memory" ? "memory" : "runs"}">${escapeHTML(stage.stage === "memory" ? "Open Memory" : "Open Mission Control")}</button>
+      <button type="button" data-panel="${stage.stage === "memory" ? "memory" : "runs"}">${escapeHTML(stage.stage === "memory" ? "打开记忆" : "打开运行观测")}</button>
     </div>`;
 }
 
@@ -976,30 +1980,30 @@ function renderWorkspaceHealthStrip() {
     {
       panel: "diagnostics",
       tone: diagnosticsStatus === "ready" ? "ready" : diagnosticsStatus === "warning" ? "warning" : diagnosticsStatus === "unknown" ? "" : "attention",
-      label: "Diagnostics",
+      label: "诊断",
       value: statusLabel(diagnosticsStatus),
-      detail: state.diagnostics?.summary || "Runtime readiness",
+      detail: state.diagnostics?.summary || "运行就绪",
     },
     {
       panel: "permissions",
       tone: permissionsConfigured ? "ready" : "warning",
-      label: "Permissions",
-      value: permissionsConfigured ? "Configured" : "Defaults",
-      detail: permissionsConfigured ? "Explicit tool policy" : "Built-in guardrails",
+      label: "权限",
+      value: permissionsConfigured ? "已配置" : "默认",
+      detail: permissionsConfigured ? "显式工具策略" : "内置护栏",
     },
     {
       panel: "mcp",
       tone: enabledMCP ? "ready" : mcpServers.length ? "warning" : "",
       label: "MCP",
-      value: enabledMCP ? `${enabledMCP} enabled` : mcpServers.length ? "Disabled" : "No docks",
-      detail: "Tool connections",
+      value: enabledMCP ? `${enabledMCP} 个启用` : mcpServers.length ? "已停用" : "无 dock",
+      detail: "工具连接",
     },
     {
       panel: "memory",
       tone: memoryWarnings.length ? "attention" : memoryFacts.length ? "ready" : "",
-      label: "Memory",
-      value: memoryWarnings.length ? `${memoryWarnings.length} warnings` : memoryFacts.length ? `${memoryFacts.length} facts` : "Preview",
-      detail: memoryWarnings.length ? "Review taxonomy" : "Durable context",
+      label: "记忆",
+      value: memoryWarnings.length ? `${memoryWarnings.length} 条警告` : memoryFacts.length ? `${memoryFacts.length} 条事实` : "预览",
+      detail: memoryWarnings.length ? "复查分类" : "长期上下文",
     },
   ];
   strip.innerHTML = items.map((item) => `<button type="button" class="workspace-health-item ${escapeHTML(item.tone)}" data-panel="${escapeHTML(item.panel)}">
@@ -1007,6 +2011,107 @@ function renderWorkspaceHealthStrip() {
     <strong>${escapeHTML(item.value)}</strong>
     <small>${escapeHTML(item.detail)}</small>
   </button>`).join("");
+}
+
+function systemStatusModel() {
+  const diagnosticsStatus = String(state.diagnostics?.status || "unknown").toLowerCase();
+  const runtimeReady = ["ready", "ok", "healthy"].includes(diagnosticsStatus);
+  const cfg = state.config || {};
+  const provider = cfg.provider || "未配置";
+  const providerReady = configReadiness(cfg);
+  const permissions = state.permissions || {};
+  const permissionRuleCount = [
+    permissions.allowed_dirs,
+    permissions.allowed_commands,
+    permissions.denied_commands,
+    permissions.network_allowlist,
+    permissions.sensitive_patterns,
+  ].reduce((total, values) => total + (Array.isArray(values) ? values.length : 0), 0);
+  const mcpServers = Array.isArray(cfg.mcp_servers) ? cfg.mcp_servers : [];
+  const enabledMCP = mcpServers.filter((server) => !server.disabled).length;
+  const version = state.version || {};
+  const cards = [
+    {
+      panel: "diagnostics",
+      tone: runtimeReady ? "ready" : diagnosticsStatus === "warning" ? "warning" : diagnosticsStatus === "unknown" ? "idle" : "attention",
+      label: "运行时",
+      value: statusLabel(state.diagnostics?.status || "unknown"),
+      detail: localizedSystemMessage(state.diagnostics?.summary) || "等待诊断结果",
+      ready: runtimeReady,
+    },
+    {
+      panel: "config",
+      tone: providerReady.ready ? "ready" : cfg.provider ? "warning" : "attention",
+      label: "Provider",
+      value: provider,
+      detail: providerReady.ready ? "连接器就绪" : providerReady.missing.length ? `缺少 ${providerReady.missing.join("、")}` : "尚未加载配置",
+      ready: providerReady.ready,
+    },
+    {
+      panel: "permissions",
+      tone: permissions.configured === true ? "ready" : state.permissions ? "warning" : "idle",
+      label: "权限",
+      value: permissions.configured === true ? "已配置" : "默认",
+      detail: permissions.configured === true ? (permissionRuleCount ? `${permissionRuleCount} 条显式规则` : "显式策略已加载") : "使用内置护栏",
+      ready: Boolean(state.permissions),
+    },
+    {
+      panel: "version",
+      tone: version.version ? "ready" : "idle",
+      label: "版本",
+      value: version.version || "待加载",
+      detail: version.update_supported ? "支持更新检查" : (localizedSystemMessage(version.message) || "本地构建状态"),
+      ready: Boolean(version.version),
+    },
+    {
+      panel: "mcp",
+      tone: enabledMCP ? "ready" : mcpServers.length ? "warning" : "idle",
+      label: "MCP",
+      value: enabledMCP ? `${enabledMCP}/${mcpServers.length}` : mcpServers.length ? "已停用" : "无 dock",
+      detail: enabledMCP ? "工具 dock 可用" : mcpServers.length ? "检查停用项" : "按需添加工具连接",
+      ready: Boolean(enabledMCP),
+    },
+  ];
+  const readyCount = cards.filter((card) => card.ready).length;
+  const attentionCount = cards.filter((card) => card.tone === "attention" || card.tone === "warning").length;
+  const score = Math.max(12, Math.min(100, Math.round((readyCount / cards.length) * 100) - attentionCount * 5));
+  return {
+    cards,
+    readyCount,
+    attentionCount,
+    score,
+    label: attentionCount ? "需要复查" : readyCount ? `${readyCount}/${cards.length} 就绪` : "待加载",
+    primary: cards.find((card) => card.tone === "attention" || card.tone === "warning") || cards.find((card) => card.ready) || cards[0],
+  };
+}
+
+function localizedSystemMessage(value) {
+  const text = String(value || "").trim();
+  const labels = {
+    "StarClaw is ready to run agents.": "StarClaw 已准备好运行 Agent。",
+    "Development build - update checks require a release version.": "开发构建，更新检查需要发布版本。",
+  };
+  return labels[text] || text;
+}
+
+function renderSystemStatusBoard() {
+  const target = $("system-status-board");
+  if (!target) return;
+  const model = systemStatusModel();
+  const primary = model.primary || {};
+  target.innerHTML = `<section class="system-status-summary ${escapeHTML(model.attentionCount ? "warning" : model.readyCount ? "ready" : "idle")}">
+    <div>
+      <span>系统控制</span>
+      <strong>${escapeHTML(model.label)}</strong>
+      <small>${escapeHTML(primary.detail || "等待系统状态。")}</small>
+    </div>
+    <b>${escapeHTML(String(model.score))}%</b>
+  </section>
+  <div class="system-signal-grid">${model.cards.map((card) => `<button type="button" class="system-signal-card ${escapeHTML(card.tone || "idle")}" data-panel="${escapeHTML(card.panel)}">
+    <span>${escapeHTML(card.label)}</span>
+    <strong>${escapeHTML(card.value)}</strong>
+    <small>${escapeHTML(card.detail)}</small>
+  </button>`).join("")}</div>`;
 }
 
 function reviewQueueItems() {
@@ -1017,18 +2122,18 @@ function reviewQueueItems() {
     const run = failedRuns[0];
     items.push({
       tone: "attention",
-      label: "Run",
-      title: `${failedRuns.length} run${failedRuns.length === 1 ? "" : "s"} need review`,
-      detail: run.prompt || run.id || "Open Mission Control to inspect the failed run.",
+      label: "运行",
+      title: `${failedRuns.length} 条运行需要复查`,
+      detail: run.prompt || run.id || "打开运行面板检查失败状态。",
       runID: run.id || "",
     });
   } else if (activeRuns.length) {
     const run = activeRuns[0];
     items.push({
       tone: "active",
-      label: "Run",
-      title: `${activeRuns.length} active mission${activeRuns.length === 1 ? "" : "s"}`,
-      detail: run.prompt || run.id || "Monitor the active daemon execution.",
+      label: "运行",
+      title: `${activeRuns.length} 条任务轨道活跃`,
+      detail: run.prompt || run.id || "观察正在执行的 daemon 运行。",
       runID: run.id || "",
     });
   }
@@ -1037,17 +2142,17 @@ function reviewQueueItems() {
   if (inboxCounts.failed) {
     items.push({
       tone: "attention",
-      label: "Inbox",
-      title: `${inboxCounts.failed} inbound item${inboxCounts.failed === 1 ? "" : "s"} failed`,
-      detail: "Retry or reject failed channel work before it blocks the queue.",
+      label: "收件箱",
+      title: `${inboxCounts.failed} 个进入项失败`,
+      detail: "在阻塞队列前重试或拒绝失败的渠道任务。",
       panel: "inbox",
     });
   } else if (inboxCounts.pending) {
     items.push({
       tone: "warning",
-      label: "Inbox",
-      title: `${inboxCounts.pending} inbound item${inboxCounts.pending === 1 ? "" : "s"} waiting`,
-      detail: "Review external tasks before they become Astria runs.",
+      label: "收件箱",
+      title: `${inboxCounts.pending} 个进入项待审`,
+      detail: "外部任务转成 Astria 运行前需要先复查。",
       panel: "inbox",
     });
   }
@@ -1056,9 +2161,9 @@ function reviewQueueItems() {
   if (memoryWarnings.length) {
     items.push({
       tone: "attention",
-      label: "Memory",
-      title: `${memoryWarnings.length} memory warning${memoryWarnings.length === 1 ? "" : "s"}`,
-      detail: String(memoryWarnings[0] || "Review taxonomy warnings before adding durable context."),
+      label: "记忆",
+      title: `${memoryWarnings.length} 条记忆警告`,
+      detail: String(memoryWarnings[0] || "添加长期上下文前先复查分类警告。"),
       panel: "memory",
     });
   }
@@ -1067,9 +2172,9 @@ function reviewQueueItems() {
   if (!["ready", "unknown"].includes(diagnosticsStatus)) {
     items.push({
       tone: diagnosticsStatus === "warning" ? "warning" : "attention",
-      label: "Diagnostics",
-      title: `Diagnostics ${statusLabel(diagnosticsStatus)}`,
-      detail: state.diagnostics?.summary || "Inspect launch readiness checks.",
+      label: "诊断",
+      title: `诊断${statusLabel(diagnosticsStatus)}`,
+      detail: state.diagnostics?.summary || "检查启动就绪状态。",
       panel: "diagnostics",
     });
   }
@@ -1077,9 +2182,9 @@ function reviewQueueItems() {
   if (state.permissions && state.permissions.configured !== true) {
     items.push({
       tone: "warning",
-      label: "Permissions",
-      title: "Permissions using defaults",
-      detail: "Set explicit tool guardrails for this workspace.",
+      label: "权限",
+      title: "权限仍使用默认护栏",
+      detail: "为这个工作区设置显式工具边界。",
       panel: "permissions",
     });
   } else if (state.permissions) {
@@ -1087,8 +2192,8 @@ function reviewQueueItems() {
     if (hints.length) {
       items.push({
         tone: "warning",
-        label: "Permissions",
-        title: `${hints.length} policy hint${hints.length === 1 ? "" : "s"}`,
+        label: "权限",
+        title: `${hints.length} 条策略提示`,
         detail: hints[0],
         panel: "permissions",
       });
@@ -1101,16 +2206,16 @@ function reviewQueueItems() {
     items.push({
       tone: "warning",
       label: "MCP",
-      title: "MCP docks disabled",
-      detail: "Enable or test a dock before tool-heavy workflows.",
+      title: "MCP dock 已停用",
+      detail: "工具密集任务前先启用或测试 dock。",
       panel: "mcp",
     });
   } else if (!mcpServers.length && state.config) {
     items.push({
       tone: "",
       label: "MCP",
-      title: "No MCP docks configured",
-      detail: "Add a dock when this workspace needs external tools.",
+      title: "尚未配置 MCP dock",
+      detail: "当工作区需要外部工具时再添加 dock。",
       panel: "mcp",
     });
   }
@@ -1124,7 +2229,7 @@ function renderReviewQueue() {
   const items = reviewQueueItems();
   if (!items.length) {
     target.innerHTML = `<button type="button" class="review-queue-item clear" data-panel="runs">
-      <span>Clear</span>
+      <span>清空</span>
       <strong>队列已清空</strong>
       <small>没有失败运行、待审收件箱、记忆警告或配置风险。</small>
     </button>`;
@@ -1152,18 +2257,18 @@ function approvalCenterItems() {
   if (state.approvals.size) {
     items.push({
       tone: "attention",
-      label: "Approvals",
-      title: `${state.approvals.size} pending confirmation${state.approvals.size === 1 ? "" : "s"}`,
-      detail: "Review tool or command approval cards in Chat before continuing.",
+      label: "确认",
+      title: `${state.approvals.size} 个确认请求待处理`,
+      detail: "继续前请在对话中复查工具或命令确认卡。",
       panel: "chat",
     });
   }
   if (state.permissions && state.permissions.configured !== true) {
     items.push({
       tone: "warning",
-      label: "Permissions",
-      title: "Default guardrails",
-      detail: "Create explicit permissions before high-risk workflows.",
+      label: "权限",
+      title: "默认护栏",
+      detail: "高风险工作流前先建立显式权限。",
       panel: "permissions",
     });
   } else if (state.permissions) {
@@ -1171,8 +2276,8 @@ function approvalCenterItems() {
     if (hints.length) {
       items.push({
         tone: "warning",
-        label: "Permissions",
-        title: `${hints.length} policy review${hints.length === 1 ? "" : "s"}`,
+        label: "权限",
+        title: `${hints.length} 条策略待审`,
         detail: hints[0],
         panel: "permissions",
       });
@@ -1181,9 +2286,9 @@ function approvalCenterItems() {
   if (!["ready", "unknown"].includes(diagnosticsStatus)) {
     items.push({
       tone: diagnosticsStatus === "warning" ? "warning" : "attention",
-      label: "Diagnostics",
-      title: `Runtime ${statusLabel(diagnosticsStatus)}`,
-      detail: state.diagnostics?.summary || "Resolve launch readiness before risky work.",
+      label: "诊断",
+      title: `运行时${statusLabel(diagnosticsStatus)}`,
+      detail: state.diagnostics?.summary || "风险动作前先解决启动就绪问题。",
       panel: "diagnostics",
     });
   }
@@ -1191,18 +2296,18 @@ function approvalCenterItems() {
     const run = failedRuns[0];
     items.push({
       tone: "attention",
-      label: "Recovery",
-      title: `${failedRuns.length} run${failedRuns.length === 1 ? "" : "s"} need recovery`,
-      detail: run.prompt || run.id || "Open Mission Control to review failure state.",
+      label: "恢复",
+      title: `${failedRuns.length} 条运行需要恢复`,
+      detail: run.prompt || run.id || "打开运行面板复查失败状态。",
       runID: run.id || "",
     });
   }
   if (inboxCounts.failed || inboxCounts.pending) {
     items.push({
       tone: inboxCounts.failed ? "attention" : "warning",
-      label: "Inbox",
-      title: inboxCounts.failed ? `${inboxCounts.failed} failed inbound` : `${inboxCounts.pending} pending inbound`,
-      detail: "Approve, retry, or reject external channel work before it runs.",
+      label: "收件箱",
+      title: inboxCounts.failed ? `${inboxCounts.failed} 个进入项失败` : `${inboxCounts.pending} 个进入项待审`,
+      detail: "外部渠道任务运行前需要确认、重试或拒绝。",
       panel: "inbox",
     });
   }
@@ -1210,16 +2315,16 @@ function approvalCenterItems() {
     items.push({
       tone: "warning",
       label: "MCP",
-      title: "Tool docks disabled",
-      detail: "Enable or test docks before tool-heavy runs.",
+      title: "工具 dock 已停用",
+      detail: "工具密集运行前先启用或测试 dock。",
       panel: "mcp",
     });
   } else if (!mcpServers.length && state.config) {
     items.push({
       tone: "",
       label: "MCP",
-      title: "No tool docks",
-      detail: "Add a dock when approval-gated work needs external tools.",
+      title: "尚无工具 dock",
+      detail: "需要外部工具时，再添加受审批边界保护的 dock。",
       panel: "mcp",
     });
   }
@@ -1232,7 +2337,7 @@ function renderApprovalCenter() {
   const items = approvalCenterItems();
   if (!items.length) {
     target.innerHTML = `<button type="button" class="approval-center-item clear" data-panel="permissions">
-      <span>Clear</span>
+      <span>无阻塞</span>
       <strong>没有待确认风险</strong>
       <small>审批、权限、诊断、收件箱和失败运行当前没有阻塞项。</small>
     </button>`;
@@ -1250,6 +2355,33 @@ function renderApprovalCenter() {
   }).join("");
 }
 
+function rememberMissionEvent(type, event) {
+  const data = parseEventData(event.data);
+  state.missionEvents = [
+    ...state.missionEvents,
+    {
+      id: event.lastEventId || `${Date.now()}-${state.missionEvents.length}`,
+      type,
+      at: new Date().toISOString(),
+      runID: data.run_id || data.id || data.request_id || "",
+      data,
+    },
+  ].slice(-60);
+  return data;
+}
+
+function handleMissionTelemetryEvent(type, event) {
+  const data = rememberMissionEvent(type, event);
+  if (type === "tool_status") {
+    setStarMapActivity("tool", { label: data.tool || "工具事件", active: "tool" });
+  } else if (type === "usage" || type === "budget_status") {
+    setStarMapActivity("running", { label: type === "usage" ? "用量更新" : "预算状态", active: "context" });
+  } else if (type === "run_status") {
+    setStarMapActivity(data.status === "waiting_approval" ? "approval" : "running", { label: uiTerm(data.status || "运行状态") });
+  }
+  renderMissionGraph();
+}
+
 function connectEventStream() {
   if (!("EventSource" in window) || state.eventSource) return;
   state.eventStream.status = "connecting";
@@ -1262,24 +2394,41 @@ function connectEventStream() {
   };
   source.addEventListener("approval_needed", (event) => {
     trackEventStreamID(event);
-    renderApprovalCard(parseEventData(event.data));
+    const data = rememberMissionEvent("approval_needed", event);
+    renderApprovalCard(data);
+    renderMissionGraph();
   });
   source.addEventListener("approval_resolved", (event) => {
     trackEventStreamID(event);
-    markApprovalResolved(parseEventData(event.data));
+    const data = rememberMissionEvent("approval_resolved", event);
+    markApprovalResolved(data);
+    renderMissionGraph();
   });
   source.addEventListener("run_started", (event) => {
     trackEventStreamID(event);
-    handleRunLifecycleEvent("run_started", parseEventData(event.data));
+    handleRunLifecycleEvent("run_started", rememberMissionEvent("run_started", event));
   });
   source.addEventListener("run_completed", (event) => {
     trackEventStreamID(event);
-    handleRunLifecycleEvent("run_completed", parseEventData(event.data));
+    handleRunLifecycleEvent("run_completed", rememberMissionEvent("run_completed", event));
   });
   source.addEventListener("run_error", (event) => {
     trackEventStreamID(event);
-    handleRunLifecycleEvent("run_error", parseEventData(event.data));
+    handleRunLifecycleEvent("run_error", rememberMissionEvent("run_error", event));
   });
+  for (const type of ["tool_status", "usage", "budget_status", "run_status"]) {
+    source.addEventListener(type, (event) => {
+      trackEventStreamID(event);
+      handleMissionTelemetryEvent(type, event);
+    });
+  }
+  for (const type of ["cloud_delegate_start", "cloud_delegate_progress", "cloud_delegate_complete", "preamble", "stream_delta"]) {
+    source.addEventListener(type, (event) => {
+      trackEventStreamID(event);
+      rememberMissionEvent(type, event);
+      renderMissionGraph();
+    });
+  }
   source.onerror = () => {
     state.eventStream.status = "reconnecting";
     state.eventStream.reconnecting = true;
@@ -1312,18 +2461,30 @@ function formatUptime(seconds) {
   return `${hours}h ${minutes % 60}m`;
 }
 
+function primaryNavPanel(panel) {
+  if (["chat", "agents", "schedules", "inbox"].includes(panel)) return "home";
+  if (["quality", "compare", "promptlab", "budget", "council"].includes(panel)) return "runs";
+  if (["reuse", "playbooks", "starter", "share", "snapshot", "delivery"].includes(panel)) return "results";
+  if (["skills", "browser", "data", "mcp", "intake", "memory", "sources", "reconcile", "citation"].includes(panel)) return "memory";
+  if (["manage", "settings", "diagnostics", "config", "permissions", "version"].includes(panel)) return "settings";
+  return panel;
+}
+
 function switchPanel(panel) {
   if (!views[panel]) return;
   hideToast();
   state.panel = panel;
+  const activeNavPanel = primaryNavPanel(panel);
   document.querySelectorAll(".nav-item").forEach((button) => {
-    button.classList.toggle("active", button.dataset.panel === panel);
+    button.classList.toggle("active", button.dataset.panel === activeNavPanel);
   });
   document.querySelectorAll(".panel").forEach((section) => {
     section.classList.toggle("active", section.id === `panel-${panel}`);
   });
   $("view-title").textContent = views[panel][0];
 }
+
+window.switchPanel = switchPanel;
 
 function runStatusValue(run) {
   return String(run?.status || "").toLowerCase();
@@ -1347,6 +2508,9 @@ function renderHomeActivity() {
   setText("home-count-completed", completed);
   setText("home-count-failed", failed);
   setText("home-orbit-count", state.runs.length);
+  setText("home-brief-run-count", state.runs.length);
+  setText("home-brief-pending-count", pending);
+  renderMissionGraph();
   renderHomeLatestRun();
   renderWorkspaceHub();
   renderKnowledgeCuration();
@@ -1383,6 +2547,14 @@ function renderHomeLatestRun() {
     target.removeAttribute("data-run-open");
     target.dataset.panel = "runs";
     target.innerHTML = `<strong>暂无运行记录</strong><small>开始一个任务后，这里会显示最近一次运行。</small>`;
+    setText("home-brief-current-title", "等待任务");
+    setText("home-brief-current-detail", "发起任务后显示最近运行、状态和 Agent。");
+    const brief = $("home-brief-current");
+    if (brief) {
+      delete brief.dataset.runOpen;
+      brief.dataset.panel = "runs";
+      brief.className = "home-brief-current";
+    }
     return;
   }
   const status = runHealthGroup(latest);
@@ -1391,19 +2563,30 @@ function renderHomeLatestRun() {
   target.className = `board-run ${status}`;
   target.innerHTML = `<strong>${escapeHTML(latest.prompt || latest.id || "Untitled run")}</strong>
     <small>${escapeHTML(latest.status || "unknown")} · ${escapeHTML(latest.agent || "default")} · ${escapeHTML(formatTimestamp(latest.started_at))}</small>`;
+  const brief = $("home-brief-current");
+  if (brief) {
+    delete brief.dataset.panel;
+    brief.dataset.runOpen = latest.id || "";
+    brief.className = `home-brief-current ${status}`;
+  }
+  setText("home-brief-current-title", latest.prompt || latest.id || "Untitled run");
+  setText("home-brief-current-detail", `${uiTerm(latest.status || "unknown")} · ${latest.agent || "default"} · ${formatTimestamp(latest.started_at)}`);
 }
 
 function renderHomeDockedTools() {
   setText("home-skill-count", state.skills.length);
   setText("home-agent-count", state.agents.length);
+  setText("home-brief-agent-count", state.agents.length);
   setText("home-schedule-count", state.schedules.length);
   const mcpCount = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers.length : 0;
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
   setText("home-mcp-count", mcpCount);
+  setText("home-brief-mcp-count", mcpCount);
   setText("home-memory-count", memoryCount);
   setText("home-council-count", state.councilRuns.length);
   setText("home-inbox-count", (inboxStatusCounts().pending || 0));
-  setText("home-intake-count", state.intakeResult ? "ready" : "local");
+  setText("home-intake-count", state.intakeResult ? "就绪" : "本地");
+  renderMissionGraph();
   renderWorkspaceHub();
   renderKnowledgeCuration();
   renderToolDockInspector();
@@ -1441,49 +2624,49 @@ function renderWorkspaceHub() {
   const memoryEntries = Array.isArray(state.memory?.entries) ? state.memory.entries : [];
   const memoryWarnings = Array.isArray(state.memory?.warnings) ? state.memory.warnings : [];
   const memoryLabel = memoryWarnings.length
-    ? `${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}`
+    ? `${memoryWarnings.length} 条警告`
     : memoryFacts.length
-      ? `${memoryFacts.length} facts`
-      : `${memoryEntries.length} sources`;
+      ? `${memoryFacts.length} 条事实`
+      : `${memoryEntries.length} 个来源`;
   const runHealth = failed
-    ? `${failed} need attention`
+    ? `${failed} 条需处理`
     : running
-      ? `${running} active`
+      ? `${running} 条活跃`
       : completed
-        ? `${completed} completed`
-        : "No runs yet";
+        ? `${completed} 条完成`
+        : "还没有运行";
   const intakeLabel = state.intakeResult
-    ? (state.intakeResult.mode || "Result ready")
-    : "Local paths";
+    ? (state.intakeResult.mode || "结果就绪")
+    : "本地路径";
   hub.innerHTML = [
     {
       panel: "chat",
       sessionID: latestSession?.id || "",
-      kicker: "Session",
+      kicker: "会话",
       title: latestSession?.title || latestSession?.id || "等待会话",
-      detail: latestSession ? `${latestSession.msg_count ?? 0} messages · open Chat` : "开始一次对话后，这里会显示最近会话。",
+      detail: latestSession ? `${latestSession.msg_count ?? 0} 条消息 · 打开对话` : "开始一次对话后，这里会显示最近会话。",
       tone: latestSession ? "ready" : "",
     },
     {
       panel: "runs",
       runID: state.runs[0]?.id || "",
-      kicker: "Runs",
+      kicker: "运行",
       title: runHealth,
-      detail: `${state.runs.length} total · open Mission Control`,
+      detail: `共 ${state.runs.length} 条 · 打开运行观测`,
       tone: failed ? "attention" : running ? "active" : completed ? "ready" : "",
     },
     {
       panel: "memory",
-      kicker: "Memory",
+      kicker: "记忆",
       title: memoryLabel,
-      detail: memoryWarnings.length ? "Review taxonomy warnings before adding more memory." : "Open Memory Map for durable context.",
+      detail: memoryWarnings.length ? "添加更多记忆前先复查分类警告。" : "打开记忆星图管理长期上下文。",
       tone: memoryWarnings.length ? "attention" : memoryFacts.length || memoryEntries.length ? "ready" : "",
     },
     {
       panel: "intake",
-      kicker: "Files",
+      kicker: "文件",
       title: intakeLabel,
-      detail: state.intakeResult ? "Review the latest extracted local context." : "Open File Intake to inspect a document or archive.",
+      detail: state.intakeResult ? "复查最近提取的本地上下文。" : "打开文件星舱检查文档或归档。",
       tone: state.intakeResult ? "ready" : "",
     },
   ].map((item) => {
@@ -1536,6 +2719,15 @@ function knowledgeCurationItems() {
       panel: "memory",
     });
   }
+  if (!memoryWarnings.length && !memoryFacts.length && !memoryEntries.length) {
+    items.push({
+      tone: "clear",
+      label: "Low context",
+      title: "暂无知识候选",
+      detail: "Open Memory Map to review sources before promoting context.",
+      panel: "memory",
+    });
+  }
   if (favoriteSession) {
     items.push({
       tone: favoriteSession.favorite ? "ready" : "",
@@ -1552,15 +2744,6 @@ function knowledgeCurationItems() {
       title: completedRun.prompt || completedRun.id || "Run",
       detail: `${completedRun.status || "unknown"} · ${completedRun.agent || "default"}`,
       runID: completedRun.id || "",
-    });
-  }
-  if (!items.length) {
-    items.push({
-      tone: "clear",
-      label: "Low context",
-      title: "暂无知识候选",
-      detail: "Run a task, favorite a session, or open Memory Capture to create reviewable context.",
-      panel: "memory",
     });
   }
   return items.slice(0, 6);
@@ -1711,63 +2894,63 @@ function promptSuggestionItems() {
   } else if (latestSession) {
     items.push({
       tone: "ready",
-      label: "Session",
-      title: latestSession.title || latestSession.id || "Recent session",
-      reason: "Resume from the freshest conversation context.",
+      label: "会话",
+      title: latestSession.title || latestSession.id || "最近会话",
+      reason: "从最新对话上下文续接。",
       prompt: `Resume the recent session and identify the next useful task.\n\nSession: ${latestSession.id || "unknown"}\nMessages: ${latestSession.msg_count ?? 0}`,
     });
   }
   if (pendingInbox.length) {
     items.push({
       tone: "active",
-      label: "Inbox",
-      title: `${pendingInbox.length} inbound item${pendingInbox.length === 1 ? "" : "s"}`,
-      reason: "Convert external asks into reviewed work.",
+      label: "收件箱",
+      title: `${pendingInbox.length} 条进入项`,
+      reason: "把外部请求转成已审查工作。",
       prompt: "Triage pending inbox items. Group them into run now, needs context, and reject, then propose the next reviewed action.",
     });
   }
   if (diagnosticsStatus && !["ok", "ready", "healthy"].includes(String(diagnosticsStatus).toLowerCase())) {
     items.push({
       tone: "attention",
-      label: "Readiness",
-      title: "Diagnostics need review",
-      reason: state.diagnostics?.summary || "Runtime readiness is not fully clear.",
+      label: "就绪度",
+      title: "诊断需要复查",
+      reason: state.diagnostics?.summary || "运行时就绪状态仍不清晰。",
       prompt: "Review daemon diagnostics and list the smallest setup or configuration fixes needed before the next mission.",
     });
   }
   if (!enabledMCP && state.config) {
     items.push({
       tone: "",
-      label: "Tools",
-      title: "Plan first MCP dock",
-      reason: "Tool-heavy workflows need a configured dock.",
+      label: "工具",
+      title: "规划第一条 MCP dock",
+      reason: "重工具工作流需要已配置的 dock。",
       prompt: "Suggest the first MCP dock for this workspace. Include the command or URL, required env keys, safety considerations, and a connection test plan.",
     });
   }
   if (state.intakeResult) {
     items.push({
       tone: "ready",
-      label: "Files",
+      label: "文件",
       title: state.intakeResult.path || "Intake result",
-      reason: "Use extracted local context in the next task.",
+      reason: "把已提取的本地上下文用于下一次任务。",
       prompt: `Summarize this file intake result and turn it into a concrete next action.\n\nPath: ${state.intakeResult.path || ""}\nMode: ${state.intakeResult.mode || ""}\n\n${String(state.intakeResult.content || "").slice(0, 1200)}`,
     });
   }
   if (recipe) {
     items.push({
       tone: "active",
-      label: "Workflow",
+      label: "工作流",
       title: recipe.title || "Selected workflow",
-      reason: recipe.outcome || recipe.description || "Continue the selected workflow.",
-      prompt: recipe.prompt || "Continue the selected Astria workflow and define the next check.",
+      reason: recipe.outcome || recipe.description || "继续当前选中的工作流。",
+      prompt: displayPromptFor(recipe) || "继续当前 Astria 工作流，并定义下一步检查。",
     });
   } else {
     items.push({
       tone: "clear",
-      label: "Default",
-      title: `${strategy.title || "Quick Run"} next prompt`,
-      reason: strategy.outcome || strategy.description || "Start from the current strategy.",
-      prompt: strategy.prompt || "Continue the current Astria mission. Review the workspace state, identify the next useful action, and explain the validation needed.",
+      label: "默认",
+      title: `${strategy.title || "快速运行"}下一步`,
+      reason: strategy.outcome || strategy.description || "从当前策略继续。",
+      prompt: displayPromptFor(strategy) || "继续当前 Astria 任务，复查工作区状态，识别下一步有价值动作，并说明需要的验证。",
     });
   }
   return items.slice(0, 6);
@@ -1796,62 +2979,62 @@ function comparisonCandidates() {
   return [
     {
       id: "recent-runs",
-      source: "Runs",
+      source: "运行",
       panel: "runs",
-      title: latestRun?.prompt || "Recent run evidence",
-      metric: state.runs.length ? `${completedRuns.length}/${state.runs.length} complete` : "seed",
+      title: latestRun?.prompt || "最近运行证据",
+      metric: state.runs.length ? `${completedRuns.length}/${state.runs.length} 完成` : "待建立",
       evidence: [
-        latestRun ? `Latest: ${latestRun.status || "unknown"} with ${latestRun.agent || "default"}` : "No latest run captured",
-        failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"} need review` : "No failed runs in the current list",
-        latestRun ? `Started ${formatTimestamp(latestRun.started_at)}` : "Open Runs after the first execution",
+        latestRun ? `最近：${uiTerm(latestRun.status || "unknown")} · ${latestRun.agent || "默认 Agent"}` : "尚未捕获最近运行",
+        failedRuns.length ? `${failedRuns.length} 条失败运行需要复查` : "当前列表没有失败运行",
+        latestRun ? `开始于 ${formatTimestamp(latestRun.started_at)}` : "完成第一次执行后打开运行观测台",
       ],
-      tradeoff: "Best when the next decision should follow observed execution rather than a fresh plan.",
-      recommendation: failedRuns.length ? "Review failures before launching a similar run." : state.runs.length ? "Use the latest successful run as the shortest path to continue." : "Create a baseline run before choosing by execution evidence.",
+      tradeoff: "适合让下一步沿着真实执行证据推进，而不是重新规划。",
+      recommendation: failedRuns.length ? "先复查失败原因，再发起相似运行。" : state.runs.length ? "以最近成功运行作为最短续接路径。" : "先创建一条基准运行，再依据执行证据决策。",
       prompt: `Compare recent Astria runs and decide the next execution path.\n\nLatest run: ${latestRun?.prompt || "none"}\nStatus: ${latestRun?.status || "unknown"}\nCompleted runs: ${completedRuns.length}\nFailed runs: ${failedRuns.length}`,
     },
     {
       id: "agent-profiles",
-      source: "Agents",
+      source: "Agent",
       panel: "agents",
-      title: latestAgent?.name || "Agent profile options",
-      metric: state.agents.length ? `${state.agents.length} profile${state.agents.length === 1 ? "" : "s"}` : "seed",
+      title: latestAgent?.name || "Agent 配置候选",
+      metric: state.agents.length ? `${state.agents.length} 个配置` : "待建立",
       evidence: [
-        latestAgent ? `Lead candidate: ${latestAgent.name}` : "No lead agent selected",
-        `${commandCount} saved command${commandCount === 1 ? "" : "s"}`,
-        latestAgent?.model ? `Model: ${latestAgent.model}` : "Model inherits default configuration",
+        latestAgent ? `候选主 Agent：${latestAgent.name}` : "尚未选择主 Agent",
+        `${commandCount} 条已保存命令`,
+        latestAgent?.model ? `模型：${latestAgent.model}` : "模型沿用默认配置",
       ],
-      tradeoff: "Best when the decision depends on role, model, tools, or saved command fit.",
-      recommendation: commandCount ? "Start from the agent with the closest saved command." : "Pick a focused agent before adding more workflow state.",
+      tradeoff: "适合角色、模型、工具权限或保存命令会影响成败的任务。",
+      recommendation: commandCount ? "从最接近的已保存命令所属 Agent 开始。" : "先选择一个聚焦 Agent，再增加工作流状态。",
       prompt: `Compare Astria agent profiles for the next task.\n\nProfiles: ${state.agents.map((agent) => agent.name).join(", ") || "none"}\nSaved commands: ${commandCount}`,
     },
     {
       id: "memory-context",
-      source: "Memory",
+      source: "记忆",
       panel: "memory",
-      title: "Durable context",
-      metric: memoryEntries.length ? `${memoryEntries.length} item${memoryEntries.length === 1 ? "" : "s"}` : "seed",
+      title: "长期上下文",
+      metric: memoryEntries.length ? `${memoryEntries.length} 条记忆` : "待建立",
       evidence: [
-        `${memoryCategories.size || 0} memorized categor${memoryCategories.size === 1 ? "y" : "ies"}`,
-        memoryEntries[0]?.text ? `Latest: ${String(memoryEntries[0].text).slice(0, 90)}` : "No durable memory selected",
-        "Useful for preferences, decisions, risks, and architecture constraints",
+        `${memoryCategories.size || 0} 个记忆分类`,
+        memoryEntries[0]?.text ? `最近：${String(memoryEntries[0].text).slice(0, 90)}` : "尚未选择长期记忆",
+        "适合承载偏好、决策、风险和架构约束",
       ],
-      tradeoff: "Best when correctness depends on remembered project decisions instead of raw recency.",
-      recommendation: memoryEntries.length ? "Use memory context to avoid repeating settled decisions." : "Capture a decision or preference before relying on memory.",
+      tradeoff: "适合正确性依赖既有项目决策，而不是只看最近上下文的任务。",
+      recommendation: memoryEntries.length ? "使用记忆上下文，避免重复已经确认的决策。" : "先沉淀一个决策或偏好，再依赖记忆推进。",
       prompt: `Compare current options against Astria memory.\n\nMemory categories: ${Array.from(memoryCategories).join(", ") || "uncategorized"}\nMemory count: ${memoryEntries.length}`,
     },
     {
       id: "council-synthesis",
-      source: "Council",
+      source: "议会",
       panel: "council",
-      title: latestCouncil?.goal || "Council synthesis",
-      metric: roles.length ? `${roles.length} role${roles.length === 1 ? "" : "s"}` : "seed",
+      title: latestCouncil?.goal || "议会综合",
+      metric: roles.length ? `${roles.length} 个角色` : "待建立",
       evidence: [
-        latestCouncil ? `Goal: ${latestCouncil.goal}` : "No council selected",
-        roles.length ? `Roles: ${roles.map((role) => role.role).join(", ")}` : "No role notes captured",
-        latestCouncil?.synthesis ? "Synthesis is ready for handoff" : "Synthesis pending",
+        latestCouncil ? `目标：${latestCouncil.goal}` : "尚未选择议会结果",
+        roles.length ? `角色：${roles.map((role) => role.role).join(", ")}` : "尚未捕获角色记录",
+        latestCouncil?.synthesis ? "综合结果可进入交接" : "综合结果待生成",
       ],
-      tradeoff: "Best when the next step needs planner, researcher, and reviewer balance.",
-      recommendation: latestCouncil?.synthesis ? "Use the council synthesis when tradeoffs matter more than speed." : "Run council before treating this as reviewed.",
+      tradeoff: "适合下一步需要平衡规划、研究和审查视角的任务。",
+      recommendation: latestCouncil?.synthesis ? "当取舍比速度更重要时，使用议会综合。" : "先运行议会，再把结果视为已审查。",
       prompt: `Compare the council synthesis against other Astria options.\n\nGoal: ${latestCouncil?.goal || "none"}\nRoles: ${roles.map((role) => role.role).join(", ") || "none"}\nSynthesis:\n${latestCouncil?.synthesis || ""}`,
     },
   ];
@@ -1860,8 +3043,8 @@ function comparisonCandidates() {
 function renderComparisonWorkbench() {
   const lanes = comparisonCandidates();
   setText("nav-compare-count", lanes.length);
-  setText("manage-compare-count", `${lanes.length} lane${lanes.length === 1 ? "" : "s"}`);
-  setText("compare-summary", `${lanes.length} comparison lane${lanes.length === 1 ? "" : "s"} from current workspace evidence.`);
+  setText("manage-compare-count", `${lanes.length} 条路径`);
+  setText("compare-summary", `${lanes.length} 条比较路径，来自当前工作区的运行、Agent、记忆和评议证据。`);
   const list = $("comparison-lanes");
   if (!list) return;
   if (!state.selectedComparisonLane || !lanes.some((lane) => lane.id === state.selectedComparisonLane)) {
@@ -1875,9 +3058,9 @@ function renderComparisonWorkbench() {
       ${lane.evidence.slice(0, 3).map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
     </div>
     <div class="row-actions">
-      <button type="button" data-compare-select="${escapeHTML(lane.id)}">Decision brief</button>
-      <button type="button" data-compare-draft="${escapeHTML(lane.id)}">Draft compare</button>
-      <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+      <button type="button" data-compare-select="${escapeHTML(lane.id)}">决策简报</button>
+      <button type="button" data-compare-draft="${escapeHTML(lane.id)}">起草比较</button>
+      <button type="button" data-panel="${escapeHTML(lane.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderComparisonDetail(lanes.find((lane) => lane.id === state.selectedComparisonLane) || lanes[0]);
@@ -1887,7 +3070,7 @@ function renderComparisonDetail(lane) {
   const target = $("comparison-detail");
   if (!target) return;
   if (!lane) {
-    target.innerHTML = `<div class="empty-state">Select a comparison lane.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一条比较路径。</div>`;
     return;
   }
   const title = String(lane.title || "");
@@ -1896,25 +3079,25 @@ function renderComparisonDetail(lane) {
     <section class="run-detail-section">
       <h3>${escapeHTML(displayTitle)}</h3>
       <div class="run-meta-grid">
-        <span>Source</span><strong>${escapeHTML(lane.source)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(lane.metric)}</strong>
-        <span>Route</span><strong>${escapeHTML(lane.panel)}</strong>
+        <span>来源</span><strong>${escapeHTML(lane.source)}</strong>
+        <span>就绪度</span><strong>${escapeHTML(lane.metric)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(lane.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Evidence</h3>
+      <h3>证据</h3>
       <div class="comparison-evidence detail">
         ${lane.evidence.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Tradeoff</h3>
+      <h3>取舍</h3>
       <p>${escapeHTML(lane.tradeoff)}</p>
-      <h3>Recommendation</h3>
+      <h3>建议</h3>
       <p>${escapeHTML(lane.recommendation)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-compare-draft="${escapeHTML(lane.id)}">Draft compare</button>
-        <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+        <button type="button" data-compare-draft="${escapeHTML(lane.id)}">起草比较</button>
+        <button type="button" data-panel="${escapeHTML(lane.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -1933,7 +3116,7 @@ function draftComparisonToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Comparison drafted to chat.");
+  showToast("比较任务已写入对话。");
 }
 
 function runQualityScore(run, emphasis = "overall") {
@@ -1961,7 +3144,7 @@ function runQualityGrade(score) {
   if (score >= 72) return "B";
   if (score >= 58) return "C";
   if (score >= 42) return "D";
-  return "Review";
+  return "复查";
 }
 
 function runQualityCards() {
@@ -1986,93 +3169,93 @@ function runQualityCards() {
   return [
     {
       id: "latest-run",
-      type: "Latest",
-      title: latestRun?.prompt || "Latest run score",
+      type: "最近运行",
+      title: latestRun?.prompt || "最近运行评分",
       panel: "runs",
       runID: latestRun?.id || "",
       score: latestScore,
-      signal: latestRun ? `${latestRun.status || "unknown"} with ${latestRun.agent || "default"}` : "No run captured yet",
-      risk: latestRun ? (runHealthGroup(latestRun) === "failed" ? "Latest run failed; inspect error and avoid blind rerun." : "Latest run still needs evidence and reuse review before becoming durable.") : "No execution evidence exists.",
-      gate: "Review prompt, result, usage, timeline, and follow-up before continuing.",
-      route: "Open Runs to inspect execution detail.",
+      signal: latestRun ? `${uiTerm(latestRun.status || "unknown")} · ${latestRun.agent || "默认 Agent"}` : "尚未捕获运行",
+      risk: latestRun ? (runHealthGroup(latestRun) === "failed" ? "最近运行失败；应先检查错误，避免盲目重试。" : "最近运行仍需证据与复用审查，才能沉淀为长期产物。") : "尚无执行证据。",
+      gate: "继续前复查 Prompt、结果、用量、时间线和后续动作。",
+      route: "打开运行观测台检查执行细节。",
       prompt: `Evaluate the latest Astria run quality.\n\nRun: ${latestRun?.prompt || "none"}\nStatus: ${latestRun?.status || "unknown"}\nAgent: ${latestRun?.agent || "default"}\nScore estimate: ${latestScore}\n\nReturn completion quality, evidence strength, budget posture, risk, and the next action.`,
     },
     {
       id: "completed-output",
-      type: "Completion",
-      title: "Completed output readiness",
+      type: "完成度",
+      title: "已完成产物就绪度",
       panel: "results",
       runID: latestCompleted?.id || "",
       score: completedScore,
-      signal: `${completedRuns.length} completed run${completedRuns.length === 1 ? "" : "s"}; ${resultCount} result entries`,
-      risk: completedRuns.length ? "Completed does not automatically mean cited, reusable, or accepted." : "No completed run is available for reuse.",
-      gate: "Outcome needs evidence, freshness, acceptance checks, and reusable next route.",
-      route: "Open Result Library to archive or follow up.",
+      signal: `${completedRuns.length} 条完成运行；${resultCount} 个产物条目`,
+      risk: completedRuns.length ? "完成不等于已引用、可复用或已接受。" : "尚无可复用的完成运行。",
+      gate: "结果需要证据、鲜度、验收检查和可复用的下一条路线。",
+      route: "打开产物星库归档或续接。",
       prompt: `Evaluate completed Astria output readiness.\n\nCompleted runs: ${completedRuns.length}\nResult archive entries: ${resultCount}\nLatest completed: ${latestCompleted?.prompt || "none"}\nScore estimate: ${completedScore}\n\nDecide whether the output is ready to archive, reuse, share, or needs more validation.`,
     },
     {
       id: "failure-retry",
-      type: "Retry",
-      title: "Failure and retry risk",
+      type: "重试",
+      title: "失败与重试风险",
       panel: failedRuns.length ? "budget" : "runs",
       runID: latestFailed?.id || "",
       score: failedScore,
-      signal: failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"}` : "No failed runs in current list",
-      risk: failedRuns.length ? "Repeated failures can waste context and budget without a changed plan." : "Retry risk is low, but stop rules still matter.",
-      gate: "Require root cause, changed prompt/tool route, fallback ladder, and stop condition before retry.",
-      route: failedRuns.length ? "Open Budget Guard for fallback and stop rules." : "Open Runs to inspect baseline history.",
+      signal: failedRuns.length ? `${failedRuns.length} 条失败运行` : "当前列表没有失败运行",
+      risk: failedRuns.length ? "若计划不变，重复失败会消耗上下文和预算。" : "重试风险较低，但仍需要停止规则。",
+      gate: "重试前需要根因、变更后的 Prompt/工具路线、降级阶梯和停止条件。",
+      route: failedRuns.length ? "打开预算守卫制定降级和停止规则。" : "打开运行观测台检查基线历史。",
       prompt: `Evaluate Astria failure and retry risk.\n\nFailed runs: ${failedRuns.length}\nLatest failed: ${latestFailed?.prompt || "none"}\nScore estimate: ${failedScore}\n\nReturn likely failure class, retry risk, changed plan required before retry, fallback route, and stop rule.`,
     },
     {
       id: "evidence-quality",
-      type: "Evidence",
-      title: "Evidence quality score",
+      type: "证据",
+      title: "证据质量评分",
       panel: "citation",
       runID: latestRun?.id || "",
       score: evidenceScore,
-      signal: `${sourceCount} sources; ${citationCount} citation checks`,
-      risk: "A run can look successful while unsupported claims remain hidden.",
-      gate: "Claims need source coverage, citation freshness, unsupported-claim list, and safe wording.",
-      route: "Open Citation Planner for source coverage and evidence gaps.",
+      signal: `${sourceCount} 个来源；${citationCount} 条引用检查`,
+      risk: "运行看似成功时，未支撑的结论可能仍被隐藏。",
+      gate: "结论需要来源覆盖、引用鲜度、未支撑清单和安全表述。",
+      route: "打开引用校准检查来源覆盖和证据缺口。",
       prompt: `Evaluate Astria evidence quality for recent work.\n\nSources: ${sourceCount}\nCitation checks: ${citationCount}\nLatest run: ${latestRun?.prompt || "none"}\nScore estimate: ${evidenceScore}\n\nReturn claim coverage, weak evidence, missing citations, freshness risks, and safe wording recommendations.`,
     },
     {
       id: "budget-posture",
-      type: "Budget",
-      title: "Budget and stop-rule posture",
+      type: "预算",
+      title: "预算与停止规则姿态",
       panel: "budget",
       runID: latestRun?.id || "",
       score: budgetScore,
-      signal: `${budgetCount} budget guards; usage ${latestRun?.usage || latestRun?.response?.usage ? "captured" : "not captured"}`,
-      risk: "Long tasks need caps, context trimming, fallback, and explicit stop rules before rerun.",
-      gate: "Budget shape, model route, fallback ladder, and stop condition must be explicit.",
-      route: "Open Budget Guard to plan a cheaper or safer route.",
+      signal: `${budgetCount} 条预算守卫；用量${latestRun?.usage || latestRun?.response?.usage ? "已捕获" : "未捕获"}`,
+      risk: "长任务重跑前需要上限、上下文裁剪、降级路线和明确停止规则。",
+      gate: "预算形态、模型路线、降级阶梯和停止条件必须清楚。",
+      route: "打开预算守卫规划更便宜或更安全的路线。",
       prompt: `Evaluate Astria budget posture for recent work.\n\nBudget guards: ${budgetCount}\nLatest run usage captured: ${Boolean(latestRun?.usage || latestRun?.response?.usage)}\nScore estimate: ${budgetScore}\n\nReturn token/time risk, context trimming plan, model route, fallback ladder, and stop conditions.`,
     },
     {
       id: "reuse-readiness",
-      type: "Reuse",
-      title: "Reusable output readiness",
+      type: "复用",
+      title: "可复用产物就绪度",
       panel: "share",
       runID: latestCompleted?.id || "",
       score: reuseScore,
-      signal: `${resultCount} results; ${shareCount} share packs`,
-      risk: "Reusable assets need boundaries; otherwise future sessions inherit stale or private assumptions.",
-      gate: "Reusable output needs summary, evidence, boundaries, acceptance checks, and next action.",
-      route: "Open Share Pack to package reviewed handoff sections.",
+      signal: `${resultCount} 个产物；${shareCount} 个交接包`,
+      risk: "可复用资产需要边界，否则未来会话会继承过期或私密假设。",
+      gate: "可复用产物需要摘要、证据、边界、验收检查和下一步。",
+      route: "打开交接包打包已审查内容。",
       prompt: `Evaluate Astria reusable output readiness.\n\nResults: ${resultCount}\nShare packs: ${shareCount}\nCompleted runs: ${completedRuns.length}\nScore estimate: ${reuseScore}\n\nReturn what can be reused, what needs redaction, what evidence is missing, and the next starter prompt.`,
     },
     {
       id: "delivery-readiness",
-      type: "Delivery",
-      title: "Delivery readiness score",
+      type: "交付",
+      title: "交付就绪度评分",
       panel: "delivery",
       runID: latestRun?.id || "",
       score: deliveryScore,
-      signal: `${deliveryCount} delivery lanes; ${state.schedules.length} schedules`,
-      risk: "Delivery requires approval boundary, destination, artifact, verification, and rollback.",
-      gate: "No external send, schedule, or remote state change without explicit approval.",
-      route: "Open Delivery to review outbound readiness.",
+      signal: `${deliveryCount} 条交付链路；${state.schedules.length} 条定时任务`,
+      risk: "交付需要审批边界、目标、产物、验证和回滚路线。",
+      gate: "没有明确审批，不外发、不定时、不改变远端状态。",
+      route: "打开主动交付复查出站就绪度。",
       prompt: `Evaluate Astria delivery readiness.\n\nDelivery lanes: ${deliveryCount}\nSchedules: ${state.schedules.length}\nLatest run: ${latestRun?.prompt || "none"}\nScore estimate: ${deliveryScore}\n\nReturn destination readiness, approval gate, artifact quality, verification, rollback, and whether delivery should stay local.`,
     },
   ];
@@ -2081,8 +3264,8 @@ function runQualityCards() {
 function renderRunQualityScorecard() {
   const cards = runQualityCards();
   setText("nav-quality-count", cards.length);
-  setText("manage-quality-count", `${cards.length} card${cards.length === 1 ? "" : "s"}`);
-  setText("quality-summary", `${cards.length} run quality card${cards.length === 1 ? "" : "s"} across latest run, completion, retry, evidence, budget, reuse, and delivery readiness.`);
+  setText("manage-quality-count", `${cards.length} 张卡片`);
+  setText("quality-summary", `${cards.length} 张运行质量卡，覆盖最近运行、完成度、重试、证据、预算、复用和交付就绪度。`);
   const list = $("run-quality-grid");
   if (!list) return;
   if (!state.selectedRunQuality || !cards.some((card) => card.id === state.selectedRunQuality)) {
@@ -2098,10 +3281,10 @@ function renderRunQualityScorecard() {
       <span>Gate</span><strong>${escapeHTML(card.gate)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-quality-select="${escapeHTML(card.id)}">Quality brief</button>
-      <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
-      ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : ""}
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      <button type="button" data-quality-select="${escapeHTML(card.id)}">质量简报</button>
+      <button type="button" data-quality-draft="${escapeHTML(card.id)}">起草复查</button>
+      ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">观测运行</button>` : ""}
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开路径</button>
     </div>
   </article>`).join("");
   renderRunQualityDetail(cards.find((card) => card.id === state.selectedRunQuality) || cards[0]);
@@ -2111,31 +3294,31 @@ function renderRunQualityDetail(card) {
   const target = $("run-quality-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a run quality card.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一张运行质量卡。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Score</span><strong>${escapeHTML(`${card.score} (${runQualityGrade(card.score)})`)}</strong>
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>评分</span><strong>${escapeHTML(`${card.score} (${runQualityGrade(card.score)})`)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Signal</h3>
+      <h3>信号</h3>
       <p>${escapeHTML(card.signal)}</p>
-      <h3>Risk</h3>
+      <h3>风险</h3>
       <p>${escapeHTML(card.risk)}</p>
-      <h3>Review gate</h3>
+      <h3>复查门槛</h3>
       <p>${escapeHTML(card.gate)}</p>
-      <h3>Recommended route</h3>
+      <h3>建议路径</h3>
       <p>${escapeHTML(card.route)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-quality-draft="${escapeHTML(card.id)}">Draft review</button>
-        ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">Open run</button>` : ""}
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+        <button type="button" data-quality-draft="${escapeHTML(card.id)}">起草复查</button>
+        ${card.runID ? `<button type="button" data-run-open="${escapeHTML(card.runID)}">观测运行</button>` : ""}
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开路径</button>
       </div>
     </section>
   </div>`;
@@ -2154,7 +3337,7 @@ function draftRunQualityToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Run quality review drafted to chat.");
+  showToast("运行质量复查已写入对话。");
 }
 
 function promptLabGoal() {
@@ -2164,7 +3347,7 @@ function promptLabGoal() {
 
 function promptLabVariants() {
   const goal = promptLabGoal() || "Define the next Astria task and validation plan.";
-  const agent = state.agents[0]?.name || "default";
+  const agent = state.agents[0]?.name || "默认";
   const latestRun = state.runs[0];
   const latestCouncil = state.councilRuns[0];
   const memoryCount = Array.isArray(state.memory?.entries) ? state.memory.entries.length : 0;
@@ -2173,50 +3356,50 @@ function promptLabVariants() {
   return [
     {
       id: "direct",
-      label: "Direct",
-      title: "Direct execution",
+      label: "直接",
+      title: "直接执行",
       panel: "chat",
       agent,
-      context: "Current goal",
-      source: "Chat",
-      risk: "Fast path; weaker if the goal needs evidence or review first.",
-      evaluation: "Success means one concrete implementation step, explicit validation, and no broad scope drift.",
+      context: "当前目标",
+      source: "对话",
+      risk: "最快路径；若目标需要证据或审查，可靠性会偏弱。",
+      evaluation: "成功标准是一条具体实施步骤、明确验证方式，并且不发生范围漂移。",
       prompt: `Execute this Astria goal directly.\n\nGoal: ${goal}\n\nReturn the smallest useful implementation step, explain the validation command, and call out any risk before editing.`,
     },
     {
       id: "evidence",
-      label: "Evidence",
-      title: "Evidence-first experiment",
+      label: "证据",
+      title: "证据优先实验",
       panel: "compare",
       agent,
-      context: `${state.runs.length} runs, ${memoryCount} memory items`,
-      source: "Comparison Workbench",
-      risk: "Slower path; best when stale context or hidden regressions are likely.",
-      evaluation: "Success means the answer cites run, memory, or comparison evidence before recommending action.",
+      context: `${state.runs.length} 条运行，${memoryCount} 条记忆`,
+      source: "路径比较台",
+      risk: "速度较慢；适合过期上下文或隐藏回归风险较高的任务。",
+      evaluation: "成功标准是在建议动作前引用运行、记忆或比较证据。",
       prompt: `Run an evidence-first Astria prompt experiment.\n\nGoal: ${goal}\nLatest run: ${latestRun?.prompt || "none"}\nComparison lanes: ${compare.map((lane) => lane.source).join(", ")}\nMemory items: ${memoryCount}\n\nUse the evidence to choose one next action and explain why alternatives are weaker.`,
     },
     {
       id: "council",
-      label: "Council",
-      title: "Council-reviewed variant",
+      label: "议会",
+      title: "议会评审变体",
       panel: "council",
       agent,
-      context: latestCouncil?.goal || "Planner/researcher/reviewer roles",
-      source: "Agent Council",
-      risk: "Adds review overhead; best when tradeoffs or coordination matter.",
-      evaluation: "Success means planner, researcher, and reviewer perspectives produce a single handoff.",
+      context: latestCouncil?.goal || "规划者 / 研究者 / 审阅者角色",
+      source: "智能体议会",
+      risk: "增加审查开销；适合取舍或协作成本较高的任务。",
+      evaluation: "成功标准是规划、研究和审阅视角综合成一份可交接动作。",
       prompt: `Prepare a council-reviewed prompt variant.\n\nGoal: ${goal}\nExisting council goal: ${latestCouncil?.goal || "none"}\n\nSplit the goal into planner, researcher, and reviewer concerns, then synthesize the next concrete Astria action.`,
     },
     {
       id: "delivery",
-      label: "Delivery",
-      title: "Delivery-ready variant",
+      label: "交付",
+      title: "交付就绪变体",
       panel: "delivery",
       agent,
-      context: `${state.schedules.length} schedules, ${state.inboxProviders.length} channels`,
-      source: "Proactive Delivery",
-      risk: "Requires approval boundary before any external channel delivery.",
-      evaluation: "Success means the prompt produces destination, approval gate, artifact, and verification.",
+      context: `${state.schedules.length} 条定时任务，${state.inboxProviders.length} 个渠道`,
+      source: "主动交付",
+      risk: "任何外部渠道交付前都需要审批边界。",
+      evaluation: "成功标准是产出目标、审批门、产物和验证方式。",
       prompt: `Create a delivery-ready Astria prompt variant.\n\nGoal: ${goal}\nDelivery lanes: ${delivery.map((lane) => lane.source).join(", ")}\n\nReturn the message shape, destination assumption, approval gate, and validation checklist.`,
     },
   ];
@@ -2225,8 +3408,8 @@ function promptLabVariants() {
 function renderPromptExperimentLab() {
   const variants = promptLabVariants();
   setText("nav-promptlab-count", variants.length);
-  setText("manage-promptlab-count", `${variants.length} variant${variants.length === 1 ? "" : "s"}`);
-  setText("promptlab-summary", `${variants.length} prompt variant${variants.length === 1 ? "" : "s"} across direct, evidence, council, and delivery paths.`);
+  setText("manage-promptlab-count", `${variants.length} 个变体`);
+  setText("promptlab-summary", `${variants.length} 个 Prompt 变体，覆盖直接执行、证据优先、议会评审和交付路径。`);
   const list = $("promptlab-variants");
   if (!list) return;
   if (!state.selectedPromptVariant || !variants.some((variant) => variant.id === state.selectedPromptVariant)) {
@@ -2237,14 +3420,14 @@ function renderPromptExperimentLab() {
     <strong>${escapeHTML(variant.title)}</strong>
     <p>${escapeHTML(variant.evaluation)}</p>
     <div class="prompt-variant-meta">
-      <span>Context: ${escapeHTML(variant.context)}</span>
-      <span>Source: ${escapeHTML(variant.source)}</span>
-      <span>Risk: ${escapeHTML(variant.risk)}</span>
+      <span>上下文：${escapeHTML(variant.context)}</span>
+      <span>来源：${escapeHTML(variant.source)}</span>
+      <span>风险：${escapeHTML(variant.risk)}</span>
     </div>
     <div class="row-actions">
-      <button type="button" data-prompt-variant-select="${escapeHTML(variant.id)}">Variant brief</button>
-      <button type="button" data-prompt-variant-draft="${escapeHTML(variant.id)}">Draft variant</button>
-      <button type="button" data-panel="${escapeHTML(variant.panel)}">Open source</button>
+      <button type="button" data-prompt-variant-select="${escapeHTML(variant.id)}">变体简报</button>
+      <button type="button" data-prompt-variant-draft="${escapeHTML(variant.id)}">起草变体</button>
+      <button type="button" data-panel="${escapeHTML(variant.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderPromptVariantDetail(variants.find((variant) => variant.id === state.selectedPromptVariant) || variants[0]);
@@ -2254,7 +3437,7 @@ function renderPromptVariantDetail(variant) {
   const target = $("promptlab-detail");
   if (!target) return;
   if (!variant) {
-    target.innerHTML = `<div class="empty-state">Select a prompt variant.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个 Prompt 变体。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
@@ -2262,18 +3445,18 @@ function renderPromptVariantDetail(variant) {
       <h3>${escapeHTML(variant.title)}</h3>
       <div class="run-meta-grid">
         <span>Agent</span><strong>${escapeHTML(variant.agent)}</strong>
-        <span>Context</span><strong>${escapeHTML(variant.context)}</strong>
-        <span>Source</span><strong>${escapeHTML(variant.source)}</strong>
+        <span>上下文</span><strong>${escapeHTML(variant.context)}</strong>
+        <span>来源</span><strong>${escapeHTML(variant.source)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Evaluation</h3>
+      <h3>评估方式</h3>
       <p>${escapeHTML(variant.evaluation)}</p>
-      <h3>Risk</h3>
+      <h3>风险</h3>
       <p>${escapeHTML(variant.risk)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-prompt-variant-draft="${escapeHTML(variant.id)}">Draft variant</button>
-        <button type="button" data-panel="${escapeHTML(variant.panel)}">Open source</button>
+        <button type="button" data-prompt-variant-draft="${escapeHTML(variant.id)}">起草变体</button>
+        <button type="button" data-panel="${escapeHTML(variant.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -2293,7 +3476,7 @@ function draftPromptVariantToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Prompt variant drafted to chat.");
+  showToast("Prompt 变体已写入对话。");
 }
 
 function budgetGuardCards() {
@@ -2304,91 +3487,91 @@ function budgetGuardCards() {
   const resultCount = resultArchiveEntries().length;
   const snapshotCount = workspaceSnapshotCards().length;
   const failedRuns = state.runs.filter((run) => runHealthGroup(run) === "failed").length;
-  const model = state.config?.model_tier || state.config?.openai_model || state.config?.ollama_model || "configured model";
+  const model = state.config?.model_tier || state.config?.openai_model || state.config?.ollama_model || "待填写模型";
   const provider = state.config?.provider || "provider";
   return [
     {
       id: "hard-cap",
-      type: "Token cap",
-      title: "Hard budget cap",
+      type: "Token 上限",
+      title: "硬预算上限",
       panel: "chat",
-      budget: "Set a maximum token/time envelope before launch.",
-      trigger: "Long or ambiguous task with risk of open-ended exploration.",
-      guardrail: "Stop when the cap is reached; return findings, blockers, and the next cheapest action.",
-      fallback: "Trim scope to one verifiable deliverable and ask before expanding.",
-      boundary: "Planning guard only; Astria does not claim backend billing enforcement from this UI card.",
+      budget: "发起前设定 token / 时间最大包络。",
+      trigger: "任务较长或目标模糊，存在开放式探索风险。",
+      guardrail: "达到上限时停止，返回发现、阻塞项和最便宜的下一步。",
+      fallback: "把范围裁剪到一个可验证交付物，扩展前先询问。",
+      boundary: "这是规划守卫；此 UI 卡片不声称后端计费强制执行。",
       prompt: `Plan this Astria task with a hard budget cap.\n\nGoal: ${goal}\nProvider/model context: ${provider} / ${model}\nRecent runs: ${state.runs.length}\n\nDefine a token/time cap, what must fit inside it, what to stop doing first, what evidence is enough, and the next cheapest action if the cap is hit. Do not assume backend billing enforcement; write this as an operator-reviewed launch constraint.`,
     },
     {
       id: "model-route",
-      type: "Model route",
-      title: "Complexity-based model route",
+      type: "模型路线",
+      title: "按复杂度选择模型路线",
       panel: "promptlab",
-      budget: `${variants.length} prompt variants available for routing.`,
-      trigger: "Task complexity may not justify the strongest model or longest reasoning path.",
-      guardrail: "Classify simple, evidence-heavy, council-worthy, or delivery-sensitive before choosing route.",
-      fallback: "Use a cheaper direct route first; escalate only when evidence or tests fail.",
-      boundary: "Model routing is a prompt plan unless runtime config is changed explicitly.",
+      budget: `${variants.length} 个 Prompt 变体可用于路由。`,
+      trigger: "任务复杂度可能不足以使用最强模型或最长推理路线。",
+      guardrail: "先分类为简单、证据密集、需要议会或交付敏感，再选择路线。",
+      fallback: "先用更便宜的直接路线；只有证据或测试失败时才升级。",
+      boundary: "除非显式修改运行时配置，模型路由只是 Prompt 计划。",
       prompt: `Plan an Astria complexity-based model route.\n\nGoal: ${goal}\nPrompt variants: ${variants.map((variant) => variant.label).join(", ")}\nProvider/model context: ${provider} / ${model}\n\nClassify the task as simple, evidence-heavy, council-worthy, or delivery-sensitive. Choose the cheapest safe route first, define escalation triggers, and state when fallback to a stronger model or reviewer path is justified.`,
     },
     {
       id: "context-trim",
-      type: "Context",
-      title: "Context trimming pass",
+      type: "上下文",
+      title: "上下文裁剪",
       panel: "snapshot",
-      budget: `${memoryCount} memory, ${sourceCount} sources, ${snapshotCount} snapshot packs`,
-      trigger: "Large local context could drown the task or inflate cost.",
-      guardrail: "Use only context that directly proves requirements, risks, or validation state.",
-      fallback: "Open Workspace Snapshot and select a smaller resume/evidence pack.",
-      boundary: "Never trim away explicit user requirements, safety constraints, or validation failures.",
+      budget: `${memoryCount} 条记忆，${sourceCount} 个来源，${snapshotCount} 个快照包`,
+      trigger: "过大的本地上下文可能淹没任务或抬高成本。",
+      guardrail: "只使用能直接证明需求、风险或验证状态的上下文。",
+      fallback: "打开工作区快照，选择更小的续接/证据包。",
+      boundary: "绝不裁掉明确用户需求、安全约束或验证失败记录。",
       prompt: `Plan an Astria context trimming pass.\n\nGoal: ${goal}\nMemory entries: ${memoryCount}\nSources: ${sourceCount}\nSnapshot packs: ${snapshotCount}\n\nChoose the smallest context set needed to proceed. Keep explicit requirements, validation state, risks, and relevant evidence. Exclude stale, duplicate, private, or speculative context unless it changes the decision.`,
     },
     {
       id: "fallback",
-      type: "Fallback",
-      title: "Automatic fallback ladder",
+      type: "降级",
+      title: "自动降级阶梯",
       panel: "diagnostics",
-      budget: `${failedRuns} failed runs; diagnostics ${state.diagnostics?.status || "unknown"}`,
-      trigger: "Runtime readiness, provider setup, or previous failures may make the first route unreliable.",
-      guardrail: "Define fallback order before launch: retry smaller, switch route, ask for approval, or stop.",
-      fallback: "Open Diagnostics, then reduce scope before changing provider or model settings.",
-      boundary: "No remote provider/account change happens without explicit operator action.",
+      budget: `${failedRuns} 条失败运行；诊断 ${uiTerm(state.diagnostics?.status || "unknown")}`,
+      trigger: "运行时就绪、provider 设置或历史失败可能让首选路线不可靠。",
+      guardrail: "发起前定义降级顺序：缩小重试、切换路线、请求审批或停止。",
+      fallback: "先打开诊断，再在改变 provider 或模型设置前缩小范围。",
+      boundary: "没有操作者明确动作，不改变远端 provider 或账号状态。",
       prompt: `Plan an Astria fallback ladder.\n\nGoal: ${goal}\nDiagnostics: ${state.diagnostics?.status || "unknown"}\nFailed runs: ${failedRuns}\nProvider/model context: ${provider} / ${model}\n\nDefine the fallback order if the first route fails: smaller retry, evidence-only pass, different agent/variant, diagnostics repair, or stop and ask. Include what evidence proves each fallback is needed.`,
     },
     {
       id: "stop-rules",
-      type: "Stop rules",
-      title: "Long-run stop rules",
+      type: "停止规则",
+      title: "长运行停止规则",
       panel: "runs",
-      budget: `${state.runs.length} runs; ${state.approvals.size} pending approvals`,
-      trigger: "Task may enter repeated debugging, broad research, or unbounded tool use.",
-      guardrail: "Stop after repeated same-class failure, missing requirement evidence, or approval boundary.",
-      fallback: "Summarize current evidence and create a narrower follow-up mission.",
-      boundary: "Do not continue tool use past destructive, external-send, purchase, or account-change boundaries.",
+      budget: `${state.runs.length} 条运行；${state.approvals.size} 个待审批`,
+      trigger: "任务可能进入重复调试、宽泛调研或无限工具使用。",
+      guardrail: "遇到同类重复失败、缺少需求证据或审批边界时停止。",
+      fallback: "总结当前证据，并创建更窄的后续任务。",
+      boundary: "越过破坏性、外发、购买或账号变更边界后，不继续使用工具。",
       prompt: `Plan Astria long-run stop rules.\n\nGoal: ${goal}\nRuns: ${state.runs.length}\nPending approvals: ${state.approvals.size}\n\nDefine stop conditions for repeated failures, missing evidence, destructive boundaries, external delivery, and uncertainty. Include what summary to return when stopping and how to create the next narrower mission.`,
     },
     {
       id: "schedule-limit",
-      type: "Schedule",
-      title: "Scheduled work budget",
+      type: "定时",
+      title: "定时工作预算",
       panel: "schedules",
-      budget: `${state.schedules.length} schedules; ${deliveryLanes().length} delivery lanes`,
-      trigger: "Recurring work can silently spend time, tokens, or attention if the cadence is too broad.",
-      guardrail: "Every schedule needs cadence, max effort, output shape, approval gate, and disable condition.",
-      fallback: "Run manually once and review output before enabling a recurring schedule.",
-      boundary: "No schedule should imply external send or unattended remote state change.",
+      budget: `${state.schedules.length} 条定时任务；${deliveryLanes().length} 条交付链路`,
+      trigger: "若频率过宽，周期任务会悄悄消耗时间、token 或注意力。",
+      guardrail: "每条定时任务都需要频率、最大投入、输出形态、审批门和停用条件。",
+      fallback: "启用周期任务前，先手动运行一次并复查输出。",
+      boundary: "定时任务不应暗示外发或无人值守的远端状态变更。",
       prompt: `Plan an Astria scheduled-work budget.\n\nGoal: ${goal}\nSchedules: ${state.schedules.length}\nDelivery lanes: ${deliveryLanes().length}\n\nDefine cadence, max effort, output shape, approval gate, disable condition, and manual dry-run requirements before any recurring task is enabled.`,
     },
     {
       id: "evidence-cost",
-      type: "Evidence",
-      title: "Evidence cost tradeoff",
+      type: "证据",
+      title: "证据成本取舍",
       panel: "citation",
-      budget: `${sourceCount} sources; ${resultCount} result entries`,
-      trigger: "Research could over-collect sources or under-support claims.",
-      guardrail: "Map claims to minimum sufficient evidence and stop when confidence threshold is met.",
-      fallback: "Escalate only unsupported or high-impact claims to deeper research.",
-      boundary: "Do not spend effort proving low-impact claims beyond the required confidence level.",
+      budget: `${sourceCount} 个来源；${resultCount} 个产物条目`,
+      trigger: "调研可能过度收集来源，或让关键结论证据不足。",
+      guardrail: "把结论映射到最低充分证据，达到置信阈值后停止。",
+      fallback: "只把未支撑或高影响结论升级到深度调研。",
+      boundary: "不要为低影响结论投入超过所需置信度的证明成本。",
       prompt: `Plan an Astria evidence-cost tradeoff.\n\nGoal: ${goal}\nSources: ${sourceCount}\nResult entries: ${resultCount}\n\nIdentify claims, required confidence, minimum sufficient evidence, when to stop collecting, and which high-impact gaps deserve deeper research. Keep unsupported claims visibly downgraded.`,
     },
   ];
@@ -2397,8 +3580,8 @@ function budgetGuardCards() {
 function renderBudgetGuardPlanner() {
   const cards = budgetGuardCards();
   setText("nav-budget-count", cards.length);
-  setText("manage-budget-count", `${cards.length} guard${cards.length === 1 ? "" : "s"}`);
-  setText("budget-summary", `${cards.length} budget guard${cards.length === 1 ? "" : "s"} for token caps, model routing, context trimming, fallback, stop rules, schedules, and evidence tradeoffs.`);
+  setText("manage-budget-count", `${cards.length} 条守卫`);
+  setText("budget-summary", `${cards.length} 条预算守卫，覆盖 token 上限、模型路由、上下文裁剪、fallback、停止规则、定时任务和证据成本。`);
   const list = $("budget-guard-grid");
   if (!list) return;
   if (!state.selectedBudgetGuard || !cards.some((card) => card.id === state.selectedBudgetGuard)) {
@@ -2408,14 +3591,14 @@ function renderBudgetGuardPlanner() {
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.panel)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="budget-guard-gridline">
-      <span>Budget</span><strong>${escapeHTML(card.budget)}</strong>
-      <span>Trigger</span><strong>${escapeHTML(card.trigger)}</strong>
-      <span>Guardrail</span><strong>${escapeHTML(card.guardrail)}</strong>
+      <span>预算</span><strong>${escapeHTML(card.budget)}</strong>
+      <span>触发</span><strong>${escapeHTML(card.trigger)}</strong>
+      <span>护栏</span><strong>${escapeHTML(card.guardrail)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-budget-select="${escapeHTML(card.id)}">Budget brief</button>
-      <button type="button" data-budget-draft="${escapeHTML(card.id)}">Draft guard</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      <button type="button" data-budget-select="${escapeHTML(card.id)}">预算简报</button>
+      <button type="button" data-budget-draft="${escapeHTML(card.id)}">起草守卫</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开路径</button>
     </div>
   </article>`).join("");
   renderBudgetGuardDetail(cards.find((card) => card.id === state.selectedBudgetGuard) || cards[0]);
@@ -2425,30 +3608,30 @@ function renderBudgetGuardDetail(card) {
   const target = $("budget-guard-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a budget guard.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一条预算守卫。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
-        <span>Budget</span><strong>${escapeHTML(card.budget)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
+        <span>预算</span><strong>${escapeHTML(card.budget)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Trigger</h3>
+      <h3>触发条件</h3>
       <p>${escapeHTML(card.trigger)}</p>
-      <h3>Guardrail</h3>
+      <h3>执行护栏</h3>
       <p>${escapeHTML(card.guardrail)}</p>
       <h3>Fallback</h3>
       <p>${escapeHTML(card.fallback)}</p>
-      <h3>Review boundary</h3>
+      <h3>复查边界</h3>
       <p>${escapeHTML(card.boundary)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-budget-draft="${escapeHTML(card.id)}">Draft guard</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+        <button type="button" data-budget-draft="${escapeHTML(card.id)}">起草守卫</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开路径</button>
       </div>
     </section>
   </div>`;
@@ -2467,7 +3650,28 @@ function draftBudgetGuardToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Budget guard drafted to chat.");
+  showToast("预算守卫已写入对话。");
+}
+
+function resultArtifactRuns() {
+  const byID = new Map();
+  const add = (run) => {
+    if (!run?.id) return;
+    const health = runHealthGroup(run);
+    const hasResponse = Boolean(formatRunResponse(run.response).trim());
+    if (health !== "completed" && !hasResponse) return;
+    byID.set(run.id, { ...(byID.get(run.id) || {}), ...run });
+  };
+  add(state.missionRunDetail);
+  add(state.currentRunDetail);
+  state.runs.forEach(add);
+  return Array.from(byID.values()).sort((a, b) => String(b.started_at || "").localeCompare(String(a.started_at || "")));
+}
+
+function resultArtifactSummary(run) {
+  const text = formatRunResponse(run?.response).trim();
+  if (text) return compactText(text, 180);
+  return compactText(run?.prompt || run?.id || "本地运行产物", 180);
 }
 
 function reuseGalleryAssets() {
@@ -2483,7 +3687,7 @@ function reuseGalleryAssets() {
     }));
   });
   const latestRun = state.runs[0];
-  const completedRun = state.runs.find((run) => runHealthGroup(run) === "completed") || latestRun;
+  const completedRun = resultArtifactRuns()[0] || latestRun;
   const latestCouncil = state.councilRuns[0];
 
   variants.slice(0, 2).forEach((variant) => {
@@ -2508,22 +3712,22 @@ function reuseGalleryAssets() {
       kind: "Agent",
       title: summary.name,
       panel: "agents",
-      readiness: `${summary.allow.length} tools, ${summary.deny.length} blocked`,
+      readiness: `${summary.allow.length} 个工具，${summary.deny.length} 个拦截`,
       evidence: summary.model,
       reuse: summary.description,
-      action: "Launch with this profile and carry its operating constraints forward.",
+      action: "使用此配置发起任务，并延续它的运行约束。",
       prompt: `Reuse this Astria agent profile for the next mission.\n\nAgent: ${summary.name}\nModel: ${summary.model}\nReasoning: ${summary.reasoning}\nTools allowed: ${summary.allow.join(", ") || "default"}\nAuto approve: ${summary.autoApprove}\n\nDescribe the mission, choose whether this profile fits, and call out any safety constraint before acting.`,
     });
   } else {
     assets.push({
       id: "agent-default",
       kind: "Agent",
-      title: "Default agent starter",
+      title: "默认 Agent 起点",
       panel: "agents",
-      readiness: "default",
-      evidence: "no named profile",
-      reuse: "Use the default daemon agent until a named profile exists.",
-      action: "Draft a focused role before creating a reusable profile.",
+      readiness: "默认",
+      evidence: "尚无命名配置",
+      reuse: "在命名 Agent 配置建立前，使用默认 daemon Agent。",
+      action: "先起草一个聚焦角色，再创建可复用配置。",
       prompt: "Create a reusable Astria agent profile for this workspace. Include role, model expectations, tool boundaries, memory needs, and one saved command.",
     });
   }
@@ -2532,13 +3736,13 @@ function reuseGalleryAssets() {
     const agentName = normalizeName(command.agent);
     assets.push({
       id: `command-${agentName}-${command.name}`,
-      kind: "Command",
+      kind: "命令",
       title: `/${command.name}`,
       panel: "agents",
       readiness: agentName,
-      evidence: "saved command",
-      reuse: String(command.body || "").slice(0, 150) || "Saved command body",
-      action: "Draft this saved command into Chat with its agent profile.",
+      evidence: "已保存命令",
+      reuse: String(command.body || "").slice(0, 150) || "已保存命令内容",
+      action: "把这条命令连同 Agent 配置写入对话。",
       prompt: `Reuse this saved Astria command.\n\nAgent: ${agentName}\nCommand: /${command.name}\n\n${String(command.body || "")}`,
       agent: agentName,
     });
@@ -2547,13 +3751,13 @@ function reuseGalleryAssets() {
   sources.slice(0, 2).forEach((source) => {
     assets.push({
       id: `source-${source.id}`,
-      kind: "Knowledge",
+      kind: "知识",
       title: source.title,
       panel: source.panel,
       readiness: source.reliability,
-      evidence: `${source.evidence} evidence`,
+      evidence: `${source.evidence} 条证据`,
       reuse: source.action,
-      action: "Ground the next mission in this source before launching.",
+      action: "发起下一次任务前，用此来源校准上下文。",
       prompt: `Reuse this Astria knowledge source as mission context.\n\nSource: ${source.title}\nType: ${source.type}\nFreshness: ${source.freshness}\nReliability: ${source.reliability}\nEvidence: ${source.evidence}\n\nDraft the next task using only what this source can reliably support.`,
     });
   });
@@ -2561,14 +3765,14 @@ function reuseGalleryAssets() {
   if (completedRun) {
     assets.push({
       id: `run-${completedRun.id || "latest"}`,
-      kind: "Outcome",
+      kind: "结果",
       title: completedRun.prompt || completedRun.id || "Latest run outcome",
       panel: "runs",
       runID: completedRun.id || "",
-      readiness: completedRun.status || "unknown",
-      evidence: completedRun.agent || "default",
-      reuse: "Continue from a concrete execution result instead of restarting from scratch.",
-      action: "Turn this run into the next mission starter.",
+      readiness: uiTerm(completedRun.status || "unknown"),
+      evidence: completedRun.agent || "默认 Agent",
+      reuse: resultArtifactSummary(completedRun),
+      action: "把这条运行转成下一次任务起点。",
       prompt: `Reuse this Astria run outcome as the next starting point.\n\nRun: ${completedRun.id || "unknown"}\nStatus: ${completedRun.status || "unknown"}\nAgent: ${completedRun.agent || "default"}\nPrompt: ${completedRun.prompt || ""}\n\nSummarize what can be reused, what remains uncertain, and the next concrete action with validation.`,
     });
   }
@@ -2576,25 +3780,25 @@ function reuseGalleryAssets() {
   if (latestCouncil) {
     assets.push({
       id: `council-${latestCouncil.id || "latest"}`,
-      kind: "Council",
-      title: latestCouncil.goal || "Council synthesis",
+      kind: "议会",
+      title: latestCouncil.goal || "议会综合",
       panel: "council",
-      readiness: latestCouncil.synthesis ? "synthesized" : "review",
-      evidence: `${(latestCouncil.roles || []).length} roles`,
+      readiness: latestCouncil.synthesis ? "已综合" : "待复查",
+      evidence: `${(latestCouncil.roles || []).length} 个角色`,
       reuse: latestCouncil.synthesis || "Planner, researcher, and reviewer context can seed the next handoff.",
-      action: "Reuse the reviewed synthesis as a mission brief.",
+      action: "把已审查综合结果复用为任务简报。",
       prompt: `Reuse this Astria council result as the next mission brief.\n\nGoal: ${latestCouncil.goal || "none"}\nRoles: ${(latestCouncil.roles || []).map((role) => role.role).join(", ") || "none"}\nSynthesis:\n${latestCouncil.synthesis || ""}\n\nTurn the synthesis into one executable next step and validation plan.`,
     });
   } else {
     assets.push({
       id: "council-starter",
-      kind: "Council",
-      title: "Council review starter",
+      kind: "议会",
+      title: "议会评审起点",
       panel: "council",
-      readiness: "seed",
-      evidence: "planner/researcher/reviewer",
-      reuse: "Use multi-role review when a reusable decision needs stronger evidence.",
-      action: "Draft a council-ready mission brief.",
+      readiness: "待建立",
+      evidence: "规划者 / 研究者 / 审阅者",
+      reuse: "当可复用决策需要更强证据时，使用多角色评审。",
+      action: "起草一份可进入议会的任务简报。",
       prompt: "Create a reusable council mission brief. Split the work into planner, researcher, and reviewer concerns, then define the synthesis criteria.",
     });
   }
@@ -2605,8 +3809,8 @@ function reuseGalleryAssets() {
 function renderReuseGallery() {
   const assets = reuseGalleryAssets();
   setText("nav-reuse-count", assets.length);
-  setText("manage-reuse-count", `${assets.length} asset${assets.length === 1 ? "" : "s"}`);
-  setText("reuse-summary", `${assets.length} reusable asset${assets.length === 1 ? "" : "s"} from prompts, agents, knowledge, outcomes, and council review.`);
+  setText("manage-reuse-count", `${assets.length} 个星体`);
+  setText("reuse-summary", `${assets.length} 个可复用星体，来自 Prompt、Agent、知识来源、运行结果和多 Agent 评议。`);
   const list = $("reuse-gallery-assets");
   if (!list) return;
   if (!state.selectedReuseAsset || !assets.some((asset) => asset.id === state.selectedReuseAsset)) {
@@ -2616,14 +3820,14 @@ function renderReuseGallery() {
     <div class="row-item-title"><span>${escapeHTML(asset.kind)}</span><span class="tag">${escapeHTML(asset.readiness)}</span></div>
     <strong>${escapeHTML(asset.title)}</strong>
     <div class="reuse-grid">
-      <span>Evidence</span><strong>${escapeHTML(asset.evidence)}</strong>
-      <span>Reuse value</span><strong>${escapeHTML(asset.reuse)}</strong>
-      <span>Next action</span><strong>${escapeHTML(asset.action)}</strong>
+      <span>证据</span><strong>${escapeHTML(asset.evidence)}</strong>
+      <span>复用价值</span><strong>${escapeHTML(asset.reuse)}</strong>
+      <span>下一步</span><strong>${escapeHTML(asset.action)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-reuse-select="${escapeHTML(asset.id)}">Asset brief</button>
-      <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">Draft starter</button>
-      ${asset.runID ? `<button type="button" data-run-open="${escapeHTML(asset.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>`}
+      <button type="button" data-reuse-select="${escapeHTML(asset.id)}">星体简报</button>
+      <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">起草任务</button>
+      ${asset.runID ? `<button type="button" data-run-open="${escapeHTML(asset.runID)}">观测运行</button>` : `<button type="button" data-panel="${escapeHTML(asset.panel)}">打开来源</button>`}
     </div>
   </article>`).join("");
   renderReuseAssetDetail(assets.find((asset) => asset.id === state.selectedReuseAsset) || assets[0]);
@@ -2633,26 +3837,26 @@ function renderReuseAssetDetail(asset) {
   const target = $("reuse-gallery-detail");
   if (!target) return;
   if (!asset) {
-    target.innerHTML = `<div class="empty-state">Select a reusable asset.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个可复用星体。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(asset.title)}</h3>
       <div class="run-meta-grid">
-        <span>Kind</span><strong>${escapeHTML(asset.kind)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(asset.readiness)}</strong>
-        <span>Route</span><strong>${escapeHTML(asset.panel)}</strong>
+        <span>类型</span><strong>${escapeHTML(asset.kind)}</strong>
+        <span>状态</span><strong>${escapeHTML(asset.readiness)}</strong>
+        <span>路线</span><strong>${escapeHTML(asset.panel)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Reuse value</h3>
+      <h3>复用价值</h3>
       <p>${escapeHTML(asset.reuse)}</p>
-      <h3>Next action</h3>
+      <h3>下一步</h3>
       <p>${escapeHTML(asset.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">Draft starter</button>
-        ${asset.runID ? `<button type="button" data-run-open="${escapeHTML(asset.runID)}">Open run</button>` : `<button type="button" data-panel="${escapeHTML(asset.panel)}">Open source</button>`}
+        <button type="button" data-reuse-draft="${escapeHTML(asset.id)}">起草任务</button>
+        ${asset.runID ? `<button type="button" data-run-open="${escapeHTML(asset.runID)}">观测运行</button>` : `<button type="button" data-panel="${escapeHTML(asset.panel)}">打开来源</button>`}
       </div>
     </section>
   </div>`;
@@ -2672,13 +3876,13 @@ function draftReuseAssetToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Reusable starter drafted to chat.");
+  showToast("复用起点已写入对话。");
 }
 
 function resultArchiveEntries() {
   const entries = [];
   const latestRun = state.runs[0];
-  const completedRun = state.runs.find((run) => runHealthGroup(run) === "completed") || latestRun;
+  const completedRun = resultArtifactRuns()[0] || latestRun;
   const latestCouncil = state.councilRuns[0];
   const shareCards = sharePackCards();
   const dataCards = dataInsightCards();
@@ -2688,29 +3892,29 @@ function resultArchiveEntries() {
   if (completedRun) {
     entries.push({
       id: `run-report-${completedRun.id || "latest"}`,
-      type: "Run report",
-      title: completedRun.prompt || completedRun.id || "Latest Astria run",
-      source: completedRun.agent || "default agent",
+      type: "运行报告",
+      title: completedRun.prompt || completedRun.id || "最近 Astria 运行",
+      source: completedRun.agent || "默认 Agent",
       panel: "runs",
       evidence: completedRun.id || "local run record",
-      review: completedRun.status || "unknown",
-      freshness: completedRun.created_at || completedRun.updated_at || "recent local run",
-      reuse: "Use the completed run as a reviewed starting point instead of restarting from a blank prompt.",
-      action: "Summarize reusable output, unresolved risks, and the next validated action.",
+      review: uiTerm(completedRun.status || "unknown"),
+      freshness: completedRun.created_at || completedRun.updated_at || "最近本地运行",
+      reuse: resultArtifactSummary(completedRun),
+      action: "复查真实运行结果、未解决风险和下一条已验证动作。",
       prompt: `Open an Astria result archive follow-up for a completed run.\n\nResult: ${completedRun.prompt || completedRun.id || "Latest run"}\nRun id: ${completedRun.id || "unknown"}\nStatus: ${completedRun.status || "unknown"}\nAgent: ${completedRun.agent || "default"}\n\nExtract what was produced, what evidence supports it, what remains unresolved, and the best next mission starter.`,
     });
   } else {
     entries.push({
       id: "run-report-seed",
-      type: "Run report",
-      title: "First completed result",
-      source: "Runs",
+      type: "运行报告",
+      title: "第一份完成产物",
+      source: "运行",
       panel: "runs",
-      evidence: "no completed run yet",
-      review: "seed",
-      freshness: "waiting for run",
-      reuse: "Completed runs will appear here as local reports.",
-      action: "Launch a mission, then archive the result for reuse.",
+      evidence: "尚无完成运行",
+      review: "待建立",
+      freshness: "等待运行",
+      reuse: "完成运行会以本地报告形式出现在这里。",
+      action: "先发起任务，再把结果归档为可复用产物。",
       prompt: "Plan the first Astria result worth saving. Define the target output, evidence needed, review gate, and how the result should be reused later.",
     });
   }
@@ -2719,15 +3923,15 @@ function resultArchiveEntries() {
     const card = shareCards[0];
     entries.push({
       id: `share-result-${card.id}`,
-      type: "Handoff pack",
+      type: "交接包",
       title: card.title,
-      source: "Share Pack",
+      source: "交接包",
       panel: "share",
       evidence: card.evidence,
       review: card.readiness,
-      freshness: "local handoff context",
+      freshness: "本地交接上下文",
       reuse: card.action,
-      action: "Turn the handoff pack into a follow-up mission or reviewer checklist.",
+      action: "把交接包转成后续任务或审查清单。",
       prompt: `${card.prompt}\n\nArchive review: identify the durable result, evidence included, boundaries, freshness notes, and the next reusable launch path.`,
     });
   }
@@ -2736,14 +3940,14 @@ function resultArchiveEntries() {
     const card = dataCards[1] || dataCards[0];
     entries.push({
       id: `data-result-${card.id}`,
-      type: "Insight brief",
+      type: "洞察简报",
       title: card.title,
-      source: "Data Planner",
+      source: "数据规划器",
       panel: "data",
       evidence: card.evidence,
       review: card.readiness,
-      freshness: "depends on source extract date",
-      reuse: "Save findings as reviewable memory or a reusable analysis pattern.",
+      freshness: "取决于来源提取日期",
+      reuse: "把发现保存为可审查记忆或可复用分析模式。",
       action: card.action,
       prompt: `${card.prompt}\n\nArchive review: produce a saved insight brief with observed findings, source limits, freshness date, reusable memory candidates, and follow-up analysis.`,
     });
@@ -2753,15 +3957,15 @@ function resultArchiveEntries() {
     const card = citationCards[0];
     entries.push({
       id: `citation-result-${card.id}`,
-      type: "Citation brief",
+      type: "引用简报",
       title: card.title,
-      source: "Citation Planner",
+      source: "引用校准",
       panel: "citation",
       evidence: card.evidence,
       review: card.readiness,
-      freshness: "source dates required",
-      reuse: "Carry the claim map and evidence gaps into the next answer or handoff.",
-      action: "Resolve unsupported claims before treating the result as final.",
+      freshness: "需要来源日期",
+      reuse: "把结论图谱和证据缺口带入下一次回答或交接。",
+      action: "先解决未支撑结论，再把结果视为最终产物。",
       prompt: `${card.prompt}\n\nArchive review: save the claim map, accepted citations, missing evidence, source freshness risks, and safe wording for reuse.`,
     });
   }
@@ -2770,13 +3974,13 @@ function resultArchiveEntries() {
     const asset = reuseAssets[0];
     entries.push({
       id: `reuse-result-${asset.id}`,
-      type: "Reusable output",
+      type: "可复用产物",
       title: asset.title,
-      source: "Reuse Gallery",
+      source: "复用星库",
       panel: "reuse",
       evidence: asset.evidence,
       review: asset.readiness,
-      freshness: "pattern review",
+      freshness: "模式复查",
       reuse: asset.reuse,
       action: asset.action,
       prompt: `${asset.prompt}\n\nArchive review: decide whether this result should become a reusable starter, what context it requires, and how to validate it next time.`,
@@ -2786,15 +3990,15 @@ function resultArchiveEntries() {
   if (latestCouncil) {
     entries.push({
       id: `council-result-${latestCouncil.id || "latest"}`,
-      type: "Council synthesis",
-      title: latestCouncil.goal || "Council synthesis",
-      source: "Agent Council",
+      type: "议会综合",
+      title: latestCouncil.goal || "议会综合",
+      source: "智能体议会",
       panel: "council",
-      evidence: `${(latestCouncil.roles || []).length} role briefs`,
-      review: latestCouncil.synthesis ? "synthesized" : "review",
-      freshness: "current council run",
-      reuse: latestCouncil.synthesis || "Use the role split as a reviewed decision starter.",
-      action: "Convert the synthesis into one executable next step.",
+      evidence: `${(latestCouncil.roles || []).length} 份角色简报`,
+      review: latestCouncil.synthesis ? "已综合" : "待复查",
+      freshness: "当前议会运行",
+      reuse: latestCouncil.synthesis || "把角色拆分作为已审查决策起点。",
+      action: "把综合结果转成一个可执行下一步。",
       prompt: `Archive this Astria council result.\n\nGoal: ${latestCouncil.goal || "none"}\nRoles: ${(latestCouncil.roles || []).map((role) => role.role).join(", ") || "none"}\nSynthesis:\n${latestCouncil.synthesis || ""}\n\nReturn a saved result brief with decision, evidence, dissent or uncertainty, and the next action.`,
     });
   }
@@ -2802,11 +4006,46 @@ function resultArchiveEntries() {
   return entries.slice(0, 8);
 }
 
+function resultArchiveStats(entries) {
+  const sourceTypes = new Set(entries.map((entry) => entry.source).filter(Boolean));
+  const reusable = entries.filter((entry) => String(entry.reuse || "").trim()).length;
+  const needsReview = entries.filter((entry) => {
+    const review = String(entry.review || "").toLowerCase();
+    return review.includes("待") || review.includes("unknown") || review.includes("failed") || review.includes("error");
+  }).length;
+  const runBacked = entries.filter((entry) => entry.panel === "runs" || String(entry.evidence || "").includes("run")).length;
+  return {
+    total: entries.length,
+    reusable,
+    needsReview,
+    sourceTypes: sourceTypes.size,
+    runBacked,
+  };
+}
+
+function renderArtifactReadinessBoard(entries) {
+  const target = $("artifact-readiness-board");
+  if (!target) return;
+  const stats = resultArchiveStats(entries);
+  const cards = [
+    ["archive", "归档产物", stats.total, "可在本地复查的结果条目"],
+    ["reuse", "可复用", stats.reusable, "具备下一步路线或 Prompt 起点"],
+    ["review", "待复查", stats.needsReview, "缺少证据、鲜度或明确验收"],
+    ["source", "来源覆盖", stats.sourceTypes, `${stats.runBacked} 条连接真实运行`],
+  ];
+  target.innerHTML = cards.map(([key, label, value, hint]) => `<button type="button" class="artifact-readiness-card ${escapeHTML(key)}" data-result-board="${escapeHTML(key)}">
+    <span>${escapeHTML(label)}</span>
+    <strong>${escapeHTML(String(value))}</strong>
+    <small>${escapeHTML(hint)}</small>
+  </button>`).join("");
+}
+
 function renderResultLibrary() {
   const entries = resultArchiveEntries();
   setText("nav-results-count", entries.length);
-  setText("manage-results-count", `${entries.length} result${entries.length === 1 ? "" : "s"}`);
-  setText("results-summary", `${entries.length} archived result${entries.length === 1 ? "" : "s"} from runs, handoffs, insight briefs, citations, reusable outputs, and council synthesis.`);
+  setText("manage-results-count", `${entries.length} 个产物`);
+  setText("results-summary", `${entries.length} 个归档产物，来自运行、交接包、洞察简报、引用校准、复用输出和多 Agent 综合。`);
+  renderArtifactReadinessBoard(entries);
   const list = $("result-library-grid");
   if (!list) return;
   if (!state.selectedResultArchive || !entries.some((entry) => entry.id === state.selectedResultArchive)) {
@@ -2816,14 +4055,14 @@ function renderResultLibrary() {
     <div class="row-item-title"><span>${escapeHTML(entry.type)}</span><span class="tag">${escapeHTML(entry.review)}</span></div>
     <strong>${escapeHTML(entry.title)}</strong>
     <div class="result-library-gridline">
-      <span>Source</span><strong>${escapeHTML(entry.source)}</strong>
-      <span>Evidence</span><strong>${escapeHTML(entry.evidence)}</strong>
-      <span>Reuse path</span><strong>${escapeHTML(entry.reuse)}</strong>
+      <span>来源</span><strong>${escapeHTML(entry.source)}</strong>
+      <span>证据</span><strong>${escapeHTML(entry.evidence)}</strong>
+      <span>复用路线</span><strong>${escapeHTML(entry.reuse)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-result-select="${escapeHTML(entry.id)}">Result brief</button>
-      <button type="button" data-result-draft="${escapeHTML(entry.id)}">Draft follow-up</button>
-      <button type="button" data-panel="${escapeHTML(entry.panel)}">Open source</button>
+      <button type="button" data-result-select="${escapeHTML(entry.id)}">产物简报</button>
+      <button type="button" data-result-draft="${escapeHTML(entry.id)}">起草后续</button>
+      <button type="button" data-panel="${escapeHTML(entry.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderResultLibraryDetail(entries.find((entry) => entry.id === state.selectedResultArchive) || entries[0]);
@@ -2833,28 +4072,43 @@ function renderResultLibraryDetail(entry) {
   const target = $("result-library-detail");
   if (!target) return;
   if (!entry) {
-    target.innerHTML = `<div class="empty-state">Select an archived result.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个归档产物。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
-    <section class="run-detail-section">
-      <h3>${escapeHTML(entry.title)}</h3>
-      <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(entry.type)}</strong>
-        <span>Review</span><strong>${escapeHTML(entry.review)}</strong>
-        <span>Route</span><strong>${escapeHTML(entry.panel)}</strong>
+    <section class="artifact-review-card">
+      <div class="artifact-review-head">
+        <div>
+          <span>${escapeHTML(entry.type)}</span>
+          <strong>${escapeHTML(entry.title)}</strong>
+          <small>${escapeHTML(entry.source)} · ${escapeHTML(entry.freshness)}</small>
+        </div>
+        <b>${escapeHTML(entry.review)}</b>
+      </div>
+      <div class="artifact-review-grid">
+        <span>证据</span><strong>${escapeHTML(entry.evidence)}</strong>
+        <span>复用</span><strong>${escapeHTML(entry.reuse)}</strong>
+        <span>下一步</span><strong>${escapeHTML(entry.action)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Freshness</h3>
+      <h3>${escapeHTML(entry.title)}</h3>
+      <div class="run-meta-grid">
+        <span>类型</span><strong>${escapeHTML(entry.type)}</strong>
+        <span>审查</span><strong>${escapeHTML(entry.review)}</strong>
+        <span>路线</span><strong>${escapeHTML(entry.panel)}</strong>
+      </div>
+    </section>
+    <section class="run-detail-section">
+      <h3>鲜度</h3>
       <p>${escapeHTML(entry.freshness)}</p>
-      <h3>Reuse path</h3>
+      <h3>复用路线</h3>
       <p>${escapeHTML(entry.reuse)}</p>
-      <h3>Next action</h3>
+      <h3>下一步</h3>
       <p>${escapeHTML(entry.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-result-draft="${escapeHTML(entry.id)}">Draft follow-up</button>
-        <button type="button" data-panel="${escapeHTML(entry.panel)}">Open source</button>
+        <button type="button" data-result-draft="${escapeHTML(entry.id)}">起草后续</button>
+        <button type="button" data-panel="${escapeHTML(entry.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -2873,7 +4127,7 @@ function draftResultArchiveToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Result follow-up drafted to chat.");
+  showToast("产物后续已写入对话。");
 }
 
 function playbookLibraryCards() {
@@ -2889,98 +4143,98 @@ function playbookLibraryCards() {
   return [
     {
       id: "reviewed-research",
-      type: "Research",
-      title: "Reviewed evidence research",
+      type: "研究",
+      title: "已审查证据调研",
       route: "browser",
-      trigger: "A web or product claim needs current, cited evidence before a decision.",
-      evidenceGate: "Visible source, dated summary, citation map, and unsupported-claim list.",
-      safety: "Read-only browsing; ask before forms, authenticated state, downloads, purchases, posts, or account changes.",
-      reusableOutput: "Cited brief that can enter Result Library, Citation Planner, and Share Pack.",
-      next: `Start from Browser Planner with target ${browserTarget}.`,
+      trigger: "网页或产品结论在决策前需要当前、可引用的证据。",
+      evidenceGate: "可见来源、带日期摘要、引用图谱和未支撑结论清单。",
+      safety: "只读浏览；表单、登录态、下载、购买、发布或账号变更前先询问。",
+      reusableOutput: "可进入产物星库、引用校准和交接包的引用简报。",
+      next: `从浏览器规划器开始，目标为 ${browserTarget}。`,
       prompt: `Run the Astria reviewed evidence research playbook.\n\nTrigger: verify a web or product claim with current evidence.\nCurrent target: ${browserTarget}\nAvailable sources: ${sourceCount}\n\nSteps:\n1. Define the exact claim and required freshness.\n2. Inspect sources read-only.\n3. Capture citations, dates, and gaps.\n4. Produce safe wording and next route.\n\nEvidence gate: visible source, dated summary, citation map, unsupported-claim list.\nSafety boundary: no forms, account changes, downloads, purchases, posts, or destructive actions without approval.\nReusable output: cited brief for Result Library, Citation Planner, and Share Pack.`,
     },
     {
       id: "data-insight",
-      type: "Data",
-      title: "Reviewable data insight",
+      type: "数据",
+      title: "可审查数据洞察",
       route: "data",
-      trigger: "A local file, table, metric, or export needs a decision-ready finding.",
-      evidenceGate: "Source descriptor, schema or field limits, observed findings, uncertainty, and freshness date.",
-      safety: "Do not infer hidden fields or causal explanations; separate observation from hypothesis.",
-      reusableOutput: "Insight brief, memory candidates, and reusable analysis prompt.",
-      next: `Start from Data Planner with source ${dataSource}.`,
+      trigger: "本地文件、表格、指标或导出需要形成可决策发现。",
+      evidenceGate: "来源描述、schema 或字段限制、观察发现、不确定性和鲜度日期。",
+      safety: "不推断隐藏字段或因果解释；区分观察和假设。",
+      reusableOutput: "洞察简报、记忆候选和可复用分析 Prompt。",
+      next: `从数据规划器开始，来源为 ${dataSource}。`,
       prompt: `Run the Astria reviewable data insight playbook.\n\nTrigger: turn local data into a decision-ready finding.\nCurrent source: ${dataSource}\nMemory entries: ${memoryCount}\n\nSteps:\n1. Profile the source and freshness.\n2. State what can and cannot be answered.\n3. Produce findings with evidence and caveats.\n4. Save durable facts as reviewed memory candidates.\n\nEvidence gate: source descriptor, schema or field limits, observed findings, uncertainty, freshness date.\nSafety boundary: do not invent hidden fields or causal explanations.\nReusable output: insight brief, memory candidates, reusable analysis prompt.`,
     },
     {
       id: "handoff-pack",
-      type: "Handoff",
-      title: "Local handoff package",
+      type: "交接",
+      title: "本地交接包",
       route: "share",
-      trigger: "Useful work needs to be continued by a future session, reviewer, or teammate.",
-      evidenceGate: "Summary, included artifacts, source freshness, boundaries, acceptance checks, and next actions.",
-      safety: "Keep sharing local; redact secrets, private paths, and assumptions that only the current session knows.",
-      reusableOutput: "Copyable Share Pack section and follow-up prompt.",
-      next: `Use ${resultCount} result archive entries and ${reuseCount} reusable assets.`,
+      trigger: "有价值工作需要被未来会话、审查者或队友继续。",
+      evidenceGate: "摘要、包含产物、来源鲜度、边界、验收检查和下一步。",
+      safety: "保持本地交接；脱敏密钥、私有路径和只有当前会话知道的假设。",
+      reusableOutput: "可复制交接包章节和后续 Prompt。",
+      next: `使用 ${resultCount} 个产物归档和 ${reuseCount} 个可复用星体。`,
       prompt: `Run the Astria local handoff package playbook.\n\nTrigger: package useful work for a future session, reviewer, or teammate.\nResult archive entries: ${resultCount}\nReusable assets: ${reuseCount}\n\nSteps:\n1. Summarize the durable result.\n2. List evidence and freshness.\n3. State boundaries, risks, and redactions.\n4. Write a next-action checklist.\n\nEvidence gate: summary, artifacts, source freshness, boundaries, acceptance checks, next actions.\nSafety boundary: local-only handoff; redact secrets and private paths.\nReusable output: copyable Share Pack section and follow-up prompt.`,
     },
     {
       id: "citation-grounding",
-      type: "Citation",
-      title: "Claim grounding review",
+      type: "引用",
+      title: "结论溯源复查",
       route: "citation",
-      trigger: "An answer, brief, or result includes claims that need reliable support.",
-      evidenceGate: "Atomic claim map, source lane, quote or cited summary, freshness check, and gap escalation.",
-      safety: "Block confident wording when evidence is weak, stale, private, or conflicting.",
-      reusableOutput: "Citation brief and safe wording for reuse.",
-      next: `Use Citation Planner with ${sourceCount} source lanes.`,
+      trigger: "回答、简报或产物包含需要可靠支撑的结论。",
+      evidenceGate: "原子结论图谱、来源路线、引用摘要、鲜度检查和缺口升级。",
+      safety: "证据薄弱、过期、私密或冲突时，阻止过度自信表述。",
+      reusableOutput: "可复用的引用简报和安全措辞。",
+      next: `在引用校准中使用 ${sourceCount} 条来源路线。`,
       prompt: `Run the Astria claim grounding review playbook.\n\nTrigger: claims need reliable support before reuse or delivery.\nSource lanes: ${sourceCount}\n\nSteps:\n1. Split the answer into atomic claims.\n2. Match claims to source lanes.\n3. Capture citations, freshness, and gaps.\n4. Rewrite unsafe claims with uncertainty.\n\nEvidence gate: atomic claim map, source lane, quote or cited summary, freshness check, gap escalation.\nSafety boundary: block confident wording when evidence is weak, stale, private, or conflicting.\nReusable output: citation brief and safe wording.`,
     },
     {
       id: "agent-profile",
       type: "Agent",
-      title: "Focused agent profile",
+      title: "聚焦 Agent 配置",
       route: "agents",
-      trigger: "A repeated workflow needs a named agent with clear role, memory, and tool boundaries.",
-      evidenceGate: "Role, model posture, allowed tools, denied tools, memory needs, command, and test prompt.",
-      safety: "Keep permissions narrow and avoid broad auto-approve defaults.",
-      reusableOutput: "Named agent profile plus saved command starter.",
-      next: `Review ${state.agents.length} current agent profiles.`,
+      trigger: "重复工作流需要命名 Agent，并明确角色、记忆和工具边界。",
+      evidenceGate: "角色、模型姿态、允许工具、拒绝工具、记忆需求、命令和测试 Prompt。",
+      safety: "保持权限收窄，避免宽泛自动批准默认值。",
+      reusableOutput: "命名 Agent 配置和已保存命令起点。",
+      next: `复查 ${state.agents.length} 个当前 Agent 配置。`,
       prompt: `Run the Astria focused agent profile playbook.\n\nTrigger: repeated workflow needs a named agent.\nCurrent agents: ${state.agents.length}\nStarter kits: ${starterCount}\n\nSteps:\n1. Define one repeatable job.\n2. Specify role, model posture, memory needs, and tool boundaries.\n3. Write one saved command and a test prompt.\n4. Validate permissions before reuse.\n\nEvidence gate: role, model posture, allowed tools, denied tools, memory needs, command, test prompt.\nSafety boundary: narrow permissions, no broad auto-approval.\nReusable output: named agent profile plus saved command starter.`,
     },
     {
       id: "memory-curation",
-      type: "Memory",
-      title: "Durable memory curation",
+      type: "记忆",
+      title: "长期记忆整理",
       route: "memory",
-      trigger: "A result or session produced facts, preferences, decisions, risks, or commands worth remembering.",
-      evidenceGate: "Source, category, durability reason, freshness note, duplicate/conflict check, and rejection criteria.",
-      safety: "Save durable facts only; reject vague, stale, sensitive, or unsupported notes.",
-      reusableOutput: "Reviewed memory candidates and taxonomy improvement notes.",
-      next: `Review ${memoryCount} memory entries and ${resultCount} archived results.`,
+      trigger: "结果或会话产生了值得记住的事实、偏好、决策、风险或命令。",
+      evidenceGate: "来源、分类、长期价值理由、鲜度说明、重复/冲突检查和拒绝标准。",
+      safety: "只保存长期事实；拒绝模糊、过期、敏感或无支撑记录。",
+      reusableOutput: "已审查记忆候选和分类改进记录。",
+      next: `复查 ${memoryCount} 条记忆和 ${resultCount} 个归档产物。`,
       prompt: `Run the Astria durable memory curation playbook.\n\nTrigger: decide what from recent work should become durable memory.\nMemory entries: ${memoryCount}\nResult archive entries: ${resultCount}\n\nSteps:\n1. Extract candidate facts from results and sessions.\n2. Categorize each candidate.\n3. Check source, freshness, duplicate, and conflict risk.\n4. Approve only durable, useful memory.\n\nEvidence gate: source, category, durability reason, freshness note, duplicate/conflict check, rejection criteria.\nSafety boundary: reject vague, stale, sensitive, or unsupported notes.\nReusable output: reviewed memory candidates and taxonomy notes.`,
     },
     {
       id: "delivery-review",
-      type: "Delivery",
-      title: "Approval-first delivery",
+      type: "交付",
+      title: "审批优先交付",
       route: "delivery",
-      trigger: "A result may need outbound delivery, schedule, or external-channel follow-up.",
-      evidenceGate: "Destination, artifact, approval boundary, schedule or channel, verification, and rollback step.",
-      safety: "Never send externally, schedule, or change remote state without explicit approval.",
-      reusableOutput: "Delivery lane checklist and reviewed outbound prompt.",
-      next: `Review ${deliveryCount} delivery lanes and ${state.schedules.length} schedules.`,
+      trigger: "结果可能需要出站交付、定时任务或外部渠道跟进。",
+      evidenceGate: "目标、产物、审批边界、定时或渠道、验证和回滚步骤。",
+      safety: "没有明确审批，不外发、不定时、不改变远端状态。",
+      reusableOutput: "交付链路清单和已审查出站 Prompt。",
+      next: `复查 ${deliveryCount} 条交付链路和 ${state.schedules.length} 条定时任务。`,
       prompt: `Run the Astria approval-first delivery playbook.\n\nTrigger: result may need outbound delivery or scheduling.\nDelivery lanes: ${deliveryCount}\nSchedules: ${state.schedules.length}\n\nSteps:\n1. Identify destination and artifact.\n2. Define approval boundary and verification.\n3. Choose schedule or channel only after review.\n4. Include rollback and confirmation steps.\n\nEvidence gate: destination, artifact, approval boundary, schedule or channel, verification, rollback step.\nSafety boundary: no external send, schedule, or remote state change without explicit approval.\nReusable output: delivery checklist and reviewed outbound prompt.`,
     },
     {
       id: "council-decision",
-      type: "Council",
-      title: "Multi-role decision review",
+      type: "议会",
+      title: "多角色决策复查",
       route: "council",
-      trigger: "A decision is important enough to need planner, researcher, and reviewer perspectives.",
-      evidenceGate: "Role briefs, disagreement or risk notes, synthesis, acceptance criteria, and next executable step.",
-      safety: "Do not treat role output as final until synthesis resolves conflicts and gaps.",
-      reusableOutput: "Council synthesis that can seed Result Library or Share Pack.",
-      next: `Use ${councilCount} council runs as precedent.`,
+      trigger: "决策足够重要，需要规划者、研究者和审阅者视角。",
+      evidenceGate: "角色简报、分歧或风险记录、综合结论、验收标准和下一条可执行步骤。",
+      safety: "综合解决冲突和缺口前，不把角色输出当成最终结论。",
+      reusableOutput: "可进入产物星库或交接包的议会综合。",
+      next: `参考 ${councilCount} 条议会运行。`,
       prompt: `Run the Astria multi-role decision review playbook.\n\nTrigger: decision needs planner, researcher, and reviewer perspectives.\nCouncil runs: ${councilCount}\n\nSteps:\n1. Split the decision into planning, research, and review concerns.\n2. Require each role to state evidence and uncertainty.\n3. Synthesize agreement, disagreement, and gaps.\n4. Produce one executable next step.\n\nEvidence gate: role briefs, disagreement or risk notes, synthesis, acceptance criteria, next executable step.\nSafety boundary: role output is not final until conflicts and gaps are resolved.\nReusable output: council synthesis for Result Library or Share Pack.`,
     },
   ];
@@ -2989,8 +4243,8 @@ function playbookLibraryCards() {
 function renderPlaybookLibrary() {
   const cards = playbookLibraryCards();
   setText("nav-playbooks-count", cards.length);
-  setText("manage-playbooks-count", `${cards.length} playbook${cards.length === 1 ? "" : "s"}`);
-  setText("playbooks-summary", `${cards.length} reviewed local best-practice playbook${cards.length === 1 ? "" : "s"} for research, data, handoff, citation, agents, memory, delivery, and council review.`);
+  setText("manage-playbooks-count", `${cards.length} 本手册`);
+  setText("playbooks-summary", `${cards.length} 本已审核本地实践手册，覆盖研究、数据、交接、引用、Agent、记忆、交付和议会评审。`);
   const list = $("playbook-library-grid");
   if (!list) return;
   if (!state.selectedPlaybook || !cards.some((card) => card.id === state.selectedPlaybook)) {
@@ -3000,14 +4254,14 @@ function renderPlaybookLibrary() {
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.route)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="playbook-gridline">
-      <span>Trigger</span><strong>${escapeHTML(card.trigger)}</strong>
-      <span>Evidence gate</span><strong>${escapeHTML(card.evidenceGate)}</strong>
-      <span>Reusable output</span><strong>${escapeHTML(card.reusableOutput)}</strong>
+      <span>触发</span><strong>${escapeHTML(card.trigger)}</strong>
+      <span>证据门槛</span><strong>${escapeHTML(card.evidenceGate)}</strong>
+      <span>可复用产物</span><strong>${escapeHTML(card.reusableOutput)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-playbook-select="${escapeHTML(card.id)}">Playbook brief</button>
-      <button type="button" data-playbook-draft="${escapeHTML(card.id)}">Draft playbook</button>
-      <button type="button" data-panel="${escapeHTML(card.route)}">Open route</button>
+      <button type="button" data-playbook-select="${escapeHTML(card.id)}">手册简报</button>
+      <button type="button" data-playbook-draft="${escapeHTML(card.id)}">起草手册</button>
+      <button type="button" data-panel="${escapeHTML(card.route)}">打开路径</button>
     </div>
   </article>`).join("");
   renderPlaybookDetail(cards.find((card) => card.id === state.selectedPlaybook) || cards[0]);
@@ -3017,30 +4271,30 @@ function renderPlaybookDetail(card) {
   const target = $("playbook-library-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a playbook.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一本实践手册。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.route)}</strong>
-        <span>Next</span><strong>${escapeHTML(card.next)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.route))}</strong>
+        <span>下一步</span><strong>${escapeHTML(card.next)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Trigger</h3>
+      <h3>触发条件</h3>
       <p>${escapeHTML(card.trigger)}</p>
-      <h3>Evidence gate</h3>
+      <h3>证据门槛</h3>
       <p>${escapeHTML(card.evidenceGate)}</p>
-      <h3>Safety boundary</h3>
+      <h3>安全边界</h3>
       <p>${escapeHTML(card.safety)}</p>
-      <h3>Reusable output</h3>
+      <h3>可复用产物</h3>
       <p>${escapeHTML(card.reusableOutput)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-playbook-draft="${escapeHTML(card.id)}">Draft playbook</button>
-        <button type="button" data-panel="${escapeHTML(card.route)}">Open route</button>
+        <button type="button" data-playbook-draft="${escapeHTML(card.id)}">起草手册</button>
+        <button type="button" data-panel="${escapeHTML(card.route)}">打开路径</button>
       </div>
     </section>
   </div>`;
@@ -3059,7 +4313,7 @@ function draftPlaybookToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Playbook drafted to chat.");
+  showToast("实践手册已写入对话。");
 }
 
 function starterKits() {
@@ -3070,74 +4324,74 @@ function starterKits() {
   return [
     {
       id: "browser-research",
-      type: "Browser",
-      title: "Reviewed web research",
+      type: "浏览器",
+      title: "已审查网页调研",
       route: "browser",
-      agent: agentCount ? "researcher" : "default",
-      evidence: "browser inspection + citations",
-      reuse: "Share Pack evidence section",
-      safety: "Read-only navigation; ask before forms, account actions, or downloads.",
-      objective: "Inspect a web page, capture evidence, and produce a cited decision brief.",
+      agent: agentCount ? "researcher" : "默认",
+      evidence: "浏览器检查 + 引用",
+      reuse: "交接包证据章节",
+      safety: "只读导航；表单、账号动作或下载前先询问。",
+      objective: "检查网页、捕获证据，并生成带引用的决策简报。",
       prompt: "Launch the Astria reviewed web research starter kit.\n\nObjective: inspect a target page, capture cited evidence, and summarize the decision impact.\nAgent posture: careful researcher with read-only browser behavior.\nSource/evidence plan: target URL, visible claims, relevant links, screenshot or selector evidence if needed.\nReview gate: ask before forms, account changes, downloads, purchases, posts, or destructive actions.\nReusable output: evidence notes suitable for Share Pack and Reuse Gallery.",
     },
     {
       id: "data-insight",
-      type: "Data",
-      title: "Local data insight brief",
+      type: "数据",
+      title: "本地数据洞察简报",
       route: "data",
       agent: "analyst",
-      evidence: `${sourceCount} registered sources`,
-      reuse: "Memory facts + chart brief",
-      safety: "Do not infer missing fields; mark source limits and uncertainty.",
-      objective: "Turn a local table, export, or metric set into reviewable findings.",
+      evidence: `${sourceCount} 个已登记来源`,
+      reuse: "记忆事实 + 图表简报",
+      safety: "不推断缺失字段；标记来源限制和不确定性。",
+      objective: "把本地表格、导出或指标集转成可审查发现。",
       prompt: "Launch the Astria local data insight starter kit.\n\nObjective: profile a source, answer one analysis question, and produce ranked findings.\nAgent posture: analyst who separates observed evidence from hypotheses.\nSource/evidence plan: source descriptor, key fields, freshness, missing data, and comparison dimensions.\nReview gate: list source limits before conclusions and ask for missing fields instead of inventing them.\nReusable output: memory candidates, chart brief, and prompt pattern for future data reviews.",
     },
     {
       id: "agent-build",
       type: "Agent",
-      title: "Focused agent profile",
+      title: "聚焦 Agent 配置",
       route: "agents",
       agent: "architect",
-      evidence: `${agentCount} current agents`,
-      reuse: "Agent command + prompt asset",
-      safety: "Keep tool permissions explicit and avoid broad auto-approve defaults.",
-      objective: "Design a named agent profile and command set for a repeatable task.",
+      evidence: `${agentCount} 个当前 Agent`,
+      reuse: "Agent 命令 + Prompt 星体",
+      safety: "工具权限保持明确，避免宽泛自动批准默认值。",
+      objective: "为可重复任务设计命名 Agent 配置和命令集。",
       prompt: "Launch the Astria focused agent profile starter kit.\n\nObjective: define a named agent profile for one repeatable workflow.\nAgent posture: systems designer who keeps permissions narrow.\nSource/evidence plan: task type, required memory, allowed tools, denied tools, model posture, and test prompt.\nReview gate: explain why each permission is needed and avoid broad auto-approval.\nReusable output: agent profile, saved command, and launch prompt.",
     },
     {
       id: "share-handoff",
-      type: "Share",
-      title: "Local handoff package",
+      type: "交接",
+      title: "本地交接包",
       route: "share",
       agent: "reviewer",
-      evidence: `${state.runs.length} runs + ${reuseCount} assets`,
-      reuse: "Copyable Share Pack",
-      safety: "Local-only handoff; redact secrets and private paths.",
-      objective: "Package useful results into a reviewed handoff for a future session or teammate.",
+      evidence: `${state.runs.length} 条运行 + ${reuseCount} 个星体`,
+      reuse: "可复制交接包",
+      safety: "仅本地交接；脱敏密钥和私有路径。",
+      objective: "把有用结果打包成供未来会话或队友继续的已审查交接。",
       prompt: "Launch the Astria local handoff package starter kit.\n\nObjective: package the useful result of current work into a local, copyable handoff.\nAgent posture: reviewer who checks evidence, privacy, and next-action clarity.\nSource/evidence plan: latest run, reusable prompts, memory, sources, and unresolved risks.\nReview gate: redact secrets/private data and require approval before publishing or sending externally.\nReusable output: Share Pack sections with evidence, boundaries, acceptance checklist, and next steps.",
     },
     {
       id: "memory-curation",
-      type: "Memory",
-      title: "Durable memory curation",
+      type: "记忆",
+      title: "长期记忆整理",
       route: "memory",
       agent: "curator",
-      evidence: `${memoryCount} memory entries`,
-      reuse: "Reviewed memory candidates",
-      safety: "Save durable facts only; include source and freshness notes.",
-      objective: "Extract durable facts, risks, preferences, and decisions from recent work.",
+      evidence: `${memoryCount} 条记忆`,
+      reuse: "已审查记忆候选",
+      safety: "只保存长期事实；包含来源和鲜度说明。",
+      objective: "从近期工作中提取长期事实、风险、偏好和决策。",
       prompt: "Launch the Astria durable memory curation starter kit.\n\nObjective: identify what should become durable memory from recent Astria work.\nAgent posture: curator who rejects vague or stale notes.\nSource/evidence plan: recent runs, sources, decisions, user preferences, and known risks.\nReview gate: include source, freshness, and why each item should be saved or rejected.\nReusable output: memory candidates and a short taxonomy update if needed.",
     },
     {
       id: "reuse-polish",
-      type: "Reuse",
-      title: "Reusable workflow polish",
+      type: "复用",
+      title: "可复用工作流打磨",
       route: "reuse",
       agent: "operator",
-      evidence: `${reuseCount} reusable assets`,
-      reuse: "Starter-ready prompt asset",
-      safety: "Prefer one practical reusable pattern over broad abstraction.",
-      objective: "Turn a useful workflow into a clean reusable prompt and launch path.",
+      evidence: `${reuseCount} 个可复用星体`,
+      reuse: "可启动 Prompt 星体",
+      safety: "优先沉淀一个实用可复用模式，而不是宽泛抽象。",
+      objective: "把有用工作流转成清晰可复用 Prompt 和发起路线。",
       prompt: "Launch the Astria reusable workflow polish starter kit.\n\nObjective: convert one successful workflow into a starter-ready reusable asset.\nAgent posture: operator who favors clear launch steps over abstraction.\nSource/evidence plan: prompt shape, agent fit, source requirements, expected output, and validation command.\nReview gate: prove the workflow is reusable and state where it should not be used.\nReusable output: Reuse Gallery starter, validation checklist, and suggested follow-up route.",
     },
   ];
@@ -3146,8 +4400,8 @@ function starterKits() {
 function renderStarterKitLauncher() {
   const kits = starterKits();
   setText("nav-starter-count", kits.length);
-  setText("manage-starter-count", `${kits.length} kit${kits.length === 1 ? "" : "s"}`);
-  setText("starter-summary", `${kits.length} prebuilt Astria starter kit${kits.length === 1 ? "" : "s"} for browser, data, agents, handoff, memory, and reuse workflows.`);
+  setText("manage-starter-count", `${kits.length} 个套件`);
+  setText("starter-summary", `${kits.length} 个 Astria 启动套件，覆盖浏览器、数据、Agent、交接、记忆和复用工作流。`);
   const list = $("starter-kit-grid");
   if (!list) return;
   if (!state.selectedStarterKit || !kits.some((kit) => kit.id === state.selectedStarterKit)) {
@@ -3157,14 +4411,14 @@ function renderStarterKitLauncher() {
     <div class="row-item-title"><span>${escapeHTML(kit.type)}</span><span class="tag">${escapeHTML(kit.agent)}</span></div>
     <strong>${escapeHTML(kit.title)}</strong>
     <div class="starter-kit-gridline">
-      <span>Route</span><strong>${escapeHTML(kit.route)}</strong>
-      <span>Evidence</span><strong>${escapeHTML(kit.evidence)}</strong>
-      <span>Reusable output</span><strong>${escapeHTML(kit.reuse)}</strong>
+      <span>路径</span><strong>${escapeHTML(panelName(kit.route))}</strong>
+      <span>证据</span><strong>${escapeHTML(kit.evidence)}</strong>
+      <span>可复用产物</span><strong>${escapeHTML(kit.reuse)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-starter-select="${escapeHTML(kit.id)}">Kit brief</button>
-      <button type="button" data-starter-draft="${escapeHTML(kit.id)}">Draft kit</button>
-      <button type="button" data-panel="${escapeHTML(kit.route)}">Open route</button>
+      <button type="button" data-starter-select="${escapeHTML(kit.id)}">套件简报</button>
+      <button type="button" data-starter-draft="${escapeHTML(kit.id)}">起草套件</button>
+      <button type="button" data-panel="${escapeHTML(kit.route)}">打开路径</button>
     </div>
   </article>`).join("");
   renderStarterKitDetail(kits.find((kit) => kit.id === state.selectedStarterKit) || kits[0]);
@@ -3174,30 +4428,30 @@ function renderStarterKitDetail(kit) {
   const target = $("starter-kit-detail");
   if (!target) return;
   if (!kit) {
-    target.innerHTML = `<div class="empty-state">Select a starter kit.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个启动套件。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(kit.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(kit.type)}</strong>
-        <span>Route</span><strong>${escapeHTML(kit.route)}</strong>
-        <span>Agent posture</span><strong>${escapeHTML(kit.agent)}</strong>
+        <span>类型</span><strong>${escapeHTML(kit.type)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(kit.route))}</strong>
+        <span>Agent 姿态</span><strong>${escapeHTML(kit.agent)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Objective</h3>
+      <h3>目标</h3>
       <p>${escapeHTML(kit.objective)}</p>
-      <h3>Evidence</h3>
+      <h3>证据</h3>
       <p>${escapeHTML(kit.evidence)}</p>
-      <h3>Safety</h3>
+      <h3>安全边界</h3>
       <p>${escapeHTML(kit.safety)}</p>
-      <h3>Reusable output</h3>
+      <h3>可复用产物</h3>
       <p>${escapeHTML(kit.reuse)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-starter-draft="${escapeHTML(kit.id)}">Draft kit</button>
-        <button type="button" data-panel="${escapeHTML(kit.route)}">Open route</button>
+        <button type="button" data-starter-draft="${escapeHTML(kit.id)}">起草套件</button>
+        <button type="button" data-panel="${escapeHTML(kit.route)}">打开路径</button>
       </div>
     </section>
   </div>`;
@@ -3216,7 +4470,7 @@ function draftStarterKitToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Starter kit drafted to chat.");
+  showToast("启动套件已写入对话。");
 }
 
 function sharePackContext() {
@@ -3224,11 +4478,11 @@ function sharePackContext() {
   const audience = ($("share-pack-audience")?.value || state.sharePackAudience || "").trim();
   const intent = ($("share-pack-intent")?.value || state.sharePackIntent || "").trim();
   const latestRun = state.runs[0];
-  const defaultName = latestRun?.prompt ? `Handoff for ${String(latestRun.prompt).slice(0, 72)}` : "Astria local handoff pack";
+  const defaultName = latestRun?.prompt ? `交接：${String(latestRun.prompt).slice(0, 72)}` : "Astria 本地交接包";
   return {
     name: name || defaultName,
-    audience: audience || "future Astria session or local reviewer",
-    intent: intent || "Help the recipient reuse the useful context, verify evidence, and continue safely.",
+    audience: audience || "未来 Astria 会话或本地审查者",
+    intent: intent || "帮助接收者复用有效上下文、验证证据并安全继续。",
     hasName: Boolean(name),
   };
 }
@@ -3251,57 +4505,57 @@ function sharePackCards() {
   return [
     {
       id: "brief",
-      type: "Mission brief",
-      title: "Executive handoff brief",
+      type: "任务简报",
+      title: "交接总览简报",
       panel: "runs",
-      evidence: latestRun?.id || "No latest run",
-      readiness: latestRun ? "ready" : "seed",
-      boundary: "Local copyable brief only; do not imply cloud sharing or external permissions.",
-      action: "Draft the overview, scope, and next decision.",
+      evidence: latestRun?.id || "尚无最近运行",
+      readiness: latestRun ? "就绪" : "待建立",
+      boundary: "仅生成本地可复制简报；不暗示云共享或外部权限。",
+      action: "起草总览、范围和下一项决策。",
       prompt: `Build a local Astria share pack mission brief.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nIncluded artifacts: ${artifacts}\nLatest run: ${latestRun?.prompt || "none"}\n\nCreate a concise handoff with objective, what is known, what remains uncertain, who should review it, and the safest next action. Keep it local and copyable; do not claim cloud sharing, account access, or remote permissions.`,
     },
     {
       id: "evidence",
-      type: "Evidence",
-      title: "Evidence bundle checklist",
+      type: "证据",
+      title: "证据包清单",
       panel: "compare",
-      evidence: `${sourceCount} sources + ${state.runs.length} runs`,
-      readiness: sourceCount || state.runs.length ? "review" : "needs evidence",
-      boundary: "Include source freshness and missing evidence; exclude secrets and private data.",
-      action: "Draft an evidence table and verification checklist.",
+      evidence: `${sourceCount} 个来源 + ${state.runs.length} 条运行`,
+      readiness: sourceCount || state.runs.length ? "待复查" : "缺少证据",
+      boundary: "包含来源鲜度和缺失证据；排除密钥和私有数据。",
+      action: "起草证据表和验证清单。",
       prompt: `Build a local Astria evidence bundle checklist.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nIncluded artifacts: ${artifacts}\n\nList the evidence that should be included, where each item came from, freshness or reliability concerns, missing proof, and verification steps. Redact secrets and private data before anything is copied outside the local workspace.`,
     },
     {
       id: "prompt",
       type: "Prompt",
-      title: "Reusable prompt starter",
+      title: "可复用 Prompt 起点",
       panel: "reuse",
-      evidence: `${reuseCount} reusable assets`,
-      readiness: reuseCount ? "reuse" : "draft",
-      boundary: "Package the prompt pattern, not hidden state or credentials.",
-      action: "Draft a starter prompt that another run can reuse.",
+      evidence: `${reuseCount} 个可复用星体`,
+      readiness: reuseCount ? "可复用" : "草稿",
+      boundary: "打包 Prompt 模式，而不是隐藏状态或凭证。",
+      action: "起草可供下一条运行复用的起点 Prompt。",
       prompt: `Build a reusable Astria prompt starter for a share pack.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nLead agent: ${latestAgent}\nReuse assets: ${reuseCount}\n\nExtract the reusable prompt pattern, required context, expected output, review guardrails, and validation commands. Do not include secrets, private paths unless necessary, or assumptions that only this session knows.`,
     },
     {
       id: "knowledge",
-      type: "Knowledge",
-      title: "Memory handoff notes",
+      type: "知识",
+      title: "记忆交接记录",
       panel: "memory",
-      evidence: `${memoryCount} memory entries`,
-      readiness: memoryCount ? "curate" : "seed",
-      boundary: "Save only durable facts with source and freshness notes.",
-      action: "Draft memory candidates and expiry notes.",
+      evidence: `${memoryCount} 条记忆`,
+      readiness: memoryCount ? "待整理" : "待建立",
+      boundary: "只保存带来源和鲜度说明的长期事实。",
+      action: "起草记忆候选和过期说明。",
       prompt: `Build Astria memory handoff notes for a local share pack.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nMemory entries: ${memoryCount}\nIncluded artifacts: ${artifacts}\n\nIdentify durable facts, decisions, preferences, risks, and stale items. Write memory candidates with evidence, freshness, and why each should or should not be saved.`,
     },
     {
       id: "review",
-      type: "Review",
-      title: "Reviewer acceptance checklist",
+      type: "审核",
+      title: "审查者验收清单",
       panel: dataCount ? "data" : "council",
-      evidence: dataCount ? `${dataCount} data lenses` : `${state.councilRuns.length} council runs`,
-      readiness: "gate",
-      boundary: "Require human review before publishing, scheduling, or sending the pack externally.",
-      action: "Draft acceptance criteria and rejection triggers.",
+      evidence: dataCount ? `${dataCount} 个数据透镜` : `${state.councilRuns.length} 条议会运行`,
+      readiness: "闸门",
+      boundary: "发布、定时或外发交接包前必须人工复查。",
+      action: "起草验收标准和拒绝触发条件。",
       prompt: `Build a reviewer acceptance checklist for a local Astria share pack.\n\nPackage: ${ctx.name}\nAudience: ${ctx.audience}\nIntent: ${ctx.intent}\nIncluded artifacts: ${artifacts}\n\nDefine acceptance criteria, rejection triggers, required evidence, privacy checks, and follow-up routes. Require explicit approval before publishing, scheduling, or sending this pack outside the local workspace.`,
     },
   ];
@@ -3310,8 +4564,8 @@ function sharePackCards() {
 function renderSharePackBuilder() {
   const cards = sharePackCards();
   setText("nav-share-count", cards.length);
-  setText("manage-share-count", `${cards.length} pack${cards.length === 1 ? "" : "s"}`);
-  setText("share-summary", `${cards.length} local share pack card${cards.length === 1 ? "" : "s"} for mission briefs, evidence, prompts, memory, and review gates.`);
+  setText("manage-share-count", `${cards.length} 个交接包`);
+  setText("share-summary", `${cards.length} 张本地交接卡，覆盖任务简报、证据、Prompt、记忆和审核门槛。`);
   const list = $("share-pack-cards");
   if (!list) return;
   if (!state.selectedSharePack || !cards.some((card) => card.id === state.selectedSharePack)) {
@@ -3321,14 +4575,14 @@ function renderSharePackBuilder() {
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="share-pack-grid">
-      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
-      <span>Boundary</span><strong>${escapeHTML(card.boundary)}</strong>
-      <span>Next action</span><strong>${escapeHTML(card.action)}</strong>
+      <span>证据</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>边界</span><strong>${escapeHTML(card.boundary)}</strong>
+      <span>下一步</span><strong>${escapeHTML(card.action)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-share-select="${escapeHTML(card.id)}">Pack brief</button>
-      <button type="button" data-share-draft="${escapeHTML(card.id)}">Draft pack</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      <button type="button" data-share-select="${escapeHTML(card.id)}">交接简报</button>
+      <button type="button" data-share-draft="${escapeHTML(card.id)}">起草交接</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderSharePackDetail(cards.find((card) => card.id === state.selectedSharePack) || cards[0]);
@@ -3338,26 +4592,26 @@ function renderSharePackDetail(card) {
   const target = $("share-pack-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a share pack card.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一张交接卡。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>就绪度</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Boundary</h3>
+      <h3>边界</h3>
       <p>${escapeHTML(card.boundary)}</p>
-      <h3>Next action</h3>
+      <h3>下一步</h3>
       <p>${escapeHTML(card.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-share-draft="${escapeHTML(card.id)}">Draft pack</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+        <button type="button" data-share-draft="${escapeHTML(card.id)}">起草交接</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -3376,7 +4630,7 @@ function draftSharePackToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Share pack drafted to chat.");
+  showToast("交接包已写入对话。");
 }
 
 function workspaceSnapshotCards() {
@@ -3391,92 +4645,92 @@ function workspaceSnapshotCards() {
   const agentCount = state.agents.length;
   const scheduleCount = state.schedules.length;
   const riskCount = knowledgeReconciliationItems().length;
-  const runLabel = latestRun?.prompt || latestRun?.id || "No latest run";
-  const sessionLabel = latestSession?.title || latestSession?.id || "No recent session";
-  const localInventory = `${state.sessions.length} sessions, ${state.runs.length} runs, ${memoryCount} memory, ${sourceCount} sources, ${resultCount} results`;
+  const runLabel = latestRun?.prompt || latestRun?.id || "尚无最近运行";
+  const sessionLabel = latestSession?.title || latestSession?.id || "尚无最近会话";
+  const localInventory = `${state.sessions.length} 个会话，${state.runs.length} 条运行，${memoryCount} 条记忆，${sourceCount} 个来源，${resultCount} 个产物`;
   return [
     {
       id: "resume",
-      type: "Resume",
-      title: "Session resume snapshot",
+      type: "续接",
+      title: "会话续接快照",
       panel: latestSession ? "chat" : "runs",
       included: `${sessionLabel}; ${runLabel}`,
-      missing: latestSession ? "Confirm unresolved next action and active branch before resuming." : "Create or select a session before treating this as resumable.",
-      reviewGate: "Verify current objective, latest user request, active files, and unfinished checks.",
-      privacy: "Keep local paths and session IDs internal unless the recipient needs them.",
-      route: "Open Chat to continue from the selected local context.",
+      missing: latestSession ? "续接前确认未解决下一步和当前分支。" : "先创建或选择会话，再把它视为可续接。",
+      reviewGate: "验证当前目标、最新用户请求、活跃文件和未完成检查。",
+      privacy: "除非接收者确实需要，否则本地路径和会话 ID 保持内部可见。",
+      route: "打开对话，从选中的本地上下文继续。",
       prompt: `Build an Astria session resume snapshot.\n\nLocal inventory: ${localInventory}\nLatest session: ${sessionLabel}\nLatest run: ${runLabel}\n\nReturn a resume pack with current objective, relevant context, completed work, open risks, files to inspect first, validation state, and the next safe action. Mark missing context instead of guessing.`,
     },
     {
       id: "evidence",
-      type: "Evidence",
-      title: "Run evidence snapshot",
+      type: "证据",
+      title: "运行证据快照",
       panel: "runs",
-      included: `${state.runs.length} runs; ${sourceCount} registered sources; ${resultCount} result briefs`,
-      missing: state.runs.length ? "Identify which outputs are final, draft, or blocked." : "Run history is empty; evidence snapshot should start as a checklist.",
-      reviewGate: "Separate observed tool output, model synthesis, and unsupported assumptions.",
-      privacy: "Redact command output that contains secrets, private paths, or account data.",
-      route: "Open Runs to inspect execution detail and copyable summaries.",
+      included: `${state.runs.length} 条运行；${sourceCount} 个已登记来源；${resultCount} 份产物简报`,
+      missing: state.runs.length ? "识别哪些输出是最终版、草稿或阻塞态。" : "运行历史为空；证据快照应从清单开始。",
+      reviewGate: "区分可观察工具输出、模型综合和未支撑假设。",
+      privacy: "脱敏包含密钥、私有路径或账号数据的命令输出。",
+      route: "打开运行观测台检查执行详情和可复制摘要。",
       prompt: `Build an Astria run evidence snapshot.\n\nRuns: ${state.runs.length}\nSources: ${sourceCount}\nResult archive entries: ${resultCount}\nLatest run: ${runLabel}\n\nReturn evidence grouped by run, source, result, confidence, freshness, and unresolved gaps. Flag anything that needs citation grounding or reviewer approval.`,
     },
     {
       id: "memory-source",
-      type: "Knowledge",
-      title: "Memory and source snapshot",
+      type: "知识",
+      title: "记忆与来源快照",
       panel: sourceCount ? "sources" : "memory",
-      included: `${memoryCount} memory entries; ${sourceCount} source lanes; ${riskCount} reconciliation risks`,
-      missing: riskCount ? "Resolve stale, conflicting, weak, or sensitive knowledge before reuse." : "Add source and freshness notes for any durable memory candidate.",
-      reviewGate: "Every durable fact needs source, freshness, category, and rejection criteria.",
-      privacy: "Do not snapshot sensitive notes, secrets, or private facts without explicit need.",
-      route: "Open Source Registry or Memory Map to curate durable context.",
+      included: `${memoryCount} 条记忆；${sourceCount} 条来源路线；${riskCount} 个知识校验风险`,
+      missing: riskCount ? "复用前解决过期、冲突、薄弱或敏感知识。" : "为长期记忆候选补充来源和鲜度说明。",
+      reviewGate: "每条长期事实都需要来源、鲜度、分类和拒绝标准。",
+      privacy: "没有明确需要时，不快照敏感记录、密钥或私有事实。",
+      route: "打开来源登记或记忆星图整理长期上下文。",
       prompt: `Build an Astria memory and source snapshot.\n\nMemory entries: ${memoryCount}\nSource lanes: ${sourceCount}\nReconciliation risks: ${riskCount}\n\nReturn durable facts, source coverage, stale or conflicting items, privacy exclusions, and memory candidates that are safe to reuse.`,
     },
     {
       id: "result-archive",
-      type: "Results",
-      title: "Result archive snapshot",
+      type: "产物",
+      title: "产物归档快照",
       panel: "results",
-      included: `${resultCount} archived results; ${shareCount} share pack cards; ${reuseCount} reusable assets`,
-      missing: resultCount ? "Confirm which archived results have evidence and acceptance checks." : "No archived result yet; seed from the latest completed run.",
-      reviewGate: "Each saved result needs outcome, source evidence, freshness, reuse path, and open risks.",
-      privacy: "Snapshot outcomes without hidden chain-of-thought, credentials, or private workspace data.",
-      route: "Open Result Library to inspect saved reports and follow-up prompts.",
+      included: `${resultCount} 个归档产物；${shareCount} 张交接卡；${reuseCount} 个可复用星体`,
+      missing: resultCount ? "确认哪些归档产物拥有证据和验收检查。" : "尚无归档产物；从最近完成运行开始建立。",
+      reviewGate: "每个保存结果都需要产出、来源证据、鲜度、复用路线和开放风险。",
+      privacy: "快照产物时不包含隐藏推理链、凭证或私有工作区数据。",
+      route: "打开产物星库检查已保存报告和后续 Prompt。",
       prompt: `Build an Astria result archive snapshot.\n\nArchived results: ${resultCount}\nShare pack cards: ${shareCount}\nReusable assets: ${reuseCount}\n\nReturn a local result package with outcome summaries, evidence links, freshness, reusable prompt paths, acceptance checks, and unresolved risks.`,
     },
     {
       id: "playbook-reuse",
-      type: "Reuse",
-      title: "Playbook and reuse snapshot",
+      type: "复用",
+      title: "手册与复用快照",
       panel: "playbooks",
-      included: `${playbookCount} playbooks; ${reuseCount} reusable assets; ${agentCount} agents`,
-      missing: playbookCount ? "Confirm the playbook still matches current tools and safety boundaries." : "Promote a successful workflow into a reviewed playbook before reuse.",
-      reviewGate: "Reusable workflow needs trigger, steps, evidence gate, safety boundary, and validation.",
-      privacy: "Store reusable patterns, not sensitive project state or credentials.",
-      route: "Open Playbook Library to launch a reviewed local best-practice path.",
+      included: `${playbookCount} 本手册；${reuseCount} 个可复用星体；${agentCount} 个 Agent`,
+      missing: playbookCount ? "确认手册仍匹配当前工具和安全边界。" : "复用前先把成功工作流沉淀为已审查手册。",
+      reviewGate: "可复用工作流需要触发条件、步骤、证据门、安全边界和验证。",
+      privacy: "保存可复用模式，而不是敏感项目状态或凭证。",
+      route: "打开实践手册，发起已审查的本地最佳实践路线。",
       prompt: `Build an Astria playbook and reuse snapshot.\n\nPlaybooks: ${playbookCount}\nReusable assets: ${reuseCount}\nAgents: ${agentCount}\n\nReturn repeatable workflows, agent/profile dependencies, prompts to reuse, safety boundaries, validation commands, and stale-pattern risks.`,
     },
     {
       id: "delivery-schedule",
-      type: "Delivery",
-      title: "Delivery and schedule snapshot",
+      type: "交付",
+      title: "交付与定时快照",
       panel: scheduleCount ? "delivery" : "schedules",
-      included: `${scheduleCount} schedules; ${deliveryLanes().length} delivery lanes; ${state.inboxItems.length} inbox items`,
-      missing: scheduleCount ? "Confirm destination, approval gate, and rollback path for every scheduled output." : "No schedule exists; keep the delivery snapshot as a reviewed plan.",
-      reviewGate: "Outbound, scheduled, or channel work requires explicit approval and verification.",
-      privacy: "No external send, post, schedule, or remote state change is implied by this snapshot.",
-      route: "Open Delivery or Schedules to review cadence and approval boundaries.",
+      included: `${scheduleCount} 条定时任务；${deliveryLanes().length} 条交付链路；${state.inboxItems.length} 条收件箱事项`,
+      missing: scheduleCount ? "确认每个定时输出的目标、审批门和回滚路径。" : "尚无定时任务；将交付快照保持为已审查计划。",
+      reviewGate: "出站、定时或渠道工作都需要明确审批和验证。",
+      privacy: "此快照不暗示外发、发布、定时或远端状态变更。",
+      route: "打开主动交付或定时任务，复查频率和审批边界。",
       prompt: `Build an Astria delivery and schedule snapshot.\n\nSchedules: ${scheduleCount}\nDelivery lanes: ${deliveryLanes().length}\nInbox items: ${state.inboxItems.length}\n\nReturn destination candidates, schedule cadence, approval gates, verification steps, rollback paths, and what must stay local.`,
     },
     {
       id: "privacy",
-      type: "Privacy",
-      title: "Redaction and handoff boundary",
+      type: "隐私",
+      title: "脱敏与交接边界",
       panel: riskCount ? "reconcile" : "share",
-      included: `${riskCount} knowledge risks; ${sourceCount} sources; ${shareCount} share pack cards`,
-      missing: "Review local paths, API keys, account data, private files, and unsupported assumptions before copying anything out.",
-      reviewGate: "Nothing leaves the local workspace until secrets, private data, and weak claims are removed.",
-      privacy: "Default to local-only. Redact credentials, private paths, user data, and hidden state.",
-      route: "Open Knowledge Reconciliation or Share Pack to complete the boundary check.",
+      included: `${riskCount} 个知识风险；${sourceCount} 个来源；${shareCount} 张交接卡`,
+      missing: "复制任何内容前，复查本地路径、API key、账号数据、私有文件和未支撑假设。",
+      reviewGate: "密钥、私有数据和薄弱结论移除前，任何内容都不离开本地工作区。",
+      privacy: "默认本地优先。脱敏凭证、私有路径、用户数据和隐藏状态。",
+      route: "打开知识校验或交接包，完成边界检查。",
       prompt: `Build an Astria redaction and handoff-boundary snapshot.\n\nKnowledge risks: ${riskCount}\nSources: ${sourceCount}\nShare pack cards: ${shareCount}\n\nReturn what can be copied, what must be redacted, what requires approval, weak or unsupported claims, and the local-only boundary for this handoff.`,
     },
   ];
@@ -3485,8 +4739,8 @@ function workspaceSnapshotCards() {
 function renderWorkspaceSnapshotPlanner() {
   const cards = workspaceSnapshotCards();
   setText("nav-snapshot-count", cards.length);
-  setText("manage-snapshot-count", `${cards.length} pack${cards.length === 1 ? "" : "s"}`);
-  setText("snapshot-summary", `${cards.length} local snapshot pack${cards.length === 1 ? "" : "s"} for resume, evidence, memory, results, playbooks, delivery, and privacy review.`);
+  setText("manage-snapshot-count", `${cards.length} 个快照`);
+  setText("snapshot-summary", `${cards.length} 个本地快照包，覆盖续接、证据、记忆、产物、手册、交付和隐私复查。`);
   const list = $("workspace-snapshot-grid");
   if (!list) return;
   if (!state.selectedWorkspaceSnapshot || !cards.some((card) => card.id === state.selectedWorkspaceSnapshot)) {
@@ -3496,14 +4750,14 @@ function renderWorkspaceSnapshotPlanner() {
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.panel)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="workspace-snapshot-gridline">
-      <span>Included</span><strong>${escapeHTML(card.included)}</strong>
-      <span>Missing</span><strong>${escapeHTML(card.missing)}</strong>
-      <span>Review gate</span><strong>${escapeHTML(card.reviewGate)}</strong>
+      <span>已包含</span><strong>${escapeHTML(card.included)}</strong>
+      <span>缺口</span><strong>${escapeHTML(card.missing)}</strong>
+      <span>复查门槛</span><strong>${escapeHTML(card.reviewGate)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-snapshot-select="${escapeHTML(card.id)}">Snapshot brief</button>
-      <button type="button" data-snapshot-draft="${escapeHTML(card.id)}">Draft snapshot</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+      <button type="button" data-snapshot-select="${escapeHTML(card.id)}">快照简报</button>
+      <button type="button" data-snapshot-draft="${escapeHTML(card.id)}">起草快照</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开路径</button>
     </div>
   </article>`).join("");
   renderWorkspaceSnapshotDetail(cards.find((card) => card.id === state.selectedWorkspaceSnapshot) || cards[0]);
@@ -3513,30 +4767,30 @@ function renderWorkspaceSnapshotDetail(card) {
   const target = $("workspace-snapshot-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a snapshot pack.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个工作区快照。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
-        <span>Next</span><strong>${escapeHTML(card.route)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
+        <span>下一步</span><strong>${escapeHTML(card.route)}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Included context</h3>
+      <h3>已包含上下文</h3>
       <p>${escapeHTML(card.included)}</p>
-      <h3>Missing pieces</h3>
+      <h3>缺失部分</h3>
       <p>${escapeHTML(card.missing)}</p>
-      <h3>Review gate</h3>
+      <h3>复查门槛</h3>
       <p>${escapeHTML(card.reviewGate)}</p>
-      <h3>Privacy boundary</h3>
+      <h3>隐私边界</h3>
       <p>${escapeHTML(card.privacy)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-snapshot-draft="${escapeHTML(card.id)}">Draft snapshot</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open route</button>
+        <button type="button" data-snapshot-draft="${escapeHTML(card.id)}">起草快照</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开路径</button>
       </div>
     </section>
   </div>`;
@@ -3555,78 +4809,78 @@ function draftWorkspaceSnapshotToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Workspace snapshot drafted to chat.");
+  showToast("工作区快照已写入对话。");
 }
 
 function browserMissionContext() {
   const url = ($("browser-target-url")?.value || state.browserTargetURL || "").trim();
   const goal = ($("browser-mission-goal")?.value || state.browserMissionGoal || "").trim();
   return {
-    url: url || "the target page",
-    goal: goal || "Inspect the page and capture evidence for the next Astria decision.",
+    url: url || "目标页面",
+    goal: goal || "检查页面，并捕获下一步 Astria 决策需要的证据。",
     hasURL: Boolean(url),
   };
 }
 
 function browserMissionCards() {
   const ctx = browserMissionContext();
-  const intakeLabel = state.intakeResult ? `File context ready: ${state.intakeResult.path || state.intakeResult.mode || "intake"}` : "No file context attached";
+  const intakeLabel = state.intakeResult ? `文件上下文已就绪：${state.intakeResult.path || state.intakeResult.mode || "文件星舱"}` : "尚未附加文件上下文";
   const inboxPending = state.inboxItems.filter((item) => String(item.status || "pending").toLowerCase() === "pending").length;
   const readyDiagnostics = ["ok", "ready", "healthy"].includes(String(state.diagnostics?.status || "").toLowerCase());
   return [
     {
       id: "inspect",
-      type: "Inspect",
-      title: "Page inspection",
+      type: "检查",
+      title: "页面检查",
       panel: "chat",
-      evidence: ctx.hasURL ? ctx.url : "URL needed",
-      readiness: readyDiagnostics ? "ready" : "review",
-      risk: "Read-only navigation and page summary; do not click account-changing controls.",
-      action: "Draft an inspection run with source citations.",
+      evidence: ctx.hasURL ? ctx.url : "需要 URL",
+      readiness: readyDiagnostics ? "就绪" : "待复查",
+      risk: "只做只读导航和页面总结；不要点击会改变账号状态的控件。",
+      action: "起草一条带来源引用的检查运行。",
       prompt: `Plan a reviewed browser inspection mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\n\nUse browser navigation only as needed. Summarize visible page structure, key claims, relevant links, and evidence to cite. Do not submit forms, change account settings, purchase, delete, or post anything without explicit approval.`,
     },
     {
       id: "screenshot",
-      type: "Screenshot",
-      title: "Visual evidence capture",
+      type: "截图",
+      title: "视觉证据捕获",
       panel: "diagnostics",
-      evidence: "browser + screenshot",
-      readiness: readyDiagnostics ? "ready" : "check runtime",
-      risk: "Capture evidence without exposing secrets or private account data.",
-      action: "Draft a screenshot checklist and evidence summary.",
+      evidence: "浏览器 + 截图",
+      readiness: readyDiagnostics ? "就绪" : "检查运行时",
+      risk: "捕获证据时避免暴露密钥或私有账号数据。",
+      action: "起草截图清单和证据摘要。",
       prompt: `Plan a browser screenshot evidence mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\n\nOpen the target, capture the necessary visual evidence, describe what the screenshot proves, and call out any private or sensitive information that should be cropped or avoided. Ask before interacting with authenticated or destructive UI.`,
     },
     {
       id: "extract",
-      type: "Extract",
-      title: "Structured page extraction",
+      type: "抽取",
+      title: "结构化页面抽取",
       panel: state.intakeResult ? "intake" : "chat",
       evidence: intakeLabel,
-      readiness: ctx.hasURL ? "targeted" : "needs target",
-      risk: "Extract only public or operator-approved content; cite uncertainty and missing fields.",
-      action: "Draft an extraction schema before reading.",
+      readiness: ctx.hasURL ? "已定向" : "需要目标",
+      risk: "只抽取公开或操作者批准的内容；标注不确定性和缺失字段。",
+      action: "读取前先起草抽取 schema。",
       prompt: `Plan a structured browser extraction mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\nLocal context: ${intakeLabel}\n\nDefine the fields to extract, inspect the page, return structured findings with citations or selectors where possible, and identify anything that needs manual verification.`,
     },
     {
       id: "form-check",
-      type: "Form check",
-      title: "Form and flow review",
+      type: "表单检查",
+      title: "表单与流程复查",
       panel: "permissions",
-      evidence: "approval required",
-      readiness: "guarded",
-      risk: "Never submit forms, payments, account changes, or messages without explicit approval.",
-      action: "Draft a safe dry-run form review.",
+      evidence: "需要审批",
+      readiness: "受保护",
+      risk: "没有明确审批，不提交表单、付款、账号变更或消息。",
+      action: "起草安全的表单 dry-run 复查。",
       prompt: `Plan a safe browser form-check mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\n\nInspect form fields, validation states, required data, and risks. You may type only harmless placeholder data if needed for local validation, but do not submit or trigger remote state changes without explicit approval.`,
     },
     {
       id: "monitor",
-      type: "Monitor",
-      title: "Change monitoring brief",
+      type: "监控",
+      title: "变化监控简报",
       panel: inboxPending ? "inbox" : "schedules",
-      evidence: inboxPending ? `${inboxPending} pending inbound` : `${state.schedules.length} schedules`,
-      readiness: state.schedules.length ? "schedulable" : "manual",
-      risk: "Monitoring should define cadence, threshold, and notification route before scheduling.",
-      action: "Draft a monitoring plan from the current target.",
+      evidence: inboxPending ? `${inboxPending} 条待处理进入项` : `${state.schedules.length} 条定时任务`,
+      readiness: state.schedules.length ? "可定时" : "手动",
+      risk: "监控进入定时前，需要先定义频率、阈值和通知路线。",
+      action: "基于当前目标起草监控计划。",
       prompt: `Plan a browser change-monitoring mission.\n\nTarget: ${ctx.url}\nGoal: ${ctx.goal}\nSchedules: ${state.schedules.length}\nPending inbox items: ${inboxPending}\n\nDefine what should be monitored, the cadence, change threshold, evidence to capture, and how Astria should report changes before any schedule is created.`,
     },
   ];
@@ -3635,8 +4889,8 @@ function browserMissionCards() {
 function renderBrowserMissionPlanner() {
   const cards = browserMissionCards();
   setText("nav-browser-count", cards.length);
-  setText("manage-browser-count", `${cards.length} plan${cards.length === 1 ? "" : "s"}`);
-  setText("browser-summary", `${cards.length} browser mission plan${cards.length === 1 ? "" : "s"} for inspection, screenshots, extraction, form checks, and monitoring.`);
+  setText("manage-browser-count", `${cards.length} 个计划`);
+  setText("browser-summary", `${cards.length} 个浏览器任务计划，覆盖检查、截图、抽取、表单检查和监控。`);
   const list = $("browser-mission-cards");
   if (!list) return;
   if (!state.selectedBrowserMission || !cards.some((card) => card.id === state.selectedBrowserMission)) {
@@ -3646,14 +4900,14 @@ function renderBrowserMissionPlanner() {
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="browser-mission-grid">
-      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
-      <span>Risk</span><strong>${escapeHTML(card.risk)}</strong>
-      <span>Next action</span><strong>${escapeHTML(card.action)}</strong>
+      <span>证据</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>风险</span><strong>${escapeHTML(card.risk)}</strong>
+      <span>下一步</span><strong>${escapeHTML(card.action)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-browser-select="${escapeHTML(card.id)}">Mission brief</button>
-      <button type="button" data-browser-draft="${escapeHTML(card.id)}">Draft mission</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      <button type="button" data-browser-select="${escapeHTML(card.id)}">任务简报</button>
+      <button type="button" data-browser-draft="${escapeHTML(card.id)}">起草任务</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderBrowserMissionDetail(cards.find((card) => card.id === state.selectedBrowserMission) || cards[0]);
@@ -3663,26 +4917,26 @@ function renderBrowserMissionDetail(card) {
   const target = $("browser-mission-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a browser mission.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个浏览器任务。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>就绪度</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Risk</h3>
+      <h3>风险</h3>
       <p>${escapeHTML(card.risk)}</p>
-      <h3>Next action</h3>
+      <h3>下一步</h3>
       <p>${escapeHTML(card.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-browser-draft="${escapeHTML(card.id)}">Draft mission</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+        <button type="button" data-browser-draft="${escapeHTML(card.id)}">起草任务</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -3701,18 +4955,18 @@ function draftBrowserMissionToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Browser mission drafted to chat.");
+  showToast("浏览器任务已写入对话。");
 }
 
 function dataInsightContext() {
   const source = ($("data-source-descriptor")?.value || state.dataSourceDescriptor || "").trim();
   const question = ($("data-analysis-question")?.value || state.dataAnalysisQuestion || "").trim();
   const output = ($("data-output-format")?.value || state.dataOutputFormat || "").trim();
-  const intakeLabel = state.intakeResult ? `Current file intake: ${state.intakeResult.path || state.intakeResult.mode || "ready"}` : "No file intake attached";
+  const intakeLabel = state.intakeResult ? `当前文件星舱：${state.intakeResult.path || state.intakeResult.mode || "就绪"}` : "尚未附加文件星舱结果";
   return {
     source: source || intakeLabel,
-    question: question || "Identify the decision this data can support and the uncertainty that still needs review.",
-    output: output || "ranked findings with evidence, caveats, and reusable next steps",
+    question: question || "识别这份数据能支持的决策，以及仍需复查的不确定性。",
+    output: output || "带证据、限制和可复用下一步的排序发现",
     hasSource: Boolean(source) || Boolean(state.intakeResult),
     intakeLabel,
   };
@@ -3726,57 +4980,57 @@ function dataInsightCards() {
   return [
     {
       id: "profile",
-      type: "Profile",
-      title: "Source profile and schema pass",
+      type: "画像",
+      title: "来源画像与 schema 检查",
       panel: ctx.hasSource ? "chat" : "intake",
       evidence: ctx.source,
-      readiness: ctx.hasSource ? "ready" : "needs source",
-      guardrail: "Do not infer missing columns or hidden rows; list source limits before conclusions.",
-      action: "Draft a schema, quality, and coverage review.",
+      readiness: ctx.hasSource ? "就绪" : "需要来源",
+      guardrail: "不要推断缺失列或隐藏行；结论前先列出来源限制。",
+      action: "起草 schema、质量和覆盖度复查。",
       prompt: `Plan a reviewed Astria data profiling mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\n\nInspect available columns, sample shape, freshness, missing values, duplicate risks, and source limits. Do not invent unavailable data. Return a compact profile, quality risks, and what analysis is safe to run next.`,
     },
     {
       id: "trend",
-      type: "Trend",
-      title: "Trend and segment reading",
+      type: "趋势",
+      title: "趋势与分群解读",
       panel: "compare",
-      evidence: `${sourceCount} registered sources`,
-      readiness: ctx.hasSource ? "targeted" : "review",
-      guardrail: "Separate observed movement from explanation; mark correlations as hypotheses.",
-      action: "Draft a trend comparison across time, segment, or source.",
+      evidence: `${sourceCount} 个已登记来源`,
+      readiness: ctx.hasSource ? "已定向" : "待复查",
+      guardrail: "区分观察到的变化和解释；相关性只能标为假设。",
+      action: "按时间、分群或来源起草趋势比较。",
       prompt: `Plan an Astria trend analysis mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\nRegistered sources: ${sourceCount}\n\nIdentify time fields or comparable segments, compute or request only reviewable summaries, compare alternative explanations, and return findings with caveats instead of unsupported causal claims.`,
     },
     {
       id: "anomaly",
-      type: "Anomaly",
-      title: "Outlier and risk review",
+      type: "异常",
+      title: "离群点与风险复查",
       panel: "runs",
-      evidence: `${state.runs.length} recent runs`,
-      readiness: ctx.hasSource ? "guarded" : "needs source",
-      guardrail: "Flag anomalies as candidates until checked against source quality and context.",
-      action: "Draft an outlier review with validation steps.",
+      evidence: `${state.runs.length} 条最近运行`,
+      readiness: ctx.hasSource ? "受保护" : "需要来源",
+      guardrail: "在核对来源质量和上下文前，异常只能作为候选。",
+      action: "起草带验证步骤的离群点复查。",
       prompt: `Plan an Astria anomaly review mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\nRecent runs: ${state.runs.length}\n\nDefine anomaly criteria, inspect source quality first, list candidate outliers, explain why each matters, and propose validation before any decision is made.`,
     },
     {
       id: "visual",
-      type: "Chart brief",
-      title: "Visual summary plan",
+      type: "图表简报",
+      title: "可视摘要计划",
       panel: "reuse",
-      evidence: "chart-ready brief",
-      readiness: "draft",
-      guardrail: "Choose visuals that match the fields; avoid decorative charts that obscure uncertainty.",
-      action: "Draft a chart brief and narrative structure.",
+      evidence: "图表就绪简报",
+      readiness: "草稿",
+      guardrail: "选择匹配字段的可视化；避免用装饰性图表遮蔽不确定性。",
+      action: "起草图表简报和叙事结构。",
       prompt: `Plan an Astria visual data summary mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\n\nRecommend the smallest useful chart set, define axes and grouping, state what each visual should prove, and include the text summary that should accompany the charts. If fields are missing, ask for them instead of fabricating visuals.`,
     },
     {
       id: "knowledge",
-      type: "Knowledge",
-      title: "Reusable insight capture",
+      type: "知识",
+      title: "可复用洞察捕获",
       panel: "memory",
-      evidence: `${memoryCount} memory entries`,
-      readiness: "saveable",
-      guardrail: "Only save durable, source-backed findings; separate one-off observations from reusable facts.",
-      action: "Draft memory and reuse candidates from the analysis.",
+      evidence: `${memoryCount} 条记忆`,
+      readiness: "可保存",
+      guardrail: "只保存长期且有来源支撑的发现；区分一次性观察和可复用事实。",
+      action: "从分析中起草记忆与复用候选。",
       prompt: `Plan an Astria reusable data insight capture mission.\n\nSource: ${ctx.source}\nQuestion: ${ctx.question}\nExpected output: ${ctx.output}\nMemory entries: ${memoryCount}\nReuse assets: ${reuseCount}\n\nExtract only durable findings that are backed by the source, write memory candidates with evidence and expiry/freshness notes, and propose which prompts or analysis patterns should become reusable starters.`,
     },
   ];
@@ -3785,8 +5039,8 @@ function dataInsightCards() {
 function renderDataInsightPlanner() {
   const cards = dataInsightCards();
   setText("nav-data-count", cards.length);
-  setText("manage-data-count", `${cards.length} lens${cards.length === 1 ? "" : "es"}`);
-  setText("data-summary", `${cards.length} data insight lens${cards.length === 1 ? "" : "es"} for profiling, trends, anomalies, visual summaries, and reusable knowledge.`);
+  setText("manage-data-count", `${cards.length} 个透镜`);
+  setText("data-summary", `${cards.length} 个数据洞察透镜，覆盖画像、趋势、异常、可视摘要和可复用知识。`);
   const list = $("data-insight-cards");
   if (!list) return;
   if (!state.selectedDataInsight || !cards.some((card) => card.id === state.selectedDataInsight)) {
@@ -3796,14 +5050,14 @@ function renderDataInsightPlanner() {
     <div class="row-item-title"><span>${escapeHTML(card.type)}</span><span class="tag">${escapeHTML(card.readiness)}</span></div>
     <strong>${escapeHTML(card.title)}</strong>
     <div class="data-insight-grid">
-      <span>Evidence</span><strong>${escapeHTML(card.evidence)}</strong>
-      <span>Guardrail</span><strong>${escapeHTML(card.guardrail)}</strong>
-      <span>Next action</span><strong>${escapeHTML(card.action)}</strong>
+      <span>证据</span><strong>${escapeHTML(card.evidence)}</strong>
+      <span>护栏</span><strong>${escapeHTML(card.guardrail)}</strong>
+      <span>下一步</span><strong>${escapeHTML(card.action)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-data-select="${escapeHTML(card.id)}">Insight brief</button>
-      <button type="button" data-data-draft="${escapeHTML(card.id)}">Draft analysis</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      <button type="button" data-data-select="${escapeHTML(card.id)}">洞察简报</button>
+      <button type="button" data-data-draft="${escapeHTML(card.id)}">起草分析</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderDataInsightDetail(cards.find((card) => card.id === state.selectedDataInsight) || cards[0]);
@@ -3813,26 +5067,26 @@ function renderDataInsightDetail(card) {
   const target = $("data-insight-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select an insight mission.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个数据洞察任务。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>就绪度</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Guardrail</h3>
+      <h3>护栏</h3>
       <p>${escapeHTML(card.guardrail)}</p>
-      <h3>Next action</h3>
+      <h3>下一步</h3>
       <p>${escapeHTML(card.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-data-draft="${escapeHTML(card.id)}">Draft analysis</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+        <button type="button" data-data-draft="${escapeHTML(card.id)}">起草分析</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -3851,7 +5105,7 @@ function draftDataInsightToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Data insight mission drafted to chat.");
+  showToast("数据洞察任务已写入对话。");
 }
 
 function deliveryLanes() {
@@ -3865,62 +5119,62 @@ function deliveryLanes() {
   return [
     {
       id: "scheduled-work",
-      source: "Schedules",
+      source: "定时任务",
       panel: "schedules",
-      title: "Scheduled work",
-      metric: `${enabledSchedules.length}/${state.schedules.length} active`,
+      title: "定时工作",
+      metric: `${enabledSchedules.length}/${state.schedules.length} 启用`,
       evidence: [
-        enabledSchedules[0] ? `Next active prompt: ${enabledSchedules[0].prompt || "Untitled schedule"}` : "No active schedule configured",
-        state.schedules.length ? `${state.schedules.length} configured schedule${state.schedules.length === 1 ? "" : "s"}` : "Create a cron plan before expecting proactive work",
-        enabledSchedules[0]?.cron ? `Cron: ${enabledSchedules[0].cron}` : "Cron cadence not set",
+        enabledSchedules[0] ? `下一条启用 Prompt：${enabledSchedules[0].prompt || "未命名定时任务"}` : "尚未配置启用中的定时任务",
+        state.schedules.length ? `${state.schedules.length} 条已配置定时任务` : "期待主动工作前，先创建 cron 计划",
+        enabledSchedules[0]?.cron ? `Cron：${enabledSchedules[0].cron}` : "Cron 频率未设置",
       ],
-      risk: enabledSchedules.length ? "Scheduled prompts still need clear delivery or review expectations." : "No proactive work will run until a schedule exists.",
-      action: enabledSchedules.length ? "Review active cadence and delivery target." : "Draft the first scheduled delivery plan.",
+      risk: enabledSchedules.length ? "定时 Prompt 仍需要明确交付目标或复查预期。" : "没有定时任务时，不会发生主动工作。",
+      action: enabledSchedules.length ? "复查启用频率和交付目标。" : "起草第一条定时交付计划。",
       prompt: `Plan proactive Astria delivery from schedules.\n\nActive schedules: ${enabledSchedules.length}\nConfigured schedules: ${state.schedules.length}\nFirst prompt: ${enabledSchedules[0]?.prompt || "none"}\n\nDefine cadence, expected output, destination channel, and validation.`,
     },
     {
       id: "delivery-runs",
-      source: "Runs",
+      source: "运行",
       panel: "runs",
-      title: "Recent outbound runs",
-      metric: `${scheduledRuns.length} scheduled`,
+      title: "最近出站运行",
+      metric: `${scheduledRuns.length} 条定时运行`,
       evidence: [
-        scheduledRuns[0] ? `Latest scheduled run: ${scheduledRuns[0].status || "unknown"}` : "No scheduled run history captured",
-        failedRuns.length ? `${failedRuns.length} failed run${failedRuns.length === 1 ? "" : "s"} need recovery` : "No failed runs in the current list",
-        state.runs[0] ? `Latest run: ${state.runs[0].prompt || state.runs[0].id}` : "Run history is empty",
+        scheduledRuns[0] ? `最近定时运行：${uiTerm(scheduledRuns[0].status || "unknown")}` : "尚未捕获定时运行历史",
+        failedRuns.length ? `${failedRuns.length} 条失败运行需要恢复` : "当前列表没有失败运行",
+        state.runs[0] ? `最近运行：${state.runs[0].prompt || state.runs[0].id}` : "运行历史为空",
       ],
-      risk: failedRuns.length ? "Delivery confidence is low until failures are triaged." : "Recent runs should still be reviewed before external delivery.",
-      action: failedRuns.length ? "Draft recovery notes for failed outbound work." : "Draft an outbound summary from recent runs.",
+      risk: failedRuns.length ? "失败未分诊前，交付可信度偏低。" : "外部交付前仍需复查最近运行。",
+      action: failedRuns.length ? "为失败的出站工作起草恢复记录。" : "从最近运行起草出站摘要。",
       prompt: `Review proactive delivery run history.\n\nScheduled runs: ${scheduledRuns.length}\nFailed runs: ${failedRuns.length}\nLatest run: ${state.runs[0]?.prompt || "none"}\n\nDecide what is safe to deliver and what needs retry or review.`,
     },
     {
       id: "channel-readiness",
-      source: "Channels",
+      source: "渠道",
       panel: "inbox",
-      title: "Channel readiness",
-      metric: `${providers.length} provider${providers.length === 1 ? "" : "s"}`,
+      title: "渠道就绪度",
+      metric: `${providers.length} 个 provider`,
       evidence: [
-        providers.length ? `Providers: ${providers.map((provider) => provider.name || provider.id).filter(Boolean).join(", ")}` : "No channel provider listed",
-        pendingInbox.length ? `${pendingInbox.length} inbound item${pendingInbox.length === 1 ? "" : "s"} waiting` : "No pending inbound items",
-        "Outbound delivery should mirror reviewed inbound channel policy",
+        providers.length ? `Provider：${providers.map((provider) => provider.name || provider.id).filter(Boolean).join(", ")}` : "尚未列出渠道 provider",
+        pendingInbox.length ? `${pendingInbox.length} 条进入项等待处理` : "没有待处理进入项",
+        "出站交付应遵循已审查的进入渠道策略",
       ],
-      risk: providers.length ? "Channel state is visible, but outbound delivery still needs explicit approval." : "No visible channel means proactive output stays local.",
-      action: providers.length ? "Draft channel-specific delivery copy." : "Draft channel setup requirements.",
+      risk: providers.length ? "渠道状态可见，但出站交付仍需要明确审批。" : "没有可见渠道时，主动输出保持本地。",
+      action: providers.length ? "起草面向具体渠道的交付文案。" : "起草渠道设置要求。",
       prompt: `Prepare proactive Astria channel delivery.\n\nProviders: ${providers.map((provider) => provider.name || provider.id).filter(Boolean).join(", ") || "none"}\nPending inbox items: ${pendingInbox.length}\n\nWrite the delivery target, approval gate, message shape, and rollback path.`,
     },
     {
       id: "delivery-recovery",
-      source: "Readiness",
+      source: "就绪度",
       panel: readyDiagnostics ? "delivery" : "diagnostics",
-      title: "Recovery and guardrails",
-      metric: readyDiagnostics ? "ready" : "review",
+      title: "恢复与护栏",
+      metric: readyDiagnostics ? "就绪" : "待复查",
       evidence: [
-        `Diagnostics: ${state.diagnostics?.status || "unknown"}`,
-        state.diagnostics?.summary || "Diagnostics summary unavailable",
-        state.permissions?.configured === true ? "Permissions configured" : "Using default permissions",
+        `诊断：${uiTerm(state.diagnostics?.status || "unknown")}`,
+        state.diagnostics?.summary || "诊断摘要不可用",
+        state.permissions?.configured === true ? "权限已配置" : "使用默认权限",
       ],
-      risk: readyDiagnostics ? "Ready state still needs an approval boundary before external posting." : "Runtime readiness may block reliable scheduled delivery.",
-      action: readyDiagnostics ? "Draft the approval checklist." : "Open diagnostics and repair blockers.",
+      risk: readyDiagnostics ? "就绪状态仍需在外部发布前设置审批边界。" : "运行时未就绪可能阻碍可靠的定时交付。",
+      action: readyDiagnostics ? "起草审批清单。" : "打开诊断并修复阻塞项。",
       prompt: `Create a proactive delivery recovery checklist.\n\nDiagnostics: ${state.diagnostics?.status || "unknown"}\nSummary: ${state.diagnostics?.summary || ""}\nPermissions configured: ${state.permissions?.configured === true}\n\nList blockers, approval gates, retry rules, and verification.`,
     },
   ];
@@ -3929,8 +5183,8 @@ function deliveryLanes() {
 function renderProactiveDeliveryBoard() {
   const lanes = deliveryLanes();
   setText("nav-delivery-count", lanes.length);
-  setText("manage-delivery-count", `${lanes.length} lane${lanes.length === 1 ? "" : "s"}`);
-  setText("delivery-summary", `${lanes.length} proactive delivery lane${lanes.length === 1 ? "" : "s"} across schedules, runs, channels, and readiness.`);
+  setText("manage-delivery-count", `${lanes.length} 条交付链路`);
+  setText("delivery-summary", `${lanes.length} 条主动交付链路，覆盖定时任务、运行、渠道和恢复就绪度。`);
   const list = $("delivery-lanes");
   if (!list) return;
   if (!state.selectedDeliveryLane || !lanes.some((lane) => lane.id === state.selectedDeliveryLane)) {
@@ -3944,9 +5198,9 @@ function renderProactiveDeliveryBoard() {
       ${lane.evidence.slice(0, 3).map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
     </div>
     <div class="row-actions">
-      <button type="button" data-delivery-select="${escapeHTML(lane.id)}">Delivery brief</button>
-      <button type="button" data-delivery-draft="${escapeHTML(lane.id)}">Draft delivery</button>
-      <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+      <button type="button" data-delivery-select="${escapeHTML(lane.id)}">交付简报</button>
+      <button type="button" data-delivery-draft="${escapeHTML(lane.id)}">起草交付</button>
+      <button type="button" data-panel="${escapeHTML(lane.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderDeliveryDetail(lanes.find((lane) => lane.id === state.selectedDeliveryLane) || lanes[0]);
@@ -3956,32 +5210,32 @@ function renderDeliveryDetail(lane) {
   const target = $("delivery-detail");
   if (!target) return;
   if (!lane) {
-    target.innerHTML = `<div class="empty-state">Select a delivery lane.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一条交付链路。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(lane.title)}</h3>
       <div class="run-meta-grid">
-        <span>Source</span><strong>${escapeHTML(lane.source)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(lane.metric)}</strong>
-        <span>Route</span><strong>${escapeHTML(lane.panel)}</strong>
+        <span>来源</span><strong>${escapeHTML(lane.source)}</strong>
+        <span>就绪度</span><strong>${escapeHTML(lane.metric)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(lane.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Evidence</h3>
+      <h3>证据</h3>
       <div class="delivery-evidence detail">
         ${lane.evidence.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Risk</h3>
+      <h3>风险</h3>
       <p>${escapeHTML(lane.risk)}</p>
-      <h3>Next action</h3>
+      <h3>下一步</h3>
       <p>${escapeHTML(lane.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-delivery-draft="${escapeHTML(lane.id)}">Draft delivery</button>
-        <button type="button" data-panel="${escapeHTML(lane.panel)}">Open source</button>
+        <button type="button" data-delivery-draft="${escapeHTML(lane.id)}">起草交付</button>
+        <button type="button" data-panel="${escapeHTML(lane.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -4000,7 +5254,7 @@ function draftDeliveryToChat(id) {
   updateActiveSessionLabel();
   switchPanel("chat");
   $("chat-input").focus();
-  showToast("Delivery brief drafted to chat.");
+  showToast("交付简报已写入对话。");
 }
 
 function renderManageCount() {
@@ -4061,44 +5315,44 @@ function renderManageCount() {
 function renderMCPStarport() {
   const servers = Array.isArray(state.config?.mcp_servers) ? state.config.mcp_servers : [];
   setText("nav-mcp-count", servers.length);
-  setText("manage-mcp-count", `${servers.length} ${servers.length === 1 ? "dock" : "docks"}`);
+  setText("manage-mcp-count", `${servers.length} 个 dock`);
   renderManageCount();
-  setText("mcp-summary", servers.length ? `${servers.length} configured MCP server${servers.length === 1 ? "" : "s"}.` : "No MCP servers configured.");
+  setText("mcp-summary", servers.length ? `${servers.length} 个 MCP 服务器已配置。` : "尚未配置 MCP 服务器。");
   const enabled = servers.filter((server) => !server.disabled).length;
   const overview = $("mcp-overview");
   if (overview) {
-    overview.innerHTML = `<strong>${escapeHTML(enabled ? `${enabled} enabled` : "No docks")}</strong><span>${escapeHTML(servers.length ? "Edit, disable, or test configured MCP docks from Astria." : "Add a stdio dock from Astria, then test the connection.")}</span>`;
+    overview.innerHTML = `<strong>${escapeHTML(enabled ? `${enabled} 个启用` : "无 dock")}</strong><span>${escapeHTML(servers.length ? "可在 Astria 中编辑、停用或测试已配置 MCP dock。" : "从 Astria 添加 stdio dock，然后测试连接。")}</span>`;
   }
   renderMCPForm();
   const list = $("mcp-list");
   if (!list) return;
   if (!servers.length) {
-    renderEmptyAction(list, "No MCP servers configured. Add a stdio dock or ask Astria to suggest a first connection.", [
-      { label: "Add dock", action: "mcp-new", primary: true },
-      { label: "Ask Astria", homeAction: "mcp" },
+    renderEmptyAction(list, "尚未配置 MCP 服务器。添加一个 stdio dock，或让 Astria 建议第一条连接。", [
+      { label: "添加 dock", action: "mcp-new", primary: true },
+      { label: "询问 Astria", homeAction: "mcp" },
     ]);
     return;
   }
   list.innerHTML = servers.map((server) => {
     const transport = server.type || "stdio";
-    const endpoint = transport === "http" ? (server.url || "missing url") : [server.command || "missing command"].concat(server.args || []).join(" ");
+    const endpoint = transport === "http" ? (server.url || "缺少 URL") : [server.command || "缺少命令"].concat(server.args || []).join(" ");
     const envKeys = Array.isArray(server.env_keys) ? server.env_keys : [];
     return `<article class="row-item mcp-server-card ${server.disabled ? "disabled" : "enabled"}">
       <div class="row-item-title">
-        <span>${escapeHTML(server.name || "Unnamed server")}</span>
-        <span class="tag">${escapeHTML(server.disabled ? "disabled" : transport)}</span>
+        <span>${escapeHTML(server.name || "未命名服务器")}</span>
+        <span class="tag">${escapeHTML(server.disabled ? "已停用" : transport)}</span>
       </div>
       <p>${escapeHTML(endpoint)}</p>
       <div class="pill-list">
-        <span>${server.keep_alive ? "keep alive" : "on demand"}</span>
-        <span>${server.context ? "context" : "no context"}</span>
-        <span>${envKeys.length} env keys</span>
+        <span>${server.keep_alive ? "保持连接" : "按需连接"}</span>
+        <span>${server.context ? "有上下文" : "无上下文"}</span>
+        <span>${envKeys.length} 个 env key</span>
       </div>
-      ${envKeys.length ? `<p class="secret-note">Env values hidden: ${envKeys.map(escapeHTML).join(", ")}</p>` : ""}
+      ${envKeys.length ? `<p class="secret-note">Env 值已隐藏：${envKeys.map(escapeHTML).join(", ")}</p>` : ""}
       <div class="row-actions">
-        <button type="button" data-mcp-edit="${escapeHTML(server.name || "")}">Edit</button>
-        <button type="button" data-mcp-toggle="${escapeHTML(server.name || "")}">${server.disabled ? "Enable" : "Disable"}</button>
-        <button type="button" data-mcp-test="${escapeHTML(server.name || "")}" ${server.disabled ? "disabled" : ""}>Test connection</button>
+        <button type="button" data-mcp-edit="${escapeHTML(server.name || "")}">编辑</button>
+        <button type="button" data-mcp-toggle="${escapeHTML(server.name || "")}">${server.disabled ? "启用" : "停用"}</button>
+        <button type="button" data-mcp-test="${escapeHTML(server.name || "")}" ${server.disabled ? "disabled" : ""}>测试连接</button>
       </div>
       <div class="mcp-test-result" id="mcp-test-${escapeHTML(server.name || "")}"></div>
     </article>`;
@@ -4119,7 +5373,7 @@ function renderMCPForm() {
   $("mcp-env").value = Array.isArray(server?.env_keys) ? server.env_keys.map((key) => `${key}=`).join("\n") : "";
   $("mcp-keep-alive").checked = Boolean(server?.keep_alive);
   $("mcp-disabled").checked = Boolean(server?.disabled);
-  setText("mcp-save-state", server ? `Editing ${server.name}` : "Ready");
+  setText("mcp-save-state", server ? `正在编辑 ${server.name}` : "就绪");
   updateMCPTransportFields();
 }
 
@@ -4220,7 +5474,7 @@ function parseMCPEnv(value) {
 
 async function submitMCPServer(event) {
   event.preventDefault();
-  $("mcp-save-state").textContent = "Saving";
+  $("mcp-save-state").textContent = "保存中";
   try {
     const replacement = buildMCPFormPatch();
     const result = await api("/config", {
@@ -4231,9 +5485,9 @@ async function submitMCPServer(event) {
     state.editingMCPServer = replacement.name;
     renderMCPStarport();
     renderHomeDockedTools();
-    showToast("MCP dock saved.");
+    showToast("MCP dock 已保存。");
   } catch (error) {
-    $("mcp-save-state").textContent = "Error";
+    $("mcp-save-state").textContent = "错误";
     showToast(error.message);
   }
 }
@@ -4243,7 +5497,7 @@ async function toggleMCPServer(name) {
   if (!server) return;
   const replacement = mcpViewToPatch(server);
   replacement.disabled = !server.disabled;
-  $("mcp-save-state").textContent = "Saving";
+  $("mcp-save-state").textContent = "保存中";
   try {
     const result = await api("/config", {
       method: "PATCH",
@@ -4252,9 +5506,9 @@ async function toggleMCPServer(name) {
     state.config = result.config || state.config;
     renderMCPStarport();
     renderHomeDockedTools();
-    showToast(replacement.disabled ? "MCP dock disabled." : "MCP dock enabled.");
+    showToast(replacement.disabled ? "MCP dock 已停用。" : "MCP dock 已启用。");
   } catch (error) {
-    $("mcp-save-state").textContent = "Error";
+    $("mcp-save-state").textContent = "错误";
     showToast(error.message);
   }
 }
@@ -4262,7 +5516,7 @@ async function toggleMCPServer(name) {
 async function testMCPServer(name) {
   if (!name) return;
   const target = $(`mcp-test-${name}`);
-  if (target) target.innerHTML = `<div class="inline-state">Testing connection...</div>`;
+  if (target) target.innerHTML = `<div class="inline-state">正在测试连接...</div>`;
   try {
     const result = await api("/mcp/test", {
       method: "POST",
@@ -4281,28 +5535,29 @@ function renderMCPTestResult(name, result) {
   const tools = Array.isArray(result?.tools) ? result.tools : [];
   const preview = tools.slice(0, 6).map((tool) => `<span>${escapeHTML(tool.name || "tool")}</span>`).join("");
   target.innerHTML = `<div class="mcp-test-card ${escapeHTML(status)}">
-    <strong>${escapeHTML(status === "ok" ? `${result.tool_count || tools.length} tools discovered` : status)}</strong>
-    <p>${escapeHTML(result?.error || (status === "ok" ? "Connection test succeeded." : "Connection test finished."))}</p>
+    <strong>${escapeHTML(status === "ok" ? `发现 ${result.tool_count || tools.length} 个工具` : status)}</strong>
+    <p>${escapeHTML(result?.error || (status === "ok" ? "连接测试成功。" : "连接测试完成。"))}</p>
     ${preview ? `<div class="pill-list">${preview}</div>` : ""}
   </div>`;
 }
 
 function renderFileIntake() {
   const result = state.intakeResult;
-  setText("intake-summary", result ? `${result.mode === "archive_inspect" ? "Archive inspected" : "Document text extracted"} from ${result.path || "local path"}.` : "Inspect local documents and archives before sending them into a run.");
+  setText("intake-summary", result ? `${result.mode === "archive_inspect" ? "已检查归档" : "已提取文档文本"}：${result.path || "本地路径"}。` : "先检查本地文档和归档，再把结果送入运行。");
   const overview = $("intake-overview");
   if (overview) {
-    overview.innerHTML = `<strong>${escapeHTML(result ? (result.is_error ? "Needs attention" : "Ready") : "Local")}</strong><span>${escapeHTML(result ? (result.is_error ? "Fix the path or mode, then analyze again." : "Result can be sent into a normal chat/run workflow.") : "Read-only intake runs before extraction or summarization.")}</span>`;
+    overview.innerHTML = `<strong>${escapeHTML(result ? (result.is_error ? "需要处理" : "就绪") : "本地")}</strong><span>${escapeHTML(result ? (result.is_error ? "修复路径或模式后再分析。" : "结果可送入普通对话或运行流程。") : "先只读检查，再决定是否提取或总结。")}</span>`;
   }
   const target = $("intake-result");
   if (!target) return;
   $("intake-chat-button").disabled = !result || result.is_error;
   $("intake-extract-button").disabled = !result || result.mode !== "archive_inspect" || result.is_error;
   renderHomeDockedTools();
+  renderContextReadinessBoard();
   renderManageCount();
   if (!result) {
-    renderEmptyAction(target, "Choose a local path to inspect with document_text or archive_inspect.", [
-      { label: "Open chat", panel: "chat" },
+    renderEmptyAction(target, "选择一个本地路径，用 document_text 或 archive_inspect 检查。", [
+      { label: "打开对话", panel: "chat" },
     ]);
     return;
   }
@@ -4310,10 +5565,10 @@ function renderFileIntake() {
   const preview = String(result.content || "").slice(0, 12000);
   target.innerHTML = `<article class="intake-result-card ${escapeHTML(status)}">
     <div class="row-item-title">
-      <span>${escapeHTML(result.path || "Local file")}</span>
+      <span>${escapeHTML(result.path || "本地文件")}</span>
       <span class="tag">${escapeHTML(result.mode || "intake")}</span>
     </div>
-    <pre>${escapeHTML(preview || "No content returned.")}</pre>
+    <pre>${escapeHTML(preview || "没有返回内容。")}</pre>
   </article>`;
 }
 
@@ -4321,10 +5576,10 @@ async function submitFileIntake(event) {
   event?.preventDefault?.();
   const path = $("intake-path").value.trim();
   if (!path) {
-    showToast("File path is required.");
+    showToast("需要填写文件路径。");
     return;
   }
-  $("intake-state").textContent = "Analyzing";
+  $("intake-state").textContent = "分析中";
   try {
     const result = await api("/intake/file", {
       method: "POST",
@@ -4336,12 +5591,12 @@ async function submitFileIntake(event) {
       }),
     });
     state.intakeResult = result;
-    $("intake-state").textContent = result.is_error ? "Error" : "Ready";
+    $("intake-state").textContent = result.is_error ? "错误" : "就绪";
     renderFileIntake();
     renderSourceRegistry();
-    showToast(result.is_error ? "File intake returned an error." : "File intake ready.");
+    showToast(result.is_error ? "文件星舱返回错误。" : "文件星舱已就绪。");
   } catch (error) {
-    $("intake-state").textContent = "Error";
+    $("intake-state").textContent = "错误";
     showToast(error.message);
   }
 }
@@ -4376,9 +5631,10 @@ function renderMemoryMapPreview() {
   const recentRuns = state.runs.slice(0, 3);
   const count = memoryEntries.length + favoriteSessions.length + recentRuns.length + memoryFacts.length;
   setText("nav-memory-count", count);
-  setText("manage-memory-count", `${count} ${count === 1 ? "source" : "sources"}`);
+  setText("manage-memory-count", `${count} 个来源`);
   renderManageCount();
-  setText("memory-summary", count ? `${memoryFacts.length} classified fact${memoryFacts.length === 1 ? "" : "s"} · ${memoryWarnings.length} warning${memoryWarnings.length === 1 ? "" : "s"}` : "No memory candidates yet.");
+  setText("memory-summary", count ? `${memoryFacts.length} 条分类事实 · ${memoryWarnings.length} 条警告` : "还没有记忆候选。");
+  renderContextReadinessBoard();
   renderWorkspaceHealthStrip();
   renderKnowledgeCuration();
   renderPromptSuggestionDock();
@@ -4386,7 +5642,7 @@ function renderMemoryMapPreview() {
   renderReviewQueue();
   const overview = $("memory-overview");
   if (overview) {
-    overview.innerHTML = `<strong>${escapeHTML(memoryFacts.length ? `${memoryFacts.length} facts` : memoryEntries.length ? `${memoryEntries.length} memory files` : count ? "Sources ready" : "Preview")}</strong><span>${escapeHTML(memoryWarnings.length ? `${memoryWarnings.length} taxonomy warning${memoryWarnings.length === 1 ? "" : "s"} need review before adding more memory.` : state.memory?.memory_dir || (count ? "Draft reviewable memory from recent work before writing MEMORY.md." : "Favorite sessions or complete runs to create stronger memory candidates."))}</span>`;
+    overview.innerHTML = `<strong>${escapeHTML(memoryFacts.length ? `${memoryFacts.length} 条事实` : memoryEntries.length ? `${memoryEntries.length} 个记忆文件` : count ? "来源就绪" : "预览")}</strong><span>${escapeHTML(memoryWarnings.length ? `添加更多记忆前需要复查 ${memoryWarnings.length} 条分类警告。` : state.memory?.memory_dir || (count ? "写入 MEMORY.md 前，先从最近工作起草可审核记忆。" : "收藏会话或完成运行后，可生成更强的记忆候选。"))}</span>`;
   }
   renderMemoryTaxonomyBar(state.memory?.categories || {});
   renderMemoryWarnings(memoryWarnings);
@@ -4395,46 +5651,46 @@ function renderMemoryMapPreview() {
   const filteredFacts = selectedCategory === "all" ? memoryFacts : memoryFacts.filter((fact) => fact.category === selectedCategory);
   for (const fact of filteredFacts) {
     cards.push(`<article class="row-item memory-fact-card ${escapeHTML(fact.category || "uncategorized")}">
-      <div class="row-item-title"><span>${escapeHTML(fact.text)}</span><span class="tag">${escapeHTML(fact.category || "uncategorized")}</span></div>
+      <div class="row-item-title"><span>${escapeHTML(fact.text)}</span><span class="tag">${escapeHTML(fact.category || "未分类")}</span></div>
       <p>${escapeHTML(fact.entry || "MEMORY.md")} · line ${escapeHTML(fact.line || "-")}${fact.subject ? ` · ${escapeHTML(fact.subject)}` : ""}</p>
     </article>`);
   }
   for (const entry of memoryEntries) {
     if (selectedCategory !== "all") continue;
     cards.push(`<article class="row-item memory-source-card ${entry.primary ? "primary" : ""}">
-      <div class="row-item-title"><span>${escapeHTML(entry.name)}</span><span class="tag">${entry.primary ? "active memory" : "memory file"}</span></div>
+      <div class="row-item-title"><span>${escapeHTML(entry.name)}</span><span class="tag">${entry.primary ? "当前记忆" : "记忆文件"}</span></div>
       <p>${escapeHTML(formatBytes(entry.size || 0))} · ${escapeHTML(formatTimestamp(entry.modified))}</p>
       <div class="row-actions">
-        <button type="button" class="danger-button" data-memory-delete="${escapeHTML(entry.name)}">Delete</button>
+        <button type="button" class="danger-button" data-memory-delete="${escapeHTML(entry.name)}">删除</button>
       </div>
     </article>`);
   }
   for (const session of favoriteSessions.slice(0, 4)) {
     if (selectedCategory !== "all") continue;
     cards.push(`<article class="row-item memory-source-card">
-      <div class="row-item-title"><span>${escapeHTML(session.title || session.id)}</span><span class="tag">favorite session</span></div>
+      <div class="row-item-title"><span>${escapeHTML(session.title || session.id)}</span><span class="tag">收藏会话</span></div>
       <p>${escapeHTML(session.id)}</p>
       <div class="row-actions">
-        <button type="button" data-session-id="${escapeHTML(session.id)}">Open session</button>
-        <button type="button" data-memory-draft="session:${escapeHTML(session.id)}">Draft memory</button>
+        <button type="button" data-session-id="${escapeHTML(session.id)}">打开会话</button>
+        <button type="button" data-memory-draft="session:${escapeHTML(session.id)}">起草记忆</button>
       </div>
     </article>`);
   }
   for (const run of recentRuns) {
     if (selectedCategory !== "all") continue;
     cards.push(`<article class="row-item memory-source-card">
-      <div class="row-item-title"><span>${escapeHTML(run.prompt || run.id)}</span><span class="tag">recent run</span></div>
+      <div class="row-item-title"><span>${escapeHTML(run.prompt || run.id)}</span><span class="tag">最近运行</span></div>
       <p>${escapeHTML(run.status || "unknown")} · ${escapeHTML(formatTimestamp(run.started_at))}</p>
       <div class="row-actions">
-        <button type="button" data-run-open="${escapeHTML(run.id)}">Open run</button>
-        <button type="button" data-memory-draft="run:${escapeHTML(run.id)}">Draft memory</button>
+        <button type="button" data-run-open="${escapeHTML(run.id)}">观测运行</button>
+        <button type="button" data-memory-draft="run:${escapeHTML(run.id)}">起草记忆</button>
       </div>
     </article>`);
   }
   if (!cards.length) {
-    renderEmptyAction(list, "No memory sources yet. Complete a run, favorite a session, or ask Astria to draft a memory map.", [
-      { label: "Draft memory map", homeAction: "memory", primary: true },
-      { label: "Open chat", panel: "chat" },
+    renderEmptyAction(list, "还没有记忆来源。完成一次运行、收藏一个会话，或让 Astria 起草记忆星图。", [
+      { label: "起草记忆星图", homeAction: "memory", primary: true },
+      { label: "打开对话", panel: "chat" },
     ]);
     return;
   }
@@ -4451,57 +5707,57 @@ function sourceRegistryRows() {
   return [
     {
       id: "memory",
-      type: "Memory",
-      title: "Reviewed memory",
+      type: "记忆",
+      title: "已审查记忆",
       panel: "memory",
       evidence: memoryEntries.length + memoryFacts.length,
-      freshness: memoryEntries[0]?.modified ? formatTimestamp(memoryEntries[0].modified) : "No memory file",
-      reliability: memoryFacts.length ? "classified facts" : memoryEntries.length ? "file-backed" : "needs seed",
-      action: memoryFacts.length ? "Audit categories and stale facts." : "Draft a first reviewed memory source.",
+      freshness: memoryEntries[0]?.modified ? formatTimestamp(memoryEntries[0].modified) : "没有记忆文件",
+      reliability: memoryFacts.length ? "已分类事实" : memoryEntries.length ? "文件支撑" : "需要种子",
+      action: memoryFacts.length ? "审计分类和过期事实。" : "起草第一条已审查记忆来源。",
       prompt: `Audit Astria memory sources.\n\nMemory files: ${memoryEntries.length}\nClassified facts: ${memoryFacts.length}\nWarnings: ${(state.memory?.warnings || []).length}\n\nIdentify stale, duplicate, or missing durable facts and propose a maintenance action.`,
     },
     {
       id: "sessions",
-      type: "Sessions",
-      title: "Favorite sessions",
+      type: "会话",
+      title: "收藏会话",
       panel: "memory",
       evidence: favoriteSessions.length,
-      freshness: favoriteSessions[0]?.updated_at ? formatTimestamp(favoriteSessions[0].updated_at) : favoriteSessions[0]?.id || "No favorite session",
-      reliability: favoriteSessions.length ? "operator selected" : "needs favorite",
-      action: favoriteSessions.length ? "Convert useful favorites into memory." : "Favorite a session before trusting it as a source.",
+      freshness: favoriteSessions[0]?.updated_at ? formatTimestamp(favoriteSessions[0].updated_at) : favoriteSessions[0]?.id || "没有收藏会话",
+      reliability: favoriteSessions.length ? "操作者选择" : "需要收藏",
+      action: favoriteSessions.length ? "把有用收藏转成记忆。" : "作为来源信任前，先收藏会话。",
       prompt: `Review favorite sessions as Astria knowledge sources.\n\nFavorites: ${favoriteSessions.map((session) => session.title || session.id).join(", ") || "none"}\n\nChoose what should become durable memory and what should remain ephemeral.`,
     },
     {
       id: "runs",
-      type: "Runs",
-      title: "Execution evidence",
+      type: "运行",
+      title: "执行证据",
       panel: "runs",
       evidence: state.runs.length,
-      freshness: latestRun?.started_at ? formatTimestamp(latestRun.started_at) : "No runs",
-      reliability: latestRun ? `${latestRun.status || "unknown"} latest` : "needs execution",
-      action: latestRun ? "Promote stable run outcomes into memory." : "Run a baseline task before citing execution evidence.",
+      freshness: latestRun?.started_at ? formatTimestamp(latestRun.started_at) : "没有运行",
+      reliability: latestRun ? `最近状态 ${latestRun.status || "unknown"}` : "需要执行",
+      action: latestRun ? "把稳定运行结果提升为记忆。" : "引用执行证据前，先跑一次基线任务。",
       prompt: `Review recent runs as knowledge sources.\n\nLatest run: ${latestRun?.prompt || "none"}\nStatus: ${latestRun?.status || "unknown"}\nRun count: ${state.runs.length}\n\nIdentify which outcomes are reliable enough to cite in future prompts.`,
     },
     {
       id: "intake",
-      type: "File Intake",
-      title: intake?.path || "Local file evidence",
+      type: "文件星舱",
+      title: intake?.path || "本地文件证据",
       panel: "intake",
       evidence: intake && !intake.is_error ? 1 : 0,
-      freshness: intake?.mode || "No intake result",
-      reliability: intake?.is_error ? "error" : intake ? "read-only sample" : "needs file",
-      action: intake ? "Summarize source limits before using it." : "Inspect a file to seed source-grounded knowledge.",
+      freshness: intake?.mode || "没有文件星舱结果",
+      reliability: intake?.is_error ? "错误" : intake ? "只读样本" : "需要文件",
+      action: intake ? "使用前先总结来源限制。" : "检查一个文件，为来源知识播种。",
       prompt: `Review file intake as an Astria source.\n\nPath: ${intake?.path || "none"}\nMode: ${intake?.mode || "none"}\nError: ${Boolean(intake?.is_error)}\n\nState what can be trusted, what is incomplete, and what should be re-read.`,
     },
     {
       id: "council",
-      type: "Council",
-      title: latestCouncil?.goal || "Council synthesis",
+      type: "议会",
+      title: latestCouncil?.goal || "议会综合结论",
       panel: "council",
       evidence: latestCouncil ? 1 + (latestCouncil.roles || []).length : 0,
-      freshness: latestCouncil?.created_at ? formatTimestamp(latestCouncil.created_at) : "No council run",
-      reliability: latestCouncil?.synthesis ? "multi-role synthesis" : "needs review",
-      action: latestCouncil ? "Check whether synthesis should become memory." : "Run council before citing reviewed judgment.",
+      freshness: latestCouncil?.created_at ? formatTimestamp(latestCouncil.created_at) : "没有议会运行",
+      reliability: latestCouncil?.synthesis ? "多角色综合" : "需要审查",
+      action: latestCouncil ? "检查综合结论是否应成为记忆。" : "引用审查判断前先运行议会。",
       prompt: `Review council output as a knowledge source.\n\nGoal: ${latestCouncil?.goal || "none"}\nRoles: ${(latestCouncil?.roles || []).map((role) => role.role).join(", ") || "none"}\n\nDecide which conclusions are durable and which need another review.`,
     },
   ];
@@ -4510,8 +5766,8 @@ function sourceRegistryRows() {
 function renderSourceRegistry() {
   const rows = sourceRegistryRows();
   setText("nav-sources-count", rows.length);
-  setText("manage-sources-count", `${rows.length} source${rows.length === 1 ? "" : "s"}`);
-  setText("sources-summary", `${rows.length} source lane${rows.length === 1 ? "" : "s"} tracking freshness, reliability, and maintenance.`);
+  setText("manage-sources-count", `${rows.length} 个来源`);
+  setText("sources-summary", `${rows.length} 条来源轨道正在追踪鲜度、可靠性和维护动作。`);
   const list = $("source-registry-list");
   if (!list) return;
   if (!state.selectedSourceRow || !rows.some((row) => row.id === state.selectedSourceRow)) {
@@ -4526,9 +5782,9 @@ function renderSourceRegistry() {
       <span>Action</span><strong>${escapeHTML(row.action)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-source-select="${escapeHTML(row.id)}">Source brief</button>
-      <button type="button" data-source-draft="${escapeHTML(row.id)}">Draft maintenance</button>
-      <button type="button" data-panel="${escapeHTML(row.panel)}">Open source</button>
+      <button type="button" data-source-select="${escapeHTML(row.id)}">来源简报</button>
+      <button type="button" data-source-draft="${escapeHTML(row.id)}">起草维护</button>
+      <button type="button" data-panel="${escapeHTML(row.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderSourceRegistryDetail(rows.find((row) => row.id === state.selectedSourceRow) || rows[0]);
@@ -4538,26 +5794,26 @@ function renderSourceRegistryDetail(row) {
   const target = $("source-registry-detail");
   if (!target) return;
   if (!row) {
-    target.innerHTML = `<div class="empty-state">Select a source row.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一条来源记录。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(row.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(row.type)}</strong>
-        <span>Evidence</span><strong>${escapeHTML(String(row.evidence))}</strong>
-        <span>Route</span><strong>${escapeHTML(row.panel)}</strong>
+        <span>类型</span><strong>${escapeHTML(row.type)}</strong>
+        <span>证据</span><strong>${escapeHTML(String(row.evidence))}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(row.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Reliability</h3>
+      <h3>可靠性</h3>
       <p>${escapeHTML(row.reliability)}</p>
-      <h3>Maintenance</h3>
+      <h3>维护动作</h3>
       <p>${escapeHTML(row.action)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-source-draft="${escapeHTML(row.id)}">Draft maintenance</button>
-        <button type="button" data-panel="${escapeHTML(row.panel)}">Open source</button>
+        <button type="button" data-source-draft="${escapeHTML(row.id)}">起草维护</button>
+        <button type="button" data-panel="${escapeHTML(row.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -4697,9 +5953,9 @@ function renderKnowledgeReconciliation() {
       <span>Resolution</span><strong>${escapeHTML(item.resolution)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-reconcile-select="${escapeHTML(item.id)}">Resolution brief</button>
-      <button type="button" data-reconcile-draft="${escapeHTML(item.id)}">Draft resolution</button>
-      <button type="button" data-panel="${escapeHTML(item.route)}">Open route</button>
+      <button type="button" data-reconcile-select="${escapeHTML(item.id)}">解决简报</button>
+      <button type="button" data-reconcile-draft="${escapeHTML(item.id)}">起草解决</button>
+      <button type="button" data-panel="${escapeHTML(item.route)}">打开路径</button>
     </div>
   </article>`).join("");
   renderKnowledgeReconciliationDetail(items.find((item) => item.id === state.selectedReconcileRisk) || items[0]);
@@ -4709,28 +5965,28 @@ function renderKnowledgeReconciliationDetail(item) {
   const target = $("knowledge-reconcile-detail");
   if (!target) return;
   if (!item) {
-    target.innerHTML = `<div class="empty-state">Select a reconciliation item.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一个知识校验项。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(item.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(item.type)}</strong>
-        <span>Severity</span><strong>${escapeHTML(item.severity)}</strong>
-        <span>Route</span><strong>${escapeHTML(item.route)}</strong>
+        <span>类型</span><strong>${escapeHTML(item.type)}</strong>
+        <span>严重度</span><strong>${escapeHTML(item.severity)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(item.route))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Risk</h3>
+      <h3>风险</h3>
       <p>${escapeHTML(item.risk)}</p>
-      <h3>Resolution action</h3>
+      <h3>解决动作</h3>
       <p>${escapeHTML(item.resolution)}</p>
-      <h3>Confidence boundary</h3>
+      <h3>可信边界</h3>
       <p>${escapeHTML(item.boundary)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-reconcile-draft="${escapeHTML(item.id)}">Draft resolution</button>
-        <button type="button" data-panel="${escapeHTML(item.route)}">Open route</button>
+        <button type="button" data-reconcile-draft="${escapeHTML(item.id)}">起草解决</button>
+        <button type="button" data-panel="${escapeHTML(item.route)}">打开路径</button>
       </div>
     </section>
   </div>`;
@@ -4847,9 +6103,9 @@ function renderCitationGroundingPlanner() {
       <span>Gap trigger</span><strong>${escapeHTML(card.gap)}</strong>
     </div>
     <div class="row-actions">
-      <button type="button" data-citation-select="${escapeHTML(card.id)}">Grounding brief</button>
-      <button type="button" data-citation-draft="${escapeHTML(card.id)}">Draft grounding</button>
-      <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+      <button type="button" data-citation-select="${escapeHTML(card.id)}">校准简报</button>
+      <button type="button" data-citation-draft="${escapeHTML(card.id)}">起草校准</button>
+      <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
     </div>
   </article>`).join("");
   renderCitationGroundingDetail(cards.find((card) => card.id === state.selectedCitationGrounding) || cards[0]);
@@ -4859,16 +6115,16 @@ function renderCitationGroundingDetail(card) {
   const target = $("citation-grounding-detail");
   if (!target) return;
   if (!card) {
-    target.innerHTML = `<div class="empty-state">Select a grounding card.</div>`;
+    target.innerHTML = `<div class="empty-state">选择一张引用校准卡。</div>`;
     return;
   }
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
       <h3>${escapeHTML(card.title)}</h3>
       <div class="run-meta-grid">
-        <span>Type</span><strong>${escapeHTML(card.type)}</strong>
-        <span>Readiness</span><strong>${escapeHTML(card.readiness)}</strong>
-        <span>Route</span><strong>${escapeHTML(card.panel)}</strong>
+        <span>类型</span><strong>${escapeHTML(card.type)}</strong>
+        <span>就绪度</span><strong>${escapeHTML(card.readiness)}</strong>
+        <span>路径</span><strong>${escapeHTML(panelName(card.panel))}</strong>
       </div>
     </section>
     <section class="run-detail-section">
@@ -4877,8 +6133,8 @@ function renderCitationGroundingDetail(card) {
       <h3>Gap trigger</h3>
       <p>${escapeHTML(card.gap)}</p>
       <div class="run-detail-actions">
-        <button type="button" data-citation-draft="${escapeHTML(card.id)}">Draft grounding</button>
-        <button type="button" data-panel="${escapeHTML(card.panel)}">Open source</button>
+        <button type="button" data-citation-draft="${escapeHTML(card.id)}">起草校准</button>
+        <button type="button" data-panel="${escapeHTML(card.panel)}">打开来源</button>
       </div>
     </section>
   </div>`;
@@ -4971,16 +6227,18 @@ async function loadVersion() {
     const data = await api("/version");
     state.version = data;
     state.updateCheck = null;
-    setText("settings-version-state", data.version || "Build");
+    setText("settings-version-state", data.version || "构建");
     setClass("settings-version-state", data.update_supported ? "ready" : "warning");
     renderVersion();
+    renderSystemStatusBoard();
   } catch (error) {
     state.version = null;
-    setText("settings-version-state", "Error");
+    setText("settings-version-state", "错误");
     setClass("settings-version-state", "bad");
-    $("version-summary").textContent = "Version metadata unavailable.";
-    $("update-check-state").textContent = "Error";
+    $("version-summary").textContent = "版本元数据不可用。";
+    $("update-check-state").textContent = "错误";
     renderError(list, error.message);
+    renderSystemStatusBoard();
   }
 }
 
@@ -5002,10 +6260,11 @@ async function loadDiagnostics() {
     setClass("settings-diagnostics-state", status);
     chip.textContent = label;
     chip.className = `diagnostics-chip ${status}`;
-    summary.textContent = diagnostics.summary || "Runtime readiness checks.";
+    summary.textContent = diagnostics.summary || "运行时就绪检查。";
     overview.innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(diagnostics.summary || "")}</span>`;
     renderConfigDiagnosticsOverview(diagnostics);
     renderWorkspaceHealthStrip();
+    renderSystemStatusBoard();
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
@@ -5014,18 +6273,18 @@ async function loadDiagnostics() {
     const checks = Array.isArray(diagnostics.checks) ? diagnostics.checks : [];
     const launchRows = diagnosticsLaunchRows(diagnostics);
     const launchCard = `<article class="row-item diagnostic-launch-card">
-      <div class="row-item-title"><span>Launch readiness</span><span class="tag">${escapeHTML(label)}</span></div>
+      <div class="row-item-title"><span>启动就绪</span><span class="tag">${escapeHTML(label)}</span></div>
       <div class="run-meta-grid">
         ${launchRows.map(([rowLabel, value]) => `<span>${escapeHTML(rowLabel)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
       </div>
     </article>`;
     if (!checks.length) {
-      list.innerHTML = `${launchCard}<article class="row-item empty-state"><p>No diagnostics returned.</p></article>`;
+      list.innerHTML = `${launchCard}<article class="row-item empty-state"><p>尚未返回诊断结果。</p></article>`;
       return;
     }
     const checkCards = checks.map((check) => `<article class="row-item diagnostic-item ${escapeHTML(check.status || "unknown")}">
       <div class="row-item-title">
-        <span>${escapeHTML(check.label || check.id || "Check")}</span>
+        <span>${escapeHTML(check.label || check.id || "检查项")}</span>
         <span class="tag diagnostic-tag ${escapeHTML(check.status || "unknown")}">${escapeHTML(statusLabel(check.status))}</span>
       </div>
       <p>${escapeHTML(check.detail || "")}</p>
@@ -5034,19 +6293,20 @@ async function loadDiagnostics() {
     list.innerHTML = `${launchCard}${checkCards}`;
   } catch (error) {
     state.diagnostics = null;
-    setText("settings-state", "Offline");
+    setText("settings-state", "离线");
     setClass("settings-state", "error");
-    setText("nav-diagnostics-state", "Offline");
+    setText("nav-diagnostics-state", "离线");
     setClass("nav-diagnostics-state", "error");
-    setText("settings-diagnostics-state", "Offline");
+    setText("settings-diagnostics-state", "离线");
     setClass("settings-diagnostics-state", "error");
-    chip.textContent = "Diagnostics unavailable";
+    chip.textContent = "诊断不可用";
     chip.className = "diagnostics-chip error";
-    summary.textContent = "Diagnostics unavailable.";
-    overview.innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
+    summary.textContent = "诊断不可用。";
+    overview.innerHTML = `<strong>错误</strong><span>${escapeHTML(error.message)}</span>`;
     renderConfigDiagnosticsOverview({ status: "error", summary: error.message });
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderSystemStatusBoard();
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
@@ -5056,17 +6316,17 @@ async function loadDiagnostics() {
 
 function diagnosticsLaunchRows(diagnostics) {
   const rows = [
-    ["Launch", diagnostics.launch_command || "starclaw app"],
+    ["启动命令", diagnostics.launch_command || "starclaw app"],
     ["Web UI", diagnostics.web_url || "-"],
-    ["Health", diagnostics.health_url || "-"],
+    ["健康检查", diagnostics.health_url || "-"],
     ["Status API", diagnostics.status_url || "-"],
-    ["Diagnostics", diagnostics.diagnostics_url || "-"],
-    ["Data", diagnostics.starclaw_dir || "-"],
-    ["Config", diagnostics.config_path || "-"],
-    ["Agents", diagnostics.agents_dir || "-"],
-    ["Sessions", diagnostics.sessions_dir || "-"],
+    ["诊断", diagnostics.diagnostics_url || "-"],
+    ["数据目录", diagnostics.starclaw_dir || "-"],
+    ["配置", diagnostics.config_path || "-"],
+    ["Agent 目录", diagnostics.agents_dir || "-"],
+    ["会话目录", diagnostics.sessions_dir || "-"],
   ];
-  if (diagnostics.executable_path) rows.push(["Executable", diagnostics.executable_path]);
+  if (diagnostics.executable_path) rows.push(["可执行文件", diagnostics.executable_path]);
   return rows;
 }
 
@@ -5088,10 +6348,13 @@ async function loadConfig() {
     renderConfigForm();
     renderMCPStarport();
     renderToolDockInspector();
+    renderContextReadinessBoard();
+    renderSystemStatusBoard();
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
     renderProactiveDeliveryBoard();
+    renderMissionGraph();
   } catch (error) {
     state.config = null;
     setText("settings-config-state", "Error");
@@ -5099,10 +6362,13 @@ async function loadConfig() {
     $("config-save-state").textContent = error.message;
     renderMCPStarport();
     renderToolDockInspector();
+    renderContextReadinessBoard();
+    renderSystemStatusBoard();
     renderPromptSuggestionDock();
     renderApprovalCenter();
     renderReviewQueue();
     renderProactiveDeliveryBoard();
+    renderMissionGraph();
   }
 }
 
@@ -5117,12 +6383,13 @@ function renderConfigForm() {
   $("config-ollama-model").value = cfg.ollama_model || "";
   $("config-api-key").value = "";
   $("config-openai-api-key").value = "";
-  $("config-api-key").placeholder = cfg.api_key_set ? "Saved; leave blank to keep" : "Required for Anthropic";
-  $("config-openai-api-key").placeholder = cfg.openai_api_key_set ? "Saved; leave blank to keep" : "Required for OpenAI";
-  setText("settings-config-state", cfg.provider || "Provider");
+  $("config-api-key").placeholder = cfg.api_key_set ? "已保存；留空保持不变" : "Anthropic 必填";
+  $("config-openai-api-key").placeholder = cfg.openai_api_key_set ? "已保存；留空保持不变" : "OpenAI 必填";
+  setText("settings-config-state", cfg.provider || "未配置");
   setClass("settings-config-state");
-  $("config-save-state").textContent = "Loaded";
+  $("config-save-state").textContent = "已加载";
   updateProviderFields();
+  renderConnectorSetupCard(cfg);
 }
 
 function updateProviderFields() {
@@ -5130,6 +6397,163 @@ function updateProviderFields() {
   document.querySelectorAll("[data-provider-fields]").forEach((group) => {
     group.hidden = group.dataset.providerFields !== provider;
   });
+  renderConnectorSetupCard(state.config || {});
+}
+
+function configReadiness(cfg = {}, values = {}) {
+  const provider = values.provider || cfg.provider || "anthropic";
+  const missing = [];
+  let keySet = false;
+  if (provider === "openai") {
+    if (!String(values.openaiEndpoint ?? cfg.openai_endpoint ?? "").trim()) missing.push("Base URL");
+    if (!String(values.openaiModel ?? cfg.openai_model ?? "").trim()) missing.push("Model");
+    keySet = Boolean(cfg.openai_api_key_set || String(values.openaiAPIKey || "").trim());
+    if (!keySet) missing.push("API key");
+  } else if (provider === "ollama") {
+    if (!String(values.ollamaEndpoint ?? cfg.ollama_endpoint ?? "").trim()) missing.push("Base URL");
+    if (!String(values.ollamaModel ?? cfg.ollama_model ?? "").trim()) missing.push("Model");
+    keySet = true;
+  } else {
+    if (!String(values.endpoint ?? cfg.endpoint ?? "").trim()) missing.push("Base URL");
+    if (!String(values.modelTier ?? cfg.model_tier ?? "").trim()) missing.push("Model");
+    keySet = Boolean(cfg.api_key_set || String(values.apiKey || "").trim());
+    if (!keySet) missing.push("API key");
+  }
+  return {
+    provider,
+    missing,
+    ready: missing.length === 0,
+    keySet,
+  };
+}
+
+function connectorReadiness(cfg = {}) {
+  return configReadiness(cfg, {
+    provider: $("config-provider")?.value || cfg.provider || "anthropic",
+    endpoint: $("config-endpoint")?.value,
+    modelTier: $("config-model-tier")?.value,
+    apiKey: $("config-api-key")?.value,
+    openaiEndpoint: $("config-openai-endpoint")?.value,
+    openaiModel: $("config-openai-model")?.value,
+    openaiAPIKey: $("config-openai-api-key")?.value,
+    ollamaEndpoint: $("config-ollama-endpoint")?.value,
+    ollamaModel: $("config-ollama-model")?.value,
+  });
+}
+
+function renderConnectorSetupCard(cfg = {}) {
+  const card = document.querySelector("[data-connector-setup-card]");
+  if (!card) return;
+  const title = card.querySelector("[data-connector-status-title]");
+  const detail = card.querySelector("[data-connector-status-detail]");
+  const readiness = connectorReadiness(cfg);
+  card.dataset.ready = readiness.ready ? "true" : "false";
+  if (title) title.textContent = readiness.ready ? `${readiness.provider} 已准备` : "等待用户填写连接";
+  if (detail) {
+    detail.textContent = readiness.ready
+      ? "URL、模型和凭据状态完整。API key 已保存时不会在界面回显。"
+      : `还需要：${readiness.missing.join("、") || "选择 provider"}`;
+  }
+}
+
+function connectorTestMessage(result = {}) {
+  const messages = {
+    auth_failed: "API key 无效或权限不足。请检查 key 是否属于当前 Base URL，并确认已开通该模型。",
+    invalid_response: "响应格式不兼容。请确认 Base URL 指向兼容的 Chat Completions 或 Messages API。",
+    missing_fields: result.detail || "连接配置还不完整。请先补齐 Base URL、模型和 API key。",
+    model_not_found: "模型不可用。请检查模型名拼写，或确认当前 key 有权限访问该模型。",
+    network_unreachable: "无法连接到 Base URL。请检查地址、端口、代理或本地服务是否已启动。",
+    ok: result.detail || "连接成功，模型返回了有效响应。",
+    provider_error: result.detail || "provider 返回错误。请检查 Base URL、模型和凭据。",
+    provider_unavailable: "provider 暂时不可用或返回服务端错误。请稍后重试。",
+    rate_limited: "provider 返回限流。请稍后重试，或检查额度与频率限制。",
+    timeout: "连接超时。请检查网络、代理或本地服务状态，然后重试。",
+    unsupported_provider: result.detail || "当前 provider 暂不支持连接测试。",
+  };
+  return messages[result.code] || result.detail || "保存 provider 设置后，手动检查 Base URL、模型和凭据是否可用。";
+}
+
+function renderConnectorTestState(result) {
+  const card = $("connector-test-card");
+  if (!card) return;
+  const title = $("connector-test-title");
+  const detail = $("connector-test-detail");
+  const status = result?.status || "idle";
+  card.dataset.status = status;
+  if (title) {
+    title.textContent = status === "ready"
+      ? "连接可用"
+      : status === "needs_setup"
+        ? "配置未完成"
+        : status === "checking"
+          ? "检查中"
+          : status === "error"
+            ? "连接失败"
+            : "尚未检查";
+  }
+  if (detail) {
+    if (status === "checking") {
+      detail.textContent = "正在向已保存的 provider 发送一次最小测试请求。";
+    } else if (result?.detail || result?.code) {
+      const suffix = result.duration_ms ? ` · ${result.duration_ms}ms` : "";
+      detail.textContent = `${connectorTestMessage(result)}${suffix}`;
+    } else {
+      detail.textContent = "保存 provider 设置后，手动检查 Base URL、模型和凭据是否可用。";
+    }
+  }
+}
+
+async function testProviderConnection() {
+  const button = $("config-test-button");
+  if (button) button.disabled = true;
+  renderConnectorTestState({ status: "checking" });
+  try {
+    const result = await api("/config/test", { method: "POST", body: "{}" });
+    renderConnectorTestState(result);
+    await loadDiagnostics();
+    showToast(result.status === "ready" ? "LLM 连接检查通过。" : "LLM 连接检查未通过。");
+  } catch (error) {
+    renderConnectorTestState({ status: "error", detail: error.message });
+    showToast(error.message);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function firstMissingProviderField(provider, missing = []) {
+  const needs = new Set(missing);
+  if (provider === "openai") {
+    if (needs.has("Base URL")) return "config-openai-endpoint";
+    if (needs.has("Model")) return "config-openai-model";
+    if (needs.has("API key")) return "config-openai-api-key";
+  } else if (provider === "ollama") {
+    if (needs.has("Base URL")) return "config-ollama-endpoint";
+    if (needs.has("Model")) return "config-ollama-model";
+  } else {
+    if (needs.has("Base URL")) return "config-endpoint";
+    if (needs.has("Model")) return "config-model-tier";
+    if (needs.has("API key")) return "config-api-key";
+  }
+  return "config-provider";
+}
+
+function focusProviderSetup(readiness) {
+  const field = $(firstMissingProviderField(readiness.provider, readiness.missing));
+  const setupCard = document.querySelector("[data-connector-setup-card]");
+  requestAnimationFrame(() => {
+    setupCard?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    field?.focus();
+  });
+}
+
+function ensureProviderReadyForLaunch(surface = "任务") {
+  const readiness = configReadiness(state.config || {});
+  if (readiness.ready) return true;
+  switchPanel("config");
+  renderConnectorSetupCard(state.config || {});
+  focusProviderSetup(readiness);
+  showToast(`${surface}启动前请先完成 LLM 连接：缺少 ${readiness.missing.join("、") || "provider 设置"}。`);
+  return false;
 }
 
 function buildConfigPatch() {
@@ -5154,7 +6578,7 @@ function buildConfigPatch() {
 
 async function submitConfig(event) {
   event.preventDefault();
-  $("config-save-state").textContent = "Saving";
+  $("config-save-state").textContent = "保存中";
   try {
     const result = await api("/config", {
       method: "PATCH",
@@ -5162,10 +6586,11 @@ async function submitConfig(event) {
     });
     state.config = result.config || state.config;
     renderConfigForm();
+    renderConnectorTestState({ status: "idle", detail: "provider 设置已保存，可以手动检查连接。" });
     await loadDiagnostics();
-    showToast("Provider config saved.");
+    showToast("provider 设置已保存。");
   } catch (error) {
-    $("config-save-state").textContent = "Error";
+    $("config-save-state").textContent = "错误";
     showToast(error.message);
   }
 }
@@ -5174,7 +6599,7 @@ function renderConfigDiagnosticsOverview(diagnostics) {
   const target = $("config-diagnostics-overview");
   if (!target) return;
   const status = diagnostics?.status || "unknown";
-  target.innerHTML = `<strong>${escapeHTML(statusLabel(status))}</strong><span>${escapeHTML(diagnostics?.summary || "Runtime diagnostics unavailable.")}</span>`;
+  target.innerHTML = `<strong>${escapeHTML(statusLabel(status))}</strong><span>${escapeHTML(diagnostics?.summary || "运行时诊断不可用。")}</span>`;
 }
 
 async function loadPermissions() {
@@ -5185,6 +6610,7 @@ async function loadPermissions() {
     fillPermissionsForm();
     renderPermissions();
     renderWorkspaceHealthStrip();
+    renderSystemStatusBoard();
     renderApprovalCenter();
     renderReviewQueue();
     renderProactiveDeliveryBoard();
@@ -5196,6 +6622,7 @@ async function loadPermissions() {
     $("permissions-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
     renderError(list, error.message);
     renderWorkspaceHealthStrip();
+    renderSystemStatusBoard();
     renderApprovalCenter();
     renderReviewQueue();
     renderProactiveDeliveryBoard();
@@ -5204,7 +6631,12 @@ async function loadPermissions() {
 
 async function loadMemory() {
   try {
-    state.memory = await api("/memory");
+    const [memory, memoryStatus] = await Promise.all([
+      api("/memory"),
+      api("/memory/status").catch(() => null),
+    ]);
+    state.memory = memory;
+    state.memoryStatus = memoryStatus;
     renderMemoryMapPreview();
     renderSourceRegistry();
     renderKnowledgeReconciliation();
@@ -5218,8 +6650,10 @@ async function loadMemory() {
     renderPlaybookLibrary();
     renderSharePackBuilder();
     renderWorkspaceSnapshotPlanner();
+    renderMissionGraph();
   } catch (error) {
     state.memory = { entries: [], content: "", memory_dir: "" };
+    state.memoryStatus = null;
     setText("memory-save-state", "Error");
     renderMemoryMapPreview();
     renderSourceRegistry();
@@ -5234,6 +6668,7 @@ async function loadMemory() {
     renderPlaybookLibrary();
     renderSharePackBuilder();
     renderWorkspaceSnapshotPlanner();
+    renderMissionGraph();
     showToast(error.message);
   }
 }
@@ -5273,7 +6708,7 @@ async function submitMemoryCandidate(event) {
 
 async function deleteMemoryEntry(name) {
   if (!name) return;
-  if (!globalThis.confirm(`Delete memory entry "${name}"?`)) return;
+  if (!globalThis.confirm(`删除记忆条目 "${name}"？`)) return;
   try {
     state.memory = await api(`/memory/${encodeURIComponent(name)}`, { method: "DELETE" });
     renderMemoryMapPreview();
@@ -5324,13 +6759,13 @@ function renderMemoryCandidatePreview() {
   const text = $("memory-candidate")?.value || "";
   const facts = parseCandidateFacts(text);
   if (!facts.length) {
-    target.textContent = "No candidate yet.";
+    target.textContent = "还没有候选。";
     return;
   }
   const categories = facts.map((fact) => memoryCategoryLabel(fact.category)).join(", ");
   const existingTexts = new Set((state.memory?.facts || []).map((fact) => normalizeCandidateText(fact.text)));
   const duplicate = facts.some((fact) => existingTexts.has(normalizeCandidateText(fact.text)));
-  target.innerHTML = `<strong>${escapeHTML(categories)}</strong><span>${duplicate ? "Possible duplicate before approval." : "Ready for reviewed memory approval."}</span>`;
+  target.innerHTML = `<strong>${escapeHTML(categories)}</strong><span>${duplicate ? "确认前可能存在重复。" : "已准备好进入记忆审核。"}</span>`;
 }
 
 function parseCandidateFacts(text) {
@@ -5385,7 +6820,7 @@ async function loadCouncilRuns() {
   } catch (error) {
     state.councilRuns = [];
     state.currentCouncilRun = null;
-    setText("council-state", "Error");
+    setText("council-state", "错误");
     renderError(list, error.message);
     renderComparisonWorkbench();
     renderSourceRegistry();
@@ -5400,23 +6835,23 @@ function renderCouncilRuns() {
   if (!list) return;
   const count = state.councilRuns.length;
   setText("nav-council-count", count);
-  setText("manage-council-count", `${count} ${count === 1 ? "review" : "reviews"}`);
+  setText("manage-council-count", `${count} 条评审`);
   renderManageCount();
-  setText("council-summary", count ? `${count} council run${count === 1 ? "" : "s"} with role contributions.` : "No council runs yet.");
+  setText("council-summary", count ? `${count} 条议会运行包含角色贡献。` : "还没有议会运行。");
   if (!count) {
-    renderEmptyAction(list, "No council runs yet. Start with a planning or review goal.", [
-      { label: "Seed council goal", homeAction: "council", primary: true },
-      { label: "Open chat", panel: "chat" },
+    renderEmptyAction(list, "还没有议会运行。先从一个规划或评审目标开始。", [
+      { label: "填入议会目标", homeAction: "council", primary: true },
+      { label: "打开对话", panel: "chat" },
     ]);
     renderCouncilDetail(state.currentCouncilRun);
     return;
   }
   list.innerHTML = state.councilRuns.map((run) => `<article class="row-item council-run-card ${state.currentCouncilRun?.id === run.id ? "active" : ""}" data-council-id="${escapeHTML(run.id)}">
     <div class="row-item-title"><span>${escapeHTML(run.goal || run.id)}</span><span class="tag">${escapeHTML(run.status || "unknown")}</span></div>
-    <p>${escapeHTML((run.roles || []).map((role) => role.role).join(" · ") || "No role contributions")} · ${escapeHTML(formatTimestamp(run.created_at))}</p>
+    <p>${escapeHTML((run.roles || []).map((role) => role.role).join(" · ") || "暂无角色贡献")} · ${escapeHTML(formatTimestamp(run.created_at))}</p>
     <div class="row-actions">
-      <button type="button" data-council-open="${escapeHTML(run.id)}">Open council</button>
-      <button type="button" data-council-copy="${escapeHTML(run.id)}">Copy synthesis</button>
+      <button type="button" data-council-open="${escapeHTML(run.id)}">打开议会</button>
+      <button type="button" data-council-copy="${escapeHTML(run.id)}">复制综合结论</button>
     </div>
   </article>`).join("");
   if (!state.currentCouncilRun) renderCouncilDetail(state.councilRuns[0]);
@@ -5427,22 +6862,22 @@ function renderCouncilDetail(run) {
   if (!target) return;
   state.currentCouncilRun = run || null;
   if (!run) {
-    target.innerHTML = `<div class="empty-state">Start or select a council run.</div>`;
+    target.innerHTML = `<div class="empty-state">启动或选择一条议会运行。</div>`;
     return;
   }
   const roles = Array.isArray(run.roles) ? run.roles : [];
   const stages = councilStages(run, roles);
   target.innerHTML = `<div class="run-detail-stack">
     <section class="run-detail-section">
-      <h3>${escapeHTML(run.goal || "Council run")}</h3>
+      <h3>${escapeHTML(run.goal || "议会运行")}</h3>
       <div class="run-meta-grid">
-        <span>Status</span><strong>${escapeHTML(run.status || "unknown")}</strong>
-        <span>Created</span><strong>${escapeHTML(formatTimestamp(run.created_at))}</strong>
-        <span>Roles</span><strong>${roles.length}</strong>
+        <span>状态</span><strong>${escapeHTML(run.status || "unknown")}</strong>
+        <span>创建时间</span><strong>${escapeHTML(formatTimestamp(run.created_at))}</strong>
+        <span>角色</span><strong>${roles.length}</strong>
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Council stages</h3>
+      <h3>议会阶段</h3>
       <div class="council-stage-rail">
         ${stages.map((stage) => `<article class="council-stage-card ${stage.kind === "role" ? "role-stage" : "system-stage"}">
           <div class="council-stage-orbit"><span>${escapeHTML(stage.step)}</span></div>
@@ -5458,26 +6893,26 @@ function renderCouncilDetail(run) {
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Role contributions</h3>
+      <h3>角色贡献</h3>
       <div class="council-role-list">
         ${roles.map((role, index) => `<article class="council-role-card">
-          <div class="row-item-title"><span>${escapeHTML(role.role || "role")}</span><span class="tag">${escapeHTML(role.status || "unknown")}</span></div>
+          <div class="row-item-title"><span>${escapeHTML(role.role || "角色")}</span><span class="tag">${escapeHTML(role.status || "unknown")}</span></div>
           <strong>${escapeHTML(role.summary || "")}</strong>
           <p>${escapeHTML(role.notes || "")}</p>
           <div class="row-actions">
-            <button type="button" data-council-role-copy="${escapeHTML(run.id)}" data-council-role-index="${index}">Copy notes</button>
-            <button type="button" data-council-role-draft="${escapeHTML(run.id)}" data-council-role-index="${index}">Draft to chat</button>
+            <button type="button" data-council-role-copy="${escapeHTML(run.id)}" data-council-role-index="${index}">复制笔记</button>
+            <button type="button" data-council-role-draft="${escapeHTML(run.id)}" data-council-role-index="${index}">起草到对话</button>
           </div>
         </article>`).join("")}
       </div>
     </section>
     <section class="run-detail-section">
-      <h3>Final synthesis</h3>
+      <h3>最终综合结论</h3>
       <pre>${escapeHTML(run.synthesis || "")}</pre>
       <div class="run-detail-actions">
-        <button type="button" data-council-copy="${escapeHTML(run.id)}">Copy synthesis</button>
-        <button type="button" data-council-send="${escapeHTML(run.id)}">Send to chat</button>
-        <button type="button" class="primary-button" data-council-run="${escapeHTML(run.id)}">Start run</button>
+        <button type="button" data-council-copy="${escapeHTML(run.id)}">复制综合结论</button>
+        <button type="button" data-council-send="${escapeHTML(run.id)}">发送到对话</button>
+        <button type="button" class="primary-button" data-council-run="${escapeHTML(run.id)}">启动运行</button>
       </div>
     </section>
   </div>`;
@@ -5493,11 +6928,11 @@ function councilStages(run, roles) {
       step: String(index + 1),
       title: role.role || name,
       status: role.status || run.status || "pending",
-      summary: role.summary || "Role output pending.",
-      preview: role.notes || "No notes captured yet.",
+      summary: role.summary || "角色输出待生成。",
+      preview: role.notes || "还没有记录笔记。",
       actions: [
-        { label: "Copy notes", attr: `data-council-role-copy="${escapeHTML(run.id)}" data-council-role-index="${roleIndex}"` },
-        { label: "Draft to chat", attr: `data-council-role-draft="${escapeHTML(run.id)}" data-council-role-index="${roleIndex}"` },
+        { label: "复制笔记", attr: `data-council-role-copy="${escapeHTML(run.id)}" data-council-role-index="${roleIndex}"` },
+        { label: "起草到对话", attr: `data-council-role-draft="${escapeHTML(run.id)}" data-council-role-index="${roleIndex}"` },
       ],
     };
   });
@@ -5506,13 +6941,13 @@ function councilStages(run, roles) {
     {
       kind: "synthesis",
       step: "4",
-      title: "Synthesis",
-      status: run.synthesis ? "ready" : "pending",
-      summary: "Merge role outputs into one implementation direction.",
-      preview: run.synthesis || "No synthesis captured yet.",
+      title: "综合结论",
+      status: run.synthesis ? "就绪" : "待生成",
+      summary: "把角色输出合并成一个实施方向。",
+      preview: run.synthesis || "还没有综合结论。",
       actions: [
-        { label: "Copy synthesis", attr: `data-council-copy="${escapeHTML(run.id)}"` },
-        { label: "Send to chat", attr: `data-council-send="${escapeHTML(run.id)}"` },
+        { label: "复制综合结论", attr: `data-council-copy="${escapeHTML(run.id)}"` },
+        { label: "发送到对话", attr: `data-council-send="${escapeHTML(run.id)}"` },
       ],
     },
     {
@@ -5677,19 +7112,19 @@ function renderInboxProviders() {
   const list = $("inbox-provider-list");
   if (!list) return;
   if (!state.inboxProviders.length) {
-    renderEmpty(list, "No inbox providers reported.");
+    renderEmpty(list, "尚未返回收件渠道。");
     return;
   }
   list.innerHTML = state.inboxProviders.map((provider) => `<article class="provider-route-card ${provider.kind || ""}">
     <div class="row-item-title">
-      <span>${escapeHTML(provider.name || provider.kind || "Provider")}</span>
-      <span class="tag">${escapeHTML(provider.configured ? "ready" : "setup")}</span>
+      <span>${escapeHTML(provider.name || provider.kind || "渠道")}</span>
+      <span class="tag">${escapeHTML(provider.configured ? "就绪" : "待设置")}</span>
     </div>
     <code>${escapeHTML(provider.endpoint || "")}</code>
     <p>${escapeHTML(provider.description || "")}</p>
     <div class="pill-list">
       ${(provider.supported_events || []).map((event) => `<span>${escapeHTML(event)}</span>`).join("")}
-      <span>${provider.secret_configured ? "secret set" : "no secret"}</span>
+      <span>${provider.secret_configured ? "secret 已设置" : "无 secret"}</span>
     </div>
   </article>`).join("");
 }
@@ -5710,21 +7145,21 @@ function renderInbox() {
   const failed = counts.failed || 0;
   const completed = counts.completed || 0;
   setText("nav-inbox-count", pending);
-  setText("manage-inbox-count", `${pending} pending`);
+  setText("manage-inbox-count", `${pending} 个待审`);
   setText("home-inbox-count", pending);
   renderManageCount();
   renderPromptSuggestionDock();
   renderApprovalCenter();
   renderReviewQueue();
-  setText("inbox-summary", state.inboxItems.length ? `${pending} pending · ${failed} failed · ${completed} completed` : "No inbound tasks yet.");
+  setText("inbox-summary", state.inboxItems.length ? `${pending} 待审 · ${failed} 失败 · ${completed} 完成` : "还没有进入的渠道任务。");
   const overview = $("inbox-overview");
   if (overview) {
-    overview.innerHTML = `<strong>${escapeHTML(pending ? `${pending} waiting` : "Guarded")}</strong><span>${escapeHTML(pending ? "Review inbound channel work before it can become an Astria run." : "Inbound items never execute until approved.")}</span>`;
+    overview.innerHTML = `<strong>${escapeHTML(pending ? `${pending} 个等待` : "已设闸门")}</strong><span>${escapeHTML(pending ? "渠道任务转成 Astria 运行前需要先复查。" : "进入项在确认前不会自动执行。")}</span>`;
   }
   if (!state.inboxItems.length) {
-    renderEmptyAction(list, "No inbound tasks yet. Use the local webhook intake to simulate one.", [
-      { label: "Open intake", panel: "inbox", primary: true },
-      { label: "Open chat", panel: "chat" },
+    renderEmptyAction(list, "还没有进入的渠道任务。可用本地 webhook 收件模拟一条。", [
+      { label: "打开收件", panel: "inbox", primary: true },
+      { label: "打开对话", panel: "chat" },
     ]);
     return;
   }
@@ -5736,8 +7171,8 @@ function renderInbox() {
     <p>${escapeHTML(item.sender || "unknown sender")} · ${escapeHTML(item.provider || "webhook")} · ${escapeHTML(item.external_id || item.id)} · ${escapeHTML(formatTimestamp(item.created_at))}</p>
     ${item.error ? `<p class="error-copy">${escapeHTML(item.error)}</p>` : ""}
     <div class="pill-list">
-      <span>${escapeHTML(item.agent || "default agent")}</span>
-      ${item.run_id ? `<span>run ${escapeHTML(item.run_id)}</span>` : "<span>approval required</span>"}
+      <span>${escapeHTML(item.agent || "默认 Agent")}</span>
+      ${item.run_id ? `<span>run ${escapeHTML(item.run_id)}</span>` : "<span>需要确认</span>"}
     </div>
     <div class="row-actions">${inboxActionsHTML(item)}</div>
   </article>`).join("");
@@ -5747,15 +7182,15 @@ function inboxActionsHTML(item) {
   const id = escapeHTML(item.id || "");
   switch (item.status) {
     case "pending":
-      return `<button type="button" class="primary-button" data-inbox-approve="${id}">Approve</button><button type="button" data-inbox-reject="${id}">Reject</button>`;
+      return `<button type="button" class="primary-button" data-inbox-approve="${id}">确认</button><button type="button" data-inbox-reject="${id}">拒绝</button>`;
     case "failed":
-      return `<button type="button" class="primary-button" data-inbox-retry="${id}">Retry</button><button type="button" data-inbox-reject="${id}">Reject</button>`;
+      return `<button type="button" class="primary-button" data-inbox-retry="${id}">重试</button><button type="button" data-inbox-reject="${id}">拒绝</button>`;
     case "completed":
-      return item.run_id ? `<button type="button" data-inbox-run="${escapeHTML(item.run_id)}">Open run</button>` : "";
+      return item.run_id ? `<button type="button" data-inbox-run="${escapeHTML(item.run_id)}">观测运行</button>` : "";
     case "running":
-      return `<button type="button" disabled>Running</button>`;
+      return `<button type="button" disabled>运行中</button>`;
     case "rejected":
-      return `<button type="button" disabled>Rejected</button>`;
+      return `<button type="button" disabled>已拒绝</button>`;
     default:
       return "";
   }
@@ -5781,30 +7216,30 @@ async function submitInboxWebhook(event) {
         agent: $("inbox-agent").value,
       }),
     });
-    $("inbox-state").textContent = data.duplicate ? "Duplicate" : "Received";
+    $("inbox-state").textContent = data.duplicate ? "重复" : "已接收";
     if (!data.duplicate) {
       $("inbox-external-id").value = "";
       $("inbox-sender").value = "";
       $("inbox-text").value = "";
     }
     await loadInbox();
-    showToast(data.duplicate ? "Duplicate webhook ignored." : "Inbound task received.");
+    showToast(data.duplicate ? "重复 webhook 已忽略。" : "收件任务已接收。");
   } catch (error) {
-    $("inbox-state").textContent = "Error";
+    $("inbox-state").textContent = "错误";
     showToast(error.message);
   }
 }
 
 async function approveInboxItem(id) {
-  await runInboxAction(id, "approve", "Approving", "Inbox item approved.");
+  await runInboxAction(id, "approve", "确认中", "收件项已确认。");
 }
 
 async function rejectInboxItem(id) {
-  await runInboxAction(id, "reject", "Rejecting", "Inbox item rejected.");
+  await runInboxAction(id, "reject", "拒绝中", "收件项已拒绝。");
 }
 
 async function retryInboxItem(id) {
-  await runInboxAction(id, "retry", "Retrying", "Inbox item retried.");
+  await runInboxAction(id, "retry", "重试中", "收件项已重试。");
 }
 
 async function runInboxAction(id, action, busyText, doneText) {
@@ -5816,11 +7251,11 @@ async function runInboxAction(id, action, busyText, doneText) {
       options.body = JSON.stringify({ agent: $("inbox-agent").value });
     }
     await api(`/inbox/${encodeURIComponent(id)}/${action}`, options);
-    $("inbox-state").textContent = "Ready";
+    $("inbox-state").textContent = "就绪";
     await Promise.allSettled([loadInbox(), loadRuns()]);
     showToast(doneText);
   } catch (error) {
-    $("inbox-state").textContent = "Error";
+    $("inbox-state").textContent = "错误";
     await loadInbox();
     showToast(error.message);
   }
@@ -5838,28 +7273,29 @@ function fillPermissionsForm() {
   $("permissions-denied-commands").value = formatRuleList(permissions.denied_commands || []);
   $("permissions-network-allowlist").value = formatRuleList(permissions.network_allowlist || []);
   $("permissions-sensitive-patterns").value = formatRuleList(permissions.sensitive_patterns || []);
-  $("permissions-save-state").textContent = "Loaded";
+  $("permissions-save-state").textContent = "已加载";
   renderPermissionsPendingPreview();
 }
 
 function renderPermissions() {
   const permissions = state.permissions || {};
   const configured = permissions.configured === true;
-  setText("settings-permissions-state", configured ? "Configured" : "Defaults");
+  setText("settings-permissions-state", configured ? "已配置" : "默认");
   setClass("settings-permissions-state", configured ? "ready" : "warning");
-  $("permissions-overview").innerHTML = `<strong>${configured ? "Configured" : "Built-in defaults"}</strong><span>${configured ? "Config permissions are present." : "No explicit permissions config is present."}</span>`;
+  renderSystemStatusBoard();
+  $("permissions-overview").innerHTML = `<strong>${configured ? "已配置" : "内置默认"}</strong><span>${configured ? "已发现显式权限配置。" : "当前没有显式权限配置。"}</span>`;
   const categories = [
-    ["Allowed directories", permissions.allowed_dirs],
-    ["Allowed commands", permissions.allowed_commands],
-    ["Denied commands", permissions.denied_commands],
-    ["Network allowlist", permissions.network_allowlist],
-    ["Sensitive patterns", permissions.sensitive_patterns],
+    ["允许目录", permissions.allowed_dirs],
+    ["允许命令", permissions.allowed_commands],
+    ["拒绝命令", permissions.denied_commands],
+    ["网络白名单", permissions.network_allowlist],
+    ["敏感规则", permissions.sensitive_patterns],
   ];
   $("permissions-list").innerHTML = categories.map(([label, values]) => {
     const items = Array.isArray(values) ? values : [];
     return `<article class="row-item permission-item">
       <div class="row-item-title"><span>${escapeHTML(label)}</span><span class="tag">${items.length}</span></div>
-      ${items.length ? `<div class="pill-list">${items.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}</div>` : `<p>No explicit entries.</p>`}
+      ${items.length ? `<div class="pill-list">${items.map((item) => `<span>${escapeHTML(item)}</span>`).join("")}</div>` : `<p>没有显式条目。</p>`}
     </article>`;
   }).join("");
   renderPermissionsPendingPreview();
@@ -5869,49 +7305,49 @@ function renderVersion() {
   const info = state.version || {};
   const check = state.updateCheck;
   const supported = info.update_supported === true;
-  $("version-summary").textContent = info.message || "Build and update status.";
+  $("version-summary").textContent = info.message || "构建和更新状态。";
   $("update-check-button").disabled = !supported;
   if (!check) {
-    $("update-check-state").textContent = supported ? "Ready" : "Unavailable";
-    $("update-overview").innerHTML = `<strong>${escapeHTML(supported ? "Ready" : "Development build")}</strong><span>${escapeHTML(info.message || "")}</span>`;
+    $("update-check-state").textContent = supported ? "就绪" : "不可用";
+    $("update-overview").innerHTML = `<strong>${escapeHTML(supported ? "就绪" : "开发构建")}</strong><span>${escapeHTML(info.message || "")}</span>`;
   } else {
     const label = updateStatusLabel(check.status);
     $("update-check-state").textContent = label;
     $("update-overview").innerHTML = `<strong>${escapeHTML(label)}</strong><span>${escapeHTML(check.message || "")}</span>`;
   }
   const updateRows = [
-    ["Version", info.version || "-"],
-    ["Platform", info.platform || "-"],
+    ["版本", info.version || "-"],
+    ["平台", info.platform || "-"],
     ["Web UI", info.web_url || "-"],
-    ["Launch", info.launch_command || "starclaw app"],
-    ["Update checks", supported ? "Supported" : "Release build required"],
-    ["Command", info.update_command || "starclaw update --check"],
+    ["启动命令", info.launch_command || "starclaw app"],
+    ["更新检查", supported ? "支持" : "需要发布构建"],
+    ["命令", info.update_command || "starclaw update --check"],
   ];
-  if (check?.latest_version) updateRows.push(["Latest", check.latest_version]);
+  if (check?.latest_version) updateRows.push(["最新版本", check.latest_version]);
   if (check?.release_url) updateRows.push(["Release URL", check.release_url]);
   const runtimeRows = [
     ["Web UI", info.web_url || "-"],
-    ["Health", info.health_url || "-"],
+    ["健康检查", info.health_url || "-"],
     ["Status API", info.status_url || "-"],
-    ["Diagnostics", info.diagnostics_url || "-"],
-    ["Data", info.starclaw_dir || "-"],
-    ["Config", info.config_path || "-"],
+    ["诊断", info.diagnostics_url || "-"],
+    ["数据目录", info.starclaw_dir || "-"],
+    ["配置", info.config_path || "-"],
   ];
   const readinessRows = [
-    ["Build", supported ? "Release build" : "Development build"],
-    ["Updates", supported ? "Update checks available" : "Release build required"],
-    ["Launch", info.launch_command || "starclaw app"],
+    ["构建", supported ? "发布构建" : "开发构建"],
+    ["更新", supported ? "可检查更新" : "需要发布构建"],
+    ["启动命令", info.launch_command || "starclaw app"],
     ["Web UI", info.web_url || "-"],
   ];
   $("version-list").innerHTML = `<article class="row-item version-readiness-card">
-    <div class="row-item-title"><span>Release readiness</span><span class="tag">${escapeHTML(supported ? "Ready" : "Development")}</span></div>
+    <div class="row-item-title"><span>发布就绪</span><span class="tag">${escapeHTML(supported ? "就绪" : "开发")}</span></div>
     <div class="run-meta-grid">
       ${readinessRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
     </div>
-    ${supported ? `<p>Release metadata is available for update checks.</p>` : `<p>Use a semver release build to enable update checks.</p>`}
+    ${supported ? `<p>发布元数据可用于更新检查。</p>` : `<p>使用 semver 发布构建后可启用更新检查。</p>`}
   </article>
   <article class="row-item version-card">
-    <div class="row-item-title"><span>Runtime context</span><span class="tag">local</span></div>
+    <div class="row-item-title"><span>运行时上下文</span><span class="tag">本地</span></div>
     <div class="run-meta-grid">
       ${runtimeRows.map(([label, value]) => `<span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong>`).join("")}
     </div>
@@ -5926,13 +7362,13 @@ function renderVersion() {
 function updateStatusLabel(status) {
   switch (status) {
     case "available":
-      return "Update available";
+      return "有可用更新";
     case "current":
-      return "Up to date";
+      return "已是最新";
     case "development":
-      return "Development build";
+      return "开发构建";
     default:
-      return "Unknown";
+      return "未知";
   }
 }
 
@@ -5940,11 +7376,11 @@ function supportInfoText() {
   const info = state.version || {};
   const diagnostics = state.diagnostics || {};
   const rows = [
-    ["Astria support info", ""],
+    ["Astria 支持信息", ""],
     ["Version", info.version || "-"],
     ["Platform", info.platform || "-"],
     ["Build status", info.status || "-"],
-    ["Update supported", info.update_supported === true ? "yes" : "no"],
+    ["Update supported", info.update_supported === true ? "是" : "否"],
     ["Update command", info.update_command || "starclaw update --check"],
     ["Launch command", info.launch_command || "starclaw app"],
     ["Web UI", info.web_url || "-"],
@@ -5960,23 +7396,23 @@ function supportInfoText() {
 }
 
 async function copySupportInfo() {
-  await copyText(supportInfoText(), "Support info copied.");
+  await copyText(supportInfoText(), "支持信息已复制。");
 }
 
 async function checkForUpdates() {
   if (state.version && state.version.update_supported !== true) {
-    showToast("Update checks require a release build.");
+    showToast("更新检查需要发布构建。");
     return;
   }
   $("update-check-button").disabled = true;
-  $("update-check-state").textContent = "Checking";
+  $("update-check-state").textContent = "检查中";
   try {
     state.updateCheck = await api("/update/check");
     renderVersion();
-    showToast(state.updateCheck.message || "Update check complete.");
+    showToast(state.updateCheck.message || "更新检查完成。");
   } catch (error) {
-    $("update-check-state").textContent = "Error";
-    $("update-overview").innerHTML = `<strong>Error</strong><span>${escapeHTML(error.message)}</span>`;
+    $("update-check-state").textContent = "错误";
+    $("update-overview").innerHTML = `<strong>错误</strong><span>${escapeHTML(error.message)}</span>`;
     showToast(error.message);
   } finally {
     $("update-check-button").disabled = state.version?.update_supported !== true;
@@ -6000,16 +7436,16 @@ function permissionsRiskHints(permissions) {
   const networkAllowlist = permissions.network_allowlist || [];
   const sensitivePatterns = permissions.sensitive_patterns || [];
   if (allowedDirs.some((dir) => ["/", "~", "."].includes(dir.trim()))) {
-    hints.push("Broad local access is allowed.");
+    hints.push("允许范围较宽的本地访问。");
   }
   if (!deniedCommands.length) {
-    hints.push("No denied commands are configured.");
+    hints.push("尚未配置拒绝命令。");
   }
   if (!sensitivePatterns.length) {
-    hints.push("No sensitive file patterns are configured.");
+    hints.push("尚未配置敏感文件规则。");
   }
   if (networkAllowlist.some((host) => ["*", "*.*"].includes(host.trim()))) {
-    hints.push("Network allowlist includes a broad wildcard.");
+    hints.push("网络白名单包含较宽泛通配符。");
   }
   return hints;
 }
@@ -6019,35 +7455,35 @@ function renderPermissionsPendingPreview() {
   if (!target) return;
   const permissions = buildPermissionsPayload();
   const categories = [
-    ["Allowed directories", permissions.allowed_dirs],
-    ["Allowed commands", permissions.allowed_commands],
-    ["Denied commands", permissions.denied_commands],
-    ["Network allowlist", permissions.network_allowlist],
-    ["Sensitive patterns", permissions.sensitive_patterns],
+    ["允许目录", permissions.allowed_dirs],
+    ["允许命令", permissions.allowed_commands],
+    ["拒绝命令", permissions.denied_commands],
+    ["网络白名单", permissions.network_allowlist],
+    ["敏感规则", permissions.sensitive_patterns],
   ];
   const hints = permissionsRiskHints(permissions);
   target.innerHTML = `<article class="row-item permission-preview">
-    <div class="row-item-title"><span>Pending changes</span><span class="tag">${hints.length ? "Review" : "Ready"}</span></div>
+    <div class="row-item-title"><span>待保存改动</span><span class="tag">${hints.length ? "需复查" : "就绪"}</span></div>
     <div class="permission-preview-grid">
       ${categories.map(([label, values]) => `<div class="permission-preview-count"><strong>${Array.isArray(values) ? values.length : 0}</strong><span>${escapeHTML(label)}</span></div>`).join("")}
     </div>
-    ${hints.length ? `<div class="pill-list permission-risk-list">${hints.map((hint) => `<span>${escapeHTML(hint)}</span>`).join("")}</div>` : `<p>No obvious permission risks in pending changes.</p>`}
+    ${hints.length ? `<div class="pill-list permission-risk-list">${hints.map((hint) => `<span>${escapeHTML(hint)}</span>`).join("")}</div>` : `<p>待保存改动中未发现明显权限风险。</p>`}
   </article>`;
 }
 
 async function submitPermissions(event) {
   event.preventDefault();
-  $("permissions-save-state").textContent = "Saving";
+  $("permissions-save-state").textContent = "保存中";
   try {
     await api("/config", {
       method: "PATCH",
       body: JSON.stringify({ permissions: buildPermissionsPayload() }),
     });
     await Promise.allSettled([loadPermissions(), loadDiagnostics()]);
-    $("permissions-save-state").textContent = "Saved";
-    showToast("Permissions saved.");
+    $("permissions-save-state").textContent = "已保存";
+    showToast("权限已保存。");
   } catch (error) {
-    $("permissions-save-state").textContent = "Error";
+    $("permissions-save-state").textContent = "错误";
     showToast(error.message);
   }
 }
@@ -6068,27 +7504,29 @@ async function loadAgents() {
   try {
     const data = await api("/agents");
     state.agents = data.agents || [];
-    setText("manage-agents-count", `${state.agents.length} ${state.agents.length === 1 ? "profile" : "profiles"}`);
+    setText("manage-agents-count", `${state.agents.length} 个配置`);
     setText("nav-agents-count", state.agents.length);
     renderManageCount();
     renderHomeDockedTools();
     updateAgentSelects();
     renderAgentContinuityDigest();
     renderAgentCapabilityRoster();
+    renderContextReadinessBoard();
     renderComparisonWorkbench();
     renderPromptExperimentLab();
     renderReuseGallery();
+    renderMissionGraph();
     if (!state.agents.length) {
-      renderEmpty(list, "No named agents found.");
+      renderEmpty(list, "还没有命名 Agent。");
       return;
     }
     list.innerHTML = state.agents.map((agent) => {
       const name = normalizeName(agent);
-      const description = normalizeDescription(agent) || "No description.";
+      const description = normalizeDescription(agent) || "没有描述。";
       return `<article class="row-item">
         <div class="row-item-title"><span>${escapeHTML(name)}</span><span class="tag">agent</span></div>
         <p>${escapeHTML(description)}</p>
-        <div class="row-actions"><button data-agent-detail="${escapeHTML(name)}">Edit</button></div>
+        <div class="row-actions"><button data-agent-detail="${escapeHTML(name)}">编辑</button></div>
       </article>`;
     }).join("");
   } catch (error) {
@@ -6097,6 +7535,7 @@ async function loadAgents() {
     if (roster) renderError(roster, error.message);
     renderComparisonWorkbench();
     renderReuseGallery();
+    renderMissionGraph();
   }
 }
 
@@ -6112,9 +7551,9 @@ function agentCapabilitySummary(agent) {
   const commands = agent.Commands || agent.commands || {};
   return {
     name: normalizeName(agent),
-    description: normalizeDescription(agent) || "No description.",
-    model: agent.Model || agent.model || modelCfg.Model || modelCfg.model || "default",
-    reasoning: agent.ReasoningEffort || agent.reasoning_effort || modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "default",
+    description: normalizeDescription(agent) || "没有描述。",
+    model: agent.Model || agent.model || modelCfg.Model || modelCfg.model || "默认",
+    reasoning: agent.ReasoningEffort || agent.reasoning_effort || modelCfg.ReasoningEffort || modelCfg.reasoning_effort || "默认",
     allow: agentInfoList(agent.ToolsAllow || agent.tools_allow || toolsCfg.Allow || toolsCfg.allow),
     deny: agentInfoList(agent.ToolsDeny || agent.tools_deny || toolsCfg.Deny || toolsCfg.deny),
     autoApprove: (agent.AutoApprove ?? agent.auto_approve ?? cfg.AutoApprove ?? cfg.auto_approve) === true,
@@ -6137,28 +7576,28 @@ function latestAgentRun(name) {
 
 function agentContinuityHint(summary, runs) {
   const latest = runs[0];
-  if (!runs.length) return "No recorded runs yet. Start with a focused test or first mission.";
-  if (!summary.hasMemory) return "Profile memory is empty. Capture durable role context before complex work.";
-  if (runMissionGroup(latest) === "attention") return "Latest run needs review before this agent continues.";
-  if (!summary.commandCount) return "No custom commands yet. Add repeatable prompts for this agent.";
-  return "Ready to continue from recent work with existing memory and commands.";
+  if (!runs.length) return "还没有记录运行。先从一次聚焦测试或首个任务开始。";
+  if (!summary.hasMemory) return "配置记忆为空。复杂任务前先捕获长期角色上下文。";
+  if (runMissionGroup(latest) === "attention") return "继续使用此 Agent 前，需要先复查最近运行。";
+  if (!summary.commandCount) return "还没有自定义命令。可以为此 Agent 添加可重复 Prompt。";
+  return "可基于最近工作、既有记忆和命令继续。";
 }
 
 function renderAgentContinuityDigest() {
   const target = $("agent-continuity-digest");
   if (!target) return;
   if (!state.agents.length) {
-    renderEmpty(target, "No agent continuity to summarize yet.");
+    renderEmpty(target, "还没有 Agent 连续性可汇总。");
     return;
   }
   target.innerHTML = state.agents.map((agent) => {
     const summary = agentCapabilitySummary(agent);
     const runs = runsForAgent(summary.name);
     const latest = runs[0] || null;
-    const latestStatus = latest ? (latest.status || "unknown") : "none";
-    const latestPrompt = latest ? (runPrompt(latest) || latest.id || "Latest run") : "No runs recorded";
-    const latestAction = latest ? `<button type="button" data-agent-open-run="${escapeHTML(latest.id)}">Open latest run</button>` : "";
-    const memoryLabel = summary.hasMemory ? "Profile memory" : "Memory gap";
+    const latestStatus = latest ? (latest.status || "unknown") : "无";
+    const latestPrompt = latest ? (runPrompt(latest) || latest.id || "最近运行") : "没有运行记录";
+    const latestAction = latest ? `<button type="button" data-agent-open-run="${escapeHTML(latest.id)}">打开最近运行</button>` : "";
+    const memoryLabel = summary.hasMemory ? "配置记忆" : "记忆缺口";
     const hint = agentContinuityHint(summary, runs);
     return `<article class="agent-continuity-card ${escapeHTML(runMissionGroup(latest || {}))}">
       <div class="agent-continuity-head">
@@ -6169,15 +7608,15 @@ function renderAgentContinuityDigest() {
         <span class="tag">${escapeHTML(latestStatus)}</span>
       </div>
       <div class="agent-continuity-metrics">
-        <div><span>Runs</span><strong>${runs.length}</strong></div>
-        <div><span>Memory</span><strong>${escapeHTML(memoryLabel)}</strong></div>
-        <div><span>Commands</span><strong>${summary.commandCount}</strong></div>
+        <div><span>运行</span><strong>${runs.length}</strong></div>
+        <div><span>记忆</span><strong>${escapeHTML(memoryLabel)}</strong></div>
+        <div><span>命令</span><strong>${summary.commandCount}</strong></div>
       </div>
       <p>${escapeHTML(hint)}</p>
       <small>${escapeHTML(latestPrompt)}</small>
       <div class="row-actions">
-        <button type="button" data-agent-continue="${escapeHTML(summary.name)}">Continue</button>
-        <button type="button" data-agent-memory-draft="${escapeHTML(summary.name)}">Draft memory</button>
+        <button type="button" data-agent-continue="${escapeHTML(summary.name)}">继续</button>
+        <button type="button" data-agent-memory-draft="${escapeHTML(summary.name)}">起草记忆</button>
         ${latestAction}
       </div>
     </article>`;
@@ -6188,16 +7627,16 @@ function renderAgentCapabilityRoster() {
   const roster = $("agent-capability-roster");
   if (!roster) return;
   if (!state.agents.length) {
-    renderEmpty(roster, "No agent capabilities to map yet.");
+    renderEmpty(roster, "还没有 Agent 能力可映射。");
     return;
   }
   roster.innerHTML = state.agents.map((agent) => {
     const summary = agentCapabilitySummary(agent);
     const heartbeat = summary.heartbeatEvery
       ? `${summary.heartbeatEvery}${summary.heartbeatHours ? ` · ${summary.heartbeatHours}` : ""}`
-      : "off";
-    const posture = summary.autoApprove ? "Auto approve" : "Manual review";
-    const memory = summary.hasMemory ? "Memory" : "No memory";
+      : "关闭";
+    const posture = summary.autoApprove ? "自动确认" : "人工复查";
+    const memory = summary.hasMemory ? "有记忆" : "无记忆";
     const commandLaunchers = summary.commandNames.length
       ? `<div class="agent-command-launchers" aria-label="${escapeHTML(summary.name)} commands">
         ${summary.commandNames.map((command) => `<button type="button" data-agent-command-launch-agent="${escapeHTML(summary.name)}" data-agent-command-launch="${escapeHTML(command)}">/${escapeHTML(command)}</button>`).join("")}
@@ -6213,31 +7652,31 @@ function renderAgentCapabilityRoster() {
         <span class="tag">${escapeHTML(posture)}</span>
       </div>
       <div class="agent-roster-metrics">
-        <div><span>Model</span><strong>${escapeHTML(summary.model)}</strong></div>
-        <div><span>Reasoning</span><strong>${escapeHTML(summary.reasoning)}</strong></div>
-        <div><span>Allow</span><strong>${summary.allow.length}</strong></div>
-        <div><span>Deny</span><strong>${summary.deny.length}</strong></div>
-        <div><span>Heartbeat</span><strong>${escapeHTML(heartbeat)}</strong></div>
-        <div><span>Commands</span><strong>${summary.commandCount}</strong></div>
+        <div><span>模型</span><strong>${escapeHTML(summary.model)}</strong></div>
+        <div><span>推理</span><strong>${escapeHTML(summary.reasoning)}</strong></div>
+        <div><span>允许</span><strong>${summary.allow.length}</strong></div>
+        <div><span>拒绝</span><strong>${summary.deny.length}</strong></div>
+        <div><span>心跳</span><strong>${escapeHTML(heartbeat)}</strong></div>
+        <div><span>命令</span><strong>${summary.commandCount}</strong></div>
       </div>
       <div class="pill-list agent-roster-tags">
         <span>${escapeHTML(memory)}</span>
-        <span>${summary.autoApprove ? "Approval bypass" : "Approval gated"}</span>
-        <span>${summary.heartbeatEvery ? "Heartbeat scheduled" : "No heartbeat"}</span>
+        <span>${summary.autoApprove ? "绕过确认" : "确认闸门"}</span>
+        <span>${summary.heartbeatEvery ? "已安排心跳" : "无心跳"}</span>
       </div>
       ${commandLaunchers}
       <div class="row-actions">
-        <button type="button" data-agent-launch-chat="${escapeHTML(summary.name)}">Chat</button>
-        <button type="button" data-agent-launch-test="${escapeHTML(summary.name)}">Test</button>
-        <button type="button" data-agent-launch-council="${escapeHTML(summary.name)}">Council</button>
-        <button type="button" data-agent-detail="${escapeHTML(summary.name)}">Edit profile</button>
+        <button type="button" data-agent-launch-chat="${escapeHTML(summary.name)}">对话</button>
+        <button type="button" data-agent-launch-test="${escapeHTML(summary.name)}">测试</button>
+        <button type="button" data-agent-launch-council="${escapeHTML(summary.name)}">议会</button>
+        <button type="button" data-agent-detail="${escapeHTML(summary.name)}">编辑配置</button>
       </div>
     </article>`;
   }).join("");
 }
 
 function updateAgentSelects() {
-  const options = ['<option value="">Default agent</option>'].concat(
+  const options = ['<option value="">默认 Agent</option>'].concat(
     state.agents.map((agent) => {
       const name = normalizeName(agent);
       return `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`;
@@ -6307,13 +7746,13 @@ function setAgentDirtyBaseline() {
 function updateAgentDirtyState() {
   const snapshot = stableAgentSnapshot();
   state.agentDirty = snapshot !== state.agentDirtyBaseline;
-  const base = state.editingAgent ? `Editing ${state.editingAgent}` : "New agent";
-  $("agent-form-state").textContent = state.agentDirty ? `${base} · Unsaved changes` : base;
+  const base = state.editingAgent ? `正在编辑 ${state.editingAgent}` : "新 Agent";
+  $("agent-form-state").textContent = state.agentDirty ? `${base} · 未保存改动` : base;
   renderAgentPermissionPreview();
 }
 
 function confirmDiscardAgentChanges() {
-  return !state.agentDirty || globalThis.confirm("Discard unsaved agent changes?");
+  return !state.agentDirty || globalThis.confirm("丢弃未保存的 Agent 改动？");
 }
 
 function buildAgentPayload() {
@@ -6352,7 +7791,7 @@ function applyAgentPayload(payload, { dirty = true } = {}) {
   renderAgentCommands();
   $("agent-delete-button").hidden = !state.editingAgent;
   $("agent-test-run-button").hidden = !state.editingAgent;
-  $("selected-agent-description").textContent = state.editingAgent ? "Editing named agent." : "Create a named agent.";
+  $("selected-agent-description").textContent = state.editingAgent ? "正在编辑命名 Agent。" : "创建命名 Agent。";
   if (dirty) {
     state.agentDirtyBaseline = "";
     updateAgentDirtyState();
@@ -6385,31 +7824,31 @@ function agentPayloadFromDetail(agent) {
 
 function renderAgentPermissionPreview() {
   const payload = buildAgentPayload();
-  const allow = payload.tools_allow.length ? payload.tools_allow.join(", ") : "None";
-  const deny = payload.tools_deny.length ? payload.tools_deny.join(", ") : "None";
+  const allow = payload.tools_allow.length ? payload.tools_allow.join(", ") : "无";
+  const deny = payload.tools_deny.length ? payload.tools_deny.join(", ") : "无";
   const allowSet = new Set(payload.tools_allow);
   const conflicts = payload.tools_deny.filter((tool) => allowSet.has(tool));
   const warnings = [];
-  if (payload.auto_approve) warnings.push("Auto approve is enabled for this agent.");
-  if (conflicts.length) warnings.push(`Allow/deny conflict: ${conflicts.join(", ")}`);
-  $("agent-permission-preview").innerHTML = `<div class="agent-preview-row"><strong>Allow</strong><span>${escapeHTML(allow)}</span></div>
-    <div class="agent-preview-row"><strong>Deny</strong><span>${escapeHTML(deny)}</span></div>
-    <div class="agent-preview-row"><strong>Auto approve</strong><span>${payload.auto_approve ? "Enabled" : "Disabled"}</span></div>
-    ${warnings.map((warning) => `<div class="agent-preview-row warning"><strong>Review</strong><span>${escapeHTML(warning)}</span></div>`).join("")}`;
+  if (payload.auto_approve) warnings.push("此 Agent 已启用自动确认。");
+  if (conflicts.length) warnings.push(`允许/拒绝冲突：${conflicts.join(", ")}`);
+  $("agent-permission-preview").innerHTML = `<div class="agent-preview-row"><strong>允许</strong><span>${escapeHTML(allow)}</span></div>
+    <div class="agent-preview-row"><strong>拒绝</strong><span>${escapeHTML(deny)}</span></div>
+    <div class="agent-preview-row"><strong>自动确认</strong><span>${payload.auto_approve ? "启用" : "停用"}</span></div>
+    ${warnings.map((warning) => `<div class="agent-preview-row warning"><strong>复查</strong><span>${escapeHTML(warning)}</span></div>`).join("")}`;
 }
 
 function renderAgentCommands() {
   const list = $("agent-command-list");
   const names = Object.keys(state.agentCommands).sort((a, b) => a.localeCompare(b));
   if (!names.length) {
-    renderEmpty(list, "No custom commands.");
+    renderEmpty(list, "还没有自定义命令。");
     return;
   }
   list.innerHTML = names.map((name) => {
     const active = name === state.selectedAgentCommand ? " active" : "";
     return `<div class="row-item${active}">
       <div class="row-item-title"><span>${escapeHTML(name)}</span><span class="tag">command</span></div>
-      <div class="row-actions"><button type="button" data-agent-command="${escapeHTML(name)}">Edit</button></div>
+      <div class="row-actions"><button type="button" data-agent-command="${escapeHTML(name)}">编辑</button></div>
     </div>`;
   }).join("");
 }
@@ -6419,7 +7858,7 @@ function clearAgentCommandEditor() {
   $("agent-command-name").disabled = false;
   $("agent-command-name").value = "";
   $("agent-command-body").value = "";
-  $("agent-command-save-button").textContent = "Add command";
+  $("agent-command-save-button").textContent = "添加命令";
   $("agent-command-delete-button").hidden = true;
 }
 
@@ -6428,7 +7867,7 @@ function selectAgentCommand(name) {
   $("agent-command-name").disabled = false;
   $("agent-command-name").value = name;
   $("agent-command-body").value = state.agentCommands[name] || "";
-  $("agent-command-save-button").textContent = "Update command";
+  $("agent-command-save-button").textContent = "更新命令";
   $("agent-command-delete-button").hidden = false;
   renderAgentCommands();
 }
@@ -6437,11 +7876,11 @@ function saveAgentCommand() {
   const name = $("agent-command-name").value.trim();
   const body = $("agent-command-body").value.trim();
   if (!name || !body) {
-    showToast("Command name and body are required.");
+    showToast("需要填写命令名称和内容。");
     return;
   }
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) {
-    showToast("Command name must use letters, numbers, dashes, or underscores.");
+    showToast("命令名称只能使用字母、数字、短横线或下划线。");
     return;
   }
   if (state.selectedAgentCommand && state.selectedAgentCommand !== name) {
@@ -6450,7 +7889,7 @@ function saveAgentCommand() {
   state.agentCommands[name] = body;
   selectAgentCommand(name);
   updateAgentDirtyState();
-  showToast("Command staged.");
+  showToast("命令已暂存。");
 }
 
 function deleteAgentCommand() {
@@ -6460,21 +7899,21 @@ function deleteAgentCommand() {
   clearAgentCommandEditor();
   renderAgentCommands();
   updateAgentDirtyState();
-  showToast("Command removed.");
+  showToast("命令已移除。");
 }
 
 function testCurrentAgent() {
   if (!confirmDiscardAgentChanges()) return;
   const name = state.editingAgent;
   if (!name) {
-    showToast("Save the agent before testing.");
+    showToast("测试前请先保存 Agent。");
     return;
   }
   $("agent-test-agent").value = name;
   $("agent-test-prompt").value = `Test ${name}: introduce your role and list one useful next step.`;
   $("agent-test-prompt").focus();
-  $("agent-test-state").textContent = `Ready to test ${name}`;
-  showToast(`Ready to test ${name}.`);
+  $("agent-test-state").textContent = `准备测试 ${name}`;
+  showToast(`已准备测试 ${name}。`);
 }
 
 function prepareAgentChat(name) {
@@ -6483,7 +7922,7 @@ function prepareAgentChat(name) {
   $("chat-agent").value = name;
   $("chat-input").value = `Continue as ${name}. Review the current Astria workspace context, identify the next useful action, and call out any risks before changing files.`;
   $("chat-input").focus();
-  showToast(`Chat drafted for ${name}.`);
+  showToast(`已为 ${name} 起草对话。`);
 }
 
 function continueAgentFromDigest(name) {
@@ -6504,7 +7943,7 @@ function continueAgentFromDigest(name) {
     "Summarize what context should carry forward, identify the next concrete action, and name any risk that needs review before acting.",
   ].join("\n");
   $("chat-input").focus();
-  showToast(`Continuity prompt drafted for ${name}.`);
+  showToast(`已为 ${name} 起草连续性 Prompt。`);
 }
 
 function prepareAgentTest(name) {
@@ -6512,20 +7951,20 @@ function prepareAgentTest(name) {
   if (!confirmDiscardAgentChanges()) return;
   $("agent-test-agent").value = name;
   $("agent-test-prompt").value = `Test ${name}: introduce your operating role, summarize your configured strengths, and propose one concrete next step.`;
-  $("agent-test-state").textContent = `Ready to test ${name}`;
+  $("agent-test-state").textContent = `准备测试 ${name}`;
   switchPanel("agents");
   $("agent-test-prompt").focus();
-  showToast(`Test drafted for ${name}.`);
+  showToast(`已为 ${name} 起草测试。`);
 }
 
 function prepareAgentCouncil(name) {
   if (!name) return;
   $("council-agent").value = name;
   $("council-goal").value = `Use ${name} as the lead agent. Split the current Astria task into planner, researcher, and reviewer perspectives, then synthesize a concrete next action.`;
-  $("council-state").textContent = `Ready with ${name}`;
+  $("council-state").textContent = `已选择 ${name}`;
   switchPanel("council");
   $("council-goal").focus();
-  showToast(`Council drafted for ${name}.`);
+  showToast(`已为 ${name} 起草议会目标。`);
 }
 
 async function launchAgentCommand(agentName, commandName) {
@@ -6535,14 +7974,14 @@ async function launchAgentCommand(agentName, commandName) {
     const commands = detail.Commands || detail.commands || {};
     const body = commands[commandName] || "";
     if (!body.trim()) {
-      showToast(`Command /${commandName} is empty.`);
+      showToast(`命令 /${commandName} 为空。`);
       return;
     }
     startNewChat();
     $("chat-agent").value = agentName;
     $("chat-input").value = body.trim();
     $("chat-input").focus();
-    showToast(`/${commandName} drafted for ${agentName}.`);
+    showToast(`已为 ${agentName} 起草 /${commandName}。`);
   } catch (error) {
     showToast(error.message);
   }
@@ -6552,20 +7991,20 @@ async function submitAgent(event) {
   event.preventDefault();
   const payload = buildAgentPayload();
   if (!payload.name || !payload.prompt.trim()) {
-    showToast("Agent name and prompt are required.");
+    showToast("需要填写 Agent 名称和 Prompt。");
     return;
   }
   const path = state.editingAgent ? `/agents/${encodeURIComponent(state.editingAgent)}` : "/agents";
   const method = state.editingAgent ? "PUT" : "POST";
-  $("agent-form-state").textContent = "Saving";
+  $("agent-form-state").textContent = "保存中";
   try {
     const saved = await api(path, { method, body: JSON.stringify(payload) });
     await loadAgents();
     fillAgentForm(saved);
     updateAgentSelects();
-    showToast("Agent saved.");
+    showToast("Agent 已保存。");
   } catch (error) {
-    $("agent-form-state").textContent = "Error";
+    $("agent-form-state").textContent = "错误";
     showToast(error.message);
   }
 }
@@ -6573,7 +8012,7 @@ async function submitAgent(event) {
 async function deleteCurrentAgent() {
   if (!confirmDiscardAgentChanges()) return;
   const name = state.editingAgent;
-  if (!name || !globalThis.confirm(`Delete agent "${name}"?`)) return;
+  if (!name || !globalThis.confirm(`删除 Agent "${name}"？`)) return;
   try {
     await api(`/agents/${encodeURIComponent(name)}`, { method: "DELETE" });
     await loadAgents();
@@ -6591,7 +8030,7 @@ async function deleteCurrentAgent() {
       heartbeat_model: "",
       commands: {},
     }, { dirty: false });
-    showToast("Agent deleted.");
+    showToast("Agent 已删除。");
   } catch (error) {
     showToast(error.message);
   }
@@ -6609,7 +8048,7 @@ function exportAgentConfig() {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-  showToast("Agent config exported.");
+  showToast("Agent 配置已导出。");
 }
 
 function normalizeImportedAgentPayload(data) {
@@ -6635,9 +8074,9 @@ async function importAgentConfig(file) {
     const text = await file.text();
     const data = JSON.parse(text);
     applyAgentPayload(normalizeImportedAgentPayload(data), { dirty: true });
-    showToast("Agent config imported. Save agent to apply.");
+    showToast("Agent 配置已导入。保存后生效。");
   } catch (error) {
-    showToast(`Import failed: ${error.message}`);
+    showToast(`导入失败：${error.message}`);
   } finally {
     $("agent-import-file").value = "";
   }
@@ -6647,8 +8086,8 @@ function updateSelectedAgent() {
   const name = $("chat-agent").value;
   const selected = state.agents.find((agent) => normalizeName(agent) === name);
   $("selected-agent-description").textContent = selected
-    ? (normalizeDescription(selected) || "No description.")
-    : "Select an agent.";
+    ? (normalizeDescription(selected) || "没有描述。")
+    : "选择一个 Agent。";
 }
 
 function setAgentTestRunning(isRunning) {
@@ -6656,18 +8095,18 @@ function setAgentTestRunning(isRunning) {
   $("agent-test-prompt").disabled = isRunning;
   $("agent-test-submit-button").hidden = isRunning;
   $("agent-test-stop-button").hidden = !isRunning;
-  if (isRunning) $("agent-test-state").textContent = "Running";
+  if (isRunning) $("agent-test-state").textContent = "运行中";
 }
 
 async function submitAgentTest(event) {
   event?.preventDefault();
   if (state.activeAgentTestRequestID) {
-    showToast("An agent test is already running.");
+    showToast("已有 Agent 测试正在运行。");
     return;
   }
   const text = $("agent-test-prompt").value.trim();
   if (!text) {
-    showToast("Enter a test prompt first.");
+    showToast("请先输入测试 Prompt。");
     return;
   }
   const agent = $("agent-test-agent").value;
@@ -6687,13 +8126,13 @@ async function submitAgentTest(event) {
     const result = await streamMessage(payload, renderer, abort.signal);
     renderAgentTestResult(result, payload);
     await Promise.allSettled([loadRuns(), loadSessions()]);
-    $("agent-test-state").textContent = "Complete";
+    $("agent-test-state").textContent = "完成";
   } catch (error) {
     if (error.name === "AbortError") {
-      $("agent-test-state").textContent = "Cancelled";
+      $("agent-test-state").textContent = "已取消";
       renderAgentTestCancelled(payload);
     } else {
-      $("agent-test-state").textContent = "Error";
+      $("agent-test-state").textContent = "错误";
       renderAgentTestError(error, payload);
     }
   } finally {
@@ -6705,7 +8144,7 @@ async function submitAgentTest(event) {
 
 function beginAgentTestStream() {
   $("agent-test-output").innerHTML = `<div class="run-summary agent-test-stream">
-    <div class="run-summary-title">Streaming agent test</div>
+    <div class="run-summary-title">正在流式测试 Agent</div>
     <pre data-agent-test-stream-text></pre>
     <div class="run-timeline" data-agent-test-stream-events></div>
   </div>`;
@@ -6725,10 +8164,10 @@ function beginAgentTestStream() {
 
 function renderAgentTestCancelled(payload) {
   $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
-    <div class="run-summary-title">Agent test cancelled</div>
+    <div class="run-summary-title">Agent 测试已取消</div>
     <div class="run-summary-grid">
-      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
-      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "默认")}</strong>
+      <span>Run ID</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
     </div>
   </div>`;
 }
@@ -6756,30 +8195,30 @@ function renderAgentTestResult(result, payload) {
   const sessionID = result?.session_id || "";
   const messages = Array.isArray(result?.messages) && result.messages.length
     ? result.messages.join("\n")
-    : "No messages returned.";
+    : "没有返回消息。";
   const errorHTML = result?.error ? `<div class="error-state">${escapeHTML(result.error)}</div>` : "";
   const openRunAction = payload.request_id
-    ? `<button type="button" data-run-summary-run="${escapeHTML(payload.request_id)}">Open run</button>`
+    ? `<button type="button" data-run-summary-run="${escapeHTML(payload.request_id)}">观测运行</button>`
     : "";
   const openSessionAction = sessionID
-    ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>`
+    ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">打开会话</button>`
     : "";
   const summaryText = agentTestSummaryText(result, payload);
   $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
-    <div class="run-summary-title">Agent test result</div>
+    <div class="run-summary-title">Agent 测试结果</div>
     <div class="run-summary-grid">
-      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "默认")}</strong>
       <span>Prompt</span><strong>${escapeHTML(payload.text || "-")}</strong>
-      <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
-      <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
-      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+      <span>会话</span><strong>${escapeHTML(sessionID || "-")}</strong>
+      <span>用量</span><strong>${escapeHTML(usageText)}</strong>
+      <span>Run ID</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
     </div>
     ${errorHTML}
     <pre>${escapeHTML(messages)}</pre>
     <div class="run-summary-actions">
       ${openRunAction}
       ${openSessionAction}
-      <button type="button" data-agent-test-copy-summary="${escapeHTML(summaryText)}">Copy summary</button>
+      <button type="button" data-agent-test-copy-summary="${escapeHTML(summaryText)}">复制摘要</button>
     </div>
   </div>`;
 }
@@ -6787,15 +8226,15 @@ function renderAgentTestResult(result, payload) {
 function renderAgentTestError(error, payload) {
   const summaryText = agentTestSummaryText({ error: error.message || String(error) }, payload);
   $("agent-test-output").innerHTML = `<div class="run-summary agent-test-result">
-    <div class="run-summary-title">Agent test error</div>
+    <div class="run-summary-title">Agent 测试错误</div>
     <div class="run-summary-grid">
-      <span>Agent</span><strong>${escapeHTML(payload.agent || "default")}</strong>
+      <span>Agent</span><strong>${escapeHTML(payload.agent || "默认")}</strong>
       <span>Prompt</span><strong>${escapeHTML(payload.text || "-")}</strong>
-      <span>Request</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
+      <span>Run ID</span><strong>${escapeHTML(payload.request_id || "-")}</strong>
     </div>
     <div class="error-state">${escapeHTML(error.message || String(error))}</div>
     <div class="run-summary-actions">
-      <button type="button" data-agent-test-copy-summary="${escapeHTML(summaryText)}">Copy summary</button>
+      <button type="button" data-agent-test-copy-summary="${escapeHTML(summaryText)}">复制摘要</button>
     </div>
   </div>`;
 }
@@ -6807,8 +8246,8 @@ function agentTestSummaryText(result, payload) {
     ? result.messages.join("\n")
     : "";
   return [
-    "Agent test",
-    `Agent: ${payload.agent || "default"}`,
+    "Agent 测试",
+    `Agent: ${payload.agent || "默认"}`,
     `Prompt: ${payload.text || ""}`,
     `Request: ${payload.request_id || ""}`,
     `Session: ${result?.session_id || ""}`,
@@ -6823,20 +8262,23 @@ async function loadSkills() {
   try {
     const data = await api("/skills");
     state.skills = data.skills || [];
-    setText("manage-skills-count", `${state.skills.length} installed`);
+    setText("manage-skills-count", `${state.skills.length} 个已安装`);
     setText("nav-skills-count", state.skills.length);
     renderManageCount();
     renderHomeDockedTools();
+    renderMissionGraph();
+    renderContextReadinessBoard();
     if (!state.skills.length) {
-      renderEmpty(list, "No skills installed.");
+      renderEmpty(list, "还没有安装技能。");
       return;
     }
     list.innerHTML = state.skills.map((skill) => `<article class="row-item">
       <div class="row-item-title"><span>${escapeHTML(skill.name)}</span><span class="tag">${escapeHTML(skill.source || "skill")}</span></div>
-      <p>${escapeHTML(skill.description || "No description.")}</p>
+      <p>${escapeHTML(skill.description || "没有描述。")}</p>
     </article>`).join("");
   } catch (error) {
     renderError(list, error.message);
+    renderMissionGraph();
   }
 }
 
@@ -6848,7 +8290,7 @@ async function loadSessions(query = "") {
       : await api("/sessions");
     state.sessions = data.sessions || data.results || [];
     if (!state.sessions.length) {
-      renderEmpty(list, query ? "No matching sessions." : "No sessions saved.");
+      renderEmpty(list, query ? "没有匹配会话。" : "还没有保存会话。");
       renderMemoryMapPreview();
       renderSourceRegistry();
       renderWorkspaceHub();
@@ -6860,19 +8302,20 @@ async function loadSessions(query = "") {
       renderReuseGallery();
       renderResultLibrary();
       renderWorkspaceSnapshotPlanner();
+      renderMissionGraph();
       return;
     }
     list.innerHTML = state.sessions.map((session) => `<article class="row-item session-item ${session.id === state.activeSessionID ? "active" : ""}" data-session-id="${escapeHTML(session.id)}">
       <div class="row-item-title">
         <span>${session.favorite ? "★ " : ""}${escapeHTML(session.title || session.id)}</span>
-        <button class="icon-danger-button" type="button" title="Delete session" aria-label="Delete session" data-session-delete="${escapeHTML(session.id)}">Delete</button>
+        <button class="icon-danger-button" type="button" title="删除会话" aria-label="删除会话" data-session-delete="${escapeHTML(session.id)}">删除</button>
       </div>
-      <span class="tag">${session.msg_count ?? 0} messages</span>
+      <span class="tag">${session.msg_count ?? 0} 条消息</span>
       <p>${escapeHTML(session.id)}</p>
       <div class="row-actions">
-        <button type="button" data-session-copy="${escapeHTML(session.id)}">Copy ID</button>
-        <button type="button" data-session-rename="${escapeHTML(session.id)}">Rename</button>
-        <button type="button" data-session-favorite="${escapeHTML(session.id)}" data-favorite="${session.favorite ? "false" : "true"}">${session.favorite ? "Unfavorite" : "Favorite"}</button>
+        <button type="button" data-session-copy="${escapeHTML(session.id)}">复制 ID</button>
+        <button type="button" data-session-rename="${escapeHTML(session.id)}">重命名</button>
+        <button type="button" data-session-favorite="${escapeHTML(session.id)}" data-favorite="${session.favorite ? "false" : "true"}">${session.favorite ? "取消收藏" : "收藏"}</button>
       </div>
     </article>`).join("");
     updateActiveSessionLabel();
@@ -6887,6 +8330,7 @@ async function loadSessions(query = "") {
     renderReuseGallery();
     renderResultLibrary();
     renderWorkspaceSnapshotPlanner();
+    renderMissionGraph();
   } catch (error) {
     renderError(list, error.message);
     renderMemoryMapPreview();
@@ -6900,6 +8344,7 @@ async function loadSessions(query = "") {
     renderReuseGallery();
     renderResultLibrary();
     renderWorkspaceSnapshotPlanner();
+    renderMissionGraph();
   }
 }
 
@@ -6908,25 +8353,25 @@ async function loadSchedules() {
   try {
     const data = await api("/schedules");
     state.schedules = data.schedules || [];
-    setText("manage-schedules-count", `${state.schedules.length} configured`);
+    setText("manage-schedules-count", `${state.schedules.length} 个已配置`);
     setText("nav-schedules-count", state.schedules.length);
     renderManageCount();
     renderHomeDockedTools();
     renderProactiveDeliveryBoard();
     renderWorkspaceSnapshotPlanner();
     if (!state.schedules.length) {
-      renderEmpty(list, "No schedules configured.");
+      renderEmpty(list, "还没有配置定时任务。");
       return;
     }
     list.innerHTML = state.schedules.map((schedule) => `<article class="row-item">
       <div class="row-item-title">
         <span>${escapeHTML(schedule.prompt || schedule.id)}</span>
-        <span class="tag">${schedule.enabled ? "enabled" : "paused"}</span>
+        <span class="tag">${schedule.enabled ? "已启用" : "已暂停"}</span>
       </div>
-      <p>${escapeHTML(schedule.cron || "")} ${schedule.agent ? `with ${schedule.agent}` : "with default agent"}</p>
+      <p>${escapeHTML(schedule.cron || "")} ${schedule.agent ? `使用 ${schedule.agent}` : "使用默认 Agent"}</p>
       <div class="row-actions">
-        <button data-schedule-toggle="${escapeHTML(schedule.id)}" data-enabled="${schedule.enabled ? "false" : "true"}">${schedule.enabled ? "Pause" : "Enable"}</button>
-        <button data-schedule-delete="${escapeHTML(schedule.id)}">Delete</button>
+        <button data-schedule-toggle="${escapeHTML(schedule.id)}" data-enabled="${schedule.enabled ? "false" : "true"}">${schedule.enabled ? "暂停" : "启用"}</button>
+        <button data-schedule-delete="${escapeHTML(schedule.id)}">删除</button>
       </div>
     </article>`).join("");
   } catch (error) {
@@ -6941,12 +8386,20 @@ async function loadRuns() {
     state.runs = data.runs || [];
     $("runs-count").textContent = state.runs.length;
     renderRunDependentViews();
+    if (!state.runs.length) {
+      state.activeRunID = "";
+      renderRunDetail(null);
+    }
     if (state.activeRunID && !state.runs.some((run) => run.id === state.activeRunID)) {
       state.activeRunID = "";
       renderRunDetail(null);
     }
+    hydrateHomeMissionRun();
   } catch (error) {
     state.runs = [];
+    state.missionRunDetail = null;
+    state.missionRunTrace = [];
+    state.missionRunTraceError = "";
     $("runs-count").textContent = "0";
     renderRunDependentViews({ skipRunsList: true });
     renderError(list, error.message);
@@ -6955,6 +8408,7 @@ async function loadRuns() {
 
 function renderRunDependentViews(options = {}) {
   renderHomeActivity();
+  renderMissionGraph();
   renderMemoryMapPreview();
   renderSourceRegistry();
   renderKnowledgeReconciliation();
@@ -6974,10 +8428,62 @@ function renderRunDependentViews(options = {}) {
   renderProactiveDeliveryBoard();
 }
 
+async function hydrateHomeMissionRun(options = {}) {
+  const candidate = state.activeRunID
+    ? state.runs.find((run) => run.id === state.activeRunID) || state.runs[0]
+    : state.runs[0];
+  const runID = candidate?.id || "";
+  if (!runID || state.currentRunDetail?.id === runID || state.missionRunHydrating === runID) return;
+  if (!options.force && state.missionRunDetail?.id === runID && Array.isArray(state.missionRunTrace)) {
+    renderMissionGraph();
+    return;
+  }
+  state.missionRunHydrating = runID;
+  try {
+    const encodedRunID = encodeURIComponent(runID);
+    const [run, traceResult] = await Promise.all([
+      api(`/runs/${encodedRunID}`),
+      api(`/runs/${encodedRunID}/trace`).catch((error) => ({ trace: [], error: error.message })),
+    ]);
+    if ((run?.id || runID) !== runID) return;
+    state.missionRunDetail = run || candidate;
+    state.missionRunTrace = Array.isArray(traceResult.trace) ? traceResult.trace : [];
+    state.missionRunTraceError = traceResult.error || "";
+    renderMissionGraph();
+    renderArtifactDependentViews();
+  } catch {
+    state.missionRunDetail = candidate || null;
+    state.missionRunTrace = [];
+    state.missionRunTraceError = "运行观测详情暂不可用。";
+    renderMissionGraph();
+    renderArtifactDependentViews();
+  } finally {
+    if (state.missionRunHydrating === runID) state.missionRunHydrating = "";
+  }
+}
+
+function renderArtifactDependentViews() {
+  renderRunQualityScorecard();
+  renderReuseGallery();
+  renderResultLibrary();
+  renderPlaybookLibrary();
+  renderStarterKitLauncher();
+  renderSharePackBuilder();
+  renderWorkspaceSnapshotPlanner();
+}
+
 function handleRunLifecycleEvent(eventType, eventPayload) {
   const run = lifecycleRunSummary(eventType, eventPayload);
   if (!run) return;
+  if (eventType === "run_started") {
+    setStarMapActivity("running", { label: "event stream" });
+  } else if (eventType === "run_completed") {
+    setStarMapActivity("complete");
+  } else if (eventType === "run_error") {
+    setStarMapActivity("error");
+  }
   upsertRecoveredRun(run);
+  hydrateHomeMissionRun({ force: true });
   if (state.activeRunID && state.activeRunID === run.id) {
     selectRun(run.id);
   }
@@ -7052,12 +8558,23 @@ function renderRunsList() {
   const list = $("runs-list");
   renderMissionControl();
   if (!state.runs.length) {
-    renderEmpty(list, "No runs recorded yet.");
+    list.innerHTML = `<section class="run-empty-console">
+      <div>
+        <span>RUN OBSERVER</span>
+        <strong>观测台待命</strong>
+        <p>发起第一条任务后，这里会按时间记录运行、工具事件、审批、预算和产物线索。</p>
+      </div>
+      <div class="run-empty-grid">
+        <button type="button" data-panel="home"><span>01</span><strong>回到任务台</strong><small>描述目标并创建第一条本地 run。</small></button>
+        <button type="button" data-panel="diagnostics"><span>02</span><strong>检查运行环境</strong><small>确认 provider、权限和本地 daemon 状态。</small></button>
+        <button type="button" data-panel="results"><span>03</span><strong>查看产物库</strong><small>运行完成后稳定输出会进入归档视图。</small></button>
+      </div>
+    </section>`;
     return;
   }
   const runs = filteredRuns();
   if (!runs.length) {
-    renderEmpty(list, "No runs match this Mission Control filter.");
+    renderEmpty(list, "没有匹配当前观测筛选的运行。");
     return;
   }
   list.innerHTML = runs.map((run) => {
@@ -7073,7 +8590,7 @@ function renderRunsList() {
       <p>${escapeHTML(agent)} · ${escapeHTML(session)} · ${escapeHTML(formatTimestamp(run.started_at))}</p>
       ${badges.length ? `<div class="run-runtime-badges">${badges.map((badge) => `<span class="runtime-badge ${escapeHTML(badge.tone)}">${escapeHTML(badge.label)}</span>`).join("")}</div>` : ""}
       <div class="row-actions">
-        <button type="button" data-run-open="${escapeHTML(run.id)}">Open run</button>
+        <button type="button" data-run-open="${escapeHTML(run.id)}">观测运行</button>
       </div>
     </article>`;
   }).join("");
@@ -7115,23 +8632,23 @@ function renderMissionControl() {
     council: state.runs.filter((run) => run.channel === "council_handoff" || String(run.source || "").startsWith("council:")).length,
   };
   board.innerHTML = [
-    ["active", "Active", counts.active, "Running or queued work"],
-    ["recovered", "Recovered", counts.recovered, "Restored durable runtime state"],
-    ["attention", "Needs attention", counts.attention, "Failed, cancelled, or unknown"],
-    ["completed", "Completed", counts.completed, "Finished missions"],
-    ["total", "Total", counts.total, "All recorded runs"],
+    ["active", "活跃轨道", counts.active, "正在运行或排队的工作"],
+    ["recovered", "已恢复", counts.recovered, "从持久运行状态恢复"],
+    ["attention", "待处理", counts.attention, "失败、取消或未知状态"],
+    ["completed", "已完成", counts.completed, "形成产物的任务"],
+    ["total", "总计", counts.total, "全部记录运行"],
   ].map(([key, label, value, hint]) => `<button type="button" class="mission-control-card ${escapeHTML(key)}" data-run-filter="${escapeHTML(key === "total" ? "all" : key)}">
       <span>${escapeHTML(label)}</span>
       <strong>${escapeHTML(String(value))}</strong>
       <small>${escapeHTML(hint)}</small>
     </button>`).join("");
   filters.innerHTML = [
-    ["all", "All", counts.total],
-    ["active", "Active", counts.active],
-    ["recovered", "Recovered", counts.recovered],
-    ["attention", "Attention", counts.attention],
-    ["completed", "Completed", counts.completed],
-    ["council", "Council", counts.council],
+    ["all", "全部", counts.total],
+    ["active", "活跃", counts.active],
+    ["recovered", "恢复", counts.recovered],
+    ["attention", "待处理", counts.attention],
+    ["completed", "完成", counts.completed],
+    ["council", "议会", counts.council],
   ].map(([key, label, count]) => `<button type="button" class="${state.runFilter === key ? "active" : ""}" data-run-filter="${escapeHTML(key)}">${escapeHTML(label)} <span>${escapeHTML(String(count))}</span></button>`).join("");
 }
 
@@ -7154,7 +8671,7 @@ async function selectRun(runID) {
     renderRunsList();
     renderRunDetail(run);
   } catch (error) {
-    $("run-detail-summary").textContent = "Run detail unavailable.";
+    $("run-detail-summary").textContent = "运行详情不可用。";
     renderError($("run-detail"), error.message);
   }
 }
@@ -7162,17 +8679,47 @@ async function selectRun(runID) {
 function renderRunDetail(run) {
   const target = $("run-detail");
   state.currentRunDetail = run || null;
+  renderMissionGraph();
   if (!run) {
-    $("run-detail-summary").textContent = "Select a run to inspect request, result, and events.";
-    renderEmpty(target, "No run selected.");
+    $("run-detail-summary").textContent = "选择一条运行，检查请求、结果和事件。";
+    target.innerHTML = `<section class="run-detail-empty">
+      <span>DETAIL CHANNEL</span>
+      <strong>等待选择运行</strong>
+      <p>选择左侧运行后，这里会展开 prompt 摘要、trace、工具事件、用量和复用动作。</p>
+      <div>
+        <small>Trace</small>
+        <small>工具</small>
+        <small>产物</small>
+      </div>
+    </section>`;
     return;
   }
   const usage = run.usage || run.response?.usage || {};
   const usageText = formatUsage(usage);
   const sessionID = runSessionID(run);
   const prompt = runPrompt(run);
+  const observer = runObserverModel(run);
   $("run-detail-summary").textContent = `${run.status || "unknown"} · ${formatTimestamp(run.started_at)}`;
   target.innerHTML = `<div class="run-detail-stack">
+    <section class="run-observer-card ${escapeHTML(observer.tone)}">
+      <div class="run-observer-head">
+        <div>
+          <span>Run orbit</span>
+          <strong>${escapeHTML(compactText(prompt || run.id || "当前运行", 54))}</strong>
+          <small>${escapeHTML(observer.summary)}</small>
+        </div>
+        <b>${escapeHTML(observer.score)}%</b>
+      </div>
+      <div class="run-observer-meter" aria-label="运行观测完整度"><i style="width:${escapeHTML(String(observer.score))}%"></i></div>
+      <div class="run-observer-grid">
+        <button type="button" data-run-detail-rerun ${prompt ? "" : "disabled"}><span>状态</span><strong>${escapeHTML(uiTerm(run.status || "unknown"))}</strong></button>
+        <button type="button" data-panel="agents"><span>Agent</span><strong>${escapeHTML(run.agent || "default")}</strong></button>
+        <button type="button" data-panel="runs"><span>Trace</span><strong>${escapeHTML(String(observer.traceCount))}</strong></button>
+        <button type="button" data-panel="mcp"><span>工具</span><strong>${escapeHTML(String(observer.toolCount))}</strong></button>
+        <button type="button" data-panel="budget"><span>用量</span><strong>${escapeHTML(usageText)}</strong></button>
+        <button type="button" data-panel="permissions"><span>审核</span><strong>${escapeHTML(observer.approvalLabel)}</strong></button>
+      </div>
+    </section>
     <section class="run-detail-section">
       <div class="run-meta-grid">
         <span>ID</span><strong>${escapeHTML(run.id || "-")}</strong>
@@ -7182,28 +8729,28 @@ function renderRunDetail(run) {
         <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
         <span>Started</span><strong>${escapeHTML(formatTimestamp(run.started_at))}</strong>
         <span>Ended</span><strong>${escapeHTML(formatTimestamp(run.ended_at))}</strong>
-        <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
+        <span>用量</span><strong>${escapeHTML(usageText)}</strong>
       </div>
       <div class="run-detail-actions">
-        <button type="button" data-run-detail-copy-summary>Copy summary</button>
-        <button type="button" data-run-detail-copy-prompt>Copy prompt</button>
-        <button type="button" data-run-detail-copy-result>Copy result</button>
-        ${prompt ? `<button type="button" data-run-detail-follow-up>Suggest follow-up</button>` : ""}
-        ${sessionID ? `<button type="button" data-run-detail-open-session="${escapeHTML(sessionID)}">Open session</button>` : ""}
-        ${prompt ? `<button type="button" data-run-detail-rerun>Re-run</button>` : ""}
+        <button type="button" data-run-detail-copy-summary>复制摘要</button>
+        <button type="button" data-run-detail-copy-prompt>复制 Prompt</button>
+        <button type="button" data-run-detail-copy-result>复制结果</button>
+        ${prompt ? `<button type="button" data-run-detail-follow-up>起草后续</button>` : ""}
+        ${sessionID ? `<button type="button" data-run-detail-open-session="${escapeHTML(sessionID)}">打开会话</button>` : ""}
+        ${prompt ? `<button type="button" data-run-detail-rerun>重新运行</button>` : ""}
       </div>
       ${run.error ? `<div class="error-state">${escapeHTML(run.error)}</div>` : ""}
     </section>
     <section class="run-detail-section">
-      <h3>Runtime Recovery</h3>
+      <h3>运行恢复</h3>
       ${renderRuntimeRecovery(run)}
     </section>
     <section class="run-detail-section">
-      <h3>Workflow Steps</h3>
+      <h3>工作流阶段</h3>
       ${renderWorkflowSteps(run.steps || [])}
     </section>
     <section class="run-detail-section">
-      <h3>Control History</h3>
+      <h3>控制记录</h3>
       ${renderControlHistory(run.control || [])}
     </section>
     <section class="run-detail-section">
@@ -7215,19 +8762,54 @@ function renderRunDetail(run) {
       <pre>${escapeHTML(prompt)}</pre>
     </section>
     <section class="run-detail-section">
-      <h3>Result</h3>
+      <h3>结果</h3>
       <pre>${escapeHTML(formatRunResponse(run.response))}</pre>
     </section>
     <section class="run-detail-section">
-      <h3>Time Travel</h3>
+      <h3>观测时间线</h3>
       ${renderRunTimeline(run)}
     </section>
   </div>`;
 }
 
+function runObserverModel(run) {
+  const status = runHealthGroup(run);
+  const events = Array.isArray(run?.events) ? run.events : [];
+  const control = Array.isArray(run?.control) ? run.control : [];
+  const steps = Array.isArray(run?.steps) ? run.steps : [];
+  const traceCount = state.currentRunTrace.length || Number(run?.trace_events || run?.structured_events?.length || 0);
+  const toolCount = events.filter((event) => ["tool_call", "tool_result", "tool_status", "tool"].includes(event.type)).length;
+  const approvalCount = control.filter((item) => item.status === "approval_required").length + steps.filter((step) => step.status === "waiting_approval").length;
+  const usage = run?.usage || run?.response?.usage || {};
+  let score = 24;
+  if (run?.id) score += 12;
+  if (traceCount) score += Math.min(18, traceCount * 3);
+  if (toolCount) score += Math.min(14, toolCount * 3);
+  if (formatUsage(usage) !== "-") score += 12;
+  if (run?.response && !run?.response?.error) score += 12;
+  if (approvalCount) score -= 6;
+  if (status === "completed") score += 10;
+  if (status === "failed") score -= 14;
+  score = Math.max(8, Math.min(100, score));
+  const summary = [
+    `${run?.agent || "default"} · ${run?.channel || "local"}`,
+    `${traceCount} trace`,
+    `${toolCount} tool`,
+    approvalCount ? `${approvalCount} 审核门` : "审核 clear",
+  ].join(" · ");
+  return {
+    score,
+    tone: status,
+    traceCount,
+    toolCount,
+    approvalLabel: approvalCount ? `${approvalCount} 待确认` : "clear",
+    summary,
+  };
+}
+
 function renderRunTimeline(run) {
   const entries = buildRunTimelineEntries(run);
-  if (!entries.length) return `<div class="empty-state">No timeline data captured for this run.</div>`;
+  if (!entries.length) return `<div class="empty-state">这条运行还没有时间线数据。</div>`;
   return `<div class="run-timeline">${entries.map(renderRunTimelineEntry).join("")}</div>`;
 }
 
@@ -7241,16 +8823,16 @@ function buildRunTimelineEntries(run) {
     kind: "milestone",
     tone: runHealthGroup(run),
     at: run.started_at,
-    title: `Run ${run.status || "recorded"}`,
-    detail: `${run.agent || "default"} · ${run.channel || "local"} · ${run.id || "run"}`,
+    title: `运行${run.status ? `：${uiTerm(run.status)}` : "已记录"}`,
+    detail: `${run.agent || "默认 Agent"} · ${run.channel || "本地"} · ${run.id || "run"}`,
   });
   if (prompt) {
     entries.push({
       kind: "milestone",
       tone: "prompt",
       at: run.started_at,
-      title: "Prompt locked",
-      detail: "Prompt available in the explicit Prompt section.",
+      title: "Prompt 已锁定",
+      detail: "Prompt 可在明确的 Prompt 区域查看。",
     });
   }
   if (sessionID) {
@@ -7258,12 +8840,12 @@ function buildRunTimelineEntries(run) {
       kind: "milestone",
       tone: "session",
       at: run.started_at,
-      title: "Session linked",
+      title: "会话已关联",
       detail: sessionID,
       sessionID,
     });
   }
-  entries.push(...groupRunTimelineEvents(run.events || []));
+  entries.push(...groupRunTimelineEvents(run.events || [], run.structured_events || []));
   if (Object.keys(usage).length && !(run.events || []).some((event) => event.type === "usage")) {
     entries.push({
       kind: "usage",
@@ -7276,22 +8858,36 @@ function buildRunTimelineEntries(run) {
       kind: "milestone",
       tone: run.error || run.response?.error ? "failed" : "completed",
       at: run.ended_at || run.started_at,
-      title: run.error || run.response?.error ? "Run needs review" : "Run finished",
-      detail: run.error || run.response?.error || run.status || "Completed",
+      title: run.error || run.response?.error ? "运行需要复查" : "运行已完成",
+      detail: run.error || run.response?.error || uiTerm(run.status || "completed"),
     });
   }
   return entries;
 }
 
 function renderRunEvents(events) {
-  if (!events.length) return `<div class="empty-state">No events captured for this run.</div>`;
+  if (!events.length) return `<div class="empty-state">这条运行尚未捕获事件。</div>`;
   const entries = groupRunTimelineEvents(events);
   return `<div class="run-timeline">${entries.map(renderRunTimelineEntry).join("")}</div>`;
 }
 
-function groupRunTimelineEvents(events) {
+function structuredToolResultRedactions(structuredEvents) {
+  const redactions = new Map();
+  for (const event of structuredEvents || []) {
+    if (event?.type !== "tool_result") continue;
+    const data = event.data || {};
+    const tool = data.tool || "tool";
+    if (data.content_redacted === true) {
+      redactions.set(tool, { content_redacted: true });
+    }
+  }
+  return redactions;
+}
+
+function groupRunTimelineEvents(events, structuredEvents = []) {
   const entries = [];
   const openTools = new Map();
+  const redactedToolResults = structuredToolResultRedactions(structuredEvents);
   for (const event of events) {
     const data = event.data || {};
     const tool = data.tool || "tool";
@@ -7323,7 +8919,9 @@ function groupRunTimelineEvents(events) {
       };
       if (!openTools.has(tool)) entries.push(entry);
       entry.status = data.status || (data.is_error ? "error" : "completed");
-      entry.result = data.content ? safeRenderPayload({ content: data.content }) : null;
+      entry.result = redactedToolResults.get(tool) || (Object.prototype.hasOwnProperty.call(data, "content")
+        ? safeRenderPayload(data.content)
+        : null);
       entry.isError = data.is_error === true;
       entry.errorCategory = data.error_category || "";
       openTools.delete(tool);
@@ -7337,11 +8935,11 @@ function groupRunTimelineEvents(events) {
 function renderRunTimelineEntry(entry) {
   if (entry.kind === "milestone") {
     const action = entry.sessionID
-      ? `<button type="button" data-run-detail-open-session="${escapeHTML(entry.sessionID)}">Open linked session</button>`
+      ? `<button type="button" data-run-detail-open-session="${escapeHTML(entry.sessionID)}">打开关联会话</button>`
       : "";
     return `<article class="run-event run-milestone ${escapeHTML(entry.tone || "")}">
       <div class="run-event-header">
-        <strong>${escapeHTML(entry.title || "Milestone")}</strong>
+        <strong>${escapeHTML(entry.title || "里程碑")}</strong>
         <span>${escapeHTML(formatTimestamp(entry.at))}</span>
       </div>
       ${action ? `<div class="run-event-actions">${action}</div>` : ""}
@@ -7352,18 +8950,18 @@ function renderRunTimelineEntry(entry) {
     const status = entry.status || (entry.isError ? "error" : "completed");
     const resultText = entry.result ? formatToolPayload(entry.result) : "";
     const resultAction = resultText
-      ? `<button type="button" data-run-tool-copy-result="${escapeHTML(resultText)}">Copy result</button>`
+      ? `<button type="button" data-run-tool-copy-result="${escapeHTML(resultText)}">复制结果</button>`
       : "";
     return `<article class="run-event run-tool-event ${entry.isError ? "bad" : ""}">
       <div class="run-event-header">
         <strong>${escapeHTML(entry.tool)}</strong>
-        <span>${escapeHTML(status)} · ${escapeHTML(formatTimestamp(entry.at))}</span>
+        <span>${escapeHTML(uiTerm(status))} · ${escapeHTML(formatTimestamp(entry.at))}</span>
       </div>
       ${resultAction ? `<div class="run-event-actions">${resultAction}</div>` : ""}
       <div class="run-tool-grid">
         ${entry.args ? `<div><span>Args</span><pre>${escapeHTML(formatToolPayload(entry.args))}</pre></div>` : ""}
         ${resultText ? `<div><span>Result</span><pre>${escapeHTML(resultText)}</pre></div>` : ""}
-        ${entry.errorCategory ? `<div class="tool-meta">category: ${escapeHTML(entry.errorCategory)}</div>` : ""}
+        ${entry.errorCategory ? `<div class="tool-meta">分类：${escapeHTML(entry.errorCategory)}</div>` : ""}
       </div>
     </article>`;
   }
@@ -7380,15 +8978,15 @@ function renderRunTimelineEntry(entry) {
 function runEventLabel(type) {
   switch (type) {
     case "text":
-      return "Text";
+      return "文本";
     case "preamble":
-      return "Preamble";
+      return "前置说明";
     case "usage":
-      return "Usage";
+      return "用量";
     case "approval_needed":
-      return "Approval needed";
+      return "需要审批";
     case "approval_resolved":
-      return "Approval resolved";
+      return "审批已处理";
     default:
       return type || "Event";
   }
@@ -7429,26 +9027,26 @@ function pauseState(run) {
 
 function runRuntimeBadges(run) {
   const badges = [];
-  if (isRecoveredRun(run)) badges.push({ label: "recovered", tone: "recovered" });
+  if (isRecoveredRun(run)) badges.push({ label: "已恢复", tone: "recovered" });
   const replay = replayState(run);
-  if (replay === "approval") badges.push({ label: "replay approval", tone: "attention" });
-  if (replay === "approved") badges.push({ label: "replay approved", tone: "ok" });
+  if (replay === "approval") badges.push({ label: "重放待审批", tone: "attention" });
+  if (replay === "approved") badges.push({ label: "重放已批准", tone: "ok" });
   const pause = pauseState(run);
-  if (pause) badges.push({ label: pause, tone: pause === "paused" ? "attention" : "neutral" });
+  if (pause) badges.push({ label: uiTerm(pause), tone: pause === "paused" ? "attention" : "neutral" });
   const traceCount = Number(run?.trace_events || run?.structured_events?.length || 0);
-  if (traceCount > 0) badges.push({ label: `${traceCount} trace`, tone: "trace" });
+  if (traceCount > 0) badges.push({ label: `${traceCount} 条 Trace`, tone: "trace" });
   return badges;
 }
 
 function renderRuntimeRecovery(run) {
   const traceCount = state.currentRunTrace.length || Number(run?.trace_events || run?.structured_events?.length || 0);
   const items = [
-    ["Restart state", isRecoveredRun(run) ? "Recovered from durable store" : "Current daemon state"],
-    ["Replay", replayStateLabel(replayState(run))],
-    ["Pause / resume", pauseState(run) || "No pause boundary"],
-    ["Workflow steps", String((run?.steps || []).length)],
-    ["Control decisions", String((run?.control || []).length)],
-    ["Trace events", String(traceCount)],
+    ["重启状态", isRecoveredRun(run) ? "已从持久存储恢复" : "当前 daemon 状态"],
+    ["重放", replayStateLabel(replayState(run))],
+    ["暂停 / 恢复", uiTerm(pauseState(run) || "无暂停边界")],
+    ["工作流步骤", String((run?.steps || []).length)],
+    ["控制决策", String((run?.control || []).length)],
+    ["Trace 事件", String(traceCount)],
   ];
   return `<div class="runtime-recovery-grid">${items.map(([label, value]) => `
     <div>
@@ -7460,41 +9058,41 @@ function renderRuntimeRecovery(run) {
 function replayStateLabel(value) {
   switch (value) {
     case "approval":
-      return "Waiting for replay approval";
+      return "等待重放审批";
     case "approved":
-      return "Replay approved or launched";
+      return "重放已批准或已发起";
     default:
-      return "No replay boundary";
+      return "无重放边界";
   }
 }
 
 function renderWorkflowSteps(steps) {
-  if (!steps.length) return `<div class="empty-state">No workflow steps recorded.</div>`;
+  if (!steps.length) return `<div class="empty-state">尚未记录工作流步骤。</div>`;
   return `<div class="runtime-table">${steps.map((step) => `
     <article>
       <div>
-        <strong>${escapeHTML(step.title || step.id || "Workflow step")}</strong>
-        <span>${escapeHTML(step.status || "unknown")} · ${escapeHTML(formatTimestamp(step.updated_at))}</span>
+        <strong>${escapeHTML(step.title || step.id || "工作流步骤")}</strong>
+        <span>${escapeHTML(uiTerm(step.status || "unknown"))} · ${escapeHTML(formatTimestamp(step.updated_at))}</span>
       </div>
       ${step.metadata ? `<pre>${escapeHTML(formatToolPayload(safeRenderPayload(step.metadata)))}</pre>` : ""}
     </article>`).join("")}</div>`;
 }
 
 function renderControlHistory(control) {
-  if (!control.length) return `<div class="empty-state">No control decisions recorded.</div>`;
+  if (!control.length) return `<div class="empty-state">尚未记录控制决策。</div>`;
   return `<div class="runtime-table">${control.map((item) => `
     <article>
       <div>
-        <strong>${escapeHTML(item.action || "control")}</strong>
-        <span>${escapeHTML(item.status || "unknown")} · ${escapeHTML(formatTimestamp(item.at))}</span>
+        <strong>${escapeHTML(item.action || "控制")}</strong>
+        <span>${escapeHTML(uiTerm(item.status || "unknown"))} · ${escapeHTML(formatTimestamp(item.at))}</span>
       </div>
       ${item.reason ? `<p>${escapeHTML(item.reason)}</p>` : ""}
     </article>`).join("")}</div>`;
 }
 
 function renderRunTrace(trace, error) {
-  if (error) return `<div class="error-state">Trace unavailable: ${escapeHTML(error)}</div>`;
-  if (!trace.length) return `<div class="empty-state">No structured trace events recorded.</div>`;
+  if (error) return `<div class="error-state">Trace 不可用：${escapeHTML(error)}</div>`;
+  if (!trace.length) return `<div class="empty-state">尚未记录结构化 Trace 事件。</div>`;
   return `<div class="runtime-table trace-table">${trace.map((item) => `
     <article>
       <div>
@@ -7609,6 +9207,7 @@ async function submitChat(event) {
     showToast("Enter a prompt first.");
     return;
   }
+  if (!ensureProviderReadyForLaunch("对话")) return;
   const output = $("chat-output");
   const stateLabel = $("chat-state");
   state.toolEvents.clear();
@@ -7641,6 +9240,7 @@ async function submitChat(event) {
       usage: result?.usage || state.liveRun.usage,
       latest: "Run complete",
     });
+    setStarMapActivity("complete");
     renderRunSummary(result, payload);
     if (result?.session_id) {
       state.activeSessionID = result.session_id;
@@ -7657,10 +9257,12 @@ async function submitChat(event) {
       appendMessage("system", "Run cancelled.");
       stateLabel.textContent = "Cancelled";
       updateLiveRunStatus({ state: "cancelled", latest: "Cancel requested" });
+      setStarMapActivity("error", { label: "route cancelled" });
     } else {
       appendMessage("error", error.message);
       stateLabel.textContent = "Error";
       updateLiveRunStatus({ state: "error", latest: error.message || "Stream error" });
+      setStarMapActivity("error");
     }
   } finally {
     state.activeRequestID = "";
@@ -7696,6 +9298,14 @@ function messageRoleLabel(role) {
 
 function appendToolEvent(data, eventType) {
   const tool = data.tool || "tool";
+  const failed = data.is_error === true || data.status === "error";
+  if (failed) {
+    setStarMapActivity("error", { label: "tool route broken" });
+  } else if (eventType === "tool_call") {
+    setStarMapActivity("tool", { label: "tool link" });
+  } else if (eventType === "tool_result" || eventType === "tool") {
+    setStarMapActivity("artifact", { label: "artifact forming" });
+  }
   let event = state.toolEvents.get(tool);
   if (!event || eventType === "tool_call") {
     event = document.createElement("details");
@@ -7740,29 +9350,30 @@ function renderApprovalCard(data) {
   card.innerHTML = approvalCardHTML(data, "pending");
   $("chat-output").appendChild(card);
   state.approvals.set(requestID, { data, element: card });
+  setStarMapActivity("approval");
   renderHomeActivity();
-  $("chat-state").textContent = "Approval required";
+  $("chat-state").textContent = "需要确认";
   scrollConversationToBottom();
 }
 
 function approvalCardHTML(data, status) {
   const args = data.args ? formatToolPayload(data.args) : "";
-  const reason = data.reason || "Approval required";
-  const statusLabel = status === "pending" ? "pending" : status;
+  const reason = data.reason || "需要确认";
+  const statusLabel = status === "pending" ? "待确认" : status === "allowed" ? "已允许" : status === "denied" ? "已拒绝" : status;
   const disabled = status === "pending" ? "" : "disabled";
   return `<div class="approval-header">
-    <span>Approval required</span>
+    <span>需要人工确认</span>
     <strong>${escapeHTML(statusLabel)}</strong>
   </div>
   <div class="approval-body">
-    <div><span>Tool</span><strong>${escapeHTML(data.tool || "tool")}</strong></div>
-    <div><span>Reason</span><strong>${escapeHTML(reason)}</strong></div>
+    <div><span>工具</span><strong>${escapeHTML(data.tool || "tool")}</strong></div>
+    <div><span>原因</span><strong>${escapeHTML(reason)}</strong></div>
     ${data.agent ? `<div><span>Agent</span><strong>${escapeHTML(data.agent)}</strong></div>` : ""}
     ${args ? `<pre>${escapeHTML(args)}</pre>` : ""}
   </div>
   <div class="approval-actions">
-    <button class="primary-button" data-approval-decision="allow" data-approval-id="${escapeHTML(data.request_id || "")}" ${disabled}>Allow</button>
-    <button class="danger-button" data-approval-decision="deny" data-approval-id="${escapeHTML(data.request_id || "")}" ${disabled}>Deny</button>
+    <button class="primary-button" data-approval-decision="allow" data-approval-id="${escapeHTML(data.request_id || "")}" ${disabled}>允许</button>
+    <button class="danger-button" data-approval-decision="deny" data-approval-id="${escapeHTML(data.request_id || "")}" ${disabled}>拒绝</button>
   </div>`;
 }
 
@@ -7775,6 +9386,9 @@ function markApprovalResolved(data) {
   item.element.classList.add(status);
   item.element.innerHTML = approvalCardHTML(item.data, status);
   state.approvals.delete(requestID);
+  setStarMapActivity(status === "allowed" ? "complete" : "error", {
+    label: status === "allowed" ? "gate cleared" : "gate denied",
+  });
   $("chat-state").textContent = status === "allowed" ? "Approval allowed" : "Approval denied";
   renderHomeActivity();
   renderApprovalCenter();
@@ -7872,21 +9486,21 @@ function renderRunSummary(result, payload) {
   const card = document.createElement("div");
   card.className = "run-summary";
   const openSessionAction = sessionID
-    ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">Open session</button>`
+    ? `<button type="button" data-run-summary-session="${escapeHTML(sessionID)}">打开会话</button>`
     : "";
   const openRunAction = requestID && requestID !== "-"
-    ? `<button type="button" data-run-summary-run="${escapeHTML(requestID)}">Open run</button>`
+    ? `<button type="button" data-run-summary-run="${escapeHTML(requestID)}">观测运行</button>`
     : "";
-  card.innerHTML = `<div class="run-summary-title">Run summary</div>
+  card.innerHTML = `<div class="run-summary-title">运行摘要</div>
     <div class="run-summary-grid">
       <span>Session</span><strong>${escapeHTML(sessionID || "-")}</strong>
       <span>Agent</span><strong>${escapeHTML(agent)}</strong>
-      <span>Usage</span><strong>${escapeHTML(usageText)}</strong>
-      <span>Request</span><strong>${escapeHTML(requestID)}</strong>
+      <span>用量</span><strong>${escapeHTML(usageText)}</strong>
+      <span>Run ID</span><strong>${escapeHTML(requestID)}</strong>
     </div>
     <div class="run-summary-actions">
-      <button type="button" data-run-summary-copy="${escapeHTML(summaryText)}">Copy summary</button>
-      <button type="button" data-run-follow-up="${escapeHTML(runFollowUpPrompt(run))}">Suggest follow-up</button>
+      <button type="button" data-run-summary-copy="${escapeHTML(summaryText)}">复制摘要</button>
+      <button type="button" data-run-follow-up="${escapeHTML(runFollowUpPrompt(run))}">起草后续</button>
       ${openRunAction}
       ${openSessionAction}
     </div>`;
@@ -7898,12 +9512,15 @@ function chatStreamRenderer(assistantMessage) {
     appendText(text) {
       appendAssistantText(assistantMessage, text);
       updateLiveRunStatus({ state: "running", latest: "Streaming text" });
+      setStarMapActivity("running", { label: "text stream" });
     },
     appendEvent(eventType, data) {
       if (eventType === "session_started") {
         updateLiveRunStatus({ sessionID: data.session_id || data.id || state.liveRun.sessionID, latest: "Session started" });
+        setStarMapActivity("context", { label: "session linked" });
       } else if (eventType === "usage") {
         updateLiveRunStatus({ usage: data, latest: "Usage updated" });
+        setStarMapActivity("context", { label: "usage observed" });
       } else if (eventType === "tool_call" || eventType === "tool_result" || eventType === "tool") {
         const label = data.tool || data.name || eventType;
         updateLiveRunStatus({ latest: `${eventType}: ${label}` });
@@ -8091,6 +9708,10 @@ function submitHomeTask(event) {
     showToast("Enter a mission first.");
     return;
   }
+  if (!ensureProviderReadyForLaunch("任务")) return;
+  document.querySelectorAll(".home-disclosure[open]").forEach((disclosure) => {
+    disclosure.open = false;
+  });
   state.workflowStage = "running";
   state.workflowStageLabel = text;
   renderWorkflowStageRail();
@@ -8102,6 +9723,27 @@ function submitHomeTask(event) {
   updateActiveSessionLabel();
   $("home-task-input").value = "";
   $("chat-form").requestSubmit();
+}
+
+function applyRailCollapsed(collapsed) {
+  state.railCollapsed = Boolean(collapsed);
+  const shell = document.querySelector(".shell");
+  shell?.classList.toggle("rail-collapsed", state.railCollapsed);
+  const button = $("rail-toggle-button");
+  if (button) {
+    button.setAttribute("aria-expanded", String(!state.railCollapsed));
+    button.setAttribute("aria-label", state.railCollapsed ? "展开侧边栏" : "收起侧边栏");
+    button.textContent = state.railCollapsed ? "›" : "‹";
+  }
+}
+
+function toggleRailCollapsed() {
+  applyRailCollapsed(!state.railCollapsed);
+  try {
+    localStorage.setItem("astriaRailCollapsed", state.railCollapsed ? "1" : "0");
+  } catch {
+    // Local preference only; ignore restricted storage.
+  }
 }
 
 async function toggleSchedule(id, enabled) {
@@ -8128,7 +9770,7 @@ async function deleteSchedule(id) {
 async function deleteSession(id) {
   const session = state.sessions.find((item) => item.id === id);
   const label = session?.title || id;
-  if (!globalThis.confirm(`Delete session "${label}"?`)) return;
+  if (!globalThis.confirm(`删除会话 "${label}"？`)) return;
   try {
     await api(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (state.activeSessionID === id) {
@@ -8738,13 +10380,13 @@ document.addEventListener("click", (event) => {
   const runFollowUp = event.target.closest("[data-run-follow-up]");
   if (runFollowUp) {
     seedMissionPrompt(runFollowUp.dataset.runFollowUp || "");
-    showToast("Follow-up prompt drafted.");
+    showToast("后续 Prompt 已起草。");
     return;
   }
 
   const agentTestCopySummary = event.target.closest("[data-agent-test-copy-summary]");
   if (agentTestCopySummary) {
-    copyText(agentTestCopySummary.dataset.agentTestCopySummary, "Agent test summary copied.")
+    copyText(agentTestCopySummary.dataset.agentTestCopySummary, "Agent 测试摘要已复制。")
       .then(() => markButtonCopied(agentTestCopySummary))
       .catch((error) => showToast(error.message));
     return;
@@ -8871,7 +10513,22 @@ document.addEventListener("click", (event) => {
 $("refresh-button").addEventListener("click", refreshAll);
 $("new-chat-button").addEventListener("click", startNewChat);
 $("command-center-button").addEventListener("click", openCommandCenter);
+$("rail-toggle-button").addEventListener("click", toggleRailCollapsed);
 $("command-center-input").addEventListener("input", renderCommandCenterList);
+document.querySelectorAll(".home-disclosure").forEach((disclosure) => {
+  disclosure.addEventListener("beforetoggle", (event) => {
+    if (event.newState !== "open") return;
+    document.querySelectorAll(".home-disclosure").forEach((other) => {
+      if (other !== disclosure) other.open = false;
+    });
+  });
+  disclosure.addEventListener("toggle", () => {
+    if (!disclosure.open) return;
+    document.querySelectorAll(".home-disclosure").forEach((other) => {
+      if (other !== disclosure) other.open = false;
+    });
+  });
+});
 document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
@@ -8900,7 +10557,26 @@ $("chat-input").addEventListener("keydown", handleChatInputKeydown);
 $("stop-button").addEventListener("click", cancelActiveRun);
 $("schedule-form").addEventListener("submit", submitSchedule);
 $("config-form").addEventListener("submit", submitConfig);
-$("config-provider").addEventListener("change", updateProviderFields);
+$("config-provider").addEventListener("change", () => {
+  updateProviderFields();
+  renderConnectorTestState({ status: "idle", detail: "有未保存的连接改动；保存后再检查连接。" });
+});
+$("config-test-button").addEventListener("click", testProviderConnection);
+[
+  "config-endpoint",
+  "config-model-tier",
+  "config-api-key",
+  "config-openai-endpoint",
+  "config-openai-model",
+  "config-openai-api-key",
+  "config-ollama-endpoint",
+  "config-ollama-model",
+].forEach((id) => {
+  $(id)?.addEventListener("input", () => {
+    renderConnectorSetupCard(state.config || {});
+    renderConnectorTestState({ status: "idle", detail: "有未保存的连接改动；保存后再检查连接。" });
+  });
+});
 $("mcp-form").addEventListener("submit", submitMCPServer);
 $("mcp-type").addEventListener("change", updateMCPTransportFields);
 $("mcp-new-button").addEventListener("click", beginMCPCreate);
@@ -9035,6 +10711,11 @@ $("citation-evidence-level").addEventListener("input", (event) => {
   renderWorkspaceSnapshotPlanner();
 });
 
+try {
+  applyRailCollapsed(localStorage.getItem("astriaRailCollapsed") === "1");
+} catch {
+  applyRailCollapsed(false);
+}
 renderHomeMode();
 renderStrategyMatrix();
 renderFileIntake();

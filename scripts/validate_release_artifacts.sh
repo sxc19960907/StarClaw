@@ -1475,6 +1475,10 @@ if "$NPM_ONLY"; then
     run_astria_sandbox_updater_rollback_rehearsal_smoke
     echo "==> checking Astria local shell"
     "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
+    echo "==> checking Astria desktop window layout"
+    "$ROOT_DIR/scripts/smoke_macos_astria_window_layout.sh"
+    echo "==> checking Astria local DMG"
+    "$ROOT_DIR/scripts/smoke_macos_astria_dmg.sh"
   fi
   echo "validate_release_artifacts: ok"
   exit 0
@@ -1528,6 +1532,10 @@ if "$ASTRIA_LOCAL"; then
   run_astria_sandbox_updater_rollback_rehearsal_smoke
   echo "==> checking Astria local shell"
   "$ROOT_DIR/scripts/smoke_macos_astria_shell.sh"
+  echo "==> checking Astria desktop window layout"
+  "$ROOT_DIR/scripts/smoke_macos_astria_window_layout.sh"
+  echo "==> checking Astria local DMG"
+  "$ROOT_DIR/scripts/smoke_macos_astria_dmg.sh"
 fi
 
 echo "validate_release_artifacts: ok"

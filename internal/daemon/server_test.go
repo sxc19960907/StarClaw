@@ -1339,6 +1339,31 @@ func TestHandleConfigGetPatch(t *testing.T) {
 	}
 }
 
+func TestReadDaemonConfigAppliesRuntimeDefaultsForThinConfig(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`provider: anthropic`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := readDaemonConfig(configPath, &config.Config{})
+	if err != nil {
+		t.Fatalf("read daemon config: %v", err)
+	}
+	if cfg.Provider != "anthropic" {
+		t.Fatalf("provider = %q, want anthropic", cfg.Provider)
+	}
+	if cfg.Agent.MaxIterations != 25 {
+		t.Fatalf("max_iterations = %d, want 25", cfg.Agent.MaxIterations)
+	}
+	if cfg.Agent.MaxTokens != 8192 {
+		t.Fatalf("max_tokens = %d, want 8192", cfg.Agent.MaxTokens)
+	}
+	if cfg.Tools.ResultTruncation != 30000 {
+		t.Fatalf("result_truncation = %d, want 30000", cfg.Tools.ResultTruncation)
+	}
+}
+
 func TestHandleConfigGetRedactsYAMLSecrets(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")
@@ -1462,6 +1487,197 @@ openai_model: old-model
 	}
 	if deps.Config.Provider != "ollama" || deps.Config.OllamaModel != "llama3.2" {
 		t.Fatalf("in-memory config not refreshed: %+v", deps.Config)
+	}
+}
+
+func TestHandleConfigTestNeedsSetup(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`provider: anthropic`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{Provider: "anthropic"}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/config/test", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("POST /config/test: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var body configConnectionTestResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Status != "needs_setup" {
+		t.Fatalf("status = %q, want needs_setup: %+v", body.Status, body)
+	}
+	if body.Code != "missing_fields" {
+		t.Fatalf("code = %q, want missing_fields: %+v", body.Code, body)
+	}
+	if !strings.Contains(body.Detail, "Base URL") || !strings.Contains(body.Detail, "Model") || !strings.Contains(body.Detail, "API key") {
+		t.Fatalf("detail should name missing fields, got %q", body.Detail)
+	}
+}
+
+func TestHandleConfigTestOpenAICompatibleSuccessWithV1BaseURL(t *testing.T) {
+	var seenPath string
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenPath = r.URL.Path
+		if r.Method != http.MethodPost {
+			t.Fatalf("provider method = %s, want POST", r.Method)
+		}
+		if r.Header.Get("Authorization") != "Bearer test-secret" {
+			t.Fatalf("provider authorization header missing")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id": "chatcmpl-test",
+			"choices": [{
+				"message": {"role": "assistant", "content": "ok"},
+				"finish_reason": "stop"
+			}]
+		}`))
+	}))
+	defer provider.Close()
+
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(`
+provider: openai
+openai_api_key: test-secret
+openai_endpoint: `+provider.URL+`/v1
+openai_model: test-model
+`), 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	deps := newTestServerDeps(t)
+	deps.StarclawDir = dir
+	deps.ConfigPath = configPath
+	deps.Config = &config.Config{}
+	s := newTestServer(t, deps)
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/config/test", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("POST /config/test: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	var body configConnectionTestResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Status != "ready" {
+		t.Fatalf("status = %q, want ready: %+v", body.Status, body)
+	}
+	if body.Code != "ok" {
+		t.Fatalf("code = %q, want ok: %+v", body.Code, body)
+	}
+	if seenPath != "/v1/chat/completions" {
+		t.Fatalf("provider path = %q, want /v1/chat/completions", seenPath)
+	}
+}
+
+func TestHandleConfigTestOpenAICompatibleFailureCodes(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		body       string
+		wantCode   string
+		wantNoLeak string
+	}{
+		{
+			name:       "auth failure redacts key",
+			statusCode: http.StatusUnauthorized,
+			body:       `{"error":{"message":"bad key Bearer test-secret"}}`,
+			wantCode:   "auth_failed",
+			wantNoLeak: "test-secret",
+		},
+		{
+			name:       "model not found",
+			statusCode: http.StatusNotFound,
+			body:       `{"error":{"message":"model not found"}}`,
+			wantCode:   "model_not_found",
+		},
+		{
+			name:       "rate limited",
+			statusCode: http.StatusTooManyRequests,
+			body:       `{"error":{"message":"too many requests"}}`,
+			wantCode:   "rate_limited",
+		},
+		{
+			name:       "provider unavailable",
+			statusCode: http.StatusBadGateway,
+			body:       `{"error":{"message":"upstream unavailable"}}`,
+			wantCode:   "provider_unavailable",
+		},
+		{
+			name:       "invalid response",
+			statusCode: http.StatusOK,
+			body:       `{"choices":[]}`,
+			wantCode:   "invalid_response",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer provider.Close()
+
+			dir := t.TempDir()
+			configPath := filepath.Join(dir, "config.yaml")
+			if err := os.WriteFile(configPath, []byte(`
+provider: openai
+openai_api_key: test-secret
+openai_endpoint: `+provider.URL+`
+openai_model: test-model
+`), 0600); err != nil {
+				t.Fatalf("write config: %v", err)
+			}
+			deps := newTestServerDeps(t)
+			deps.StarclawDir = dir
+			deps.ConfigPath = configPath
+			deps.Config = &config.Config{}
+			s := newTestServer(t, deps)
+			ts := httptest.NewServer(s.Handler())
+			defer ts.Close()
+
+			resp, err := http.Post(ts.URL+"/config/test", "application/json", strings.NewReader(`{}`))
+			if err != nil {
+				t.Fatalf("POST /config/test: %v", err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			var body configConnectionTestResponse
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if body.Status != "error" {
+				t.Fatalf("status = %q, want error: %+v", body.Status, body)
+			}
+			if body.Code != tt.wantCode {
+				t.Fatalf("code = %q, want %q: %+v", body.Code, tt.wantCode, body)
+			}
+			if tt.wantNoLeak != "" && strings.Contains(body.Detail, tt.wantNoLeak) {
+				t.Fatalf("detail leaked secret %q: %q", tt.wantNoLeak, body.Detail)
+			}
+		})
 	}
 }
 

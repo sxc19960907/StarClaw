@@ -489,6 +489,9 @@ func (a *AgentLoop) Run(ctx context.Context, query string) (*client.Response, er
 
 			// Update session with final messages
 			if a.session != nil {
+				if strings.TrimSpace(resp.Content) != "" {
+					messages = append(messages, client.Message{Role: "assistant", Content: resp.Content})
+				}
 				a.session.Messages = stripPrivateMemoryFromMessages(messages)
 				a.session.UpdatedAt = time.Now()
 				if a.sessionMgr != nil {

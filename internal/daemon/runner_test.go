@@ -384,6 +384,51 @@ func TestRunAgent_RequestModelOverridesConfig(t *testing.T) {
 	}
 }
 
+func TestRunAgent_UsesCurrentConfigClientFactory(t *testing.T) {
+	ctx := context.Background()
+	staleClient := &mockLLMClient{t: t}
+	currentClient := &captureLLMClient{}
+	var factoryProvider string
+	deps := &ServerDeps{
+		StarclawDir: t.TempDir(),
+		Config: &config.Config{
+			Provider:       "openai",
+			OpenAIEndpoint: "http://127.0.0.1:17534",
+			OpenAIModel:    "fake-streaming-model",
+			OpenAIAPIKey:   "fake-key",
+			Agent: config.AgentConfig{
+				MaxIterations: 25,
+				MaxTokens:     8192,
+			},
+			Tools: config.ToolsConfig{ResultTruncation: 30000},
+		},
+		AgentsDir: t.TempDir(),
+		LLMClient: staleClient,
+		LLMClientFactory: func(cfg *config.Config) client.LLMClient {
+			factoryProvider = cfg.Provider
+			return currentClient
+		},
+		Registry: agent.NewToolRegistry(),
+	}
+
+	resp, err := RunAgent(ctx, deps, RunAgentRequest{Text: "hello"}, nil)
+	if err != nil {
+		t.Fatalf("RunAgent failed: %v", err)
+	}
+	if resp.Error != "" {
+		t.Fatalf("expected no response error, got %q", resp.Error)
+	}
+	if factoryProvider != "openai" {
+		t.Fatalf("factory provider = %q, want openai", factoryProvider)
+	}
+	if len(resp.Messages) != 1 || resp.Messages[0] != "captured" {
+		t.Fatalf("messages = %#v, want factory client response", resp.Messages)
+	}
+	if currentClient.maxTokens != 8192 {
+		t.Fatalf("factory client max tokens = %d, want 8192", currentClient.maxTokens)
+	}
+}
+
 func TestRunAgent_SurfacesBudgetStatus(t *testing.T) {
 	ctx := context.Background()
 	deps := &ServerDeps{

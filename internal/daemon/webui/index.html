@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
   </head>
   <body>
     <div class="shell">
-      <aside class="sidebar" aria-label="Workspace navigation">
+      <aside class="sidebar" aria-label="侧边快捷栏">
         <div class="window-dots" aria-hidden="true">
           <span></span>
           <span></span>
@@ -19,331 +19,471 @@
           <div class="brand-mark" aria-hidden="true">A</div>
           <div class="brand-copy">
             <strong>Astria</strong>
-            <span>Local celestial agent</span>
+            <span>本地 Agent 工作台</span>
           </div>
+          <button class="rail-toggle-button" id="rail-toggle-button" type="button" aria-label="收起侧边栏" aria-expanded="true">‹</button>
         </div>
 
-        <button class="new-chat-button" id="new-chat-button" type="button" aria-label="New mission">新任务</button>
+        <button class="new-chat-button" id="new-chat-button" type="button" aria-label="新任务"><span>＋</span>新任务</button>
 
-        <nav class="nav-list" aria-label="Primary">
-          <div class="nav-group">
-            <button class="nav-item active" data-panel="home" aria-label="Home">
-              <span><span class="nav-icon" aria-hidden="true">⌂</span>首页</span>
-              <small id="home-orbit-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="chat" aria-label="Chat">
-              <span><span class="nav-icon" aria-hidden="true">◌</span>消息</span>
-              <small id="daemon-pill">Checking</small>
-            </button>
-            <button class="nav-item" data-panel="runs" aria-label="Runs">
-              <span><span class="nav-icon" aria-hidden="true">◎</span>运行</span>
-              <small id="runs-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="quality" aria-label="Run Quality">
-              <span><span class="nav-icon" aria-hidden="true">◒</span>质量评估</span>
-              <small id="nav-quality-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="compare" aria-label="Compare">
-              <span><span class="nav-icon" aria-hidden="true">◈</span>比较</span>
-              <small id="nav-compare-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="promptlab" aria-label="Prompt Lab">
-              <span><span class="nav-icon" aria-hidden="true">✦</span>实验</span>
-              <small id="nav-promptlab-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="budget" aria-label="Budget Guard">
-              <span><span class="nav-icon" aria-hidden="true">◍</span>预算守卫</span>
-              <small id="nav-budget-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="reuse" aria-label="Reuse Gallery">
-              <span><span class="nav-icon" aria-hidden="true">✶</span>复用星库</span>
-              <small id="nav-reuse-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="results" aria-label="Result Library">
-              <span><span class="nav-icon" aria-hidden="true">☉</span>结果星库</span>
-              <small id="nav-results-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="playbooks" aria-label="Playbook Library">
-              <span><span class="nav-icon" aria-hidden="true">✵</span>实践手册</span>
-              <small id="nav-playbooks-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="starter" aria-label="Starter Kits">
-              <span><span class="nav-icon" aria-hidden="true">⋆</span>启动套件</span>
-              <small id="nav-starter-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="share" aria-label="Share Pack">
-              <span><span class="nav-icon" aria-hidden="true">✧</span>交接包</span>
-              <small id="nav-share-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="snapshot" aria-label="Workspace Snapshot">
-              <span><span class="nav-icon" aria-hidden="true">✹</span>快照包</span>
-              <small id="nav-snapshot-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="delivery" aria-label="Delivery">
-              <span><span class="nav-icon" aria-hidden="true">⇢</span>投递</span>
-              <small id="nav-delivery-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="inbox" aria-label="Inbox">
-              <span><span class="nav-icon" aria-hidden="true">◫</span>收件箱</span>
-              <small id="nav-inbox-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="agents" aria-label="Agents">
-              <span><span class="nav-icon" aria-hidden="true">✺</span>智能体</span>
-              <small id="nav-agents-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="schedules" aria-label="Schedules">
-              <span><span class="nav-icon" aria-hidden="true">◷</span>定时任务</span>
-              <small id="nav-schedules-count">0</small>
-            </button>
-            <button class="nav-item" data-home-action="publish" aria-label="Publish">
-              <span><span class="nav-icon" aria-hidden="true">⇧</span>发布资源</span>
-              <small>draft</small>
-            </button>
-          </div>
-          <div class="nav-group">
-            <div class="nav-kicker">能力</div>
-            <button class="nav-item" data-panel="skills" aria-label="Skills">
-              <span><span class="nav-icon" aria-hidden="true">✧</span>技能</span>
-              <small id="nav-skills-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="config" aria-label="Connectors">
-              <span><span class="nav-icon" aria-hidden="true">∞</span>连接器</span>
-              <small>setup</small>
-            </button>
-            <button class="nav-item" data-panel="browser" aria-label="Browser">
-              <span><span class="nav-icon" aria-hidden="true">◉</span>浏览器</span>
-              <small id="nav-browser-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="data" aria-label="Data Planner">
-              <span><span class="nav-icon" aria-hidden="true">⋇</span>数据洞察</span>
-              <small id="nav-data-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="mcp" aria-label="MCP Servers">
-              <span><span class="nav-icon" aria-hidden="true">▤</span>MCP 服务器</span>
-              <small id="nav-mcp-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="intake" aria-label="File Intake">
-              <span><span class="nav-icon" aria-hidden="true">▱</span>本地文件</span>
-              <small>vault</small>
-            </button>
-            <button class="nav-item" data-panel="memory" aria-label="Memory Map">
-              <span><span class="nav-icon" aria-hidden="true">✶</span>记忆星图</span>
-              <small id="nav-memory-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="sources" aria-label="Source Registry">
-              <span><span class="nav-icon" aria-hidden="true">⋱</span>来源登记</span>
-              <small id="nav-sources-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="reconcile" aria-label="Knowledge Reconciliation">
-              <span><span class="nav-icon" aria-hidden="true">⊚</span>知识校验</span>
-              <small id="nav-reconcile-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="citation" aria-label="Citation Planner">
-              <span><span class="nav-icon" aria-hidden="true">⌁</span>引用校准</span>
-              <small id="nav-citation-count">0</small>
-            </button>
-            <button class="nav-item" data-panel="council" aria-label="Agent Council">
-              <span><span class="nav-icon" aria-hidden="true">✷</span>智能体议会</span>
-              <small id="nav-council-count">0</small>
-            </button>
-          </div>
+        <nav class="nav-list" aria-label="主导航">
+          <span class="nav-rail-label">Workspace</span>
+          <button class="nav-item active" data-panel="home" aria-label="任务台">
+            <span><span class="nav-icon" aria-hidden="true">⌂</span>任务台</span>
+            <small id="home-orbit-count">0</small>
+          </button>
+          <button class="nav-item" data-panel="runs" aria-label="运行">
+            <span><span class="nav-icon" aria-hidden="true">◎</span>运行</span>
+            <small id="runs-count">0</small>
+          </button>
+          <button class="nav-item" data-panel="results" aria-label="产物">
+            <span><span class="nav-icon" aria-hidden="true">☉</span>产物</span>
+            <small id="nav-results-count">0</small>
+          </button>
+          <span class="nav-rail-label">Orbit</span>
+          <button class="nav-item" data-panel="memory" aria-label="上下文">
+            <span><span class="nav-icon" aria-hidden="true">✶</span>上下文</span>
+            <small id="nav-memory-count">0</small>
+          </button>
+          <button class="nav-item" data-panel="settings" aria-label="系统">
+            <span><span class="nav-icon" aria-hidden="true">⚙</span>系统</span>
+            <small id="settings-state">设置</small>
+          </button>
         </nav>
 
+        <div class="nav-metric-store" hidden aria-hidden="true">
+          <span id="daemon-pill">检查中</span>
+          <span id="manage-count">0</span>
+          <span id="nav-agents-count">0</span>
+          <span id="nav-budget-count">0</span>
+          <span id="nav-browser-count">0</span>
+          <span id="nav-citation-count">0</span>
+          <span id="nav-compare-count">0</span>
+          <span id="nav-council-count">0</span>
+          <span id="nav-data-count">0</span>
+          <span id="nav-delivery-count">0</span>
+          <span id="nav-diagnostics-state">检查</span>
+          <span id="nav-inbox-count">0</span>
+          <span id="nav-mcp-count">0</span>
+          <span id="nav-playbooks-count">0</span>
+          <span id="nav-promptlab-count">0</span>
+          <span id="nav-quality-count">0</span>
+          <span id="nav-reconcile-count">0</span>
+          <span id="nav-reuse-count">0</span>
+          <span id="nav-schedules-count">0</span>
+          <span id="nav-share-count">0</span>
+          <span id="nav-skills-count">0</span>
+          <span id="nav-snapshot-count">0</span>
+          <span id="nav-sources-count">0</span>
+          <span id="nav-starter-count">0</span>
+        </div>
+
         <div class="sidebar-section">
-          <div class="section-kicker">最近会话</div>
+          <div class="section-kicker">最近任务</div>
           <form class="search-form" id="session-search-form">
-            <input id="session-search" type="search" placeholder="Search">
-            <button type="button" id="session-search-clear">Clear</button>
+            <input id="session-search" type="search" placeholder="搜索">
+            <button type="button" id="session-search-clear">清除</button>
           </form>
           <div class="session-list" id="sessions-list"></div>
         </div>
 
-        <nav class="sidebar-footer" aria-label="Workspace tools">
-          <button class="nav-item" data-panel="manage" aria-label="Manage">
-            <span><span class="nav-icon" aria-hidden="true">⌘</span>管理</span>
-            <small id="manage-count">0</small>
+        <div class="sidebar-footer" aria-label="更多入口">
+          <button class="sidebar-tool-button" type="button" data-panel="manage" aria-label="更多">
+            <span><span class="nav-icon" aria-hidden="true">⌘</span>更多</span>
+            <small>二级功能</small>
           </button>
-          <button class="nav-item" data-panel="settings" aria-label="Settings">
-            <span><span class="nav-icon" aria-hidden="true">⚙</span>设置</span>
-            <small id="settings-state">Setup</small>
-          </button>
-          <button class="nav-item" data-panel="diagnostics" aria-label="Diagnostics">
-            <span><span class="nav-icon" aria-hidden="true">◇</span>诊断</span>
-            <small id="nav-diagnostics-state">Check</small>
-          </button>
-        </nav>
+        </div>
       </aside>
 
       <main class="workspace">
         <header class="topbar">
           <div class="title-block">
             <span class="crumb">Astria</span>
-            <h1 id="view-title">首页</h1>
+            <h1 id="view-title">任务台</h1>
           </div>
-          <div class="runtime-strip" aria-label="Daemon status">
-            <button class="command-center-button" id="command-center-button" type="button" aria-label="Open Command Center">Command</button>
-            <button class="diagnostics-chip" id="diagnostics-chip" type="button" data-panel="diagnostics">Checking diagnostics</button>
+          <div class="runtime-strip compact-runtime-strip" aria-label="Daemon status">
+            <button class="command-center-button" id="command-center-button" type="button" aria-label="打开快速指令">
+              <span>搜索任务、运行、Agent 或输入 Prompt</span>
+              <kbd>⌘ K</kbd>
+            </button>
+            <button class="diagnostics-chip" id="diagnostics-chip" type="button" data-panel="diagnostics">诊断检查中</button>
             <span class="status-chip"><strong id="metric-version">-</strong></span>
             <span id="metric-uptime">-</span>
-            <span><strong id="metric-active">-</strong> active</span>
-            <button id="refresh-button" title="Refresh data" aria-label="Refresh data">Refresh</button>
+            <span><strong id="metric-active">-</strong> 活跃</span>
+            <button class="topbar-icon-button" id="refresh-button" title="刷新数据" aria-label="刷新数据">↻</button>
           </div>
         </header>
 
         <section class="panel home-panel active" id="panel-home" aria-labelledby="home-heading">
           <div class="home-wrap">
-            <div class="home-hero">
-              <div class="home-brand-mark" aria-hidden="true">A</div>
-              <h2 id="home-heading">Astria Stellar Workbench</h2>
-              <p>在本地轨道上规划、运行、审查和复用任务结果。</p>
-            </div>
-
-            <div class="activity-strip" aria-label="Current activity">
-              <button class="activity-pill pending" type="button" data-panel="chat" title="Review pending approvals">
-                <span>待确认</span>
-                <strong id="home-count-pending">0</strong>
-              </button>
-              <button class="activity-pill running" type="button" data-panel="runs" title="Open active runs">
-                <span>进行中</span>
-                <strong id="home-count-running">0</strong>
-              </button>
-              <button class="activity-pill completed" type="button" data-panel="runs" title="Open completed runs">
-                <span>完成</span>
-                <strong id="home-count-completed">0</strong>
-              </button>
-              <button class="activity-pill failed" type="button" data-panel="runs" title="Open failed runs">
-                <span>失败</span>
-                <strong id="home-count-failed">0</strong>
-              </button>
-            </div>
-
-            <form class="mission-composer" id="home-task-form">
-              <div class="mission-mode-bar" id="home-mode-bar">
-                <div>
-                  <span id="home-mode-kicker">Mission mode</span>
-                  <strong id="home-mode-title">General mission</strong>
+            <div class="home-command-column">
+              <div class="home-hero">
+                <div class="home-brand-lockup">
+                  <div class="home-brand-mark" aria-hidden="true">A</div>
+                  <div>
+                    <span class="home-eyebrow">本地 Agent 观测台</span>
+                    <h2 id="home-heading">Astria 任务台</h2>
+                  </div>
                 </div>
-                <p id="home-mode-description">直接描述目标，Astria 会从当前工作区和默认智能体开始。</p>
-                <button type="button" id="home-mode-route" hidden>Open panel</button>
+                <p>把目标、上下文、工具和产物收束成一次可观察的运行。默认保持安静，Agent 活动时再点亮星链。</p>
+                <div class="home-brief-current" id="home-brief-current" data-panel="runs">
+                  <span>当前轨道</span>
+                  <strong id="home-brief-current-title">等待任务</strong>
+                  <small id="home-brief-current-detail">发起任务后显示最近运行、状态和 Agent。</small>
+                </div>
+                <div class="home-brief-metrics" aria-label="任务台概览指标">
+                  <button type="button" data-panel="runs">
+                    <span>运行</span>
+                    <strong id="home-brief-run-count">0</strong>
+                  </button>
+                  <button type="button" data-panel="agents">
+                    <span>Agent</span>
+                    <strong id="home-brief-agent-count">0</strong>
+                  </button>
+                  <button type="button" data-panel="mcp">
+                    <span>MCP</span>
+                    <strong id="home-brief-mcp-count">0</strong>
+                  </button>
+                  <button type="button" data-panel="chat">
+                    <span>待确认</span>
+                    <strong id="home-brief-pending-count">0</strong>
+                  </button>
+                </div>
+                <div class="home-brief-actions" aria-label="任务台快捷入口">
+                  <button type="button" data-panel="runs">观测运行</button>
+                  <button type="button" data-panel="intake">接入文件</button>
+                  <button type="button" data-panel="memory">沉淀记忆</button>
+                </div>
+                <div class="home-brief-queue" aria-label="任务台工作队列">
+                  <div class="home-brief-queue-head">
+                    <span>工作队列</span>
+                    <strong>可继续动作</strong>
+                  </div>
+                  <button type="button" data-recipe="code-review">
+                    <span>审查</span>
+                    <strong>复查当前改动</strong>
+                    <small>生成 findings、风险和验证清单。</small>
+                  </button>
+                  <button type="button" data-panel="results">
+                    <span>产物</span>
+                    <strong>检查可归档结果</strong>
+                    <small>把稳定输出转成复用材料。</small>
+                  </button>
+                  <button type="button" data-panel="diagnostics">
+                    <span>系统</span>
+                    <strong>确认运行环境</strong>
+                    <small>复查 provider、权限和本地状态。</small>
+                  </button>
+                </div>
               </div>
-              <div class="workflow-stage-rail" id="workflow-stage-rail" aria-label="Workflow stages"></div>
-              <textarea id="home-task-input" rows="4" placeholder="请输入任务，交给 Astria 来帮您完成"></textarea>
-              <div class="mission-controls">
-                <button class="ghost-icon-button" type="button" title="Attach context" aria-label="Attach context">⌘</button>
-                <span class="workdir-chip">在当前文件夹中工作</span>
-                <select id="home-agent" aria-label="Home agent">
-                  <option value="">Default agent</option>
-                </select>
-                <button class="primary-button send-orbit-button" type="submit" aria-label="Launch task">➤</button>
+
+              <form class="mission-composer" id="home-task-form">
+                <div class="mission-mode-bar" id="home-mode-bar">
+                  <div>
+                    <span id="home-mode-kicker">任务模式</span>
+                    <strong id="home-mode-title">通用任务</strong>
+                  </div>
+                  <p id="home-mode-description">直接描述目标，Astria 会从当前工作区和默认智能体开始。</p>
+                  <button type="button" id="home-mode-route" hidden>打开面板</button>
+                </div>
+                <div class="workflow-stage-rail" id="workflow-stage-rail" aria-label="Workflow stages"></div>
+                <textarea id="home-task-input" rows="4" placeholder="描述一个目标，让 Astria 在本地规划、执行并审查"></textarea>
+                <div class="mission-controls">
+                  <button class="ghost-icon-button" type="button" title="Attach context" aria-label="Attach context">⌘</button>
+                  <span class="workdir-chip">当前工作区 · 本地执行</span>
+                  <select id="home-agent" aria-label="Home agent">
+                    <option value="">默认 Agent</option>
+                  </select>
+                  <button class="primary-button send-orbit-button" type="submit" aria-label="Launch task">发起</button>
+                </div>
+              </form>
+
+              <div class="capability-ribbon" aria-label="Astria capabilities">
+                <button type="button" data-panel="schedules">定时</button>
+                <button type="button" data-home-action="browser">浏览器</button>
+                <button type="button" data-home-action="data">数据</button>
+                <button type="button" data-home-action="writing">撰写</button>
+                <button type="button" data-home-action="research">深度调研</button>
+                <button type="button" data-home-action="council">多 Agent</button>
+                <button type="button" data-home-action="desktop">电脑控制</button>
+                <button type="button" data-panel="intake">本地文件</button>
+                <button type="button" data-home-action="mcp">MCP</button>
               </div>
-            </form>
 
-            <div class="capability-ribbon" aria-label="Astria capabilities">
-              <button type="button" data-panel="schedules">定时</button>
-              <button type="button" data-home-action="browser">浏览器</button>
-              <button type="button" data-home-action="data">数据</button>
-              <button type="button" data-home-action="writing">撰写</button>
-              <button type="button" data-home-action="research">深度调研</button>
-              <button type="button" data-home-action="council">多智能体</button>
-              <button type="button" data-home-action="desktop">电脑控制</button>
-              <button type="button" data-panel="intake">本地文件</button>
-              <button type="button" data-home-action="mcp">MCP</button>
-            </div>
-
-            <div class="mission-board primary-mission-board" aria-label="Recommended next actions">
-              <div class="board-section">
-                <span class="board-kicker">Next orbit</span>
-                <button class="board-run" type="button" id="home-latest-run" data-panel="runs">
-                  <strong>暂无运行记录</strong>
-                  <small>开始一个任务后，这里会显示最近一次运行。</small>
+              <div class="home-suggestion-grid" aria-label="Recommended setup">
+                <button class="home-suggestion-card" type="button" data-panel="intake">
+                  <span>Context</span>
+                  <strong>导入上下文</strong>
+                  <small>先读取文档、仓库或归档，再进入任务。</small>
+                </button>
+                <button class="home-suggestion-card" type="button" data-panel="schedules">
+                  <span>辰刻</span>
+                  <strong>安排运行</strong>
+                  <small>让 Astria 在指定时间自动创建任务。</small>
+                </button>
+                <button class="home-suggestion-card" type="button" data-panel="memory">
+                  <span>Memory</span>
+                  <strong>沉淀记忆</strong>
+                  <small>把重要项目事实保存为可复用星体。</small>
                 </button>
               </div>
-              <div class="board-section">
-                <span class="board-kicker">Docked tools</span>
-                <div class="tool-orbit-list" id="home-tool-orbit">
-                  <button type="button" data-panel="skills"><strong>技能</strong><span id="home-skill-count">0</span></button>
-                  <button type="button" data-panel="agents"><strong>智能体</strong><span id="home-agent-count">0</span></button>
-                  <button type="button" data-panel="schedules"><strong>定时</strong><span id="home-schedule-count">0</span></button>
-                  <button type="button" data-panel="mcp"><strong>MCP</strong><span id="home-mcp-count">0</span></button>
-                  <button type="button" data-panel="memory"><strong>记忆</strong><span id="home-memory-count">0</span></button>
-                  <button type="button" data-panel="council"><strong>议会</strong><span id="home-council-count">0</span></button>
-                  <button type="button" data-panel="inbox"><strong>收件箱</strong><span id="home-inbox-count">0</span></button>
-                  <button type="button" data-panel="intake"><strong>文件</strong><span id="home-intake-count">local</span></button>
+            </div>
+
+            <section class="astria-map-column" aria-label="Astria star map">
+              <div class="astria-map-card">
+                <div class="map-card-header">
+                  <div>
+                    <span class="board-kicker">星图</span>
+                    <strong>当前任务星域</strong>
+                  </div>
+                  <span class="map-state-chip" data-star-map-status>静默星图</span>
+                </div>
+                <div class="astria-star-map" data-star-map data-star-state="calm" aria-hidden="true">
+                  <div class="orbit-ring orbit-ring-one"></div>
+                  <div class="orbit-ring orbit-ring-two"></div>
+                  <div class="orbit-line orbit-line-context" data-star-link="context"></div>
+                  <div class="orbit-line orbit-line-tool" data-star-link="tool"></div>
+                  <div class="orbit-line orbit-line-artifact" data-star-link="artifact"></div>
+                  <div class="orbit-packet orbit-packet-context" data-star-packet="context"></div>
+                  <div class="orbit-packet orbit-packet-tool" data-star-packet="tool"></div>
+                  <div class="orbit-packet orbit-packet-artifact" data-star-packet="artifact"></div>
+                  <div class="star-decay-field" data-star-decay-field aria-hidden="true"></div>
+                  <span class="companion-orbit" data-companion-orbit aria-hidden="true"><i></i></span>
+                  <span class="memory-comet" data-memory-comet aria-hidden="true"></span>
+                  <span class="memory-star" data-memory-star aria-hidden="true"></span>
+                  <div class="star-node star-target" data-star-node="target">
+                    <i></i>
+                    <span>目标</span>
+                    <small>M0.2</small>
+                  </div>
+                  <div class="star-node star-context" data-star-node="context">
+                    <i></i>
+                    <span>上下文</span>
+                    <small>Kocoro / macOS</small>
+                  </div>
+                  <div class="star-node star-tool" data-star-node="tool">
+                    <i></i>
+                    <span>工具</span>
+                    <small>MCP / Web UI</small>
+                  </div>
+                  <div class="star-node star-artifact" data-star-node="artifact">
+                    <i></i>
+                    <span>产物</span>
+                    <small>Prototype → Code</small>
+                  </div>
+                  <div class="star-node star-gate" data-star-node="gate">
+                    <i></i>
+                    <span>确认</span>
+                    <small>Review gate</small>
+                  </div>
+                  <div class="mission-object-card" data-mission-object-card>
+                    <span>Current mission</span>
+                    <strong data-mission-object-title>重新设计 Astria 的星辰工作台</strong>
+                    <small data-mission-object-detail>星图负责关系判断；观测日志负责过程证据。</small>
+                    <div class="mission-object-tags">
+                      <em data-mission-object-target>target</em>
+                      <em data-mission-object-context>context</em>
+                      <em data-mission-object-tool>tool</em>
+                      <em data-mission-object-artifact>artifact</em>
+                    </div>
+                  </div>
+                  <div class="mission-orbit-panel" data-mission-orbit-panel>
+                    <span>Run orbit</span>
+                    <strong data-mission-orbit-percent>0%</strong>
+                    <small data-mission-orbit-label>等待发起</small>
+                    <i><b data-mission-orbit-meter style="width: 0%"></b></i>
+                  </div>
+                  <div class="mission-map-grid" aria-hidden="true">
+                    <span>TARGET</span>
+                    <span>CONTEXT</span>
+                    <span>TOOL</span>
+                    <span>ARTIFACT</span>
+                  </div>
+                  <div class="focus-trail" data-focus-trail>target / context</div>
+                  <span class="causal-chip causal-context" data-causal-chip="context">context wakes tool</span>
+                  <span class="causal-chip causal-edit" data-causal-chip="edit">edit forms artifact</span>
+                  <span class="causal-chip causal-retry" data-causal-chip="retry">retry replots orbit</span>
+                  <div class="link-health" data-link-health aria-hidden="true">
+                    <div class="health-row stable"><span>active</span><i data-health-active></i><b data-health-active-label>0</b></div>
+                    <div class="health-row wait"><span>review</span><i data-health-review></i><b data-health-review-label>0</b></div>
+                    <div class="health-row decay"><span>remote</span><i data-health-decay></i><b data-health-decay-label>0</b></div>
+                  </div>
+                  <div class="run-sequence">
+                    <span data-star-step="target" class="active">目标</span>
+                    <span data-star-step="context">上下文</span>
+                    <span data-star-step="tool">工具</span>
+                    <span data-star-step="artifact">产物</span>
+                    <span data-star-step="gate">确认</span>
+                  </div>
+                </div>
+                <div class="star-legend">
+                  <span><i></i>星 = 工作对象</span>
+                  <span><i></i>辰 = 阶段与时序</span>
+                  <span><i></i>亮度 = 活动强度</span>
                 </div>
               </div>
-            </div>
 
-            <div class="focus-brief primary-focus-brief" id="focus-brief" aria-label="Current mission focus">
-              <div>
-                <span class="board-kicker">Focus Brief</span>
-                <strong>当前任务焦点</strong>
+                <div class="observation-log" aria-label="Observation log">
+                  <div class="map-card-header">
+                    <div>
+                      <span class="board-kicker">观测日志</span>
+                      <strong>运行事件序列</strong>
+                    </div>
+                    <button type="button" data-panel="runs">查看运行</button>
+                  </div>
+                <div id="home-observation-log">
+                  <div class="observation-row">
+                    <span>OBS-1</span>
+                    <strong>目标星锁定</strong>
+                    <small>等待用户发起任务，生成第一条运行轨道。</small>
+                  </div>
+                  <div class="observation-row">
+                    <span>OBS-2</span>
+                    <strong>上下文星待命</strong>
+                    <small>本地文件、记忆、MCP 与 Agent 将按需接入。</small>
+                  </div>
+                  <div class="observation-row">
+                    <span>OBS-3</span>
+                    <strong>活动叠层待命</strong>
+                    <small>后续会由 tool_call、file_edit、memory.saved 等真实事件驱动。</small>
+                  </div>
+                </div>
               </div>
-              <p>选择工作流或恢复最近工作后，这里会汇总阶段、会话、运行和下一步动作。</p>
-            </div>
+            </section>
 
-            <div class="home-disclosure-stack" aria-label="Secondary workbench areas">
+            <aside class="home-status-column" aria-label="Astria inspector">
+              <div class="mission-inspector" id="home-mission-inspector" aria-label="任务检查器">
+                <div class="mission-inspector-head">
+                  <div>
+                    <span class="board-kicker">Inspector</span>
+                    <strong>等待任务星体</strong>
+                  </div>
+                  <span>local</span>
+                </div>
+                <div class="mission-inspector-body">
+                  <div class="mission-inspector-card">
+                    <strong>暂无活动运行</strong>
+                    <small>发起任务后，这里会显示真实 run、trace、上下文和审核状态。</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="activity-strip" aria-label="当前活动">
+                <button class="activity-pill pending" type="button" data-panel="chat" title="复查待确认事项">
+                  <span>待确认</span>
+                  <strong id="home-count-pending">0</strong>
+                </button>
+                <button class="activity-pill running" type="button" data-panel="runs" title="打开活跃运行">
+                  <span>进行中</span>
+                  <strong id="home-count-running">0</strong>
+                </button>
+                <button class="activity-pill completed" type="button" data-panel="runs" title="打开已完成运行">
+                  <span>完成</span>
+                  <strong id="home-count-completed">0</strong>
+                </button>
+                <button class="activity-pill failed" type="button" data-panel="runs" title="打开失败运行">
+                  <span>失败</span>
+                  <strong id="home-count-failed">0</strong>
+                </button>
+              </div>
+
+              <div class="home-secondary-workbench" aria-label="二级工作台区域">
+              <div class="mission-board primary-mission-board" aria-label="推荐下一步动作">
+                <div class="board-section">
+                  <span class="board-kicker">下一轨道</span>
+                  <button class="board-run" type="button" id="home-latest-run" data-panel="runs">
+                    <strong>暂无运行记录</strong>
+                    <small>开始一个任务后，这里会显示最近一次运行。</small>
+                  </button>
+                </div>
+                <div class="board-section">
+                  <span class="board-kicker">已连接能力</span>
+                  <div class="tool-orbit-list" id="home-tool-orbit">
+                    <button type="button" data-panel="skills"><strong>技能</strong><span id="home-skill-count">0</span></button>
+                    <button type="button" data-panel="agents"><strong>智能体</strong><span id="home-agent-count">0</span></button>
+                    <button type="button" data-panel="schedules"><strong>定时</strong><span id="home-schedule-count">0</span></button>
+                    <button type="button" data-panel="mcp"><strong>MCP</strong><span id="home-mcp-count">0</span></button>
+                    <button type="button" data-panel="memory"><strong>记忆</strong><span id="home-memory-count">0</span></button>
+                    <button type="button" data-panel="council"><strong>议会</strong><span id="home-council-count">0</span></button>
+                    <button type="button" data-panel="inbox"><strong>收件箱</strong><span id="home-inbox-count">0</span></button>
+                    <button type="button" data-panel="intake"><strong>文件</strong><span id="home-intake-count">本地</span></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="focus-brief primary-focus-brief" id="focus-brief" aria-label="Current mission focus">
+                <div>
+                  <span class="board-kicker">任务摘要</span>
+                  <strong>当前任务焦点</strong>
+                </div>
+                <p>选择工作流或恢复最近工作后，这里会汇总阶段、会话、运行和下一步动作。</p>
+              </div>
+              </div>
+            </aside>
+
+              <div class="home-disclosure-stack" aria-label="工作台详情">
               <details class="home-disclosure" id="home-planning-disclosure">
                 <summary>
                   <span>
-                    <small>Plan</small>
+                    <small>规划</small>
                     <strong>策略、工作流和提示建议</strong>
                   </span>
                   <em>展开</em>
                 </summary>
                 <div class="home-disclosure-content">
-                  <div class="strategy-matrix" aria-label="Strategy matrix">
+                  <div class="strategy-matrix" aria-label="策略矩阵">
                     <div class="section-heading compact">
-                      <span>Strategy Matrix</span>
+                      <span>策略矩阵</span>
                       <strong>选择执行策略</strong>
                     </div>
                     <div class="strategy-grid" id="strategy-matrix">
-                      <button type="button" data-strategy="direct"><span>Fast</span><strong>Quick Run</strong><small>直接进入本地执行。</small></button>
-                      <button type="button" data-strategy="research"><span>Deep</span><strong>Research Brief</strong><small>先形成证据链和判断。</small></button>
-                      <button type="button" data-strategy="council"><span>Swarm</span><strong>Agent Council</strong><small>拆给多智能体协作。</small></button>
-                      <button type="button" data-strategy="guarded"><span>Gate</span><strong>Human Approval</strong><small>高风险动作先排队审查。</small></button>
-                      <button type="button" data-strategy="memory"><span>Recall</span><strong>Memory Capture</strong><small>先沉淀上下文再继续。</small></button>
-                      <button type="button" data-strategy="tooling"><span>Tools</span><strong>MCP Tooling</strong><small>检查工具 dock 和能力。</small></button>
+                      <button type="button" data-strategy="direct"><span>快速</span><strong>直接运行</strong><small>直接进入本地执行。</small></button>
+                      <button type="button" data-strategy="research"><span>深潜</span><strong>调研简报</strong><small>先形成证据链和判断。</small></button>
+                      <button type="button" data-strategy="council"><span>协作</span><strong>Agent 议会</strong><small>拆给多智能体协作。</small></button>
+                      <button type="button" data-strategy="guarded"><span>闸门</span><strong>人工确认</strong><small>高风险动作先排队审查。</small></button>
+                      <button type="button" data-strategy="memory"><span>回忆</span><strong>记忆捕获</strong><small>先沉淀上下文再继续。</small></button>
+                      <button type="button" data-strategy="tooling"><span>工具</span><strong>MCP 工具</strong><small>检查工具 dock 和能力。</small></button>
                     </div>
                     <div class="strategy-brief" id="strategy-brief" aria-live="polite">
                       <div>
-                        <span class="board-kicker">Strategy</span>
-                        <strong>默认使用 Quick Run。</strong>
+                        <span class="board-kicker">策略</span>
+                        <strong>默认使用直接运行。</strong>
                       </div>
                       <p>策略会决定 Astria 如何组织上下文、审批、工具和多智能体协作。</p>
                     </div>
                   </div>
 
-                  <div class="workflow-recipes" aria-label="Workflow recipes">
+                  <div class="workflow-recipes" aria-label="工作流模板">
                     <div class="section-heading compact">
-                      <span>Workflow Recipes</span>
+                      <span>工作流模板</span>
                       <strong>选择一个工作流起点</strong>
                     </div>
                     <div class="recipe-grid" id="workflow-recipes">
-                      <button type="button" data-recipe="code-review"><span>Review</span><strong>代码评审</strong><small>检查改动、风险和测试缺口。</small></button>
-                      <button type="button" data-recipe="feature-plan"><span>Plan</span><strong>功能规划</strong><small>拆解 PRD、设计和实施路径。</small></button>
-                      <button type="button" data-recipe="file-intake"><span>Files</span><strong>文件理解</strong><small>读取文档或归档后再进入任务。</small></button>
-                      <button type="button" data-recipe="research-brief"><span>Research</span><strong>调研简报</strong><small>形成带证据链的结论。</small></button>
+                      <button type="button" data-recipe="code-review"><span>审查</span><strong>代码评审</strong><small>检查改动、风险和测试缺口。</small></button>
+                      <button type="button" data-recipe="feature-plan"><span>规划</span><strong>功能规划</strong><small>拆解 PRD、设计和实施路径。</small></button>
+                      <button type="button" data-recipe="file-intake"><span>文件</span><strong>文件理解</strong><small>读取文档或归档后再进入任务。</small></button>
+                      <button type="button" data-recipe="research-brief"><span>调研</span><strong>调研简报</strong><small>形成带证据链的结论。</small></button>
                       <button type="button" data-recipe="mcp-setup"><span>MCP</span><strong>工具接入</strong><small>规划并测试新的 MCP dock。</small></button>
-                      <button type="button" data-recipe="inbox-triage"><span>Inbox</span><strong>任务分拣</strong><small>审核外部任务并转成运行。</small></button>
-                      <button type="button" data-recipe="memory-update"><span>Memory</span><strong>记忆更新</strong><small>提炼决策、偏好和风险。</small></button>
+                      <button type="button" data-recipe="inbox-triage"><span>收件</span><strong>任务分拣</strong><small>审核外部任务并转成运行。</small></button>
+                      <button type="button" data-recipe="memory-update"><span>记忆</span><strong>记忆更新</strong><small>提炼决策、偏好和风险。</small></button>
                     </div>
                     <div class="workflow-brief" id="workflow-brief" aria-live="polite">
                       <div>
-                        <span class="board-kicker">Workflow brief</span>
+                        <span class="board-kicker">工作流简报</span>
                         <strong>选择一个工作流，Astria 会生成可执行简报。</strong>
                       </div>
                       <p>简报会把目标、上下文材料、关联面板和下一步检查点放在同一个工作包里。</p>
                     </div>
                   </div>
 
-                  <div class="prompt-suggestion-dock" aria-label="Prompt Suggestion Dock">
+                  <div class="prompt-suggestion-dock" aria-label="Prompt 建议舱">
                     <div class="section-heading compact">
-                      <span>Prompt Suggestion Dock</span>
+                      <span>Prompt 建议舱</span>
                       <strong>下一步提示建议</strong>
                     </div>
                     <div class="prompt-suggestion-grid" id="prompt-suggestion-dock">
                       <button type="button" data-home-prompt="Continue the current Astria mission. Review the workspace state, identify the next useful action, and explain the validation needed.">
-                        <span>Loading</span>
+                        <span>加载中</span>
                         <strong>正在生成下一步提示</strong>
                         <small>Astria 会从当前工作区状态里整理可直接使用的 prompt。</small>
                       </button>
@@ -355,35 +495,35 @@
               <details class="home-disclosure" id="home-context-disclosure">
                 <summary>
                   <span>
-                    <small>Context</small>
+                    <small>上下文</small>
                     <strong>工作区上下文和工具入口</strong>
                   </span>
                   <em>展开</em>
                 </summary>
                 <div class="home-disclosure-content">
-                  <div class="workspace-hub" aria-label="Workspace session hub">
+                  <div class="workspace-hub" aria-label="工作区会话枢纽">
                     <div class="section-heading compact">
-                      <span>Workspace Hub</span>
+                      <span>工作区枢纽</span>
                       <strong>当前工作区上下文</strong>
                     </div>
                     <div class="workspace-hub-grid" id="workspace-session-hub">
                       <button type="button" data-panel="chat">
-                        <span>Session</span>
+                        <span>会话</span>
                         <strong>等待会话</strong>
                         <small>最近会话会显示在这里。</small>
                       </button>
                       <button type="button" data-panel="runs">
-                        <span>Runs</span>
-                        <strong>Mission Control</strong>
+                        <span>运行</span>
+                        <strong>任务轨道</strong>
                         <small>运行健康度会在加载后更新。</small>
                       </button>
                       <button type="button" data-panel="memory">
-                        <span>Memory</span>
+                        <span>记忆</span>
                         <strong>记忆星图</strong>
                         <small>记忆状态会在加载后更新。</small>
                       </button>
                       <button type="button" data-panel="intake">
-                        <span>Files</span>
+                        <span>文件</span>
                         <strong>文件星舱</strong>
                         <small>本地文件入口。</small>
                       </button>
@@ -392,32 +532,32 @@
 
                   <div class="constellation-cards">
                     <button class="constellation-card" type="button" data-panel="memory">
-                      <span>Memory Map</span>
+                      <span>记忆星图</span>
                       <strong>记忆星图</strong>
                       <small>让 Astria 记住项目中的重要人物、决策和上下文。</small>
                     </button>
                     <button class="constellation-card" type="button" data-panel="runs">
-                      <span>Mission Orbit</span>
+                      <span>任务轨道</span>
                       <strong>任务轨道</strong>
                       <small>查看每次运行的状态、工具调用、确认和结果。</small>
                     </button>
                     <button class="constellation-card" type="button" data-panel="mcp">
-                      <span>MCP Docking</span>
+                      <span>MCP 星港</span>
                       <strong>MCP 星港</strong>
                       <small>连接外部工具，管理权限，并扩展 Astria 能力。</small>
                     </button>
                     <button class="constellation-card" type="button" data-panel="council">
-                      <span>Agent Council</span>
+                      <span>Agent 议会</span>
                       <strong>智能体议会</strong>
                       <small>把规划、调研和评审意见分开，再汇总成一个可执行方案。</small>
                     </button>
                     <button class="constellation-card" type="button" data-panel="inbox">
-                      <span>Channel Inbox</span>
+                      <span>收件星门</span>
                       <strong>收件星门</strong>
                       <small>外部渠道任务先进入审批队列，再转成可追踪运行。</small>
                     </button>
                     <button class="constellation-card" type="button" data-panel="intake">
-                      <span>File Intake</span>
+                      <span>文件星舱</span>
                       <strong>文件星舱</strong>
                       <small>读取本地文档、检查归档内容，再把结果送入普通任务流。</small>
                     </button>
@@ -428,78 +568,78 @@
               <details class="home-disclosure" id="home-review-disclosure">
                 <summary>
                   <span>
-                    <small>Review</small>
+                    <small>审查</small>
                     <strong>知识、审批和运行健康</strong>
                   </span>
                   <em>展开</em>
                 </summary>
                 <div class="home-disclosure-content">
-                  <div class="knowledge-curation" aria-label="Knowledge curation console">
+                  <div class="knowledge-curation" aria-label="知识沉淀控制台">
                     <div class="section-heading compact">
-                      <span>Knowledge Curation</span>
+                      <span>知识沉淀</span>
                       <strong>长期上下文沉淀</strong>
                     </div>
                     <div class="knowledge-curation-grid" id="knowledge-curation-grid">
                       <button type="button" data-panel="memory">
-                        <span>Loading</span>
+                        <span>加载中</span>
                         <strong>正在整理知识候选</strong>
                         <small>Astria 会从记忆、会话和运行中汇总可审核上下文。</small>
                       </button>
                     </div>
                   </div>
 
-                  <div class="tool-dock-inspector" aria-label="Tool Dock Inspector">
+                  <div class="tool-dock-inspector" aria-label="工具 dock 检查器">
                     <div class="section-heading compact">
-                      <span>Tool Dock Inspector</span>
+                      <span>工具 dock 检查</span>
                       <strong>MCP 能力检查</strong>
                     </div>
                     <div class="tool-dock-grid" id="tool-dock-inspector-grid">
                       <button type="button" data-panel="mcp">
-                        <span>Loading</span>
+                        <span>加载中</span>
                         <strong>正在检查工具 dock</strong>
                         <small>Astria 会从 MCP 配置中汇总工具能力和连接状态。</small>
                       </button>
                     </div>
                   </div>
 
-                  <div class="approval-center" aria-label="Approval Center">
+                  <div class="approval-center" aria-label="人工确认控制台">
                     <div class="section-heading compact">
-                      <span>Approval Center</span>
+                      <span>确认控制台</span>
                       <strong>人工确认控制台</strong>
                     </div>
                     <div class="approval-center-grid" id="approval-center-grid">
                       <button type="button" data-panel="permissions">
-                        <span>Loading</span>
+                        <span>加载中</span>
                         <strong>正在汇总审批和风险</strong>
                         <small>Astria 会从确认请求、权限、诊断、收件箱和运行状态中建立控制台。</small>
                       </button>
                     </div>
                   </div>
 
-                  <div class="review-queue" aria-label="Review queue next actions">
+                  <div class="review-queue" aria-label="待处理队列">
                     <div class="section-heading compact">
-                      <span>Review Queue</span>
+                      <span>待处理队列</span>
                       <strong>待处理队列</strong>
                     </div>
                     <div class="review-queue-list" id="review-queue-list">
                       <button type="button" data-panel="diagnostics">
-                        <span>Loading</span>
+                        <span>加载中</span>
                         <strong>正在校准下一步动作</strong>
                         <small>Astria 会从运行、收件箱、记忆和工作区状态中聚合事项。</small>
                       </button>
                     </div>
                   </div>
 
-                  <div class="workspace-health" aria-label="Workspace health strip">
+                  <div class="workspace-health" aria-label="工作区健康状态">
                     <div class="section-heading compact">
-                      <span>Workspace Health</span>
+                      <span>工作区健康</span>
                       <strong>运行准备状态</strong>
                     </div>
                     <div class="workspace-health-grid" id="workspace-health-strip">
-                      <button type="button" data-panel="diagnostics"><span>Diagnostics</span><strong>Checking</strong><small>Runtime readiness</small></button>
-                      <button type="button" data-panel="permissions"><span>Permissions</span><strong>Policy</strong><small>Tool guardrails</small></button>
-                      <button type="button" data-panel="mcp"><span>MCP</span><strong>Docks</strong><small>Tool connections</small></button>
-                      <button type="button" data-panel="memory"><span>Memory</span><strong>Context</strong><small>Durable facts</small></button>
+                      <button type="button" data-panel="diagnostics"><span>诊断</span><strong>检查中</strong><small>运行就绪</small></button>
+                      <button type="button" data-panel="permissions"><span>权限</span><strong>策略</strong><small>工具护栏</small></button>
+                      <button type="button" data-panel="mcp"><span>MCP</span><strong>星港</strong><small>工具连接</small></button>
+                      <button type="button" data-panel="memory"><span>记忆</span><strong>上下文</strong><small>长期事实</small></button>
                     </div>
                   </div>
                 </div>
@@ -514,8 +654,8 @@
               <div class="empty-thread">
                 <div class="assistant-mark" aria-hidden="true">S</div>
                 <div>
-                  <strong id="chat-heading">Astria is ready.</strong>
-                  <span>Start a local task or choose an agent from the composer.</span>
+                  <strong id="chat-heading">Astria 已就绪。</strong>
+                  <span>从输入框发起本地任务，或选择一个 Agent 继续。</span>
                 </div>
               </div>
             </div>
@@ -524,39 +664,39 @@
           <form class="composer" id="chat-form">
             <div class="live-run-status" id="live-run-status" data-state="idle" hidden aria-live="polite">
               <div>
-                <span>Stream</span>
-                <strong id="live-run-state">Idle</strong>
+                <span>流状态</span>
+                <strong id="live-run-state">空闲</strong>
               </div>
               <div>
-                <span>Run</span>
+                <span>运行</span>
                 <strong id="live-run-id">-</strong>
               </div>
               <div>
-                <span>Session</span>
+                <span>会话</span>
                 <strong id="live-session-id">-</strong>
               </div>
               <div>
-                <span>Usage</span>
+                <span>用量</span>
                 <strong id="live-run-usage">-</strong>
               </div>
               <div>
-                <span>Latest</span>
-                <strong id="live-run-event">Ready</strong>
+                <span>最新</span>
+                <strong id="live-run-event">就绪</strong>
               </div>
             </div>
-            <textarea id="chat-input" rows="1" placeholder="Message Astria"></textarea>
+            <textarea id="chat-input" rows="1" placeholder="向 Astria 描述任务"></textarea>
             <div class="composer-controls">
               <select id="chat-agent" aria-label="Agent">
-                <option value="">Default agent</option>
+                <option value="">默认 Agent</option>
               </select>
               <label class="checkbox-label">
                 <input id="chat-new-session" type="checkbox">
-                New session
+                新会话
               </label>
-              <span id="active-session-label">No session selected</span>
-              <span id="chat-state">Ready</span>
-              <button type="button" id="stop-button" class="danger-button" hidden>Stop</button>
-              <button type="submit" id="send-button" class="primary-button">Send</button>
+              <span id="active-session-label">未选择会话</span>
+              <span id="chat-state">就绪</span>
+              <button type="button" id="stop-button" class="danger-button" hidden>停止</button>
+              <button type="submit" id="send-button" class="primary-button">发送</button>
             </div>
           </form>
         </section>
@@ -564,48 +704,48 @@
         <section class="panel split-panel" id="panel-inbox" aria-labelledby="inbox-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="inbox-heading">Inbox</h2>
-              <p id="inbox-summary">Inbound channel tasks wait here until you approve them.</p>
+              <h2 id="inbox-heading">收件箱</h2>
+              <p id="inbox-summary">外部渠道任务会先停在这里，确认后才会进入运行。</p>
             </div>
             <div class="data-list" id="inbox-list">
-              <div class="empty-state">No inbound tasks yet.</div>
+              <div class="empty-state">还没有进入的渠道任务。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Webhook Intake</h2>
-              <p>Use local HTTP webhook events as the first external channel provider.</p>
+              <h2>Webhook 收件</h2>
+              <p>用本地 HTTP webhook 模拟第一个外部渠道入口。</p>
             </div>
             <form class="inbox-form" id="inbox-webhook-form">
               <label>
-                External ID
-                <input id="inbox-external-id" aria-label="Inbox external id" placeholder="evt-123">
+                外部 ID
+                <input id="inbox-external-id" aria-label="收件箱外部 ID" placeholder="evt-123">
               </label>
               <label>
-                Sender
-                <input id="inbox-sender" aria-label="Inbox sender" placeholder="teammate or system">
+                发送方
+                <input id="inbox-sender" aria-label="收件箱发送方" placeholder="同事或系统">
               </label>
               <label>
-                Text
-                <textarea id="inbox-text" rows="6" aria-label="Inbox text" placeholder="Task from an external channel"></textarea>
+                内容
+                <textarea id="inbox-text" rows="6" aria-label="收件箱内容" placeholder="来自外部渠道的任务"></textarea>
               </label>
               <label>
                 Agent
-                <select id="inbox-agent" aria-label="Inbox agent">
-                  <option value="">Default agent</option>
+                <select id="inbox-agent" aria-label="收件箱 Agent">
+                  <option value="">默认 Agent</option>
                 </select>
               </label>
               <div class="form-actions">
-                <span id="inbox-state">Ready</span>
-                <button type="submit" class="primary-button">Receive webhook</button>
+                <span id="inbox-state">就绪</span>
+                <button type="submit" class="primary-button">接收 webhook</button>
               </div>
             </form>
             <div class="diagnostics-overview" id="inbox-overview">
-              <strong>Guarded</strong>
-              <span>Inbound items never execute until approved.</span>
+              <strong>已设闸门</strong>
+              <span>进入项在确认前不会自动执行。</span>
             </div>
-            <div class="provider-route-list" id="inbox-provider-list" aria-label="Inbox routes">
-              <div class="empty-state">Checking inbox providers.</div>
+            <div class="provider-route-list" id="inbox-provider-list" aria-label="收件箱路由">
+              <div class="empty-state">正在检查收件渠道。</div>
             </div>
           </aside>
         </section>
@@ -613,51 +753,51 @@
         <section class="panel split-panel" id="panel-intake" aria-labelledby="intake-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="intake-heading">File Intake</h2>
-              <p id="intake-summary">Inspect local documents and archives before sending them into a run.</p>
+              <h2 id="intake-heading">文件星舱</h2>
+              <p id="intake-summary">先检查本地文档和归档，再把结果送入运行。</p>
             </div>
             <div class="intake-result" id="intake-result">
-              <div class="empty-state">Choose a local path to inspect.</div>
+              <div class="empty-state">选择一个本地路径开始检查。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>File Dock</h2>
-              <p>Read document text or inspect archive entries using local tools.</p>
+              <h2>本地文件 dock</h2>
+              <p>用本地工具读取文档文本或检查归档条目。</p>
             </div>
             <form class="config-form intake-form" id="intake-form">
               <label>
-                Local path
-                <input id="intake-path" aria-label="File intake path" placeholder="docs/report.docx">
+                本地路径
+                <input id="intake-path" aria-label="文件星舱路径" placeholder="docs/report.docx">
               </label>
               <label>
-                Mode
-                <select id="intake-mode" aria-label="File intake mode">
-                  <option value="auto">Auto</option>
-                  <option value="document_text">Document text</option>
-                  <option value="archive_inspect">Archive inspect</option>
+                模式
+                <select id="intake-mode" aria-label="文件星舱模式">
+                  <option value="auto">自动</option>
+                  <option value="document_text">文档文本</option>
+                  <option value="archive_inspect">归档检查</option>
                 </select>
               </label>
               <label>
-                Max characters
-                <input id="intake-max-chars" aria-label="File intake max chars" type="number" min="1000" step="1000" value="12000">
+                最大字符数
+                <input id="intake-max-chars" aria-label="文件星舱最大字符数" type="number" min="1000" step="1000" value="12000">
               </label>
               <label>
-                Max entries
-                <input id="intake-max-entries" aria-label="File intake max entries" type="number" min="1" step="10" value="80">
+                最大条目数
+                <input id="intake-max-entries" aria-label="文件星舱最大条目数" type="number" min="1" step="10" value="80">
               </label>
               <div class="form-actions">
-                <span id="intake-state">Ready</span>
-                <button type="button" class="primary-button" id="intake-analyze-button">Analyze file</button>
+                <span id="intake-state">就绪</span>
+                <button type="button" class="primary-button" id="intake-analyze-button">分析文件</button>
               </div>
             </form>
             <div class="diagnostics-overview" id="intake-overview">
-              <strong>Local</strong>
-              <span>Read-only intake runs before extraction or summarization.</span>
+              <strong>本地</strong>
+              <span>先只读检查，再决定是否提取或总结。</span>
             </div>
             <div class="inline-actions">
-              <button type="button" id="intake-chat-button" disabled>Send to Chat</button>
-              <button type="button" id="intake-extract-button" disabled>Draft extract run</button>
+              <button type="button" id="intake-chat-button" disabled>发送到对话</button>
+              <button type="button" id="intake-extract-button" disabled>起草提取运行</button>
             </div>
           </aside>
         </section>
@@ -665,129 +805,129 @@
         <section class="panel hub-panel" id="panel-manage" aria-labelledby="manage-heading">
           <div class="hub-content">
             <div class="panel-heading">
-              <h2 id="manage-heading">Manage</h2>
-              <p>Configure agent resources and local automation.</p>
+              <h2 id="manage-heading">更多功能</h2>
+              <p>管理 Agent 资源、本地自动化和上下文星图。</p>
             </div>
             <div class="hub-grid">
               <button class="hub-card" type="button" data-panel="agents">
-                <span>Agents</span>
-                <strong id="manage-agents-count">0 profiles</strong>
-                <small>Create profiles, commands, permissions, and test runs.</small>
+                <span>智能体</span>
+                <strong id="manage-agents-count">0 个配置</strong>
+                <small>创建 Agent 配置、命令、权限和测试运行。</small>
               </button>
               <button class="hub-card" type="button" data-panel="skills">
-                <span>Skills</span>
-                <strong id="manage-skills-count">0 installed</strong>
-                <small>Review reusable workflows exposed to Astria.</small>
+                <span>技能</span>
+                <strong id="manage-skills-count">0 个已安装</strong>
+                <small>查看 Astria 可用的复用工作流。</small>
               </button>
               <button class="hub-card" type="button" data-panel="mcp">
-                <span>MCP Starport</span>
-                <strong id="manage-mcp-count">0 docks</strong>
-                <small>Inspect configured MCP servers and docking state.</small>
+                <span>MCP 星港</span>
+                <strong id="manage-mcp-count">0 个 dock</strong>
+                <small>检查 MCP 服务器和工具 dock 状态。</small>
               </button>
               <button class="hub-card" type="button" data-panel="memory">
-                <span>Memory Map</span>
+                <span>记忆星图</span>
                 <strong id="manage-memory-count">0 sources</strong>
-                <small>Draft reviewable memory from sessions and runs.</small>
+                <small>从会话和运行中起草可审核记忆。</small>
               </button>
               <button class="hub-card" type="button" data-panel="sources">
-                <span>Source Registry</span>
+                <span>来源登记</span>
                 <strong id="manage-sources-count">0 sources</strong>
-                <small>Review freshness, reliability, and maintenance actions for knowledge sources.</small>
+                <small>复查知识来源的鲜度、可靠性和维护动作。</small>
               </button>
               <button class="hub-card" type="button" data-panel="reconcile">
-                <span>Knowledge Reconciliation</span>
+                <span>知识校验</span>
                 <strong id="manage-reconcile-count">0 risks</strong>
-                <small>Resolve stale, conflicting, weak, or privacy-sensitive knowledge before reuse.</small>
+                <small>在复用前解决过期、冲突、薄弱或隐私敏感知识。</small>
               </button>
               <button class="hub-card" type="button" data-panel="citation">
-                <span>Citation Planner</span>
+                <span>引用校准</span>
                 <strong id="manage-citation-count">0 checks</strong>
-                <small>Plan source coverage, claim citations, freshness, and evidence gaps.</small>
+                <small>规划来源覆盖、声明引用、鲜度和证据缺口。</small>
               </button>
               <button class="hub-card" type="button" data-panel="council">
-                <span>Agent Council</span>
+                <span>智能体议会</span>
                 <strong id="manage-council-count">0 reviews</strong>
-                <small>Coordinate planner, researcher, and reviewer roles.</small>
+                <small>协调规划者、研究者和审阅者角色。</small>
               </button>
               <button class="hub-card" type="button" data-panel="compare">
-                <span>Comparison Workbench</span>
+                <span>路径比较台</span>
                 <strong id="manage-compare-count">0 lanes</strong>
-                <small>Compare runs, agents, memory, and council evidence before choosing a path.</small>
+                <small>选择路径前比较运行、Agent、记忆和议会证据。</small>
               </button>
               <button class="hub-card" type="button" data-panel="quality">
-                <span>Run Quality</span>
+                <span>运行质量</span>
                 <strong id="manage-quality-count">0 cards</strong>
-                <small>Score recent runs by evidence, budget posture, risk, and reusable next action.</small>
+                <small>按证据、预算姿态、风险和可复用下一步评估运行。</small>
               </button>
               <button class="hub-card" type="button" data-panel="promptlab">
-                <span>Prompt Lab</span>
+                <span>Prompt 实验室</span>
                 <strong id="manage-promptlab-count">0 variants</strong>
-                <small>Test prompt variants across agents, evidence, council, and delivery paths.</small>
+                <small>跨 Agent、证据、议会和交付路径测试 Prompt 变体。</small>
               </button>
               <button class="hub-card" type="button" data-panel="budget">
-                <span>Budget Guard</span>
+                <span>预算守卫</span>
                 <strong id="manage-budget-count">0 guards</strong>
-                <small>Plan token caps, model routing, fallback, and stop rules before expensive work.</small>
+                <small>在昂贵任务前规划 token 上限、模型路由、fallback 和停止规则。</small>
               </button>
               <button class="hub-card" type="button" data-panel="reuse">
-                <span>Reuse Gallery</span>
+                <span>复用星库</span>
                 <strong id="manage-reuse-count">0 assets</strong>
-                <small>Turn prompts, agents, knowledge, and outcomes into reusable mission starters.</small>
+                <small>把 Prompt、Agent、知识和产物转成可复用任务起点。</small>
               </button>
               <button class="hub-card" type="button" data-panel="results">
-                <span>Result Library</span>
+                <span>产物星库</span>
                 <strong id="manage-results-count">0 results</strong>
-                <small>Archive completed briefs, evidence bundles, and reusable outputs for follow-up.</small>
+                <small>归档已完成简报、证据包和可复用输出。</small>
               </button>
               <button class="hub-card" type="button" data-panel="playbooks">
-                <span>Playbook Library</span>
+                <span>实践手册</span>
                 <strong id="manage-playbooks-count">0 playbooks</strong>
-                <small>Turn successful work into reviewed local best-practice launch paths.</small>
+                <small>把成功工作沉淀为审核过的本地最佳实践路径。</small>
               </button>
               <button class="hub-card" type="button" data-panel="starter">
-                <span>Starter Kits</span>
+                <span>启动套件</span>
                 <strong id="manage-starter-count">0 kits</strong>
-                <small>Launch from prebuilt Astria workflows for common local agent work.</small>
+                <small>从预制 Astria 工作流启动常见本地 Agent 任务。</small>
               </button>
               <button class="hub-card" type="button" data-panel="share">
-                <span>Share Pack</span>
+                <span>交接包</span>
                 <strong id="manage-share-count">0 packs</strong>
-                <small>Package successful local work into reviewed, copyable handoff starters.</small>
+                <small>把成功本地工作打包成可审核、可复制的交接材料。</small>
               </button>
               <button class="hub-card" type="button" data-panel="snapshot">
-                <span>Workspace Snapshot</span>
-                <strong id="manage-snapshot-count">0 packs</strong>
-                <small>Plan local resume, evidence, source, privacy, and delivery snapshot bundles.</small>
+                <span>工作区快照</span>
+                <strong id="manage-snapshot-count">0 个包</strong>
+                <small>规划本地续接、证据、来源、隐私和交付快照包。</small>
               </button>
               <button class="hub-card" type="button" data-panel="delivery">
-                <span>Proactive Delivery</span>
-                <strong id="manage-delivery-count">0 lanes</strong>
-                <small>Monitor schedules, outbound runs, channels, and recovery steps.</small>
+                <span>主动交付</span>
+                <strong id="manage-delivery-count">0 条路线</strong>
+                <small>监控定时任务、出站运行、渠道和恢复步骤。</small>
               </button>
               <button class="hub-card" type="button" data-panel="inbox">
-                <span>Inbox</span>
-                <strong id="manage-inbox-count">0 pending</strong>
-                <small>Approve inbound channel tasks before running them.</small>
+                <span>收件箱</span>
+                <strong id="manage-inbox-count">0 个待审</strong>
+                <small>外部渠道任务运行前需要先确认。</small>
               </button>
               <button class="hub-card" type="button" data-panel="intake">
-                <span>File Intake</span>
-                <strong id="manage-intake-count">Local paths</strong>
-                <small>Inspect documents and archives before sending them to a run.</small>
+                <span>文件星舱</span>
+                <strong id="manage-intake-count">本地路径</strong>
+                <small>检查文档和归档后再送入运行。</small>
               </button>
               <button class="hub-card" type="button" data-panel="browser">
-                <span>Browser Planner</span>
-                <strong id="manage-browser-count">0 plans</strong>
-                <small>Plan web inspection, screenshots, extraction, form checks, and monitoring.</small>
+                <span>浏览器规划器</span>
+                <strong id="manage-browser-count">0 个计划</strong>
+                <small>规划网页检查、截图、抽取、表单检查和监控。</small>
               </button>
               <button class="hub-card" type="button" data-panel="data">
-                <span>Data Planner</span>
+                <span>数据规划器</span>
                 <strong id="manage-data-count">0 lenses</strong>
-                <small>Turn local tables, metrics, and exports into reviewed insight missions.</small>
+                <small>把本地表格、指标和导出转成可审核洞察任务。</small>
               </button>
               <button class="hub-card" type="button" data-panel="schedules">
-                <span>Schedules</span>
-                <strong id="manage-schedules-count">0 active</strong>
-                <small>Create and manage cron-based local agent runs.</small>
+                <span>定时任务</span>
+                <strong id="manage-schedules-count">0 个活跃</strong>
+                <small>创建和管理基于 cron 的本地 Agent 运行。</small>
               </button>
             </div>
           </div>
@@ -796,29 +936,32 @@
         <section class="panel hub-panel" id="panel-settings" aria-labelledby="settings-heading">
           <div class="hub-content">
             <div class="panel-heading">
-              <h2 id="settings-heading">Settings</h2>
-              <p>Inspect daemon readiness, provider setup, permissions, and build state.</p>
+              <h2 id="settings-heading">系统</h2>
+              <p>检查 daemon 就绪状态、provider 设置、权限和构建状态。</p>
+            </div>
+            <div class="system-status-board" id="system-status-board" aria-label="系统状态概览">
+              <div class="empty-state">等待系统状态。</div>
             </div>
             <div class="hub-grid">
               <button class="hub-card" type="button" data-panel="diagnostics">
-                <span>Diagnostics</span>
-                <strong id="settings-diagnostics-state">Checking</strong>
-                <small>Inspect runtime readiness and setup checks.</small>
+                <span>诊断</span>
+                <strong id="settings-diagnostics-state">检查中</strong>
+                <small>检查运行时就绪状态和设置项。</small>
               </button>
               <button class="hub-card" type="button" data-panel="config">
-                <span>Config</span>
+                <span>连接器</span>
                 <strong id="settings-config-state">Provider</strong>
-                <small>Repair provider setup used by daemon runs.</small>
+                <small>修复 daemon 运行所需的 provider 设置。</small>
               </button>
               <button class="hub-card" type="button" data-panel="permissions">
-                <span>Permissions</span>
-                <strong id="settings-permissions-state">Policy</strong>
-                <small>Review global tool policy and safety rules.</small>
+                <span>权限</span>
+                <strong id="settings-permissions-state">策略</strong>
+                <small>复查全局工具策略和安全规则。</small>
               </button>
               <button class="hub-card" type="button" data-panel="version">
-                <span>Version</span>
-                <strong id="settings-version-state">Build</strong>
-                <small>Inspect release metadata and update availability.</small>
+                <span>版本</span>
+                <strong id="settings-version-state">构建</strong>
+                <small>检查发布元数据和更新可用性。</small>
               </button>
             </div>
           </div>
@@ -827,21 +970,21 @@
         <section class="panel split-panel" id="panel-agents" aria-labelledby="agents-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="agents-heading">Agents</h2>
-              <p>Named agent profiles available to the daemon.</p>
+              <h2 id="agents-heading">智能体</h2>
+              <p>daemon 可用的命名 Agent 配置。</p>
             </div>
-            <button class="new-chat-button" id="new-agent-button" type="button">New agent</button>
+            <button class="new-chat-button" id="new-agent-button" type="button">新建 Agent</button>
             <section class="agent-continuity" aria-labelledby="agent-continuity-heading">
               <div class="panel-heading compact-heading">
-                <h2 id="agent-continuity-heading">Continuity Digest</h2>
-                <p>Recent runs, memory posture, commands, and next action by agent.</p>
+                <h2 id="agent-continuity-heading">连续性摘要</h2>
+                <p>按 Agent 汇总最近运行、记忆姿态、命令和下一步动作。</p>
               </div>
               <div class="agent-continuity-grid" id="agent-continuity-digest"></div>
             </section>
             <section class="agent-roster" aria-labelledby="agent-roster-heading">
               <div class="panel-heading compact-heading">
-                <h2 id="agent-roster-heading">Capability Roster</h2>
-                <p>Model, tools, memory, approval, heartbeat, and commands at a glance.</p>
+                <h2 id="agent-roster-heading">能力名册</h2>
+                <p>集中查看模型、工具、记忆、审批、心跳和命令。</p>
               </div>
               <div class="agent-roster-grid" id="agent-capability-roster"></div>
             </section>
@@ -849,12 +992,12 @@
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Editor</h2>
-              <p id="selected-agent-description">Create or edit an agent.</p>
+              <h2>编辑器</h2>
+              <p id="selected-agent-description">创建或编辑 Agent。</p>
             </div>
             <form class="config-form" id="agent-form">
               <label>
-                Name
+                名称
                 <input id="agent-name" aria-label="Agent name" placeholder="researcher">
               </label>
               <label>
@@ -862,105 +1005,105 @@
                 <textarea id="agent-prompt" rows="8" aria-label="Agent prompt" placeholder="You are..."></textarea>
               </label>
               <label>
-                Memory
-                <textarea id="agent-memory" rows="4" aria-label="Agent memory" placeholder="Optional persistent memory"></textarea>
+                记忆
+                <textarea id="agent-memory" rows="4" aria-label="Agent 记忆" placeholder="可选长期记忆"></textarea>
               </label>
               <label>
-                Model
+                模型
                 <input id="agent-model" aria-label="Agent model" placeholder="optional">
               </label>
               <label>
-                Reasoning effort
-                <input id="agent-reasoning-effort" aria-label="Agent reasoning effort" placeholder="low / medium / high">
+                推理强度
+                <input id="agent-reasoning-effort" aria-label="Agent 推理强度" placeholder="low / medium / high">
               </label>
               <fieldset class="form-fieldset">
-                <legend>Permissions</legend>
+                <legend>权限</legend>
                 <label>
-                  Tools allow
-                  <textarea id="agent-tools-allow" rows="3" aria-label="Agent tools allow" placeholder="file_read&#10;grep"></textarea>
+                  允许工具
+                  <textarea id="agent-tools-allow" rows="3" aria-label="Agent 允许工具" placeholder="file_read&#10;grep"></textarea>
                 </label>
                 <label>
-                  Tools deny
-                  <textarea id="agent-tools-deny" rows="3" aria-label="Agent tools deny" placeholder="bash"></textarea>
+                  拒绝工具
+                  <textarea id="agent-tools-deny" rows="3" aria-label="Agent 拒绝工具" placeholder="bash"></textarea>
                 </label>
                 <label class="checkbox-label">
                   <input id="agent-auto-approve" type="checkbox">
-                  Auto approve
+                  自动确认
                 </label>
                 <div class="agent-preview" id="agent-permission-preview" aria-live="polite"></div>
               </fieldset>
               <fieldset class="form-fieldset">
-                <legend>Heartbeat</legend>
+                <legend>心跳</legend>
                 <label>
-                  Every
-                  <input id="agent-heartbeat-every" aria-label="Agent heartbeat every" placeholder="15m">
+                  间隔
+                  <input id="agent-heartbeat-every" aria-label="Agent 心跳间隔" placeholder="15m">
                 </label>
                 <label>
-                  Active hours
-                  <input id="agent-heartbeat-active-hours" aria-label="Agent heartbeat active hours" placeholder="09:00-17:00">
+                  活跃时段
+                  <input id="agent-heartbeat-active-hours" aria-label="Agent 心跳活跃时段" placeholder="09:00-17:00">
                 </label>
                 <label>
-                  Model
+                  模型
                   <input id="agent-heartbeat-model" aria-label="Agent heartbeat model" placeholder="optional">
                 </label>
               </fieldset>
               <section class="agent-test-runner" aria-labelledby="agent-test-heading">
                 <div class="panel-heading compact-heading">
-                  <h2 id="agent-test-heading">Test Runner</h2>
-                  <p>Run one prompt against a selected agent.</p>
+                  <h2 id="agent-test-heading">测试运行器</h2>
+                  <p>用一个 Prompt 测试选中的 Agent。</p>
                 </div>
                 <div class="config-form" id="agent-test-form">
                   <label>
                     Agent
-                    <select id="agent-test-agent" aria-label="Test agent">
-                      <option value="">Default agent</option>
+                    <select id="agent-test-agent" aria-label="测试 Agent">
+                      <option value="">默认 Agent</option>
                     </select>
                   </label>
                   <label>
                     Prompt
-                    <textarea id="agent-test-prompt" rows="4" aria-label="Agent test prompt" placeholder="Ask this agent to perform a focused test run."></textarea>
+                    <textarea id="agent-test-prompt" rows="4" aria-label="Agent 测试 Prompt" placeholder="让这个 Agent 执行一次聚焦测试运行。"></textarea>
                   </label>
                   <div class="form-actions">
-                    <span id="agent-test-state">Ready</span>
-                    <button type="button" class="danger-button" id="agent-test-stop-button" hidden>Stop</button>
-                    <button type="button" class="primary-button" id="agent-test-submit-button">Run test</button>
+                    <span id="agent-test-state">就绪</span>
+                    <button type="button" class="danger-button" id="agent-test-stop-button" hidden>停止</button>
+                    <button type="button" class="primary-button" id="agent-test-submit-button">运行测试</button>
                   </div>
                 </div>
                 <div class="agent-test-output" id="agent-test-output">
-                  <div class="empty-state">No test run yet.</div>
+                  <div class="empty-state">还没有测试运行。</div>
                 </div>
               </section>
               <fieldset class="form-fieldset">
-                <legend>Commands</legend>
+                <legend>命令</legend>
                 <div class="data-list compact-list" id="agent-command-list"></div>
                 <label>
-                  Command name
-                  <input id="agent-command-name" aria-label="Agent command name" placeholder="review">
+                  命令名称
+                  <input id="agent-command-name" aria-label="Agent 命令名称" placeholder="review">
                 </label>
                 <label>
-                  Command body
-                  <textarea id="agent-command-body" rows="5" aria-label="Agent command body" placeholder="Review recent changes for regressions."></textarea>
+                  命令内容
+                  <textarea id="agent-command-body" rows="5" aria-label="Agent 命令内容" placeholder="Review recent changes for regressions."></textarea>
                 </label>
                 <div class="inline-actions">
-                  <button type="button" id="agent-command-new-button">New command</button>
-                  <button type="button" id="agent-command-save-button">Add command</button>
-                  <button type="button" id="agent-command-cancel-button">Cancel edit</button>
-                  <button type="button" class="danger-button" id="agent-command-delete-button" hidden>Delete command</button>
+                  <button type="button" id="agent-command-new-button">新命令</button>
+                  <button type="button" id="agent-command-save-button">添加命令</button>
+                  <button type="button" id="agent-command-cancel-button">取消编辑</button>
+                  <button type="button" class="danger-button" id="agent-command-delete-button" hidden>删除命令</button>
                 </div>
               </fieldset>
               <fieldset class="form-fieldset">
-                <legend>Import / export</legend>
+                <legend>导入 / 导出</legend>
                 <input id="agent-import-file" type="file" accept="application/json,.json" hidden>
                 <div class="inline-actions">
-                  <button type="button" id="agent-export-button">Export config</button>
-                  <button type="button" id="agent-import-button">Import config</button>
+                  <button type="button" id="agent-export-button">导出配置</button>
+                  <button type="button" id="agent-import-button">导入配置</button>
                 </div>
               </fieldset>
               <div class="form-actions">
-                <span id="agent-form-state">New agent</span>
-                <button type="button" id="agent-test-run-button" hidden>Test run</button>
-                <button type="button" class="danger-button" id="agent-delete-button" hidden>Delete</button>
-                <button type="submit" class="primary-button">Save agent</button>
+                <span id="agent-form-state">新 Agent</span>
+                <button type="button" id="agent-test-run-button" hidden>测试运行</button>
+                <button type="button" class="danger-button" id="agent-delete-button" hidden>删除</button>
+                <button type="submit" class="primary-button">保存 Agent</button>
               </div>
             </form>
           </aside>
@@ -979,30 +1122,30 @@
         <section class="panel split-panel" id="panel-mcp" aria-labelledby="mcp-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="mcp-heading">MCP Starport</h2>
-              <p id="mcp-summary">Configured MCP servers and docking readiness.</p>
+              <h2 id="mcp-heading">MCP 星港</h2>
+              <p id="mcp-summary">已配置的 MCP 服务器和工具 dock 就绪状态。</p>
             </div>
             <div class="data-list" id="mcp-list">
-              <div class="empty-state">Waiting for MCP configuration.</div>
+              <div class="empty-state">等待 MCP 配置。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Docking Plan</h2>
-              <p>Use configured servers or ask Astria to suggest the next connection.</p>
+              <h2>Dock 接入计划</h2>
+              <p>使用已配置服务器，或让 Astria 建议下一条连接。</p>
             </div>
             <div class="diagnostics-overview" id="mcp-overview">
-              <strong>Checking</strong>
-              <span>Waiting for config.</span>
+              <strong>检查中</strong>
+              <span>等待配置。</span>
             </div>
             <div class="inline-actions">
-              <button type="button" class="primary-button" id="mcp-new-button">Add stdio dock</button>
-              <button type="button" class="primary-button" data-home-action="mcp">Ask Astria</button>
-              <button type="button" data-panel="config">Open config</button>
+              <button type="button" class="primary-button" id="mcp-new-button">添加 stdio dock</button>
+              <button type="button" class="primary-button" data-home-action="mcp">询问 Astria</button>
+              <button type="button" data-panel="config">打开连接器</button>
             </div>
             <form class="config-form mcp-editor-form" id="mcp-form">
               <label>
-                Dock name
+                Dock 名称
                 <input id="mcp-name" aria-label="MCP server name" placeholder="browser">
               </label>
               <label>
@@ -1013,11 +1156,11 @@
                 </select>
               </label>
               <label class="mcp-stdio-field">
-                Command
+                命令
                 <input id="mcp-command" aria-label="MCP command" placeholder="npx">
               </label>
               <label class="mcp-stdio-field">
-                Args
+                参数
                 <input id="mcp-args" aria-label="MCP args" placeholder="@playwright/mcp@latest">
               </label>
               <label class="mcp-http-field">
@@ -1025,21 +1168,21 @@
                 <input id="mcp-url" aria-label="MCP URL" placeholder="http://127.0.0.1:3000/mcp">
               </label>
               <label class="span-two">
-                Context
-                <textarea id="mcp-context" aria-label="MCP context" rows="3" placeholder="When this dock should be used."></textarea>
+                使用上下文
+                <textarea id="mcp-context" aria-label="MCP 使用上下文" rows="3" placeholder="说明这个 dock 适合何时使用。"></textarea>
               </label>
               <label class="span-two">
                 Env
                 <textarea id="mcp-env" aria-label="MCP env" rows="4" placeholder="TOKEN=&#10;API_KEY=new-secret"></textarea>
               </label>
               <div class="mcp-toggle-row span-two">
-                <label><input id="mcp-keep-alive" type="checkbox"> Keep alive</label>
-                <label><input id="mcp-disabled" type="checkbox"> Disabled</label>
+                <label><input id="mcp-keep-alive" type="checkbox"> 保持连接</label>
+                <label><input id="mcp-disabled" type="checkbox"> 停用</label>
               </div>
               <div class="form-actions span-two">
-                <span id="mcp-save-state">Ready</span>
-                <button type="button" id="mcp-clear-button">Clear</button>
-                <button type="submit" class="primary-button">Save dock</button>
+                <span id="mcp-save-state">就绪</span>
+                <button type="button" id="mcp-clear-button">清除</button>
+                <button type="submit" class="primary-button">保存 dock</button>
               </div>
             </form>
           </aside>
@@ -1048,40 +1191,43 @@
         <section class="panel split-panel" id="panel-memory" aria-labelledby="memory-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="memory-heading">Memory Map</h2>
-              <p id="memory-summary">Reviewed memory candidates and source sessions.</p>
+              <h2 id="memory-heading">记忆星图</h2>
+              <p id="memory-summary">已审查的记忆候选和来源会话。</p>
             </div>
-            <div class="memory-taxonomy-bar" id="memory-taxonomy-bar" aria-label="Memory categories">
-              <button type="button" class="active" data-memory-category="all">All</button>
+            <div class="context-readiness-board" id="context-readiness-board" aria-label="上下文就绪概览">
+              <div class="empty-state">等待上下文信号。</div>
+            </div>
+            <div class="memory-taxonomy-bar" id="memory-taxonomy-bar" aria-label="记忆分类">
+              <button type="button" class="active" data-memory-category="all">全部</button>
             </div>
             <div class="memory-warning-list" id="memory-warning-list"></div>
             <div class="data-list" id="memory-list">
-              <div class="empty-state">Waiting for sessions.</div>
+              <div class="empty-state">等待会话。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Review Flow</h2>
-              <p>Memory writes still go through Astria and the memory tools.</p>
+              <h2>审核流程</h2>
+              <p>记忆写入仍会通过 Astria 和记忆工具完成。</p>
             </div>
             <div class="diagnostics-overview" id="memory-overview">
-              <strong>Preview</strong>
-              <span>Use recent sessions to draft reviewable memory candidates.</span>
+              <strong>预览</strong>
+              <span>从最近会话起草可审核的记忆候选。</span>
             </div>
             <form class="memory-review-form" id="memory-review-form">
               <label>
-                Candidate
-                <textarea id="memory-candidate" rows="7" aria-label="Memory candidate" placeholder="- Durable fact to remember"></textarea>
+                记忆候选
+                <textarea id="memory-candidate" rows="7" aria-label="记忆候选" placeholder="- 需要长期记住的事实"></textarea>
               </label>
-              <div class="memory-candidate-preview" id="memory-candidate-preview">No candidate yet.</div>
+              <div class="memory-candidate-preview" id="memory-candidate-preview">还没有候选。</div>
               <div class="form-actions">
-                <span id="memory-save-state">Ready</span>
-                <button type="submit" class="primary-button">Approve memory</button>
+                <span id="memory-save-state">就绪</span>
+                <button type="submit" class="primary-button">确认记忆</button>
               </div>
             </form>
             <div class="inline-actions">
-              <button type="button" class="primary-button" data-home-action="memory">Draft memory map</button>
-              <button type="button" data-panel="chat">Open chat</button>
+              <button type="button" class="primary-button" data-home-action="memory">起草记忆星图</button>
+              <button type="button" data-panel="chat">打开对话</button>
             </div>
           </aside>
         </section>
@@ -1089,20 +1235,20 @@
         <section class="panel split-panel" id="panel-sources" aria-labelledby="sources-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="sources-heading">Source Registry</h2>
-              <p id="sources-summary">Track freshness, reliability, and maintenance actions for Astria knowledge.</p>
+              <h2 id="sources-heading">来源登记</h2>
+              <p id="sources-summary">追踪 Astria 知识的鲜度、可靠性和维护动作。</p>
             </div>
             <div class="source-registry-list" id="source-registry-list">
-              <div class="empty-state">No knowledge sources yet.</div>
+              <div class="empty-state">还没有知识来源。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Source Brief</h2>
-              <p>Inspect where a source came from before using it as durable context.</p>
+              <h2>来源简报</h2>
+              <p>作为长期上下文使用前，先检查来源从哪里来。</p>
             </div>
             <div class="source-registry-detail" id="source-registry-detail">
-              <div class="empty-state">Select a source row.</div>
+              <div class="empty-state">选择一条来源记录。</div>
             </div>
           </aside>
         </section>
@@ -1110,20 +1256,20 @@
         <section class="panel split-panel" id="panel-reconcile" aria-labelledby="reconcile-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="reconcile-heading">Knowledge Reconciliation</h2>
-              <p id="reconcile-summary">Resolve stale, conflicting, weak, or sensitive knowledge before reuse.</p>
+              <h2 id="reconcile-heading">知识校验</h2>
+              <p id="reconcile-summary">复用前解决过期、冲突、薄弱或敏感知识。</p>
             </div>
             <div class="knowledge-reconcile-list" id="knowledge-reconcile-list">
-              <div class="empty-state">No reconciliation risks yet.</div>
+              <div class="empty-state">还没有知识校验风险。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Resolution Brief</h2>
-              <p>Choose the safest route before memory, sources, citations, or results are reused.</p>
+              <h2>解决简报</h2>
+              <p>复用记忆、来源、引用或产物前，先选择最安全路径。</p>
             </div>
             <div class="knowledge-reconcile-detail" id="knowledge-reconcile-detail">
-              <div class="empty-state">Select a reconciliation item.</div>
+              <div class="empty-state">选择一个知识校验项。</div>
             </div>
           </aside>
         </section>
@@ -1131,34 +1277,34 @@
         <section class="panel split-panel" id="panel-citation" aria-labelledby="citation-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="citation-heading">Citation Planner</h2>
-              <p id="citation-summary">Plan source coverage, citation rules, freshness checks, and evidence gaps before drafting.</p>
+              <h2 id="citation-heading">引用校准</h2>
+              <p id="citation-summary">起草前规划来源覆盖、引用规则、鲜度检查和证据缺口。</p>
             </div>
             <div class="citation-grounding-form">
               <label>
-                Claim scope
-                <textarea id="citation-claim-scope" rows="3" aria-label="Citation claim scope" placeholder="The claim, answer, data finding, or handoff section that needs grounding."></textarea>
+                声明范围
+                <textarea id="citation-claim-scope" rows="3" aria-label="引用声明范围" placeholder="需要证据支撑的声明、答案、数据发现或交接段落。"></textarea>
               </label>
               <label>
-                Source posture
-                <input id="citation-source-posture" aria-label="Citation source posture" placeholder="official docs only, local memory plus browser evidence, fresh source required">
+                来源姿态
+                <input id="citation-source-posture" aria-label="引用来源姿态" placeholder="仅官方文档、本地记忆加浏览器证据、必须新鲜来源">
               </label>
               <label>
-                Evidence level
-                <input id="citation-evidence-level" aria-label="Citation evidence level" placeholder="direct quote, cited summary, timestamped source, or gap report">
+                证据等级
+                <input id="citation-evidence-level" aria-label="引用证据等级" placeholder="直接引用、带引用摘要、带时间戳来源或缺口报告">
               </label>
             </div>
             <div class="citation-grounding-cards" id="citation-grounding-cards">
-              <div class="empty-state">No citation grounding cards yet.</div>
+              <div class="empty-state">还没有引用校准卡。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Grounding Brief</h2>
-              <p>Separate sourced claims from assumptions, stale facts, and missing evidence.</p>
+              <h2>证据简报</h2>
+              <p>把有来源的声明与假设、过期事实和缺失证据分开。</p>
             </div>
             <div class="citation-grounding-detail" id="citation-grounding-detail">
-              <div class="empty-state">Select a grounding card.</div>
+              <div class="empty-state">选择一张引用校准卡。</div>
             </div>
           </aside>
         </section>
@@ -1166,36 +1312,36 @@
         <section class="panel split-panel" id="panel-council" aria-labelledby="council-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="council-heading">Agent Council</h2>
-              <p id="council-summary">Multi-role planning and review runs.</p>
+              <h2 id="council-heading">Agent 议会</h2>
+              <p id="council-summary">多角色规划和评审运行。</p>
             </div>
             <div class="data-list" id="council-list">
-              <div class="empty-state">No council runs yet.</div>
+              <div class="empty-state">还没有议会运行。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Council Room</h2>
-              <p>Planner, researcher, and reviewer contributions stay separate from the final synthesis.</p>
+              <h2>议会室</h2>
+              <p>规划者、研究者和审阅者的贡献会与最终综合结论分开保留。</p>
             </div>
             <form class="council-form" id="council-form">
               <label>
-                Goal
-                <textarea id="council-goal" rows="6" aria-label="Council goal" placeholder="Describe the planning or review goal"></textarea>
+                目标
+                <textarea id="council-goal" rows="6" aria-label="议会目标" placeholder="描述规划或评审目标"></textarea>
               </label>
               <label>
                 Agent
-                <select id="council-agent" aria-label="Council agent">
-                  <option value="">Default agent</option>
+                <select id="council-agent" aria-label="议会 Agent">
+                  <option value="">默认 Agent</option>
                 </select>
               </label>
               <div class="form-actions">
-                <span id="council-state">Ready</span>
-                <button type="submit" class="primary-button">Start council</button>
+                <span id="council-state">就绪</span>
+                <button type="submit" class="primary-button">启动议会</button>
               </div>
             </form>
             <div class="council-detail" id="council-detail">
-              <div class="empty-state">Start or select a council run.</div>
+              <div class="empty-state">启动或选择一条议会运行。</div>
             </div>
           </aside>
         </section>
@@ -1203,20 +1349,20 @@
         <section class="panel split-panel" id="panel-quality" aria-labelledby="quality-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="quality-heading">Run Quality</h2>
-              <p id="quality-summary">Score recent Astria runs by completion, evidence, budget posture, risk, and reusable next action.</p>
+              <h2 id="quality-heading">运行质量</h2>
+              <p id="quality-summary">按完成度、证据、预算姿态、风险和复用价值评估最近运行。</p>
             </div>
             <div class="run-quality-grid" id="run-quality-grid">
-              <div class="empty-state">No run quality cards yet.</div>
+              <div class="empty-state">暂无运行质量卡片。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Quality Brief</h2>
-              <p>Review signal, risk, evidence gate, route, and next action before retrying or reusing a run.</p>
+              <h2>质量简报</h2>
+              <p>重试或复用前，先审查信号、风险、证据门、路线和下一步。</p>
             </div>
             <div class="run-quality-detail" id="run-quality-detail">
-              <div class="empty-state">Select a run quality card.</div>
+              <div class="empty-state">选择一张运行质量卡片。</div>
             </div>
           </aside>
         </section>
@@ -1224,20 +1370,20 @@
         <section class="panel split-panel" id="panel-compare" aria-labelledby="compare-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="compare-heading">Comparison Workbench</h2>
-              <p id="compare-summary">Compare candidate paths before launching the next Astria move.</p>
+              <h2 id="compare-heading">路径比较台</h2>
+              <p id="compare-summary">在发起下一步前比较运行、Agent、记忆和议会证据。</p>
             </div>
             <div class="comparison-lanes" id="comparison-lanes">
-              <div class="empty-state">No comparison candidates yet.</div>
+              <div class="empty-state">暂无比较候选。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Decision Brief</h2>
-              <p>Side-by-side evidence from recent runs, agents, memory, and council output.</p>
+              <h2>决策简报</h2>
+              <p>并排查看最近运行、Agent、记忆和议会输出中的证据。</p>
             </div>
             <div class="comparison-detail" id="comparison-detail">
-              <div class="empty-state">Select a comparison lane.</div>
+              <div class="empty-state">选择一条比较路线。</div>
             </div>
           </aside>
         </section>
@@ -1245,66 +1391,73 @@
         <section class="panel split-panel" id="panel-promptlab" aria-labelledby="promptlab-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="promptlab-heading">Prompt Lab</h2>
-              <p id="promptlab-summary">Turn one goal into testable prompt variants.</p>
+              <h2 id="promptlab-heading">Prompt 实验室</h2>
+              <p id="promptlab-summary">把一个目标拆成可测试的 Prompt 变体。</p>
             </div>
             <label class="prompt-lab-goal">
-              Experiment goal
-              <textarea id="promptlab-goal" rows="4" aria-label="Prompt lab goal" placeholder="Describe the goal to test across variants"></textarea>
+              实验目标
+              <textarea id="promptlab-goal" rows="4" aria-label="Prompt 实验目标" placeholder="描述要在多个变体中测试的目标"></textarea>
             </label>
             <div class="prompt-lab-variants" id="promptlab-variants">
-              <div class="empty-state">No prompt variants yet.</div>
+              <div class="empty-state">暂无 Prompt 变体。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Variant Brief</h2>
-              <p>Compare prompt shape, agent fit, context source, and evaluation criteria.</p>
+              <h2>变体简报</h2>
+              <p>比较 Prompt 结构、Agent 适配、上下文来源和评估标准。</p>
             </div>
             <div class="prompt-lab-detail" id="promptlab-detail">
-              <div class="empty-state">Select a prompt variant.</div>
+              <div class="empty-state">选择一个 Prompt 变体。</div>
             </div>
           </aside>
         </section>
 
         <section class="panel split-panel" id="panel-reuse" aria-labelledby="reuse-heading">
-          <div class="panel-list wide">
+          <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="reuse-heading">Reuse Gallery</h2>
-              <p id="reuse-summary">Reusable prompts, agents, sources, and outcomes from the current Astria workspace.</p>
+              <span class="panel-kicker">产物 / 星座</span>
+              <h2 id="reuse-heading">复用星库</h2>
+              <p id="reuse-summary">从提示、Agent、来源和运行结果中沉淀可再次发起的工作星座。</p>
             </div>
             <div class="reuse-gallery-assets" id="reuse-gallery-assets">
-              <div class="empty-state">No reusable assets yet.</div>
+              <div class="empty-state">暂无可复用星体。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Asset Brief</h2>
-              <p>Start the next mission from a proven prompt, profile, source, or outcome.</p>
+              <span class="panel-kicker">起点</span>
+              <h2>星体简报</h2>
+              <p>从已验证的提示、配置、来源或结果开始下一次任务。</p>
             </div>
             <div class="reuse-gallery-detail" id="reuse-gallery-detail">
-              <div class="empty-state">Select a reusable asset.</div>
+              <div class="empty-state">选择一个可复用星体。</div>
             </div>
           </aside>
         </section>
 
         <section class="panel split-panel" id="panel-results" aria-labelledby="results-heading">
-          <div class="panel-list wide">
+          <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="results-heading">Result Library</h2>
-              <p id="results-summary">Saved local outcomes, evidence briefs, and reusable reports from Astria work.</p>
+              <span class="panel-kicker">产物 / 归档</span>
+              <h2 id="results-heading">产物星库</h2>
+              <p id="results-summary">保存本地运行、证据简报和可复用报告，并标注来源、鲜度与下一步路线。</p>
+            </div>
+            <div class="artifact-readiness-board" id="artifact-readiness-board" aria-label="产物就绪概览">
+              <div class="empty-state">等待产物归档信号。</div>
             </div>
             <div class="result-library-grid" id="result-library-grid">
-              <div class="empty-state">No archived results yet.</div>
+              <div class="empty-state">暂无归档产物。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Result Brief</h2>
-              <p>Review what was produced, where it came from, how fresh it is, and how to reuse it.</p>
+              <span class="panel-kicker">产物</span>
+              <h2>产物简报</h2>
+              <p>审查产物内容、来源、鲜度、证据边界和复用方式。</p>
             </div>
             <div class="result-library-detail" id="result-library-detail">
-              <div class="empty-state">Select an archived result.</div>
+              <div class="empty-state">选择一个归档产物。</div>
             </div>
           </aside>
         </section>
@@ -1312,20 +1465,20 @@
         <section class="panel split-panel" id="panel-playbooks" aria-labelledby="playbooks-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="playbooks-heading">Playbook Library</h2>
-              <p id="playbooks-summary">Reviewed local best practices for repeatable Astria work.</p>
+              <h2 id="playbooks-heading">实践手册</h2>
+              <p id="playbooks-summary">沉淀经过审查的本地最佳实践，用于重复发起 Astria 工作。</p>
             </div>
             <div class="playbook-library-grid" id="playbook-library-grid">
-              <div class="empty-state">No playbooks yet.</div>
+              <div class="empty-state">暂无实践手册。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Playbook Brief</h2>
-              <p>Use proven routes with explicit evidence gates, safety boundaries, and reusable outputs.</p>
+              <h2>手册简报</h2>
+              <p>从已验证路线出发，保留证据门、安全边界和可复用产物。</p>
             </div>
             <div class="playbook-library-detail" id="playbook-library-detail">
-              <div class="empty-state">Select a playbook.</div>
+              <div class="empty-state">选择一本实践手册。</div>
             </div>
           </aside>
         </section>
@@ -1333,20 +1486,20 @@
         <section class="panel split-panel" id="panel-starter" aria-labelledby="starter-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="starter-heading">Starter Kits</h2>
-              <p id="starter-summary">Prebuilt Astria workflows for common local agent tasks, evidence gates, and reusable outputs.</p>
+              <h2 id="starter-heading">启动套件</h2>
+              <p id="starter-summary">为常见本地 Agent 任务预置工作流、证据门和可复用产物。</p>
             </div>
             <div class="starter-kit-grid" id="starter-kit-grid">
-              <div class="empty-state">No starter kits yet.</div>
+              <div class="empty-state">暂无启动套件。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Kit Brief</h2>
-              <p>Start from a proven structure, then route to the right planner, review gate, and reusable output.</p>
+              <h2>套件简报</h2>
+              <p>从已验证结构开始，再路由到合适的规划、审查门和可复用输出。</p>
             </div>
             <div class="starter-kit-detail" id="starter-kit-detail">
-              <div class="empty-state">Select a starter kit.</div>
+              <div class="empty-state">选择一个启动套件。</div>
             </div>
           </aside>
         </section>
@@ -1354,34 +1507,34 @@
         <section class="panel split-panel" id="panel-share" aria-labelledby="share-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="share-heading">Share Pack</h2>
-              <p id="share-summary">Package successful Astria work into local handoff starters for review, reuse, and follow-up.</p>
+              <h2 id="share-heading">交接包</h2>
+              <p id="share-summary">把成功工作打包成本地可审查、可复用、可继续的交接起点。</p>
             </div>
             <div class="share-pack-form">
               <label>
-                Package name
-                <input id="share-pack-name" aria-label="Share package name" placeholder="release research handoff, support triage pack, or weekly insight brief">
+                包名称
+                <input id="share-pack-name" aria-label="交接包名称" placeholder="发布调研交接、支持分诊包、每周洞察简报">
               </label>
               <label>
-                Audience
-                <input id="share-pack-audience" aria-label="Share package audience" placeholder="teammate, future session, reviewer, or project owner">
+                接收对象
+                <input id="share-pack-audience" aria-label="交接包接收对象" placeholder="队友、未来会话、审查者或项目负责人">
               </label>
               <label>
-                Handoff intent
-                <textarea id="share-pack-intent" rows="3" aria-label="Share package intent" placeholder="What should the recipient be able to reuse or verify?"></textarea>
+                交接意图
+                <textarea id="share-pack-intent" rows="3" aria-label="交接包意图" placeholder="接收者需要复用或验证什么？"></textarea>
               </label>
             </div>
             <div class="share-pack-cards" id="share-pack-cards">
-              <div class="empty-state">No share pack cards yet.</div>
+              <div class="empty-state">暂无交接卡片。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Pack Brief</h2>
-              <p>Keep sharing local and reviewable: include evidence, boundaries, source freshness, and next actions.</p>
+              <h2>交接简报</h2>
+              <p>保持本地和可审查：包含证据、边界、来源鲜度和下一步。</p>
             </div>
             <div class="share-pack-detail" id="share-pack-detail">
-              <div class="empty-state">Select a share pack card.</div>
+              <div class="empty-state">选择一张交接卡片。</div>
             </div>
           </aside>
         </section>
@@ -1389,30 +1542,30 @@
         <section class="panel split-panel" id="panel-browser" aria-labelledby="browser-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="browser-heading">Browser Planner</h2>
-              <p id="browser-summary">Plan reviewed browser missions before asking Astria to inspect, capture, extract, or monitor a page.</p>
+              <h2 id="browser-heading">浏览器规划器</h2>
+              <p id="browser-summary">让 Astria 检查、截图、抽取或监控网页前，先规划可审查的浏览器任务。</p>
             </div>
             <div class="browser-mission-form">
               <label>
-                Target URL
-                <input id="browser-target-url" aria-label="Browser target URL" placeholder="https://example.com">
+                目标 URL
+                <input id="browser-target-url" aria-label="浏览器目标 URL" placeholder="https://example.com">
               </label>
               <label>
-                Mission goal
-                <textarea id="browser-mission-goal" rows="3" aria-label="Browser mission goal" placeholder="Inspect the page and capture the evidence needed for the next decision."></textarea>
+                任务目标
+                <textarea id="browser-mission-goal" rows="3" aria-label="浏览器任务目标" placeholder="检查页面，并捕获下一步决策需要的证据。"></textarea>
               </label>
             </div>
             <div class="browser-mission-cards" id="browser-mission-cards">
-              <div class="empty-state">No browser mission cards yet.</div>
+              <div class="empty-state">暂无浏览器任务卡片。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Browser Brief</h2>
-              <p>Keep browser work reviewed: cite evidence, avoid destructive actions, and ask before changing remote state.</p>
+              <h2>浏览器简报</h2>
+              <p>浏览器工作必须可审查：引用证据，避免破坏性动作，改变远端状态前先确认。</p>
             </div>
             <div class="browser-mission-detail" id="browser-mission-detail">
-              <div class="empty-state">Select a browser mission.</div>
+              <div class="empty-state">选择一个浏览器任务。</div>
             </div>
           </aside>
         </section>
@@ -1420,34 +1573,34 @@
         <section class="panel split-panel" id="panel-data" aria-labelledby="data-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="data-heading">Data Planner</h2>
-              <p id="data-summary">Plan reviewed insight missions before asking Astria to analyze local files, tables, metrics, or research exports.</p>
+              <h2 id="data-heading">数据规划器</h2>
+              <p id="data-summary">让 Astria 分析本地文件、表格、指标或调研导出前，先规划可审查的洞察任务。</p>
             </div>
             <div class="data-insight-form">
               <label>
-                Source descriptor
-                <input id="data-source-descriptor" aria-label="Data source descriptor" placeholder="sales.csv, metrics export, local report, or table name">
+                来源描述
+                <input id="data-source-descriptor" aria-label="数据来源描述" placeholder="sales.csv、指标导出、本地报告或表名">
               </label>
               <label>
-                Analysis question
-                <textarea id="data-analysis-question" rows="3" aria-label="Data analysis question" placeholder="What decision should this data help with?"></textarea>
+                分析问题
+                <textarea id="data-analysis-question" rows="3" aria-label="数据分析问题" placeholder="这些数据要支持什么决策？"></textarea>
               </label>
               <label>
-                Output format
-                <input id="data-output-format" aria-label="Data output format" placeholder="ranked findings, chart brief, executive summary, or reusable memory">
+                输出格式
+                <input id="data-output-format" aria-label="数据输出格式" placeholder="排序发现、图表简报、执行摘要或可复用记忆">
               </label>
             </div>
             <div class="data-insight-cards" id="data-insight-cards">
-              <div class="empty-state">No data insight cards yet.</div>
+              <div class="empty-state">暂无数据洞察卡片。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Insight Brief</h2>
-              <p>Keep analysis reviewable: describe source limits, cite fields, flag uncertainty, and save reusable findings.</p>
+              <h2>洞察简报</h2>
+              <p>保持分析可审查：说明来源限制、引用字段、标记不确定性，并保存可复用发现。</p>
             </div>
             <div class="data-insight-detail" id="data-insight-detail">
-              <div class="empty-state">Select an insight mission.</div>
+              <div class="empty-state">选择一个洞察任务。</div>
             </div>
           </aside>
         </section>
@@ -1455,20 +1608,20 @@
         <section class="panel split-panel" id="panel-budget" aria-labelledby="budget-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="budget-heading">Budget Guard</h2>
-              <p id="budget-summary">Plan token caps, model routing, fallback, context trimming, and stop rules before long Astria missions.</p>
+              <h2 id="budget-heading">预算守卫</h2>
+              <p id="budget-summary">长任务前规划 token 上限、模型路由、降级、上下文裁剪和停止规则。</p>
             </div>
             <div class="budget-guard-grid" id="budget-guard-grid">
-              <div class="empty-state">No budget guards yet.</div>
+              <div class="empty-state">暂无预算守卫。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Budget Brief</h2>
-              <p>Review budget shape, trigger, guardrail, fallback, and review boundary before launch.</p>
+              <h2>预算简报</h2>
+              <p>启动前审查预算形态、触发条件、防线、降级路线和审查边界。</p>
             </div>
             <div class="budget-guard-detail" id="budget-guard-detail">
-              <div class="empty-state">Select a budget guard.</div>
+              <div class="empty-state">选择一条预算守卫。</div>
             </div>
           </aside>
         </section>
@@ -1476,20 +1629,20 @@
         <section class="panel split-panel" id="panel-snapshot" aria-labelledby="snapshot-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="snapshot-heading">Workspace Snapshot</h2>
-              <p id="snapshot-summary">Plan local snapshot packs for resume, evidence, sources, results, playbooks, delivery, and privacy review.</p>
+              <h2 id="snapshot-heading">工作区快照</h2>
+              <p id="snapshot-summary">为恢复、证据、来源、结果、手册、交付和隐私审查规划本地快照包。</p>
             </div>
             <div class="workspace-snapshot-grid" id="workspace-snapshot-grid">
-              <div class="empty-state">No snapshot packs yet.</div>
+              <div class="empty-state">暂无快照包。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Snapshot Brief</h2>
-              <p>Review included context, missing pieces, redaction boundary, and the next Astria route.</p>
+              <h2>快照简报</h2>
+              <p>审查包含的上下文、缺口、脱敏边界和下一条 Astria 路线。</p>
             </div>
             <div class="workspace-snapshot-detail" id="workspace-snapshot-detail">
-              <div class="empty-state">Select a snapshot pack.</div>
+              <div class="empty-state">选择一个快照包。</div>
             </div>
           </aside>
         </section>
@@ -1497,20 +1650,20 @@
         <section class="panel split-panel" id="panel-delivery" aria-labelledby="delivery-heading">
           <div class="panel-list wide">
             <div class="panel-heading">
-              <h2 id="delivery-heading">Proactive Delivery</h2>
-              <p id="delivery-summary">Monitor scheduled work, outbound runs, and channel readiness.</p>
+              <h2 id="delivery-heading">主动交付</h2>
+              <p id="delivery-summary">监控定时工作、外发运行和渠道准备状态。</p>
             </div>
             <div class="delivery-lanes" id="delivery-lanes">
-              <div class="empty-state">No delivery lanes yet.</div>
+              <div class="empty-state">暂无交付路线。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Delivery Brief</h2>
-              <p>Plan proactive work before it runs or reaches a channel.</p>
+              <h2>交付简报</h2>
+              <p>在任务运行或进入渠道前规划主动工作。</p>
             </div>
             <div class="delivery-detail" id="delivery-detail">
-              <div class="empty-state">Select a delivery lane.</div>
+              <div class="empty-state">选择一条交付路线。</div>
             </div>
           </aside>
         </section>
@@ -1518,8 +1671,8 @@
         <section class="panel split-panel" id="panel-schedules" aria-labelledby="schedules-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="schedules-heading">Schedules</h2>
-              <p>Cron-based local agent runs.</p>
+              <h2 id="schedules-heading">定时任务</h2>
+              <p>基于 cron 的本地 Agent 运行。</p>
             </div>
             <div class="data-list" id="schedules-list"></div>
           </div>
@@ -1527,19 +1680,19 @@
             <form class="schedule-form" id="schedule-form">
               <label>
                 Cron
-                <input id="schedule-cron" placeholder="* * * * *" aria-label="Cron expression">
+                <input id="schedule-cron" placeholder="* * * * *" aria-label="Cron 表达式">
               </label>
               <label>
                 Prompt
-                <textarea id="schedule-prompt" rows="5" placeholder="Prompt" aria-label="Schedule prompt"></textarea>
+                <textarea id="schedule-prompt" rows="5" placeholder="Prompt" aria-label="定时任务 Prompt"></textarea>
               </label>
               <label>
                 Agent
-                <select id="schedule-agent" aria-label="Schedule agent">
-                  <option value="">Default agent</option>
+                <select id="schedule-agent" aria-label="定时任务 Agent">
+                  <option value="">默认 Agent</option>
                 </select>
               </label>
-              <button type="submit" class="primary-button">Create schedule</button>
+              <button type="submit" class="primary-button">创建定时任务</button>
             </form>
           </aside>
         </section>
@@ -1547,22 +1700,24 @@
         <section class="panel split-panel" id="panel-runs" aria-labelledby="runs-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="runs-heading">Runs</h2>
-              <p>Recent daemon executions and their timeline.</p>
+              <span class="panel-kicker">运行 / 轨道</span>
+              <h2 id="runs-heading">运行观测台</h2>
+              <p>观察最近的 daemon 执行、工具事件、恢复状态和结果轨道。</p>
             </div>
             <div class="mission-control-board" id="mission-control-board">
-              <div class="empty-state">Waiting for run telemetry.</div>
+              <div class="empty-state">等待运行遥测。</div>
             </div>
-            <div class="mission-control-filters" id="mission-control-filters" aria-label="Run filters"></div>
+            <div class="mission-control-filters" id="mission-control-filters" aria-label="运行筛选"></div>
             <div class="data-list" id="runs-list"></div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Run Detail</h2>
-              <p id="run-detail-summary">Select a run to inspect request, result, and events.</p>
+              <span class="panel-kicker">观测</span>
+              <h2>运行详情</h2>
+              <p id="run-detail-summary">选择一条运行，检查请求、结果和事件。</p>
             </div>
             <div id="run-detail" class="run-detail">
-              <div class="empty-state">No run selected.</div>
+              <div class="empty-state">未选择运行。</div>
             </div>
           </aside>
         </section>
@@ -1570,35 +1725,48 @@
         <section class="panel split-panel" id="panel-diagnostics" aria-labelledby="diagnostics-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="diagnostics-heading">Diagnostics</h2>
-              <p id="diagnostics-summary">Runtime readiness checks.</p>
+              <h2 id="diagnostics-heading">诊断</h2>
+              <p id="diagnostics-summary">运行时就绪检查。</p>
             </div>
             <div class="data-list diagnostics-list" id="diagnostics-list"></div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Runtime</h2>
-              <p>Current daemon readiness.</p>
+              <h2>运行时</h2>
+              <p>当前 daemon 就绪状态。</p>
             </div>
             <div class="diagnostics-overview" id="diagnostics-overview">
-              <strong>Checking</strong>
-              <span>Waiting for diagnostics.</span>
+              <strong>检查中</strong>
+              <span>等待诊断结果。</span>
             </div>
-            <button class="primary-button" type="button" data-panel="config">Fix provider setup</button>
+            <button class="primary-button" type="button" data-panel="config">修复 provider 设置</button>
           </aside>
         </section>
 
         <section class="panel split-panel" id="panel-config" aria-labelledby="config-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="config-heading">Config</h2>
-              <p id="config-summary">Provider setup used by daemon runs.</p>
+              <h2 id="config-heading">连接器</h2>
+              <p id="config-summary">填写你自己的 LLM Base URL、模型名和 API key；Astria 不内置模型凭据。</p>
             </div>
             <form class="config-form" id="config-form">
+              <div class="connector-setup-card" data-connector-setup-card>
+                <span>LLM 连接</span>
+                <strong data-connector-status-title>等待配置</strong>
+                <small data-connector-status-detail>选择 provider 后填写 URL、模型和 key。Key 保存后只显示状态，不会回显明文。</small>
+              </div>
+              <div class="connector-test-card" id="connector-test-card" data-status="idle">
+                <div>
+                  <span>连接检查</span>
+                  <strong id="connector-test-title">尚未检查</strong>
+                  <small id="connector-test-detail">保存 provider 设置后，手动检查 Base URL、模型和凭据是否可用。</small>
+                </div>
+                <button type="button" id="config-test-button">检查连接</button>
+              </div>
               <label>
                 Provider
                 <select id="config-provider" aria-label="Provider">
-                  <option value="anthropic">Anthropic</option>
+                  <option value="anthropic">Anthropic-compatible</option>
                   <option value="openai">OpenAI</option>
                   <option value="ollama">Ollama</option>
                 </select>
@@ -1606,23 +1774,23 @@
 
               <div class="provider-fields" data-provider-fields="anthropic">
                 <label>
-                  Endpoint
-                  <input id="config-endpoint" placeholder="https://api.anthropic.com" aria-label="Anthropic endpoint">
+                  Base URL
+                  <input id="config-endpoint" placeholder="https://api.anthropic.com 或兼容端点" aria-label="Anthropic-compatible Base URL">
                 </label>
                 <label>
-                  Model tier
-                  <input id="config-model-tier" placeholder="medium" aria-label="Anthropic model tier">
+                  Model
+                  <input id="config-model-tier" placeholder="claude-4-sonnet-20250514 / deepseek-v4-flash" aria-label="Anthropic-compatible model">
                 </label>
                 <label>
                   API key
-                  <input id="config-api-key" type="password" autocomplete="new-password" aria-label="Anthropic API key">
+                  <input id="config-api-key" type="password" autocomplete="new-password" aria-label="Anthropic-compatible API key">
                 </label>
               </div>
 
               <div class="provider-fields" data-provider-fields="openai">
                 <label>
-                  Endpoint
-                  <input id="config-openai-endpoint" placeholder="https://api.openai.com/v1" aria-label="OpenAI endpoint">
+                  Base URL
+                  <input id="config-openai-endpoint" placeholder="https://api.openai.com/v1 或兼容端点" aria-label="OpenAI Base URL">
                 </label>
                 <label>
                   Model
@@ -1646,19 +1814,19 @@
               </div>
 
               <div class="form-actions">
-                <span id="config-save-state">Not loaded</span>
-                <button type="submit" class="primary-button">Save provider config</button>
+                <span id="config-save-state">未加载</span>
+                <button type="submit" class="primary-button">保存 provider 设置</button>
               </div>
             </form>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Setup State</h2>
-              <p>Diagnostics after config changes.</p>
+              <h2>设置状态</h2>
+              <p>配置变更后的诊断结果。</p>
             </div>
             <div class="diagnostics-overview" id="config-diagnostics-overview">
-              <strong>Checking</strong>
-              <span>Waiting for diagnostics.</span>
+              <strong>检查中</strong>
+              <span>等待诊断结果。</span>
             </div>
           </aside>
         </section>
@@ -1666,45 +1834,45 @@
         <section class="panel split-panel" id="panel-permissions" aria-labelledby="permissions-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="permissions-heading">Permissions</h2>
-              <p id="permissions-summary">Global tool policy used by daemon runs.</p>
+              <h2 id="permissions-heading">权限</h2>
+              <p id="permissions-summary">daemon 运行使用的全局工具策略。</p>
             </div>
             <form class="config-form" id="permissions-form">
               <label>
-                Allowed directories
-                <textarea id="permissions-allowed-dirs" rows="4" aria-label="Allowed directories" placeholder="~&#10;."></textarea>
+                允许目录
+                <textarea id="permissions-allowed-dirs" rows="4" aria-label="允许目录" placeholder="~&#10;."></textarea>
               </label>
               <label>
-                Allowed commands
-                <textarea id="permissions-allowed-commands" rows="4" aria-label="Allowed commands" placeholder="go test&#10;git status"></textarea>
+                允许命令
+                <textarea id="permissions-allowed-commands" rows="4" aria-label="允许命令" placeholder="go test&#10;git status"></textarea>
               </label>
               <label>
-                Denied commands
-                <textarea id="permissions-denied-commands" rows="4" aria-label="Denied commands" placeholder="shutdown&#10;reboot"></textarea>
+                拒绝命令
+                <textarea id="permissions-denied-commands" rows="4" aria-label="拒绝命令" placeholder="shutdown&#10;reboot"></textarea>
               </label>
               <label>
-                Network allowlist
-                <textarea id="permissions-network-allowlist" rows="4" aria-label="Network allowlist" placeholder="api.github.com&#10;*.example.com"></textarea>
+                网络白名单
+                <textarea id="permissions-network-allowlist" rows="4" aria-label="网络白名单" placeholder="api.github.com&#10;*.example.com"></textarea>
               </label>
               <label>
-                Sensitive patterns
-                <textarea id="permissions-sensitive-patterns" rows="4" aria-label="Sensitive patterns" placeholder="*.secret&#10;.env"></textarea>
+                敏感规则
+                <textarea id="permissions-sensitive-patterns" rows="4" aria-label="敏感规则" placeholder="*.secret&#10;.env"></textarea>
               </label>
               <div class="form-actions">
-                <span id="permissions-save-state">Not loaded</span>
-                <button type="button" id="permissions-clear-button">Clear rules</button>
-                <button type="submit" class="primary-button">Save permissions</button>
+                <span id="permissions-save-state">未加载</span>
+                <button type="button" id="permissions-clear-button">清空规则</button>
+                <button type="submit" class="primary-button">保存权限</button>
               </div>
             </form>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Policy Preview</h2>
-              <p>Currently loaded local safety rules.</p>
+              <h2>策略预览</h2>
+              <p>当前已加载的本地安全规则。</p>
             </div>
             <div class="diagnostics-overview" id="permissions-overview">
-              <strong>Checking</strong>
-              <span>Waiting for permissions.</span>
+              <strong>检查中</strong>
+              <span>等待权限配置。</span>
             </div>
             <div class="data-list" id="permissions-pending-preview"></div>
             <div class="data-list" id="permissions-list"></div>
@@ -1714,26 +1882,26 @@
         <section class="panel split-panel" id="panel-version" aria-labelledby="version-heading">
           <div class="panel-list">
             <div class="panel-heading">
-              <h2 id="version-heading">Version</h2>
-              <p id="version-summary">Build and update status.</p>
+              <h2 id="version-heading">版本</h2>
+              <p id="version-summary">构建和更新状态。</p>
             </div>
             <div class="data-list" id="version-list">
-              <div class="empty-state">Waiting for version metadata.</div>
+              <div class="empty-state">等待版本元数据。</div>
             </div>
           </div>
           <aside class="detail-pane">
             <div class="panel-heading">
-              <h2>Update</h2>
-              <p>Manual release check.</p>
+              <h2>更新</h2>
+              <p>手动检查发布版本。</p>
             </div>
             <div class="diagnostics-overview" id="update-overview">
-              <strong>Not checked</strong>
-              <span>Use a release build to check for updates.</span>
+              <strong>未检查</strong>
+              <span>使用发布构建后可检查更新。</span>
             </div>
             <div class="version-actions">
-              <button class="primary-button" type="button" id="update-check-button">Check updates</button>
-              <button type="button" id="copy-support-info-button">Copy support info</button>
-              <span id="update-check-state">Idle</span>
+              <button class="primary-button" type="button" id="update-check-button">检查更新</button>
+              <button type="button" id="copy-support-info-button">复制支持信息</button>
+              <span id="update-check-state">空闲</span>
             </div>
           </aside>
         </section>
@@ -1744,12 +1912,12 @@
       <section class="command-center-dialog" role="dialog" aria-modal="true" aria-labelledby="command-center-title">
         <div class="command-center-head">
           <div>
-            <span class="board-kicker">Command Center</span>
+            <span class="board-kicker">快速指令</span>
             <h2 id="command-center-title">Astria 快速操作</h2>
           </div>
-          <button type="button" data-command-close aria-label="Close Command Center">Close</button>
+          <button type="button" data-command-close aria-label="关闭快速指令">关闭</button>
         </div>
-        <input id="command-center-input" type="search" placeholder="搜索 workflow、panel 或 action" aria-label="Command search" />
+        <input id="command-center-input" type="search" placeholder="搜索工作流、面板或动作" aria-label="快速指令搜索" />
         <div class="command-center-list" id="command-center-list"></div>
       </section>
     </div>

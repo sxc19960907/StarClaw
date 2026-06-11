@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,11 +30,13 @@ var daemonCmd = &cobra.Command{
 	Short: "Background daemon server with HTTP API and cron scheduler",
 }
 
-const daemonPort = 7533
+const defaultDaemonPort = 7533
 
+var daemonPort = daemonPortFromEnv()
 var daemonWebURL = daemonWebURLForPort(daemonPort)
 var daemonHealthURL = fmt.Sprintf("http://127.0.0.1:%d/health", daemonPort)
 var daemonStatusURL = fmt.Sprintf("http://127.0.0.1:%d/status", daemonPort)
+var daemonVersionURL = fmt.Sprintf("http://127.0.0.1:%d/version", daemonPort)
 var daemonDiagnosticsURL = fmt.Sprintf("http://127.0.0.1:%d/diagnostics", daemonPort)
 var daemonEnsureTimeout = 5 * time.Second
 var daemonHealthPollInterval = 120 * time.Millisecond
@@ -44,19 +47,96 @@ func daemonWebURLForPort(port int) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/app/", port)
 }
 
-var isDaemonHealthy = func(ctx context.Context) bool {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, daemonHealthURL, nil)
+func daemonPortFromEnv() int {
+	raw := strings.TrimSpace(os.Getenv("STARCLAW_DAEMON_PORT"))
+	if raw == "" {
+		return defaultDaemonPort
+	}
+	port, err := strconv.Atoi(raw)
+	if err != nil || port < 1 || port > 65535 {
+		return defaultDaemonPort
+	}
+	return port
+}
+
+type daemonIdentity struct {
+	Version       string `json:"version"`
+	WebURL        string `json:"web_url"`
+	HealthURL     string `json:"health_url"`
+	LaunchCommand string `json:"launch_command"`
+}
+
+func isExpectedDaemonIdentity(identity daemonIdentity) bool {
+	return strings.TrimSpace(identity.LaunchCommand) == "starclaw app" &&
+		strings.TrimSpace(identity.WebURL) == daemonWebURL &&
+		strings.TrimSpace(identity.HealthURL) == daemonHealthURL
+}
+
+var fetchDaemonIdentity = func(ctx context.Context) (daemonIdentity, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, daemonVersionURL, nil)
 	if err != nil {
-		return false
+		return daemonIdentity{}, err
 	}
 	resp, err := (&http.Client{Timeout: 500 * time.Millisecond}).Do(req)
 	if err != nil {
-		return false
+		return daemonIdentity{}, err
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	return resp.StatusCode == http.StatusOK
+	if resp.StatusCode != http.StatusOK {
+		return daemonIdentity{}, fmt.Errorf("unexpected version status: %s", resp.Status)
+	}
+	var identity daemonIdentity
+	if err := json.NewDecoder(resp.Body).Decode(&identity); err != nil {
+		return daemonIdentity{}, fmt.Errorf("decode daemon identity: %w", err)
+	}
+	if !isExpectedDaemonIdentity(identity) {
+		return daemonIdentity{}, errors.New("local service is not a StarClaw daemon")
+	}
+	return identity, nil
+}
+
+var isDaemonHealthy = func(ctx context.Context) bool {
+	_, err := fetchDaemonIdentity(ctx)
+	return err == nil
+}
+
+func isDaemonPortOccupied(ctx context.Context) bool {
+	if isDaemonHealthy(ctx) {
+		return false
+	}
+	for _, url := range []string{daemonVersionURL, daemonHealthURL} {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			continue
+		}
+		resp, err := (&http.Client{Timeout: 500 * time.Millisecond}).Do(req)
+		if err != nil {
+			continue
+		}
+		_ = resp.Body.Close()
+		return true
+	}
+	return false
+}
+
+func requireOwnedDaemon(ctx context.Context) error {
+	if isDaemonHealthy(ctx) {
+		return nil
+	}
+	if isDaemonPortOccupied(ctx) {
+		return fmt.Errorf("port %d is in use by another local service, not StarClaw", daemonPort)
+	}
+	return fmt.Errorf("daemon is not reachable at %s", daemonVersionURL)
+}
+
+func postDaemonShutdown(ctx context.Context) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/shutdown", daemonPort), nil)
+	if err != nil {
+		return nil, err
+	}
+	return (&http.Client{Timeout: 2 * time.Second}).Do(req)
 }
 
 var startDaemonBackground = func() error {
@@ -106,6 +186,9 @@ func ensureDaemonRunning(ctx context.Context) (bool, error) {
 	if isDaemonHealthy(ctx) {
 		return false, nil
 	}
+	if isDaemonPortOccupied(ctx) {
+		return false, fmt.Errorf("port %d is in use by another local service, not StarClaw", daemonPort)
+	}
 	if err := startDaemonBackground(); err != nil {
 		return false, fmt.Errorf("start background daemon: %w", err)
 	}
@@ -123,6 +206,8 @@ func formatDaemonLaunchError(err error) error {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		message += fmt.Sprintf("; timed out waiting for %s", daemonHealthURL)
+	case strings.Contains(err.Error(), "another local service"):
+		message += "; close the service using this port or set STARCLAW_DAEMON_PORT to an unused port"
 	case strings.Contains(err.Error(), "address already in use"):
 		message += fmt.Sprintf("; port %d appears to be in use", daemonPort)
 	}
@@ -282,15 +367,16 @@ var daemonStartCmd = &cobra.Command{
 		}()
 
 		deps := &daemon.ServerDeps{
-			StarclawDir:     starclawDir,
-			ConfigPath:      filepath.Join(starclawDir, "config.yaml"),
-			Config:          cfg,
-			AgentsDir:       agentsDir,
-			SkillsDir:       skillsDir,
-			InstructionsDir: instructionsDir,
-			LLMClient:       llmClient,
-			Registry:        registry,
-			ScheduleManager: scheduleMgr,
+			StarclawDir:      starclawDir,
+			ConfigPath:       filepath.Join(starclawDir, "config.yaml"),
+			Config:           cfg,
+			AgentsDir:        agentsDir,
+			SkillsDir:        skillsDir,
+			InstructionsDir:  instructionsDir,
+			LLMClient:        llmClient,
+			LLMClientFactory: newLLMClient,
+			Registry:         registry,
+			ScheduleManager:  scheduleMgr,
 		}
 
 		srv := daemon.NewServer(daemonPort, deps, Version)
@@ -321,7 +407,12 @@ var daemonStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the daemon server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/shutdown", daemonPort), "application/json", nil)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := requireOwnedDaemon(ctx); err != nil {
+			return fmt.Errorf("daemon: %w", err)
+		}
+		resp, err := postDaemonShutdown(ctx)
 		if err != nil {
 			return fmt.Errorf("daemon: not reachable: %w", err)
 		}
@@ -346,6 +437,13 @@ var daemonStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show daemon status",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := requireOwnedDaemon(ctx); err != nil {
+			fmt.Println("Daemon is not running.")
+			fmt.Printf("Detail:        %v\n", err)
+			return nil
+		}
 		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/status", daemonPort))
 		if err != nil {
 			fmt.Println("Daemon is not running.")

@@ -62,13 +62,19 @@ func TestLoad(t *testing.T) {
 		t.Fatal("Load() returned nil config")
 	}
 
-	// Check defaults
-	if cfg.Endpoint == "" {
-		t.Error("Load() returned empty endpoint")
+	// Check defaults. Connector URL, model names, and keys stay user-supplied
+	// so compatible providers do not receive fake launch-ready values.
+	if cfg.Endpoint != "" {
+		t.Errorf("Endpoint = %q, want empty user-supplied endpoint", cfg.Endpoint)
 	}
-
-	if cfg.ModelTier == "" {
-		t.Error("Load() returned empty model_tier")
+	if cfg.ModelTier != "" {
+		t.Errorf("ModelTier = %q, want empty user-supplied model", cfg.ModelTier)
+	}
+	if cfg.OpenAIModel != "" {
+		t.Errorf("OpenAIModel = %q, want empty user-supplied model", cfg.OpenAIModel)
+	}
+	if cfg.OllamaModel != "" {
+		t.Errorf("OllamaModel = %q, want empty user-supplied model", cfg.OllamaModel)
 	}
 
 	// Check Agent defaults
