@@ -1,12 +1,53 @@
-# StarClaw
+# StarClaw / Astria
 
 [![CI](https://github.com/starclaw/starclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/starclaw/starclaw/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/starclaw/starclaw)](https://goreportcard.com/report/github.com/starclaw/starclaw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**StarClaw** is an AI-powered CLI agent with local tool execution capabilities. It provides a terminal interface for interacting with Large Language Models (LLMs) while enabling the AI to safely execute commands on your local system through a controlled tool system.
+**Astria** is the desktop workspace for **StarClaw**, a local-first AI agent runtime with controlled tool execution, sessions, run observation, and user-supplied LLM provider configuration.
+
+**StarClaw** remains the CLI, daemon, package, and release name. **Astria** is the product-facing desktop app built on top of the same local daemon.
 
 ![StarClaw Demo](docs/demo.gif)
+
+## Astria Desktop Beta
+
+The current internal beta is **v0.3.0-beta.1** for macOS arm64.
+
+- Release: [Astria v0.3.0-beta.1](https://github.com/sxc19960907/StarClaw/releases/tag/v0.3.0-beta.1)
+- DMG: [Astria-v0.3.0-beta.1-macos-arm64.dmg](https://github.com/sxc19960907/StarClaw/releases/download/v0.3.0-beta.1/Astria-v0.3.0-beta.1-macos-arm64.dmg)
+- SHA-256: `368a31066884f30a3a0ca46741c12925e17820618f398ef90e3a793387139356`
+
+This DMG is unsigned and not notarized. It is suitable for internal beta testing only. macOS may show a security prompt on first launch.
+
+### Start With Astria
+
+1. Download the DMG from the beta release.
+2. Open `Astria.app`.
+3. In Astria, open the connector/config screen.
+4. Enter your LLM Base URL, model, and API key.
+5. Run **Test Connection**.
+6. Start a task from the desktop workspace.
+
+No model credentials are bundled. Astria stores provider settings locally under `~/.starclaw/config.yaml`, and API keys are redacted from diagnostics and connection-test details.
+
+### Beta Scope
+
+- Desktop shell with bundled StarClaw daemon.
+- Local Web UI at `http://127.0.0.1:7533/app/`.
+- User-supplied OpenAI-compatible, Anthropic, or Ollama provider setup.
+- Connection testing with categorized failure states.
+- Task launch, streaming response, tool-call rendering, run history, and run observation.
+- Non-maximized desktop layout guardrails.
+- Daemon ownership checks before app reuse, status, and shutdown.
+
+### Known Beta Limitations
+
+- macOS arm64 DMG only for this beta artifact.
+- Unsigned and not notarized.
+- Astria auto-update remains disabled/unavailable-safe.
+- LLM Base URL, model, and API key must be supplied by the user.
+- Public stable release still requires signing, notarization, final changelog, and stable release assets.
 
 ## Features
 
@@ -29,6 +70,8 @@
 
 ## Installation
 
+For the Astria desktop beta, use the DMG linked in [Astria Desktop Beta](#astria-desktop-beta).
+
 ### Using Go
 
 ```bash
@@ -49,7 +92,7 @@ The npm package installs a small wrapper and downloads the matching StarClaw bin
 
 ### Pre-built Binaries
 
-Download an archive from [Releases](https://github.com/starclaw/starclaw/releases) for your platform:
+Download a StarClaw CLI archive from [Releases](https://github.com/starclaw/starclaw/releases) for your platform:
 
 ```bash
 # Example: macOS arm64
