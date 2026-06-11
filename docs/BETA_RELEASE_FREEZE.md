@@ -2,7 +2,7 @@
 
 Date: 2026-06-11
 Candidate: v0.3.0-beta.1
-Git commit: d124430
+Git commit: cf06965
 Channel: internal beta
 
 ## Artifacts
